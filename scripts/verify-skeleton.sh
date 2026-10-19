@@ -65,7 +65,7 @@ else
 	fail "pins: go.mod toolchain matches GO_VERSION" "GO_VERSION='$go_pin'"
 fi
 oapi_pin="$(pin OAPI_CODEGEN_VERSION)"
-if [ -n "$oapi_pin" ] && grep -Eq "github\.com/oapi-codegen/oapi-codegen/v2 ${oapi_pin}\$" go.mod 2>/dev/null; then
+if [ -n "$oapi_pin" ] && grep -Eq "github\.com/oapi-codegen/oapi-codegen/v2 ${oapi_pin}( // indirect)?\$" go.mod 2>/dev/null; then
 	pass "pins: go.mod oapi-codegen matches OAPI_CODEGEN_VERSION"
 else
 	fail "pins: go.mod oapi-codegen matches OAPI_CODEGEN_VERSION" "OAPI_CODEGEN_VERSION='$oapi_pin'"
@@ -202,7 +202,7 @@ if [ -x "$lint" ]; then
 	g commit -q --allow-empty -m "chore: base"
 	base="$(g rev-parse HEAD)"
 	g commit -q --allow-empty -m "feat(ring): clean commit [S1.1]"
-	if "$lint" "$base" "$(g rev-parse HEAD)" >/dev/null 2>&1; then
+	if (cd "$r" && "$lint" "$base" HEAD) >/dev/null 2>&1; then
 		pass "commit-lint: accepts a clean commit"
 	else
 		fail "commit-lint: accepts a clean commit"
@@ -210,7 +210,7 @@ if [ -x "$lint" ]; then
 	for body in "Co-authored-by: Bot <bot@example.com>" "co-authored-by: bot <b@example.com>" \
 		"Generated with some assistant" "🤖 Generated with [Tool](https://example.com)"; do
 		g commit -q --allow-empty -m "feat(ring): bad commit [S1.1]" -m "$body"
-		if "$lint" "$base" "$(g rev-parse HEAD)" >/dev/null 2>&1; then
+		if (cd "$r" && "$lint" "$base" HEAD) >/dev/null 2>&1; then
 			fail "commit-lint: rejects '$body'" "it exited 0"
 		else
 			pass "commit-lint: rejects '$body'"
