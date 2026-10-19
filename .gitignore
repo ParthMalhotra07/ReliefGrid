@@ -1,0 +1,30 @@
+# Build output
+/bin/
+/dist/
+*.test
+*.out
+coverage.*
+
+# Secrets and cluster credentials: never commit these
+.env
+.env.*
+kubeconfig
+*.kubeconfig
+*.pem
+*.key
+
+# Terraform state and local variables
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# UI dependencies and build
+node_modules/
+ui/dist/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
