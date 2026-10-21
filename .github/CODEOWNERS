@@ -1,0 +1,47 @@
+# Code owners. The last matching pattern wins, so broad rules come first.
+# S = @coDEmaVEriCK06 (storage, reliability, CI, tracing, GKE)
+# A = @ParthMalhotra07 (application, messaging, UI, Helm app parts, dashboards)
+
+# Shared by default: contracts/, docs/, Makefile, tools.mk, scripts/, tests/,
+# internal/resilience/, deploy/platform/, spike/ and root files.
+*                                           @coDEmaVEriCK06 @ParthMalhotra07
+/contracts/                                 @coDEmaVEriCK06 @ParthMalhotra07
+/docs/                                      @coDEmaVEriCK06 @ParthMalhotra07
+/scripts/                                   @coDEmaVEriCK06 @ParthMalhotra07
+/tests/                                     @coDEmaVEriCK06 @ParthMalhotra07
+/internal/resilience/                       @coDEmaVEriCK06 @ParthMalhotra07
+/deploy/platform/                           @coDEmaVEriCK06 @ParthMalhotra07
+/Makefile                                   @coDEmaVEriCK06 @ParthMalhotra07
+/tools.mk                                   @coDEmaVEriCK06 @ParthMalhotra07
+
+# S
+/internal/fsm/                              @coDEmaVEriCK06
+/internal/raftstore/                        @coDEmaVEriCK06
+/internal/ring/                             @coDEmaVEriCK06
+/internal/obs/                              @coDEmaVEriCK06
+/cmd/storagenode/                           @coDEmaVEriCK06
+/cmd/coordinator/                           @coDEmaVEriCK06
+/cmd/invcheck/                              @coDEmaVEriCK06
+/chaos/                                     @coDEmaVEriCK06
+/loadtest/                                  @coDEmaVEriCK06
+/infra/gcp/                                 @coDEmaVEriCK06
+/deploy/kind/                               @coDEmaVEriCK06
+/spike/raft/                                @coDEmaVEriCK06
+/.github/                                   @coDEmaVEriCK06
+
+# A
+/cmd/api/                                   @ParthMalhotra07
+/cmd/matcher/                               @ParthMalhotra07
+/internal/workflow/                         @ParthMalhotra07
+/internal/geo/                              @ParthMalhotra07
+/internal/mq/                               @ParthMalhotra07
+/internal/outbox/                           @ParthMalhotra07
+/internal/reconcile/                        @ParthMalhotra07
+/internal/auth/                             @ParthMalhotra07
+/ui/                                        @ParthMalhotra07
+/spike/mq/                                  @ParthMalhotra07
+/tests/workflow/                            @ParthMalhotra07
+/deploy/helm/                               @ParthMalhotra07
+
+# Storage templates inside A's chart belong to S (must stay after /deploy/helm/).
+/deploy/helm/reliefgrid/templates/storage/  @coDEmaVEriCK06
