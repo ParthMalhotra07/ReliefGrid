@@ -25,8 +25,16 @@ lint:
 test: ## go test -race ./...
 	go test -race ./...
 
-gen: ## Regenerate code from contracts/ (no-op until contracts land)
-	@echo "gen: no contracts yet, nothing to generate"
+gen: ## Regenerate code from contracts/ (must leave no diff)
+	mkdir -p internal/api/gen
+	go tool oapi-codegen \
+		-generate types \
+		-package gen \
+		-o internal/api/gen/types.gen.go \
+		contracts/public.yaml
+
+verify-A0.1: ## Run the A0.1 Verify script
+	bash scripts/verify-A0.1.sh
 
 dev: ## Deploy the lean development stack
 	@echo "not yet: S0.2 (kind cluster)" >&2; exit 1
