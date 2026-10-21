@@ -6,6 +6,14 @@
 # Prerequisites: go 1.27.x, python3 with openapi-spec-validator and jsonschema
 set -uo pipefail
 
+# Ensure Go (snap install) and GOPATH/bin are on PATH for non-interactive shells.
+export PATH="/snap/bin:${HOME}/go/bin:${PATH}"
+GO=$(command -v go 2>/dev/null || echo "")
+if [ -z "$GO" ]; then
+  echo 'FATAL: go binary not found on PATH (checked /snap/bin, $HOME/go/bin)'
+  exit 1
+fi
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
@@ -114,7 +122,7 @@ fi
 
 # ── Check 6: generated code compiles ──────────────────────────────────────────
 if [ -d "internal/api/gen" ] && ls internal/api/gen/*.go >/dev/null 2>&1; then
-  build_out=$(go build ./internal/api/gen/... 2>&1)
+  build_out=$("$GO" build ./internal/api/gen/... 2>&1)
   build_rc=$?
   if [ $build_rc -eq 0 ]; then
     ok "go build ./internal/api/gen/... compiles"
