@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reliefgrid.internal/events/request_created.json",
+  "title": "RequestCreated",
+  "description": "Emitted when a new emergency request is committed to the FSM.",
+  "type": "object",
+  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1",
+      "description": "Schema version; increment on breaking changes."
+    },
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique event identifier (UUID v4)."
+    },
+    "entityId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The requestId of the created request."
+    },
+    "entityVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "FSM entity version after this event was applied."
+    },
+    "eventType": {
+      "type": "string",
+      "const": "request.created",
+      "description": "Discriminator for routing and deserialization."
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when the event was committed to the FSM."
+    },
+    "traceparent": {
+      "type": "string",
+      "pattern": "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$",
+      "description": "W3C Trace Context traceparent header value for distributed tracing."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Snapshot of the request at creation time.",
+      "required": ["requestId", "requestType", "status", "location", "windowStart", "windowEnd"],
+      "properties": {
+        "requestId":   { "type": "string", "format": "uuid" },
+        "requestType": { "type": "string" },
+        "status":      { "type": "string", "const": "PENDING" },
+        "title":       { "type": "string" },
+        "location": {
+          "type": "object",
+          "required": ["lat", "lng"],
+          "properties": {
+            "lat": { "type": "number", "minimum": -90,  "maximum": 90  },
+            "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+          }
+        },
+        "requestorId": { "type": "string" },
+        "windowStart": { "type": "string", "format": "date-time" },
+        "windowEnd":   { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schemaVersion": "1",
+      "eventId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "entityId": "550e8400-e29b-41d4-a716-446655440000",
+      "entityVersion": 1,
+      "eventType": "request.created",
+      "occurredAt": "2026-10-21T13:55:00Z",
+      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+      "payload": {
+        "requestId": "550e8400-e29b-41d4-a716-446655440000",
+        "requestType": "MEDICAL_EMERGENCY",
+        "status": "PENDING",
+        "title": "Cardiac arrest at market",
+        "location": { "lat": 28.6139, "lng": 77.2090 },
+        "requestorId": "user-abc123",
+        "windowStart": "2026-10-21T14:00:00Z",
+        "windowEnd": "2026-10-21T16:00:00Z"
+      }
+    }
+  ]
+}

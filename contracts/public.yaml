@@ -1,0 +1,824 @@
+openapi: "3.0.3"
+info:
+  title: ReliefGrid Public API
+  description: |
+    Emergency resource matching and dispatch API.
+    Covers emergency request submission, resource registration,
+    state tracking, and Server-Sent Event streams.
+    All timestamps are UTC ISO 8601. All IDs are UUIDs v4.
+  version: "0.1.0"
+
+servers:
+  - url: /api/v1
+    description: API v1
+
+tags:
+  - name: requests
+    description: Emergency request lifecycle
+  - name: resources
+    description: Resource registration and availability
+  - name: events
+    description: Server-Sent Event streams
+
+paths:
+  # ── Requests ──────────────────────────────────────────────────────────────────
+
+  /requests:
+    post:
+      operationId: createRequest
+      summary: Submit a new emergency request
+      description: |
+        Idempotent. If the same Idempotency-Key is presented with the same
+        canonical payload, the original response is returned (200). If the
+        same key is used with a different payload, 409 is returned.
+      tags: [requests]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequestBody'
+            example:
+              requestType: MEDICAL_EMERGENCY
+              title: "Cardiac arrest at market"
+              description: "Elderly male, unconscious, at the north entrance."
+              location:
+                lat: 28.6139
+                lng: 77.2090
+              requestorId: "user-abc123"
+              windowStart: "2026-10-21T14:00:00Z"
+              windowEnd: "2026-10-21T16:00:00Z"
+      responses:
+        '200':
+          description: Idempotent replay — same key, same payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+        '201':
+          description: Emergency request created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL of the created resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+        '409':
+          description: Idempotency key reused with a different payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /requests/{requestId}:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    get:
+      operationId: getRequest
+      summary: Get an emergency request by ID
+      tags: [requests]
+      responses:
+        '200':
+          description: Request found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /requests/{requestId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      operationId: cancelRequest
+      summary: Cancel an emergency request
+      description: |
+        Transitions the request toward CANCELLED via the CANCELLING closure.
+        Idempotent — repeated calls on an already-terminal request succeed.
+        Returns 409 if the request has an active claim (the claim must be
+        closed first). Public updates cannot touch claims.
+      tags: [requests]
+      responses:
+        '200':
+          description: Cancellation accepted; status is CANCELLING or CANCELLED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Request has an active claim; cannot cancel yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Request is already in a terminal state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /requests/{requestId}/fulfil:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      operationId: fulfilRequest
+      summary: Mark an emergency request as fulfilled
+      description: |
+        Transitions the request toward FULFILLED via the FULFILLING closure.
+        Returns 409 if the request has an unconfirmed active claim.
+        Public updates cannot touch claims.
+      tags: [requests]
+      responses:
+        '200':
+          description: Fulfilment accepted; status is FULFILLING or FULFILLED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Request has an unconfirmed active claim
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Request is not in a fulfillable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /requests/{requestId}/events:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    get:
+      operationId: streamRequestEvents
+      summary: Stream request state changes as Server-Sent Events
+      description: |
+        Long-lived SSE stream. Reconnect using the Last-Event-ID header to
+        resume from a known position. The stream closes when the request
+        reaches a terminal state (CANCELLED or FULFILLED).
+        CANCELLING state is emitted and held until the cleanup commits.
+      tags: [events]
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          required: false
+          description: Resume the stream from this event ID (inclusive).
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE stream established
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: Newline-delimited SSE frames (id/event/data lines).
+        '404':
+          description: Request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  # ── Resources ─────────────────────────────────────────────────────────────────
+
+  /resources:
+    post:
+      operationId: registerResource
+      summary: Register a new emergency resource
+      description: |
+        Idempotent. Same Idempotency-Key + same canonical payload returns the
+        original 200. Same key + different payload returns 409.
+      tags: [resources]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterResourceBody'
+            example:
+              resourceType: MEDICAL
+              name: "Ambulance Unit 7"
+              location:
+                lat: 28.6200
+                lng: 77.2100
+              disposition: REUSABLE
+              operatorId: "operator-xyz789"
+              windowStart: "2026-10-21T06:00:00Z"
+              windowEnd: "2026-10-22T06:00:00Z"
+      responses:
+        '200':
+          description: Idempotent replay — same key, same payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceResponse'
+        '201':
+          description: Resource registered
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL of the created resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceResponse'
+        '409':
+          description: Idempotency key reused with a different payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Validation failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /resources/{resourceId}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      operationId: getResource
+      summary: Get a resource by ID
+      tags: [resources]
+      responses:
+        '200':
+          description: Resource found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceResponse'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /resources/{resourceId}/availability:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    patch:
+      operationId: updateResourceAvailability
+      summary: Update a resource's availability window or status
+      description: |
+        Partial update — any omitted field is left unchanged.
+        Returns 409 if the resource is currently CLAIMED.
+      tags: [resources]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAvailabilityBody'
+            example:
+              status: OFFLINE
+      responses:
+        '200':
+          description: Availability updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceResponse'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Resource is currently CLAIMED; cannot change availability
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: Body fails validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        Client-generated UUID (v4) making the request idempotent.
+        Same key + same canonical payload → original response (200).
+        Same key + different payload → 409 Conflict.
+      schema:
+        type: string
+        format: uuid
+        minLength: 36
+        maxLength: 36
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+    RequestId:
+      name: requestId
+      in: path
+      required: true
+      description: UUID of the emergency request.
+      schema:
+        type: string
+        format: uuid
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
+    ResourceId:
+      name: resourceId
+      in: path
+      required: true
+      description: UUID of the emergency resource.
+      schema:
+        type: string
+        format: uuid
+        example: "660e8400-e29b-41d4-a716-446655440001"
+
+  schemas:
+
+    # ── Enum 1: RequestStatus ──────────────────────────────────────────────────
+    RequestStatus:
+      type: string
+      description: |
+        Lifecycle state of an emergency request.
+        Terminal states: CANCELLED, FULFILLED.
+        CANCELLING and FULFILLING are closure states held until the matching
+        claim commits. RETRYING fences confirmation — no new attempt is started
+        until the previous attempt's closure commits.
+      enum:
+        - PENDING
+        - MATCHING
+        - MATCHED
+        - IN_PROGRESS
+        - RETRYING
+        - CANCELLING
+        - FULFILLING
+        - CANCELLED
+        - FULFILLED
+      example: PENDING
+
+    # ── Enum 2: ResourceStatus ─────────────────────────────────────────────────
+    ResourceStatus:
+      type: string
+      description: |
+        Operational status of a resource.
+        AVAILABLE: ready to be claimed.
+        CLAIMED: currently matched to an in-progress request.
+        OFFLINE: unavailable (window expired or manually set).
+      enum:
+        - AVAILABLE
+        - CLAIMED
+        - OFFLINE
+      example: AVAILABLE
+
+    # ── Enum 3: ResourceType ───────────────────────────────────────────────────
+    ResourceType:
+      type: string
+      description: |
+        Category of emergency resource.
+        NOTE: verify exact values against §7 of the plan PDF before changing.
+      enum:
+        - MEDICAL
+        - FIRE_AND_RESCUE
+        - SEARCH_AND_RESCUE
+        - LOGISTICS
+        - SHELTER
+      example: MEDICAL
+
+    # ── Enum 4: RequestType ────────────────────────────────────────────────────
+    RequestType:
+      type: string
+      description: |
+        Category of emergency request.
+        NOTE: verify exact values against §7 of the plan PDF before changing.
+      enum:
+        - MEDICAL_EMERGENCY
+        - FIRE
+        - FLOOD
+        - SEARCH_AND_RESCUE
+        - EVACUATION
+        - SUPPLY_REQUEST
+      example: MEDICAL_EMERGENCY
+
+    # ── Enum 5: Disposition ────────────────────────────────────────────────────
+    Disposition:
+      type: string
+      description: |
+        Whether a resource is consumed by fulfilling a request (CONSUMABLE —
+        e.g., a medical supply kit) or can be reassigned after completion
+        (REUSABLE — e.g., an ambulance).
+      enum:
+        - REUSABLE
+        - CONSUMABLE
+      example: REUSABLE
+
+    # ── Value objects ──────────────────────────────────────────────────────────
+
+    Location:
+      type: object
+      description: WGS-84 geographic coordinates.
+      required: [lat, lng]
+      properties:
+        lat:
+          type: number
+          format: double
+          minimum: -90.0
+          maximum: 90.0
+          description: Latitude in decimal degrees (WGS-84).
+          example: 28.6139
+        lng:
+          type: number
+          format: double
+          minimum: -180.0
+          maximum: 180.0
+          description: Longitude in decimal degrees (WGS-84).
+          example: 77.2090
+      example:
+        lat: 28.6139
+        lng: 77.2090
+
+    # ── Error envelope ─────────────────────────────────────────────────────────
+
+    ErrorEnvelope:
+      type: object
+      description: |
+        Standard error response for all 4xx and 5xx responses.
+        `retryable` and `outcomeUnknown` are distinct:
+        - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
+        - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
+          NOT discard their intent and SHOULD retry the same operationId.
+      required: [code, message, correlationId]
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code.
+          example: CONFLICT_IDEMPOTENCY_KEY
+        message:
+          type: string
+          description: Human-readable description of the error.
+          example: "Idempotency key already used with a different payload."
+        retryable:
+          type: boolean
+          description: Whether the caller may safely retry with the same request.
+          default: false
+          example: false
+        outcomeUnknown:
+          type: boolean
+          description: |
+            When true, the server could not determine whether the operation
+            succeeded. The caller MUST NOT discard their intent.
+          default: false
+          example: false
+        correlationId:
+          type: string
+          format: uuid
+          description: Server-generated UUID for tracing this specific request.
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        details:
+          type: array
+          description: Optional structured field-level validation errors.
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+      example:
+        code: VALIDATION_FAILED
+        message: "Request body failed validation."
+        retryable: false
+        outcomeUnknown: false
+        correlationId: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+        details:
+          - field: location.lat
+            message: "must be between -90 and 90"
+
+    ErrorDetail:
+      type: object
+      description: Field-level validation error.
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: JSON path of the field that failed validation.
+          example: "location.lat"
+        message:
+          type: string
+          description: Human-readable description of the validation failure.
+          example: "must be between -90 and 90"
+      example:
+        field: location.lat
+        message: "must be between -90 and 90"
+
+    # ── Request domain ─────────────────────────────────────────────────────────
+
+    CreateRequestBody:
+      type: object
+      required:
+        - requestType
+        - title
+        - location
+        - requestorId
+        - windowStart
+        - windowEnd
+      properties:
+        requestType:
+          $ref: '#/components/schemas/RequestType'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Short human-readable title for the emergency.
+          example: "Cardiac arrest at market"
+        description:
+          type: string
+          maxLength: 4096
+          description: Optional additional details about the emergency.
+          example: "Elderly male, unconscious, at the north entrance."
+        location:
+          $ref: '#/components/schemas/Location'
+        requestorId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the user or system submitting this request.
+          example: "user-abc123"
+        windowStart:
+          type: string
+          format: date-time
+          description: Earliest time the request is active (UTC ISO 8601).
+          example: "2026-10-21T14:00:00Z"
+        windowEnd:
+          type: string
+          format: date-time
+          description: |
+            Latest time the request is active (UTC ISO 8601).
+            Requests whose windowEnd has passed and are not yet matched
+            transition to CANCELLED.
+          example: "2026-10-21T16:00:00Z"
+      example:
+        requestType: MEDICAL_EMERGENCY
+        title: "Cardiac arrest at market"
+        description: "Elderly male, unconscious, at the north entrance."
+        location:
+          lat: 28.6139
+          lng: 77.2090
+        requestorId: "user-abc123"
+        windowStart: "2026-10-21T14:00:00Z"
+        windowEnd: "2026-10-21T16:00:00Z"
+
+    RequestResponse:
+      type: object
+      required:
+        - requestId
+        - requestType
+        - status
+        - title
+        - location
+        - requestorId
+        - windowStart
+        - windowEnd
+        - version
+        - createdAt
+        - updatedAt
+      properties:
+        requestId:
+          type: string
+          format: uuid
+          description: Server-assigned unique identifier.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        requestType:
+          $ref: '#/components/schemas/RequestType'
+        status:
+          $ref: '#/components/schemas/RequestStatus'
+        title:
+          type: string
+          example: "Cardiac arrest at market"
+        description:
+          type: string
+          nullable: true
+          example: "Elderly male, unconscious, at the north entrance."
+        location:
+          $ref: '#/components/schemas/Location'
+        requestorId:
+          type: string
+          example: "user-abc123"
+        windowStart:
+          type: string
+          format: date-time
+          example: "2026-10-21T14:00:00Z"
+        windowEnd:
+          type: string
+          format: date-time
+          example: "2026-10-21T16:00:00Z"
+        version:
+          type: integer
+          minimum: 1
+          description: |
+            Monotonically increasing FSM version. Use for optimistic concurrency
+            (CAS) checks. Incremented on every committed state transition.
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-10-21T13:55:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-10-21T13:55:00Z"
+      example:
+        requestId: "550e8400-e29b-41d4-a716-446655440000"
+        requestType: MEDICAL_EMERGENCY
+        status: PENDING
+        title: "Cardiac arrest at market"
+        description: "Elderly male, unconscious, at the north entrance."
+        location:
+          lat: 28.6139
+          lng: 77.2090
+        requestorId: "user-abc123"
+        windowStart: "2026-10-21T14:00:00Z"
+        windowEnd: "2026-10-21T16:00:00Z"
+        version: 1
+        createdAt: "2026-10-21T13:55:00Z"
+        updatedAt: "2026-10-21T13:55:00Z"
+
+    # ── Resource domain ────────────────────────────────────────────────────────
+
+    RegisterResourceBody:
+      type: object
+      required:
+        - resourceType
+        - name
+        - location
+        - disposition
+        - operatorId
+        - windowStart
+        - windowEnd
+      properties:
+        resourceType:
+          $ref: '#/components/schemas/ResourceType'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable name for the resource.
+          example: "Ambulance Unit 7"
+        location:
+          $ref: '#/components/schemas/Location'
+        disposition:
+          $ref: '#/components/schemas/Disposition'
+        operatorId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: ID of the operator registering this resource.
+          example: "operator-xyz789"
+        windowStart:
+          type: string
+          format: date-time
+          description: Start of the availability window (UTC ISO 8601).
+          example: "2026-10-21T06:00:00Z"
+        windowEnd:
+          type: string
+          format: date-time
+          description: End of the availability window (UTC ISO 8601).
+          example: "2026-10-22T06:00:00Z"
+      example:
+        resourceType: MEDICAL
+        name: "Ambulance Unit 7"
+        location:
+          lat: 28.6200
+          lng: 77.2100
+        disposition: REUSABLE
+        operatorId: "operator-xyz789"
+        windowStart: "2026-10-21T06:00:00Z"
+        windowEnd: "2026-10-22T06:00:00Z"
+
+    ResourceResponse:
+      type: object
+      required:
+        - resourceId
+        - resourceType
+        - name
+        - status
+        - location
+        - disposition
+        - operatorId
+        - windowStart
+        - windowEnd
+        - version
+        - createdAt
+        - updatedAt
+      properties:
+        resourceId:
+          type: string
+          format: uuid
+          description: Server-assigned unique identifier.
+          example: "660e8400-e29b-41d4-a716-446655440001"
+        resourceType:
+          $ref: '#/components/schemas/ResourceType'
+        name:
+          type: string
+          example: "Ambulance Unit 7"
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+        location:
+          $ref: '#/components/schemas/Location'
+        disposition:
+          $ref: '#/components/schemas/Disposition'
+        operatorId:
+          type: string
+          example: "operator-xyz789"
+        windowStart:
+          type: string
+          format: date-time
+          example: "2026-10-21T06:00:00Z"
+        windowEnd:
+          type: string
+          format: date-time
+          example: "2026-10-22T06:00:00Z"
+        version:
+          type: integer
+          minimum: 1
+          description: |
+            Monotonically increasing FSM version for optimistic concurrency.
+          example: 1
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-10-21T05:50:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-10-21T05:50:00Z"
+      example:
+        resourceId: "660e8400-e29b-41d4-a716-446655440001"
+        resourceType: MEDICAL
+        name: "Ambulance Unit 7"
+        status: AVAILABLE
+        location:
+          lat: 28.6200
+          lng: 77.2100
+        disposition: REUSABLE
+        operatorId: "operator-xyz789"
+        windowStart: "2026-10-21T06:00:00Z"
+        windowEnd: "2026-10-22T06:00:00Z"
+        version: 1
+        createdAt: "2026-10-21T05:50:00Z"
+        updatedAt: "2026-10-21T05:50:00Z"
+
+    UpdateAvailabilityBody:
+      type: object
+      description: |
+        Partial update — any omitted field is left unchanged.
+        At least one field must be present.
+      minProperties: 1
+      properties:
+        status:
+          $ref: '#/components/schemas/ResourceStatus'
+        windowStart:
+          type: string
+          format: date-time
+          description: New availability window start (UTC). Omit to leave unchanged.
+          example: "2026-10-22T06:00:00Z"
+        windowEnd:
+          type: string
+          format: date-time
+          description: New availability window end (UTC). Omit to leave unchanged.
+          example: "2026-10-23T06:00:00Z"
+      example:
+        status: OFFLINE

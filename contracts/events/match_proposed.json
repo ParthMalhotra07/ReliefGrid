@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reliefgrid.internal/events/match_proposed.json",
+  "title": "MatchProposed",
+  "description": "Emitted when the matcher proposes a resource for a request (intent CAS to MATCHING committed).",
+  "type": "object",
+  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1",
+      "description": "Schema version; increment on breaking changes."
+    },
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique event identifier (UUID v4)."
+    },
+    "entityId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The requestId for which a match is proposed."
+    },
+    "entityVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "FSM entity version after this event was applied."
+    },
+    "eventType": {
+      "type": "string",
+      "const": "match.proposed",
+      "description": "Discriminator for routing and deserialization."
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when the match intent was committed to the FSM."
+    },
+    "traceparent": {
+      "type": "string",
+      "pattern": "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$",
+      "description": "W3C Trace Context traceparent header value for distributed tracing."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Immutable match fingerprint written with the intent CAS.",
+      "required": ["requestId", "attemptId", "resourceId", "fingerprint"],
+      "properties": {
+        "requestId":   { "type": "string", "format": "uuid" },
+        "attemptId":   { "type": "string", "format": "uuid" },
+        "resourceId":  { "type": "string", "format": "uuid" },
+        "fingerprint": {
+          "type": "string",
+          "description": "Immutable hash of the match parameters; used for CAS fencing."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schemaVersion": "1",
+      "eventId": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "entityId": "550e8400-e29b-41d4-a716-446655440000",
+      "entityVersion": 2,
+      "eventType": "match.proposed",
+      "occurredAt": "2026-10-21T13:56:00Z",
+      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+      "payload": {
+        "requestId":  "550e8400-e29b-41d4-a716-446655440000",
+        "attemptId":  "770e8400-e29b-41d4-a716-446655440002",
+        "resourceId": "660e8400-e29b-41d4-a716-446655440001",
+        "fingerprint": "sha256:a3f5c2b1d4e6f7a8b9c0d1e2f3a4b5c6"
+      }
+    }
+  ]
+}
