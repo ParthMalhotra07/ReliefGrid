@@ -1,0 +1,25 @@
+=== A0.1 Verify: Public contract ===
+
+ok        contracts/public.yaml exists
+ok        openapi-spec-validator: 0 errors
+ok        contracts/events/request_created.json exists
+ok        contracts/events/resource_registered.json exists
+ok        contracts/events/match_proposed.json exists
+ok        contracts/events/request_state_changed.json exists
+ok        contracts/events/resource_state_changed.json exists
+ok        contracts/events/match_proposed.json: example(s) validate
+ok        contracts/events/request_created.json: example(s) validate
+ok        contracts/events/request_state_changed.json: example(s) validate
+ok        contracts/events/resource_registered.json: example(s) validate
+ok        contracts/events/resource_state_changed.json: example(s) validate
+mkdir -p internal/api/gen
+go tool oapi-codegen \
+	-generate types \
+	-package gen \
+	-o internal/api/gen/types.gen.go \
+	contracts/public.yaml
+ok        make gen: git status clean after gen
+ok        go build ./internal/api/gen/... compiles
+
+=== Results: 14 passed, 0 failed ===
+A0.1 VERIFY: ALL PASS

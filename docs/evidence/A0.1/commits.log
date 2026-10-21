@@ -1,0 +1,5 @@
+d5f2506 fix(contracts): add snap PATH to Makefile and verify script for non-interactive shells [A0.1]
+171d25a chore(contracts): generate internal/api/gen from public.yaml [A0.1]
+53ee8f2 feat(contracts): fill in make gen with oapi-codegen; add runtime dep [A0.1]
+46db13a feat(contracts): add OpenAPI 3 public spec and event schemas [A0.1]
+203aaa3 chore: add gitattributes and normalize line endings [A0.1]
