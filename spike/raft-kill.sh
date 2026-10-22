@@ -22,9 +22,12 @@
 #   /raft-spike ctl ...        client for the pod's own HTTP endpoint (localhost:8080),
 #                              run through kubectl exec; prints JSON on stdout:
 #     ctl status               GET /status  {id, advertise, state, leader, leaderId, term,
-#                                            appliedIndex, commitIndex, lastIndex,
-#                                            servers:[{id,address,suffrage}],
+#                                            appliedIndex, raftAppliedIndex, commitIndex,
+#                                            lastIndex, servers:[{id,address,suffrage}],
 #                                            memory:{rssBytes,cgroupBytes}}
+#                              appliedIndex is the FSM's last applied command (visible to
+#                              reads); raftAppliedIndex is raft.AppliedIndex(), which only
+#                              means queued for the FSM and can run ahead of it
 #     ctl value <key>          GET /value   {key, value, version}  (local FSM read)
 #     ctl cas <key> <expectedVersion> <value>
 #                              POST /cas    {key, value, version}
@@ -305,16 +308,22 @@ new_ip="$(kn get pod "$old" -o jsonpath='{.status.podIP}' 2>/dev/null)"
 [ "$(kn get pvc "data-$old" -o jsonpath='{.metadata.uid}' 2>/dev/null)" = "$old_pvc" ] &&
 	pass "rejoin: $old reattached the same PVC" || fail "rejoin: $old reattached the same PVC"
 caught=""
+raft_caught=""
+t_ready="$(now)"
 deadline=$((SECONDS + REJOIN_MAX_SECONDS))
 while [ "$SECONDS" -lt "$deadline" ]; do
 	s="$(st "$old")"
 	ls_="$(st "$leader")"
+	if [ -z "$raft_caught" ] && [ -n "$(field "$s" .raftAppliedIndex)" ] &&
+		[ "$(field "$s" .raftAppliedIndex)" = "$(field "$ls_" .raftAppliedIndex)" ]; then
+		raft_caught="$(since "$t_ready")s (FSM at $(field "$s" .appliedIndex) of $(field "$ls_" .appliedIndex))"
+	fi
 	if [ "$(field "$s" .state)" = Follower ] && [ "$(field "$s" .leaderId)" = "$leader" ] &&
 		[ -n "$(field "$s" .appliedIndex)" ] && [ "$(field "$s" .appliedIndex)" = "$(field "$ls_" .appliedIndex)" ]; then
-		caught=1
+		caught="$(since "$t_ready")"
 		break
 	fi
-	sleep 1
+	sleep 0.5
 done
 [ -n "$caught" ] &&
 	pass "rejoin: $old is a follower of $leader at applied index $(field "$s" .appliedIndex)" ||
@@ -377,6 +386,8 @@ mkdir -p "$(dirname "$EVIDENCE")"
 	echo "election:    ${election}s from leader pod delete to a survivor reporting Leader (term $old_term -> $term)"
 	echo "             old leader $old, new leader $leader; polled through kubectl exec (~0.2-0.5s resolution)"
 	echo "rejoin:      $old pod IP $old_ip -> $new_ip (peers dial it by DNS name)"
+	echo "catch-up:    after Ready, raft applied index matched the leader at ${raft_caught:-never}"
+	echo "             FSM applied index matched the leader at ${caught:-never}s"
 	echo "load:        $load"
 	echo
 	echo "## kubectl get pods -o wide"
