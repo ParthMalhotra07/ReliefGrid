@@ -48,6 +48,10 @@ func TestCAS(t *testing.T) {
 	if err != nil || value != "beta" || version != 2 {
 		t.Fatalf("Get = %q@%d, %v; want beta@2", value, version, err)
 	}
+	// Conflicts count too: the entry was applied, it just changed nothing.
+	if got := f.Applied(); got != 4 {
+		t.Fatalf("Applied = %d, want 4", got)
+	}
 }
 
 type bufferSink struct{ bytes.Buffer }
@@ -85,6 +89,9 @@ func TestSnapshotRestore(t *testing.T) {
 	apply(t, dst, 1, "stale", 0, "gone") // Restore replaces, not merges
 	if err := dst.Restore(readCloser{&sink.Buffer}); err != nil {
 		t.Fatal(err)
+	}
+	if got := dst.Applied(); got != 3 {
+		t.Fatalf("after restore Applied = %d, want the snapshot's 3", got)
 	}
 	for key, want := range map[string]struct {
 		value   string

@@ -41,7 +41,8 @@ type statusJSON struct {
 	Leader       string       `json:"leader"`
 	LeaderID     string       `json:"leaderId"`
 	Term         uint64       `json:"term"`
-	AppliedIndex uint64       `json:"appliedIndex"`
+	AppliedIndex uint64       `json:"appliedIndex"`     // FSM: visible to reads
+	RaftApplied  uint64       `json:"raftAppliedIndex"` // raft.AppliedIndex(): queued for the FSM
 	CommitIndex  uint64       `json:"commitIndex"`
 	LastIndex    uint64       `json:"lastIndex"`
 	Servers      []serverJSON `json:"servers"`
@@ -62,7 +63,8 @@ func (n *node) handleStatus(w http.ResponseWriter, _ *http.Request) {
 		Leader:       string(leader),
 		LeaderID:     string(leaderID),
 		Term:         n.raft.CurrentTerm(),
-		AppliedIndex: n.raft.AppliedIndex(),
+		AppliedIndex: n.fsm.Applied(),
+		RaftApplied:  n.raft.AppliedIndex(),
 		CommitIndex:  n.raft.CommitIndex(),
 		LastIndex:    n.raft.LastIndex(),
 		Servers:      []serverJSON{},

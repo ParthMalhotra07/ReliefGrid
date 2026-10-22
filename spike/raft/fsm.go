@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync/atomic"
 
 	"github.com/hashicorp/raft"
 	_ "modernc.org/sqlite"
@@ -32,8 +33,13 @@ type casResult struct {
 
 // fsm is a single-table SQLite state machine. The file is derived (M3): openFSM
 // deletes it, and Raft rebuilds it from the snapshot plus the log.
+//
+// applied is the index of the last command whose effects reads can see. Raft's own
+// AppliedIndex() is not that: it advances when committed entries are queued for the
+// FSM goroutine, before Apply runs (processLogs in raft.go, v1.8.0).
 type fsm struct {
-	db *sql.DB
+	db      *sql.DB
+	applied atomic.Uint64
 }
 
 func openFSM(path string) (*fsm, error) {
@@ -59,6 +65,7 @@ func (f *fsm) Close() error { return f.db.Close() }
 // Apply checks the version and writes in one transaction. It uses only the
 // command bytes: no clock, randomness or map iteration.
 func (f *fsm) Apply(l *raft.Log) any {
+	defer f.applied.Store(l.Index)
 	var cmd casCommand
 	if err := json.Unmarshal(l.Data, &cmd); err != nil {
 		return casResult{Err: fmt.Sprintf("decode command at index %d: %v", l.Index, err)}
@@ -71,6 +78,9 @@ func (f *fsm) Apply(l *raft.Log) any {
 	}
 	return res
 }
+
+// Applied is the index of the last command applied to SQLite.
+func (f *fsm) Applied() uint64 { return f.applied.Load() }
 
 func (f *fsm) cas(cmd casCommand) (casResult, error) {
 	ctx := context.Background() // Raft callbacks carry no context; this is local SQLite
@@ -122,13 +132,13 @@ func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	var snap kvSnapshot
+	snap := kvSnapshot{Applied: f.Applied()}
 	for rows.Next() {
 		var r kvRow
 		if err := rows.Scan(&r.Key, &r.Value, &r.Version); err != nil {
 			return nil, err
 		}
-		snap = append(snap, r)
+		snap.Rows = append(snap.Rows, r)
 	}
 	return snap, rows.Err()
 }
@@ -148,15 +158,22 @@ func (f *fsm) Restore(rc io.ReadCloser) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM kv`); err != nil {
 		return err
 	}
-	for _, r := range snap {
+	for _, r := range snap.Rows {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO kv (key, value, version) VALUES (?, ?, ?)`, r.Key, r.Value, r.Version); err != nil {
 			return err
 		}
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	f.applied.Store(snap.Applied)
+	return nil
 }
 
-type kvSnapshot []kvRow
+type kvSnapshot struct {
+	Applied uint64  `json:"applied"`
+	Rows    []kvRow `json:"rows"`
+}
 
 func (s kvSnapshot) Persist(sink raft.SnapshotSink) error {
 	if err := json.NewEncoder(sink).Encode(s); err != nil {
