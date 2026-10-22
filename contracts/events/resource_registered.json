@@ -4,7 +4,8 @@
   "title": "ResourceRegistered",
   "description": "Emitted when a new emergency resource is committed to the FSM.",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt"],
+  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "additionalProperties": false,
   "properties": {
     "schemaVersion": {
       "type": "string",
@@ -45,20 +46,25 @@
       "type": "object",
       "description": "Snapshot of the resource at registration time.",
       "required": ["resourceId", "resourceType", "name", "status", "location", "disposition", "windowStart", "windowEnd"],
+      "additionalProperties": false,
       "properties": {
         "resourceId":   { "type": "string", "format": "uuid" },
-        "resourceType": { "type": "string" },
+        "resourceType": {
+          "type": "string",
+          "enum": ["WATER", "FOOD", "MEDICINE", "TRANSPORTATION", "SHELTER"]
+        },
         "name":         { "type": "string" },
         "status":       { "type": "string", "const": "AVAILABLE" },
         "location": {
           "type": "object",
           "required": ["lat", "lng"],
+          "additionalProperties": false,
           "properties": {
             "lat": { "type": "number", "minimum": -90,  "maximum": 90  },
             "lng": { "type": "number", "minimum": -180, "maximum": 180 }
           }
         },
-        "disposition":  { "type": "string" },
+        "disposition":  { "type": "string", "enum": ["REUSABLE", "CONSUMABLE"] },
         "operatorId":   { "type": "string" },
         "windowStart":  { "type": "string", "format": "date-time" },
         "windowEnd":    { "type": "string", "format": "date-time" }
@@ -76,7 +82,7 @@
       "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
       "payload": {
         "resourceId": "660e8400-e29b-41d4-a716-446655440001",
-        "resourceType": "MEDICAL",
+        "resourceType": "MEDICINE",
         "name": "Ambulance Unit 7",
         "status": "AVAILABLE",
         "location": { "lat": 28.6200, "lng": 77.2100 },

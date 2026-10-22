@@ -4,10 +4,6 @@ SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
 
-# Ensure snap-installed Go and GOPATH/bin are on PATH (WSL / non-interactive shells).
-export PATH := /snap/bin:$(HOME)/go/bin:$(PATH)
-
-
 PINS := GO_VERSION GOLANGCI_LINT_VERSION KIND_VERSION KUBECTL_VERSION HELM_VERSION OAPI_CODEGEN_VERSION
 
 .PHONY: help check fmt-check vet lint test gen dev doctor

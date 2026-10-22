@@ -27,42 +27,63 @@ func (e Disposition) Valid() bool {
 	}
 }
 
+// Defines values for MatchResponseOutcome.
+const (
+	MatchResponseOutcomeINPROGRESS  MatchResponseOutcome = "IN_PROGRESS"
+	MatchResponseOutcomeMATCHED     MatchResponseOutcome = "MATCHED"
+	MatchResponseOutcomeNOCANDIDATE MatchResponseOutcome = "NO_CANDIDATE"
+)
+
+// Valid indicates whether the value is a known member of the MatchResponseOutcome enum.
+func (e MatchResponseOutcome) Valid() bool {
+	switch e {
+	case MatchResponseOutcomeINPROGRESS:
+		return true
+	case MatchResponseOutcomeMATCHED:
+		return true
+	case MatchResponseOutcomeNOCANDIDATE:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RequestStatus.
 const (
-	CANCELLED  RequestStatus = "CANCELLED"
-	CANCELLING RequestStatus = "CANCELLING"
-	FULFILLED  RequestStatus = "FULFILLED"
-	FULFILLING RequestStatus = "FULFILLING"
-	INPROGRESS RequestStatus = "IN_PROGRESS"
-	MATCHED    RequestStatus = "MATCHED"
-	MATCHING   RequestStatus = "MATCHING"
-	PENDING    RequestStatus = "PENDING"
-	RETRYING   RequestStatus = "RETRYING"
-	WAITING    RequestStatus = "WAITING"
+	RequestStatusCANCELLED  RequestStatus = "CANCELLED"
+	RequestStatusCANCELLING RequestStatus = "CANCELLING"
+	RequestStatusFULFILLED  RequestStatus = "FULFILLED"
+	RequestStatusFULFILLING RequestStatus = "FULFILLING"
+	RequestStatusINPROGRESS RequestStatus = "IN_PROGRESS"
+	RequestStatusMATCHED    RequestStatus = "MATCHED"
+	RequestStatusMATCHING   RequestStatus = "MATCHING"
+	RequestStatusPENDING    RequestStatus = "PENDING"
+	RequestStatusRETRYING   RequestStatus = "RETRYING"
+	RequestStatusWAITING    RequestStatus = "WAITING"
 )
 
 // Valid indicates whether the value is a known member of the RequestStatus enum.
 func (e RequestStatus) Valid() bool {
 	switch e {
-	case CANCELLED:
+	case RequestStatusCANCELLED:
 		return true
-	case CANCELLING:
+	case RequestStatusCANCELLING:
 		return true
-	case FULFILLED:
+	case RequestStatusFULFILLED:
 		return true
-	case FULFILLING:
+	case RequestStatusFULFILLING:
 		return true
-	case INPROGRESS:
+	case RequestStatusINPROGRESS:
 		return true
-	case MATCHED:
+	case RequestStatusMATCHED:
 		return true
-	case MATCHING:
+	case RequestStatusMATCHING:
 		return true
-	case PENDING:
+	case RequestStatusPENDING:
 		return true
-	case RETRYING:
+	case RequestStatusRETRYING:
 		return true
-	case WAITING:
+	case RequestStatusWAITING:
 		return true
 	default:
 		return false
@@ -98,22 +119,22 @@ func (e RequestType) Valid() bool {
 
 // Defines values for ResourceStatus.
 const (
-	ASSIGNED  ResourceStatus = "ASSIGNED"
-	AVAILABLE ResourceStatus = "AVAILABLE"
-	CONSUMED  ResourceStatus = "CONSUMED"
-	OFFLINE   ResourceStatus = "OFFLINE"
+	ResourceStatusASSIGNED  ResourceStatus = "ASSIGNED"
+	ResourceStatusAVAILABLE ResourceStatus = "AVAILABLE"
+	ResourceStatusCONSUMED  ResourceStatus = "CONSUMED"
+	ResourceStatusOFFLINE   ResourceStatus = "OFFLINE"
 )
 
 // Valid indicates whether the value is a known member of the ResourceStatus enum.
 func (e ResourceStatus) Valid() bool {
 	switch e {
-	case ASSIGNED:
+	case ResourceStatusASSIGNED:
 		return true
-	case AVAILABLE:
+	case ResourceStatusAVAILABLE:
 		return true
-	case CONSUMED:
+	case ResourceStatusCONSUMED:
 		return true
-	case OFFLINE:
+	case ResourceStatusOFFLINE:
 		return true
 	default:
 		return false
@@ -147,7 +168,48 @@ func (e ResourceType) Valid() bool {
 	}
 }
 
-// CreateRequestBody Example: {"description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestType":"MEDICINE","requestorId":"user-abc123","title":"Cardiac arrest at market","windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
+// Defines values for UpdateRequestStatusBodyStatus.
+const (
+	UpdateRequestStatusBodyStatusCANCELLED  UpdateRequestStatusBodyStatus = "CANCELLED"
+	UpdateRequestStatusBodyStatusFULFILLED  UpdateRequestStatusBodyStatus = "FULFILLED"
+	UpdateRequestStatusBodyStatusINPROGRESS UpdateRequestStatusBodyStatus = "IN_PROGRESS"
+)
+
+// Valid indicates whether the value is a known member of the UpdateRequestStatusBodyStatus enum.
+func (e UpdateRequestStatusBodyStatus) Valid() bool {
+	switch e {
+	case UpdateRequestStatusBodyStatusCANCELLED:
+		return true
+	case UpdateRequestStatusBodyStatusFULFILLED:
+		return true
+	case UpdateRequestStatusBodyStatusINPROGRESS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateResourceStatusBodyStatus.
+const (
+	UpdateResourceStatusBodyStatusAVAILABLE UpdateResourceStatusBodyStatus = "AVAILABLE"
+	UpdateResourceStatusBodyStatusOFFLINE   UpdateResourceStatusBodyStatus = "OFFLINE"
+)
+
+// Valid indicates whether the value is a known member of the UpdateResourceStatusBodyStatus enum.
+func (e UpdateResourceStatusBodyStatus) Valid() bool {
+	switch e {
+	case UpdateResourceStatusBodyStatusAVAILABLE:
+		return true
+	case UpdateResourceStatusBodyStatusOFFLINE:
+		return true
+	default:
+		return false
+	}
+}
+
+// CreateRequestBody windowStart and windowEnd must be UTC timestamps with windowStart < windowEnd.
+//
+// Example: {"description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestType":"MEDICINE","requestorId":"user-abc123","title":"Cardiac arrest at market","windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
 type CreateRequestBody struct {
 	// Description Optional additional details about the emergency.
 	//
@@ -244,12 +306,12 @@ type ErrorEnvelope struct {
 	//
 	//
 	// Example: false
-	OutcomeUnknown *bool `json:"outcomeUnknown,omitempty"`
+	OutcomeUnknown bool `json:"outcomeUnknown"`
 
 	// Retryable Whether the caller may safely retry with the same request.
 	//
 	// Example: false
-	Retryable *bool `json:"retryable,omitempty"`
+	Retryable bool `json:"retryable"`
 }
 
 // Location WGS-84 geographic coordinates.
@@ -267,7 +329,20 @@ type Location struct {
 	Lng float64 `json:"lng"`
 }
 
-// RegisterResourceBody Example: {"disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceType":"MEDICINE","windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
+// MatchResponse Example: {"outcome":"MATCHED","request":{"createdAt":"2026-10-21T13:55:00Z","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","requestorId":"user-abc123","status":"MATCHED","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:57:00Z","version":3,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}}
+type MatchResponse struct {
+	Outcome MatchResponseOutcome `json:"outcome"`
+
+	// Request Example: {"createdAt":"2026-10-21T13:55:00Z","description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","requestorId":"user-abc123","status":"PENDING","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:55:00Z","version":1,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
+	Request RequestResponse `json:"request"`
+}
+
+// MatchResponseOutcome defines model for MatchResponse.Outcome.
+type MatchResponseOutcome string
+
+// RegisterResourceBody windowStart and windowEnd must be UTC timestamps with windowStart < windowEnd.
+//
+// Example: {"disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceType":"MEDICINE","windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
 type RegisterResourceBody struct {
 	// Disposition Whether a resource is consumed by fulfilling a request (CONSUMABLE —
 	// e.g., a medical supply kit) or can be reassigned after completion
@@ -308,6 +383,14 @@ type RegisterResourceBody struct {
 	//
 	// Example: 2026-10-21T06:00:00Z
 	WindowStart time.Time `json:"windowStart"`
+}
+
+// RequestListResponse defines model for RequestListResponse.
+type RequestListResponse struct {
+	Items []RequestResponse `json:"items"`
+
+	// Partial Always false on a successful authoritative list; failed shard scans return 503.
+	Partial bool `json:"partial"`
 }
 
 // RequestResponse Example: {"createdAt":"2026-10-21T13:55:00Z","description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","requestorId":"user-abc123","status":"PENDING","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:55:00Z","version":1,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
@@ -387,6 +470,14 @@ type RequestStatus string
 // Example: MEDICINE
 type RequestType string
 
+// ResourceListResponse defines model for ResourceListResponse.
+type ResourceListResponse struct {
+	Items []ResourceResponse `json:"items"`
+
+	// Partial True only for explicitly diagnostic partial data; authoritative list failures return 503.
+	Partial bool `json:"partial"`
+}
+
 // ResourceResponse Example: {"createdAt":"2026-10-21T05:50:00Z","disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceId":"660e8400-e29b-41d4-a716-446655440001","resourceType":"MEDICINE","status":"AVAILABLE","updatedAt":"2026-10-21T05:50:00Z","version":1,"windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
 type ResourceResponse struct {
 	// CreatedAt Example: 2026-10-21T05:50:00Z
@@ -464,20 +555,23 @@ type ResourceStatus string
 // Example: MEDICINE
 type ResourceType string
 
-// UpdateAvailabilityBody Partial update — any omitted field is left unchanged.
-// At least one field must be present.
+// UpdateRequestStatusBody Example: {"status":"CANCELLED"}
+type UpdateRequestStatusBody struct {
+	// Status Publicly requestable transition target; intermediate workflow states are server-managed.
+	Status UpdateRequestStatusBodyStatus `json:"status"`
+}
+
+// UpdateRequestStatusBodyStatus Publicly requestable transition target; intermediate workflow states are server-managed.
+type UpdateRequestStatusBodyStatus string
+
+// UpdateResourceStatusBody Partial update — any omitted field is left unchanged.
+// At least one field must be present. If both window fields are supplied,
+// they must be UTC timestamps with windowStart < windowEnd. ASSIGNED and
+// CONSUMED are server-managed and cannot be selected publicly.
 //
 // Example: {"status":"OFFLINE"}
-type UpdateAvailabilityBody struct {
-	// Status Operational status of a resource (§8).
-	// AVAILABLE: ready to be claimed.
-	// ASSIGNED: currently claimed by an in-progress request.
-	// OFFLINE: unavailable (window expired or manually set).
-	// CONSUMED: a consumable resource used up upon fulfillment.
-	//
-	//
-	// Example: AVAILABLE
-	Status *ResourceStatus `json:"status,omitempty"`
+type UpdateResourceStatusBody struct {
+	Status *UpdateResourceStatusBodyStatus `json:"status,omitempty"`
 
 	// WindowEnd New availability window end (UTC). Omit to leave unchanged.
 	//
@@ -490,14 +584,68 @@ type UpdateAvailabilityBody struct {
 	WindowStart *time.Time `json:"windowStart,omitempty"`
 }
 
+// UpdateResourceStatusBodyStatus defines model for UpdateResourceStatusBody.Status.
+type UpdateResourceStatusBodyStatus string
+
 // IdempotencyKey Example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 type IdempotencyKey = openapi_types.UUID
+
+// Limit defines model for Limit.
+type Limit = int
 
 // RequestId Example: 550e8400-e29b-41d4-a716-446655440000
 type RequestId = openapi_types.UUID
 
 // ResourceId Example: 660e8400-e29b-41d4-a716-446655440001
 type ResourceId = openapi_types.UUID
+
+// BadRequest Standard error response for all 4xx and 5xx responses.
+// `retryable` and `outcomeUnknown` are distinct:
+//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
+//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
+//     NOT discard their intent and SHOULD retry the same operationId.
+//
+// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+type BadRequest = ErrorEnvelope
+
+// Conflict Standard error response for all 4xx and 5xx responses.
+// `retryable` and `outcomeUnknown` are distinct:
+//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
+//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
+//     NOT discard their intent and SHOULD retry the same operationId.
+//
+// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+type Conflict = ErrorEnvelope
+
+// NotFound Standard error response for all 4xx and 5xx responses.
+// `retryable` and `outcomeUnknown` are distinct:
+//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
+//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
+//     NOT discard their intent and SHOULD retry the same operationId.
+//
+// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+type NotFound = ErrorEnvelope
+
+// ServiceUnavailable Standard error response for all 4xx and 5xx responses.
+// `retryable` and `outcomeUnknown` are distinct:
+//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
+//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
+//     NOT discard their intent and SHOULD retry the same operationId.
+//
+// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+type ServiceUnavailable = ErrorEnvelope
+
+// StreamEventsParams defines parameters for StreamEvents.
+type StreamEventsParams struct {
+	LastEventID *openapi_types.UUID `json:"Last-Event-ID,omitempty"`
+}
+
+// ListRequestsParams defines parameters for ListRequests.
+type ListRequestsParams struct {
+	Status *RequestStatus `form:"status,omitempty" json:"status,omitempty"`
+	Type   *RequestType   `form:"type,omitempty" json:"type,omitempty"`
+	Limit  *Limit         `form:"limit,omitempty" json:"limit,omitempty"`
+}
 
 // CreateRequestParams defines parameters for CreateRequest.
 type CreateRequestParams struct {
@@ -507,10 +655,14 @@ type CreateRequestParams struct {
 	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
 }
 
-// StreamRequestEventsParams defines parameters for StreamRequestEvents.
-type StreamRequestEventsParams struct {
-	// LastEventID Resume the stream from this event ID (inclusive).
-	LastEventID *string `json:"Last-Event-ID,omitempty"`
+// ListResourcesParams defines parameters for ListResources.
+type ListResourcesParams struct {
+	Type *ResourceType `form:"type,omitempty" json:"type,omitempty"`
+
+	// Near WGS-84 point as `latitude,longitude`; both values are range-validated.
+	Near     *string  `form:"near,omitempty" json:"near,omitempty"`
+	RadiusKm *float32 `form:"radiusKm,omitempty" json:"radiusKm,omitempty"`
+	Limit    *Limit   `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // RegisterResourceParams defines parameters for RegisterResource.
@@ -524,8 +676,11 @@ type RegisterResourceParams struct {
 // CreateRequestJSONRequestBody defines body for CreateRequest for application/json ContentType.
 type CreateRequestJSONRequestBody = CreateRequestBody
 
+// UpdateRequestStatusJSONRequestBody defines body for UpdateRequestStatus for application/json ContentType.
+type UpdateRequestStatusJSONRequestBody = UpdateRequestStatusBody
+
 // RegisterResourceJSONRequestBody defines body for RegisterResource for application/json ContentType.
 type RegisterResourceJSONRequestBody = RegisterResourceBody
 
-// UpdateResourceAvailabilityJSONRequestBody defines body for UpdateResourceAvailability for application/json ContentType.
-type UpdateResourceAvailabilityJSONRequestBody = UpdateAvailabilityBody
+// UpdateResourceStatusJSONRequestBody defines body for UpdateResourceStatus for application/json ContentType.
+type UpdateResourceStatusJSONRequestBody = UpdateResourceStatusBody

@@ -4,7 +4,8 @@
   "title": "RequestCreated",
   "description": "Emitted when a new emergency request is committed to the FSM.",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt"],
+  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "additionalProperties": false,
   "properties": {
     "schemaVersion": {
       "type": "string",
@@ -45,14 +46,19 @@
       "type": "object",
       "description": "Snapshot of the request at creation time.",
       "required": ["requestId", "requestType", "status", "location", "windowStart", "windowEnd"],
+      "additionalProperties": false,
       "properties": {
         "requestId":   { "type": "string", "format": "uuid" },
-        "requestType": { "type": "string" },
+        "requestType": {
+          "type": "string",
+          "enum": ["WATER", "FOOD", "MEDICINE", "TRANSPORTATION", "SHELTER"]
+        },
         "status":      { "type": "string", "const": "PENDING" },
         "title":       { "type": "string" },
         "location": {
           "type": "object",
           "required": ["lat", "lng"],
+          "additionalProperties": false,
           "properties": {
             "lat": { "type": "number", "minimum": -90,  "maximum": 90  },
             "lng": { "type": "number", "minimum": -180, "maximum": 180 }
@@ -75,7 +81,7 @@
       "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
       "payload": {
         "requestId": "550e8400-e29b-41d4-a716-446655440000",
-        "requestType": "MEDICAL_EMERGENCY",
+        "requestType": "MEDICINE",
         "status": "PENDING",
         "title": "Cardiac arrest at market",
         "location": { "lat": 28.6139, "lng": 77.2090 },

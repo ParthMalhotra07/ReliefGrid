@@ -4,7 +4,8 @@
   "title": "MatchProposed",
   "description": "Emitted when the matcher proposes a resource for a request (intent CAS to MATCHING committed).",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt"],
+  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "additionalProperties": false,
   "properties": {
     "schemaVersion": {
       "type": "string",
@@ -45,6 +46,7 @@
       "type": "object",
       "description": "Immutable match fingerprint written with the intent CAS.",
       "required": ["requestId", "attemptId", "resourceId", "fingerprint"],
+      "additionalProperties": false,
       "properties": {
         "requestId":   { "type": "string", "format": "uuid" },
         "attemptId":   { "type": "string", "format": "uuid" },

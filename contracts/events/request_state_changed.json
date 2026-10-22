@@ -4,7 +4,8 @@
   "title": "RequestStateChanged",
   "description": "Emitted on every committed state transition of an emergency request.",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt"],
+  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "additionalProperties": false,
   "properties": {
     "schemaVersion": {
       "type": "string",
@@ -45,6 +46,7 @@
       "type": "object",
       "description": "Previous and new state plus the triggering operation.",
       "required": ["requestId", "previousStatus", "newStatus"],
+      "additionalProperties": false,
       "properties": {
         "requestId": {
           "type": "string",
@@ -52,10 +54,12 @@
         },
         "previousStatus": {
           "type": "string",
+          "enum": ["PENDING", "WAITING", "MATCHING", "MATCHED", "IN_PROGRESS", "RETRYING", "CANCELLING", "FULFILLING", "CANCELLED", "FULFILLED"],
           "description": "RequestStatus before the transition."
         },
         "newStatus": {
           "type": "string",
+          "enum": ["PENDING", "WAITING", "MATCHING", "MATCHED", "IN_PROGRESS", "RETRYING", "CANCELLING", "FULFILLING", "CANCELLED", "FULFILLED"],
           "description": "RequestStatus after the transition."
         },
         "operationId": {

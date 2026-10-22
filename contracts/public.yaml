@@ -5,7 +5,8 @@ info:
     Emergency resource matching and dispatch API.
     Covers emergency request submission, resource registration,
     state tracking, and Server-Sent Event streams.
-    All timestamps are UTC ISO 8601. All IDs are UUIDs v4.
+    All timestamps are UTC ISO 8601. Entity IDs are deterministic UUIDs when
+    an Idempotency-Key is supplied; other identifiers are UUIDs.
   version: "0.1.0"
 
 servers:
@@ -21,9 +22,34 @@ tags:
     description: Server-Sent Event streams
 
 paths:
-  # ── Requests ──────────────────────────────────────────────────────────────────
-
   /requests:
+    get:
+      operationId: listRequests
+      summary: List emergency requests
+      tags: [requests]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RequestStatus'
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RequestType'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Bounded authoritative request listing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     post:
       operationId: createRequest
       summary: Submit a new emergency request
@@ -68,18 +94,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '409':
-          description: Idempotency key reused with a different payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: Validation failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /requests/{requestId}:
     parameters:
@@ -96,124 +116,84 @@ paths:
               schema:
                 $ref: '#/components/schemas/RequestResponse'
         '404':
-          description: Request not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
-  /requests/{requestId}/cancel:
+  /requests/{requestId}/status:
     parameters:
       - $ref: '#/components/parameters/RequestId'
-    post:
-      operationId: cancelRequest
-      summary: Cancel an emergency request
+    put:
+      operationId: updateRequestStatus
+      summary: Update an emergency request status
       description: |
-        Transitions the request toward CANCELLED via the CANCELLING closure.
-        Idempotent — repeated calls on an already-terminal request succeed.
-        Returns 409 if the request has an active claim (the claim must be
-        closed first). Public updates cannot touch claims.
+        Performs a validated domain transition using the authoritative current
+        state and version. Cancellation and fulfillment may return the durable
+        intermediate states CANCELLING or FULFILLING while claim cleanup runs.
+        Public callers cannot set assignment IDs or internal attempt fields.
       tags: [requests]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRequestStatusBody'
       responses:
         '200':
-          description: Cancellation accepted; status is CANCELLING or CANCELLED
+          description: Resulting request state
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
-          description: Request not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Request has an active claim; cannot cancel yet
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: Request is already in a terminal state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-
-  /requests/{requestId}/fulfil:
-    parameters:
-      - $ref: '#/components/parameters/RequestId'
-    post:
-      operationId: fulfilRequest
-      summary: Mark an emergency request as fulfilled
-      description: |
-        Transitions the request toward FULFILLED via the FULFILLING closure.
-        Returns 409 if the request has an unconfirmed active claim.
-        Public updates cannot touch claims.
-      tags: [requests]
-      responses:
-        '200':
-          description: Fulfilment accepted; status is FULFILLING or FULFILLED
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RequestResponse'
-        '404':
-          description: Request not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '409':
-          description: Request has an unconfirmed active claim
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: Request is not in a fulfillable state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-
-  /requests/{requestId}/events:
-    parameters:
-      - $ref: '#/components/parameters/RequestId'
-    get:
-      operationId: streamRequestEvents
-      summary: Stream request state changes as Server-Sent Events
-      description: |
-        Long-lived SSE stream. Reconnect using the Last-Event-ID header to
-        resume from a known position. The stream closes when the request
-        reaches a terminal state (CANCELLED or FULFILLED).
-        CANCELLING state is emitted and held until the cleanup commits.
-      tags: [events]
-      parameters:
-        - name: Last-Event-ID
-          in: header
-          required: false
-          description: Resume the stream from this event ID (inclusive).
-          schema:
-            type: string
-      responses:
-        '200':
-          description: SSE stream established
-          content:
-            text/event-stream:
-              schema:
-                type: string
-                description: Newline-delimited SSE frames (id/event/data lines).
-        '404':
-          description: Request not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-
-  # ── Resources ─────────────────────────────────────────────────────────────────
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
   /resources:
+    get:
+      operationId: listResources
+      summary: List compatible emergency resources
+      tags: [resources]
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ResourceType'
+        - name: near
+          in: query
+          required: false
+          description: WGS-84 point as `latitude,longitude`; both values are range-validated.
+          schema:
+            type: string
+            pattern: '^-?(90(?:\.0+)?|[0-8]?\d(?:\.\d+)?),-?(180(?:\.0+)?|1[0-7]\d(?:\.\d+)?|\d?\d(?:\.\d+)?)$'
+            example: "28.6139,77.2090"
+        - name: radiusKm
+          in: query
+          required: false
+          schema:
+            type: number
+            exclusiveMinimum: true
+            minimum: 0
+            maximum: 50
+            default: 50
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Bounded resource listing with explicit scan completeness
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     post:
       operationId: registerResource
       summary: Register a new emergency resource
@@ -257,45 +237,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResourceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '409':
-          description: Idempotency key reused with a different payload
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: Validation failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
-  /resources/{resourceId}:
+  /resources/{resourceId}/status:
     parameters:
       - $ref: '#/components/parameters/ResourceId'
-    get:
-      operationId: getResource
-      summary: Get a resource by ID
-      tags: [resources]
-      responses:
-        '200':
-          description: Resource found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResourceResponse'
-        '404':
-          description: Resource not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-
-  /resources/{resourceId}/availability:
-    parameters:
-      - $ref: '#/components/parameters/ResourceId'
-    patch:
-      operationId: updateResourceAvailability
+    put:
+      operationId: updateResourceStatus
       summary: Update a resource's availability window or status
       description: |
         Partial update — any omitted field is left unchanged.
@@ -306,7 +259,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateAvailabilityBody'
+              $ref: '#/components/schemas/UpdateResourceStatusBody'
             example:
               status: OFFLINE
       responses:
@@ -316,24 +269,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResourceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '404':
-          description: Resource not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+          $ref: '#/components/responses/NotFound'
         '409':
-          description: Resource is currently ASSIGNED; cannot change availability
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /match/{requestId}:
+    parameters:
+      - $ref: '#/components/parameters/RequestId'
+    post:
+      operationId: matchRequest
+      summary: Run or resume matching for a request
+      tags: [requests]
+      responses:
+        '200':
+          description: Completed match outcome or existing assignment
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '422':
-          description: Body fails validation
+                $ref: '#/components/schemas/MatchResponse'
+        '202':
+          description: A durable matching workflow remains in progress
+          headers:
+            Location:
+              description: URL of the request being matched
+              schema:
+                type: string
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+                $ref: '#/components/schemas/MatchResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /events:
+    get:
+      operationId: streamEvents
+      summary: Stream projected state changes as Server-Sent Events
+      description: |
+        Long-lived best-effort projection stream. Event IDs allow client-side
+        deduplication. On reconnect or missed history, clients refresh current
+        authoritative records before resuming live updates.
+      tags: [events]
+      parameters:
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: SSE stream established
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
 
 components:
   parameters:
@@ -371,6 +372,48 @@ components:
         type: string
         format: uuid
         example: "660e8400-e29b-41d4-a716-446655440001"
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+
+  responses:
+    BadRequest:
+      description: Invalid input or query parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: The requested entity does not exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: Domain conflict or idempotency-key payload mismatch
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ServiceUnavailable:
+      description: No leader/quorum or the submitted operation has an unknown outcome
+      headers:
+        Retry-After:
+          description: Suggested retry delay in seconds
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
 
   schemas:
 
@@ -489,7 +532,7 @@ components:
         - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
         - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
           NOT discard their intent and SHOULD retry the same operationId.
-      required: [code, message, correlationId]
+      required: [code, message, retryable, outcomeUnknown, correlationId]
       properties:
         code:
           type: string
@@ -552,6 +595,8 @@ components:
 
     CreateRequestBody:
       type: object
+      additionalProperties: false
+      description: windowStart and windowEnd must be UTC timestamps with windowStart < windowEnd.
       required:
         - requestType
         - title
@@ -607,6 +652,7 @@ components:
 
     RequestResponse:
       type: object
+      additionalProperties: false
       required:
         - requestId
         - requestType
@@ -680,10 +726,37 @@ components:
         createdAt: "2026-10-21T13:55:00Z"
         updatedAt: "2026-10-21T13:55:00Z"
 
+    RequestListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, partial]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RequestResponse'
+        partial:
+          type: boolean
+          description: Always false on a successful authoritative list; failed shard scans return 503.
+
+    UpdateRequestStatusBody:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Publicly requestable transition target; intermediate workflow states are server-managed.
+          enum: [IN_PROGRESS, CANCELLED, FULFILLED]
+      example:
+        status: CANCELLED
+
     # ── Resource domain ────────────────────────────────────────────────────────
 
     RegisterResourceBody:
       type: object
+      additionalProperties: false
+      description: windowStart and windowEnd must be UTC timestamps with windowStart < windowEnd.
       required:
         - resourceType
         - name
@@ -734,6 +807,7 @@ components:
 
     ResourceResponse:
       type: object
+      additionalProperties: false
       required:
         - resourceId
         - resourceType
@@ -805,15 +879,32 @@ components:
         createdAt: "2026-10-21T05:50:00Z"
         updatedAt: "2026-10-21T05:50:00Z"
 
-    UpdateAvailabilityBody:
+    ResourceListResponse:
       type: object
+      additionalProperties: false
+      required: [items, partial]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceResponse'
+        partial:
+          type: boolean
+          description: True only for explicitly diagnostic partial data; authoritative list failures return 503.
+
+    UpdateResourceStatusBody:
+      type: object
+      additionalProperties: false
       description: |
         Partial update — any omitted field is left unchanged.
-        At least one field must be present.
+        At least one field must be present. If both window fields are supplied,
+        they must be UTC timestamps with windowStart < windowEnd. ASSIGNED and
+        CONSUMED are server-managed and cannot be selected publicly.
       minProperties: 1
       properties:
         status:
-          $ref: '#/components/schemas/ResourceStatus'
+          type: string
+          enum: [AVAILABLE, OFFLINE]
         windowStart:
           type: string
           format: date-time
@@ -826,3 +917,28 @@ components:
           example: "2026-10-23T06:00:00Z"
       example:
         status: OFFLINE
+
+    MatchResponse:
+      type: object
+      additionalProperties: false
+      required: [outcome, request]
+      properties:
+        outcome:
+          type: string
+          enum: [MATCHED, NO_CANDIDATE, IN_PROGRESS]
+        request:
+          $ref: '#/components/schemas/RequestResponse'
+      example:
+        outcome: MATCHED
+        request:
+          requestId: "550e8400-e29b-41d4-a716-446655440000"
+          requestType: MEDICINE
+          status: MATCHED
+          title: "Cardiac arrest at market"
+          location: {lat: 28.6139, lng: 77.2090}
+          requestorId: "user-abc123"
+          windowStart: "2026-10-21T14:00:00Z"
+          windowEnd: "2026-10-21T16:00:00Z"
+          version: 3
+          createdAt: "2026-10-21T13:55:00Z"
+          updatedAt: "2026-10-21T13:57:00Z"

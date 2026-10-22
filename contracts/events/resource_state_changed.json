@@ -4,7 +4,8 @@
   "title": "ResourceStateChanged",
   "description": "Emitted on every committed status change of an emergency resource.",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt"],
+  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "additionalProperties": false,
   "properties": {
     "schemaVersion": {
       "type": "string",
@@ -45,6 +46,7 @@
       "type": "object",
       "description": "Previous and new status plus the claim that triggered the change.",
       "required": ["resourceId", "previousStatus", "newStatus"],
+      "additionalProperties": false,
       "properties": {
         "resourceId": {
           "type": "string",
@@ -52,16 +54,18 @@
         },
         "previousStatus": {
           "type": "string",
+          "enum": ["AVAILABLE", "ASSIGNED", "OFFLINE", "CONSUMED"],
           "description": "ResourceStatus before the transition."
         },
         "newStatus": {
           "type": "string",
+          "enum": ["AVAILABLE", "ASSIGNED", "OFFLINE", "CONSUMED"],
           "description": "ResourceStatus after the transition."
         },
         "claimId": {
           "type": "string",
           "format": "uuid",
-          "description": "Present when the transition is claim-driven (AVAILABLE → CLAIMED or reverse)."
+          "description": "Present when the transition is claim-driven (AVAILABLE to ASSIGNED or reverse)."
         },
         "operationId": {
           "type": "string",
@@ -83,7 +87,7 @@
       "payload": {
         "resourceId":      "660e8400-e29b-41d4-a716-446655440001",
         "previousStatus":  "AVAILABLE",
-        "newStatus":       "CLAIMED",
+        "newStatus":       "ASSIGNED",
         "claimId":         "990e8400-e29b-41d4-a716-446655440004",
         "operationId":     "880e8400-e29b-41d4-a716-446655440003"
       }

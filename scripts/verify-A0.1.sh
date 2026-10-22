@@ -6,11 +6,9 @@
 # Prerequisites: go 1.27.x, python3 with openapi-spec-validator and jsonschema
 set -uo pipefail
 
-# Ensure Go (snap install) and GOPATH/bin are on PATH for non-interactive shells.
-export PATH="/snap/bin:${HOME}/go/bin:${PATH}"
 GO=$(command -v go 2>/dev/null || echo "")
 if [ -z "$GO" ]; then
-  echo 'FATAL: go binary not found on PATH (checked /snap/bin, $HOME/go/bin)'
+  echo 'FATAL: go binary not found on PATH'
   exit 1
 fi
 
@@ -68,7 +66,17 @@ for f in "${EXPECTED_EVENTS[@]}"; do
   fi
 done
 
-# ── Check 4: every event schema example validates against its own schema ───────
+# ── Check 4: frozen route, enum, error and event requirements ─────────────────
+contract_out=$(python3 "$REPO_ROOT/scripts/validate-A0.1.py" 2>&1)
+contract_rc=$?
+echo "$contract_out"
+if [ $contract_rc -eq 0 ]; then
+  ok "A0.1 frozen contract requirements"
+else
+  fail "A0.1 frozen contract requirements"
+fi
+
+# ── Check 5: every event schema example validates against its own schema ───────
 if python3 -c "import jsonschema" 2>/dev/null; then
   for f in contracts/events/*.json; do
     [ -f "$f" ] || continue
@@ -103,7 +111,7 @@ else
   fail "jsonschema not installed (pip3 install --break-system-packages jsonschema)"
 fi
 
-# ── Check 5: make gen runs and leaves git status clean ────────────────────────
+# ── Check 6: make gen runs and leaves git status clean ────────────────────────
 gen_out=$(make gen 2>&1)
 gen_rc=$?
 echo "$gen_out"
@@ -120,7 +128,7 @@ else
   fail "make gen: command failed (rc=$gen_rc)"
 fi
 
-# ── Check 6: generated code compiles ──────────────────────────────────────────
+# ── Check 7: generated code compiles ──────────────────────────────────────────
 if [ -d "internal/api/gen" ] && ls internal/api/gen/*.go >/dev/null 2>&1; then
   build_out=$("$GO" build ./internal/api/gen/... 2>&1)
   build_rc=$?
