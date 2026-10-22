@@ -20,12 +20,19 @@ else
 $(error PROFILE must be full or lean, got '$(PROFILE)')
 endif
 
-.PHONY: help check fmt-check vet lint test gen dev doctor cluster-up cluster-down
+# Branch whitespace errors are measured from where the branch left this ref.
+DIFF_BASE ?= origin/main
+
+.PHONY: help check whitespace-check fmt-check vet lint test gen dev doctor cluster-up cluster-down
 
 help: ## List targets
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
+	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
 
-check: fmt-check vet lint test ## gofmt, go vet, golangci-lint, go test -race (run before every push)
+check: whitespace-check fmt-check vet lint test ## git diff --check, gofmt, go vet, golangci-lint, go test -race (run before every push)
+
+whitespace-check: ## git diff --check since the merge base with DIFF_BASE (default origin/main)
+	@base="$$(git merge-base $(DIFF_BASE) HEAD)" || { echo "whitespace-check: no merge base with $(DIFF_BASE); run git fetch" >&2; exit 1; }; \
+		git diff --check "$$base"
 
 fmt-check:
 	@out="$$(gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt needed on:"; echo "$$out"; exit 1; fi

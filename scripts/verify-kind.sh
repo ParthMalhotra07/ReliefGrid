@@ -101,6 +101,29 @@ else
 	fail "make cluster-up: uses --image \$(KIND_NODE_IMAGE) and --config $CONFIG"
 fi
 
+# make check fails on whitespace errors (git diff --check from the merge base).
+if grep -Fq "git diff --check" <<<"$(make -n check 2>/dev/null)"; then
+	pass "make check: runs git diff --check"
+else
+	fail "make check: runs git diff --check"
+fi
+ws="$tmp/wsrepo"
+git clone -q . "$ws" 2>/dev/null && cp Makefile tools.mk "$ws/"
+git -C "$ws" -c user.name=t -c user.email=t@example.com commit -qam "test: current Makefile" 2>/dev/null
+if make -C "$ws" whitespace-check DIFF_BASE=HEAD >"$tmp/ws-clean" 2>&1; then
+	pass "make whitespace-check: passes on a clean tree"
+else
+	fail "make whitespace-check: passes on a clean tree" "$(tr '\n' '|' <"$tmp/ws-clean")"
+fi
+printf 'trailing \n' >>"$ws/README.md"
+if make -C "$ws" whitespace-check DIFF_BASE=HEAD >"$tmp/ws-dirty" 2>&1; then
+	fail "make whitespace-check: fails and names README.md on a trailing space" "it exited 0"
+elif grep -q 'README.md' "$tmp/ws-dirty"; then
+	pass "make whitespace-check: fails and names README.md on a trailing space"
+else
+	fail "make whitespace-check: fails and names README.md on a trailing space" "$(tr '\n' '|' <"$tmp/ws-dirty")"
+fi
+
 # --- 3. make doctor against stub tools (hermetic) ------------------------------
 go_pin="$(pin GO_VERSION)"
 lint_pin="$(pin GOLANGCI_LINT_VERSION)"
