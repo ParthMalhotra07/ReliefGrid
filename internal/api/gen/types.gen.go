@@ -38,6 +38,7 @@ const (
 	MATCHING   RequestStatus = "MATCHING"
 	PENDING    RequestStatus = "PENDING"
 	RETRYING   RequestStatus = "RETRYING"
+	WAITING    RequestStatus = "WAITING"
 )
 
 // Valid indicates whether the value is a known member of the RequestStatus enum.
@@ -61,6 +62,8 @@ func (e RequestStatus) Valid() bool {
 		return true
 	case RETRYING:
 		return true
+	case WAITING:
+		return true
 	default:
 		return false
 	}
@@ -68,28 +71,25 @@ func (e RequestStatus) Valid() bool {
 
 // Defines values for RequestType.
 const (
-	RequestTypeEVACUATION       RequestType = "EVACUATION"
-	RequestTypeFIRE             RequestType = "FIRE"
-	RequestTypeFLOOD            RequestType = "FLOOD"
-	RequestTypeMEDICALEMERGENCY RequestType = "MEDICAL_EMERGENCY"
-	RequestTypeSEARCHANDRESCUE  RequestType = "SEARCH_AND_RESCUE"
-	RequestTypeSUPPLYREQUEST    RequestType = "SUPPLY_REQUEST"
+	RequestTypeFOOD           RequestType = "FOOD"
+	RequestTypeMEDICINE       RequestType = "MEDICINE"
+	RequestTypeSHELTER        RequestType = "SHELTER"
+	RequestTypeTRANSPORTATION RequestType = "TRANSPORTATION"
+	RequestTypeWATER          RequestType = "WATER"
 )
 
 // Valid indicates whether the value is a known member of the RequestType enum.
 func (e RequestType) Valid() bool {
 	switch e {
-	case RequestTypeEVACUATION:
+	case RequestTypeFOOD:
 		return true
-	case RequestTypeFIRE:
+	case RequestTypeMEDICINE:
 		return true
-	case RequestTypeFLOOD:
+	case RequestTypeSHELTER:
 		return true
-	case RequestTypeMEDICALEMERGENCY:
+	case RequestTypeTRANSPORTATION:
 		return true
-	case RequestTypeSEARCHANDRESCUE:
-		return true
-	case RequestTypeSUPPLYREQUEST:
+	case RequestTypeWATER:
 		return true
 	default:
 		return false
@@ -98,17 +98,20 @@ func (e RequestType) Valid() bool {
 
 // Defines values for ResourceStatus.
 const (
+	ASSIGNED  ResourceStatus = "ASSIGNED"
 	AVAILABLE ResourceStatus = "AVAILABLE"
-	CLAIMED   ResourceStatus = "CLAIMED"
+	CONSUMED  ResourceStatus = "CONSUMED"
 	OFFLINE   ResourceStatus = "OFFLINE"
 )
 
 // Valid indicates whether the value is a known member of the ResourceStatus enum.
 func (e ResourceStatus) Valid() bool {
 	switch e {
+	case ASSIGNED:
+		return true
 	case AVAILABLE:
 		return true
-	case CLAIMED:
+	case CONSUMED:
 		return true
 	case OFFLINE:
 		return true
@@ -119,32 +122,32 @@ func (e ResourceStatus) Valid() bool {
 
 // Defines values for ResourceType.
 const (
-	ResourceTypeFIREANDRESCUE   ResourceType = "FIRE_AND_RESCUE"
-	ResourceTypeLOGISTICS       ResourceType = "LOGISTICS"
-	ResourceTypeMEDICAL         ResourceType = "MEDICAL"
-	ResourceTypeSEARCHANDRESCUE ResourceType = "SEARCH_AND_RESCUE"
-	ResourceTypeSHELTER         ResourceType = "SHELTER"
+	ResourceTypeFOOD           ResourceType = "FOOD"
+	ResourceTypeMEDICINE       ResourceType = "MEDICINE"
+	ResourceTypeSHELTER        ResourceType = "SHELTER"
+	ResourceTypeTRANSPORTATION ResourceType = "TRANSPORTATION"
+	ResourceTypeWATER          ResourceType = "WATER"
 )
 
 // Valid indicates whether the value is a known member of the ResourceType enum.
 func (e ResourceType) Valid() bool {
 	switch e {
-	case ResourceTypeFIREANDRESCUE:
+	case ResourceTypeFOOD:
 		return true
-	case ResourceTypeLOGISTICS:
-		return true
-	case ResourceTypeMEDICAL:
-		return true
-	case ResourceTypeSEARCHANDRESCUE:
+	case ResourceTypeMEDICINE:
 		return true
 	case ResourceTypeSHELTER:
+		return true
+	case ResourceTypeTRANSPORTATION:
+		return true
+	case ResourceTypeWATER:
 		return true
 	default:
 		return false
 	}
 }
 
-// CreateRequestBody Example: {"description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestType":"MEDICAL_EMERGENCY","requestorId":"user-abc123","title":"Cardiac arrest at market","windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
+// CreateRequestBody Example: {"description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestType":"MEDICINE","requestorId":"user-abc123","title":"Cardiac arrest at market","windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
 type CreateRequestBody struct {
 	// Description Optional additional details about the emergency.
 	//
@@ -156,11 +159,12 @@ type CreateRequestBody struct {
 	// Example: {"lat":28.6139,"lng":77.209}
 	Location Location `json:"location"`
 
-	// RequestType Category of emergency request.
-	// NOTE: verify exact values against §7 of the plan PDF before changing.
+	// RequestType Category of emergency request (§8). Shares the same five values as
+	// ResourceType; a request's type must match the resource type it is
+	// matched to. Values match the FSM store exactly.
 	//
 	//
-	// Example: MEDICAL_EMERGENCY
+	// Example: MEDICINE
 	RequestType RequestType `json:"requestType"`
 
 	// RequestorId ID of the user or system submitting this request.
@@ -263,7 +267,7 @@ type Location struct {
 	Lng float64 `json:"lng"`
 }
 
-// RegisterResourceBody Example: {"disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceType":"MEDICAL","windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
+// RegisterResourceBody Example: {"disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceType":"MEDICINE","windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
 type RegisterResourceBody struct {
 	// Disposition Whether a resource is consumed by fulfilling a request (CONSUMABLE —
 	// e.g., a medical supply kit) or can be reassigned after completion
@@ -288,11 +292,11 @@ type RegisterResourceBody struct {
 	// Example: operator-xyz789
 	OperatorId string `json:"operatorId"`
 
-	// ResourceType Category of emergency resource.
-	// NOTE: verify exact values against §7 of the plan PDF before changing.
+	// ResourceType Category of emergency resource (§8). Shared between requests (what is
+	// needed) and resources (what is offered). Values match the FSM store exactly.
 	//
 	//
-	// Example: MEDICAL
+	// Example: MEDICINE
 	ResourceType ResourceType `json:"resourceType"`
 
 	// WindowEnd End of the availability window (UTC ISO 8601).
@@ -306,7 +310,7 @@ type RegisterResourceBody struct {
 	WindowStart time.Time `json:"windowStart"`
 }
 
-// RequestResponse Example: {"createdAt":"2026-10-21T13:55:00Z","description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICAL_EMERGENCY","requestorId":"user-abc123","status":"PENDING","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:55:00Z","version":1,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
+// RequestResponse Example: {"createdAt":"2026-10-21T13:55:00Z","description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","requestorId":"user-abc123","status":"PENDING","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:55:00Z","version":1,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
 type RequestResponse struct {
 	// CreatedAt Example: 2026-10-21T13:55:00Z
 	CreatedAt time.Time `json:"createdAt"`
@@ -324,18 +328,20 @@ type RequestResponse struct {
 	// Example: 550e8400-e29b-41d4-a716-446655440000
 	RequestId openapi_types.UUID `json:"requestId"`
 
-	// RequestType Category of emergency request.
-	// NOTE: verify exact values against §7 of the plan PDF before changing.
+	// RequestType Category of emergency request (§8). Shares the same five values as
+	// ResourceType; a request's type must match the resource type it is
+	// matched to. Values match the FSM store exactly.
 	//
 	//
-	// Example: MEDICAL_EMERGENCY
+	// Example: MEDICINE
 	RequestType RequestType `json:"requestType"`
 
 	// RequestorId Example: user-abc123
 	RequestorId string `json:"requestorId"`
 
-	// Status Lifecycle state of an emergency request.
+	// Status Lifecycle state of an emergency request (§8).
 	// Terminal states: CANCELLED, FULFILLED.
+	// WAITING: no candidate found yet; scheduled for retry.
 	// CANCELLING and FULFILLING are closure states held until the matching
 	// claim commits. RETRYING fences confirmation — no new attempt is started
 	// until the previous attempt's closure commits.
@@ -364,8 +370,9 @@ type RequestResponse struct {
 	WindowStart time.Time `json:"windowStart"`
 }
 
-// RequestStatus Lifecycle state of an emergency request.
+// RequestStatus Lifecycle state of an emergency request (§8).
 // Terminal states: CANCELLED, FULFILLED.
+// WAITING: no candidate found yet; scheduled for retry.
 // CANCELLING and FULFILLING are closure states held until the matching
 // claim commits. RETRYING fences confirmation — no new attempt is started
 // until the previous attempt's closure commits.
@@ -373,13 +380,14 @@ type RequestResponse struct {
 // Example: PENDING
 type RequestStatus string
 
-// RequestType Category of emergency request.
-// NOTE: verify exact values against §7 of the plan PDF before changing.
+// RequestType Category of emergency request (§8). Shares the same five values as
+// ResourceType; a request's type must match the resource type it is
+// matched to. Values match the FSM store exactly.
 //
-// Example: MEDICAL_EMERGENCY
+// Example: MEDICINE
 type RequestType string
 
-// ResourceResponse Example: {"createdAt":"2026-10-21T05:50:00Z","disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceId":"660e8400-e29b-41d4-a716-446655440001","resourceType":"MEDICAL","status":"AVAILABLE","updatedAt":"2026-10-21T05:50:00Z","version":1,"windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
+// ResourceResponse Example: {"createdAt":"2026-10-21T05:50:00Z","disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceId":"660e8400-e29b-41d4-a716-446655440001","resourceType":"MEDICINE","status":"AVAILABLE","updatedAt":"2026-10-21T05:50:00Z","version":1,"windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
 type ResourceResponse struct {
 	// CreatedAt Example: 2026-10-21T05:50:00Z
 	CreatedAt time.Time `json:"createdAt"`
@@ -408,17 +416,18 @@ type ResourceResponse struct {
 	// Example: 660e8400-e29b-41d4-a716-446655440001
 	ResourceId openapi_types.UUID `json:"resourceId"`
 
-	// ResourceType Category of emergency resource.
-	// NOTE: verify exact values against §7 of the plan PDF before changing.
+	// ResourceType Category of emergency resource (§8). Shared between requests (what is
+	// needed) and resources (what is offered). Values match the FSM store exactly.
 	//
 	//
-	// Example: MEDICAL
+	// Example: MEDICINE
 	ResourceType ResourceType `json:"resourceType"`
 
-	// Status Operational status of a resource.
+	// Status Operational status of a resource (§8).
 	// AVAILABLE: ready to be claimed.
-	// CLAIMED: currently matched to an in-progress request.
+	// ASSIGNED: currently claimed by an in-progress request.
 	// OFFLINE: unavailable (window expired or manually set).
+	// CONSUMED: a consumable resource used up upon fulfillment.
 	//
 	//
 	// Example: AVAILABLE
@@ -440,18 +449,19 @@ type ResourceResponse struct {
 	WindowStart time.Time `json:"windowStart"`
 }
 
-// ResourceStatus Operational status of a resource.
+// ResourceStatus Operational status of a resource (§8).
 // AVAILABLE: ready to be claimed.
-// CLAIMED: currently matched to an in-progress request.
+// ASSIGNED: currently claimed by an in-progress request.
 // OFFLINE: unavailable (window expired or manually set).
+// CONSUMED: a consumable resource used up upon fulfillment.
 //
 // Example: AVAILABLE
 type ResourceStatus string
 
-// ResourceType Category of emergency resource.
-// NOTE: verify exact values against §7 of the plan PDF before changing.
+// ResourceType Category of emergency resource (§8). Shared between requests (what is
+// needed) and resources (what is offered). Values match the FSM store exactly.
 //
-// Example: MEDICAL
+// Example: MEDICINE
 type ResourceType string
 
 // UpdateAvailabilityBody Partial update — any omitted field is left unchanged.
@@ -459,10 +469,11 @@ type ResourceType string
 //
 // Example: {"status":"OFFLINE"}
 type UpdateAvailabilityBody struct {
-	// Status Operational status of a resource.
+	// Status Operational status of a resource (§8).
 	// AVAILABLE: ready to be claimed.
-	// CLAIMED: currently matched to an in-progress request.
+	// ASSIGNED: currently claimed by an in-progress request.
 	// OFFLINE: unavailable (window expired or manually set).
+	// CONSUMED: a consumable resource used up upon fulfillment.
 	//
 	//
 	// Example: AVAILABLE

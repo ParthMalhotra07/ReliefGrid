@@ -41,7 +41,7 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateRequestBody'
             example:
-              requestType: MEDICAL_EMERGENCY
+              requestType: MEDICINE
               title: "Cardiac arrest at market"
               description: "Elderly male, unconscious, at the north entrance."
               location:
@@ -230,7 +230,7 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterResourceBody'
             example:
-              resourceType: MEDICAL
+              resourceType: MEDICINE
               name: "Ambulance Unit 7"
               location:
                 lat: 28.6200
@@ -299,7 +299,7 @@ paths:
       summary: Update a resource's availability window or status
       description: |
         Partial update — any omitted field is left unchanged.
-        Returns 409 if the resource is currently CLAIMED.
+        Returns 409 if the resource is currently ASSIGNED.
       tags: [resources]
       requestBody:
         required: true
@@ -323,7 +323,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
         '409':
-          description: Resource is currently CLAIMED; cannot change availability
+          description: Resource is currently ASSIGNED; cannot change availability
           content:
             application/json:
               schema:
@@ -378,13 +378,15 @@ components:
     RequestStatus:
       type: string
       description: |
-        Lifecycle state of an emergency request.
+        Lifecycle state of an emergency request (§8).
         Terminal states: CANCELLED, FULFILLED.
+        WAITING: no candidate found yet; scheduled for retry.
         CANCELLING and FULFILLING are closure states held until the matching
         claim commits. RETRYING fences confirmation — no new attempt is started
         until the previous attempt's closure commits.
       enum:
         - PENDING
+        - WAITING
         - MATCHING
         - MATCHED
         - IN_PROGRESS
@@ -399,44 +401,46 @@ components:
     ResourceStatus:
       type: string
       description: |
-        Operational status of a resource.
+        Operational status of a resource (§8).
         AVAILABLE: ready to be claimed.
-        CLAIMED: currently matched to an in-progress request.
+        ASSIGNED: currently claimed by an in-progress request.
         OFFLINE: unavailable (window expired or manually set).
+        CONSUMED: a consumable resource used up upon fulfillment.
       enum:
         - AVAILABLE
-        - CLAIMED
+        - ASSIGNED
         - OFFLINE
+        - CONSUMED
       example: AVAILABLE
 
     # ── Enum 3: ResourceType ───────────────────────────────────────────────────
     ResourceType:
       type: string
       description: |
-        Category of emergency resource.
-        NOTE: verify exact values against §7 of the plan PDF before changing.
+        Category of emergency resource (§8). Shared between requests (what is
+        needed) and resources (what is offered). Values match the FSM store exactly.
       enum:
-        - MEDICAL
-        - FIRE_AND_RESCUE
-        - SEARCH_AND_RESCUE
-        - LOGISTICS
+        - WATER
+        - FOOD
+        - MEDICINE
+        - TRANSPORTATION
         - SHELTER
-      example: MEDICAL
+      example: MEDICINE
 
     # ── Enum 4: RequestType ────────────────────────────────────────────────────
     RequestType:
       type: string
       description: |
-        Category of emergency request.
-        NOTE: verify exact values against §7 of the plan PDF before changing.
+        Category of emergency request (§8). Shares the same five values as
+        ResourceType; a request's type must match the resource type it is
+        matched to. Values match the FSM store exactly.
       enum:
-        - MEDICAL_EMERGENCY
-        - FIRE
-        - FLOOD
-        - SEARCH_AND_RESCUE
-        - EVACUATION
-        - SUPPLY_REQUEST
-      example: MEDICAL_EMERGENCY
+        - WATER
+        - FOOD
+        - MEDICINE
+        - TRANSPORTATION
+        - SHELTER
+      example: MEDICINE
 
     # ── Enum 5: Disposition ────────────────────────────────────────────────────
     Disposition:
@@ -591,7 +595,7 @@ components:
             transition to CANCELLED.
           example: "2026-10-21T16:00:00Z"
       example:
-        requestType: MEDICAL_EMERGENCY
+        requestType: MEDICINE
         title: "Cardiac arrest at market"
         description: "Elderly male, unconscious, at the north entrance."
         location:
@@ -662,7 +666,7 @@ components:
           example: "2026-10-21T13:55:00Z"
       example:
         requestId: "550e8400-e29b-41d4-a716-446655440000"
-        requestType: MEDICAL_EMERGENCY
+        requestType: MEDICINE
         status: PENDING
         title: "Cardiac arrest at market"
         description: "Elderly male, unconscious, at the north entrance."
@@ -718,7 +722,7 @@ components:
           description: End of the availability window (UTC ISO 8601).
           example: "2026-10-22T06:00:00Z"
       example:
-        resourceType: MEDICAL
+        resourceType: MEDICINE
         name: "Ambulance Unit 7"
         location:
           lat: 28.6200
@@ -787,7 +791,7 @@ components:
           example: "2026-10-21T05:50:00Z"
       example:
         resourceId: "660e8400-e29b-41d4-a716-446655440001"
-        resourceType: MEDICAL
+        resourceType: MEDICINE
         name: "Ambulance Unit 7"
         status: AVAILABLE
         location:
