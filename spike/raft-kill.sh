@@ -263,6 +263,7 @@ statuses_before="$(for p in $(pods); do st "$p"; done)"
 old="$leader"
 old_term="$term"
 old_pvc="$(kn get pvc "data-$old" -o jsonpath='{.metadata.uid}' 2>/dev/null)"
+old_ip="$(kn get pod "$old" -o jsonpath='{.status.podIP}' 2>/dev/null)"
 survivors="$(for p in $(pods); do [ "$p" != "$old" ] && echo "$p"; done | tr '\n' ' ')"
 t0="$(now)"
 kn delete pod "$old" --wait=false >/dev/null 2>&1
@@ -300,6 +301,7 @@ if kn wait --for=condition=Ready pod "$old" --timeout="${REJOIN_MAX_SECONDS}s" >
 else
 	abort "rejoin: $old is Ready again within ${REJOIN_MAX_SECONDS}s"
 fi
+new_ip="$(kn get pod "$old" -o jsonpath='{.status.podIP}' 2>/dev/null)"
 [ "$(kn get pvc "data-$old" -o jsonpath='{.metadata.uid}' 2>/dev/null)" = "$old_pvc" ] &&
 	pass "rejoin: $old reattached the same PVC" || fail "rejoin: $old reattached the same PVC"
 caught=""
@@ -368,6 +370,7 @@ mkdir -p "$(dirname "$EVIDENCE")"
 	echo "raft:        $(mod_version github.com/hashicorp/raft)"
 	echo "election:    ${election}s from leader pod delete to a survivor reporting Leader (term $old_term -> $term)"
 	echo "             old leader $old, new leader $leader; polled through kubectl exec (~0.2-0.5s resolution)"
+	echo "rejoin:      $old pod IP $old_ip -> $new_ip (peers dial it by DNS name)"
 	echo "load:        $load"
 	echo
 	echo "## kubectl get pods -o wide"
