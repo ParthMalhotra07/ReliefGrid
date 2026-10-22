@@ -1,6 +1,8 @@
 === A0.2 Verify: Workflow fixtures ===
 
 ok        go vet ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
+ok        go fixtures match schedules.md
 ok        tests/workflow/fixtures.go exists
 ok        tests/workflow/schedules.md exists
 
@@ -23,5 +25,5 @@ ok        SCH15_BrokerOutageDuringRetryScheduling: found exactly once
 ok        SCH16_PoisonMessages: found exactly once
 ok        SCH17_PartialCandidateScan: found exactly once
 
-=== Results: 20 passed, 0 failed ===
+=== Results: 21 passed, 0 failed ===
 A0.2 VERIFY: ALL PASS

@@ -1,1 +1,4 @@
+e4214ae fix(workflow): align adversarial fixtures with FSM [A0.2]
+2876c2f fix(workflow): snap PATH fallback in verify-A0.2.sh; save evidence [A0.2]
+f41f74f test(workflow): add data-only Go table fixtures for all 17 §27 schedules [A0.2]
 bf25433 test(workflow): add verify script and §27 adversarial schedules doc [A0.2]
