@@ -128,14 +128,15 @@ R is stuck in MATCHING; Res is still AVAILABLE (TryClaim never ran)
 Reconciler observes MATCHING with no progress past threshold
 Reconciler issues CloseAttempt(Res, attemptA) with no active claim → CLOSED (no-op on resource)
 Reconciler CAS R: MATCHING(v2,attemptA) → WAITING (durable retry schedule recorded)
-New worker picks up WAITING R; fresh attempt; TryClaim(Res, attemptB) → ASSIGNED
-CAS R: MATCHING(v3,attemptB) → MATCHED
+New worker CAS R: WAITING(v3) → MATCHING(attemptB), v4
+TryClaim(Res, attemptB) → ASSIGNED
+CAS R: MATCHING(v4,attemptB) → MATCHED, v5
 ```
 
 ### Expected final state
 | Entity  | Status  | activeClaim | version |
 |---------|---------|-------------|---------|
-| R       | MATCHED | attemptB    | 4       |
+| R       | MATCHED | attemptB    | 5       |
 | Res     | ASSIGNED| attemptB    | 2       |
 
 ### Invariant protected
@@ -158,10 +159,10 @@ CAS R: MATCHING(v3,attemptB) → MATCHED
 Worker-A CAS PENDING→MATCHING(attemptA)  →  R: MATCHING(attemptA), v2
 ── BARRIER: cancellation arrives before TryClaim is issued ──
 Dispatcher CAS R: MATCHING(v2,attemptA) → CANCELLING (retains intent, disposition=CANCEL)
-Worker-A issues TryClaim(Res, attemptA)
-FSM: checks closure table for attemptA → already CANCELLING, finds fence; returns CLOSED
+Reconciler sees CANCELLING; issues CloseAttempt(Res, attemptA) → closure recorded (no claim to release; Res remains v1)
+Delayed Worker-A issues TryClaim(Res, attemptA)
+FSM: checks the committed closure for attemptA → returns CLOSED
 No claim is written to Res; Res remains AVAILABLE
-Reconciler sees CANCELLING; issues CloseAttempt(Res, attemptA) → closure recorded (no claim to release)
 Reconciler CAS R: CANCELLING → CANCELLED
 ```
 
@@ -198,7 +199,7 @@ CAS R: CANCELLING → CANCELLED; writes request.cancelled outbox event
 ### Expected final state
 | Entity  | Status    | activeClaim | version |
 |---------|-----------|-------------|---------|
-| R       | CANCELLED | —           | 3       |
+| R       | CANCELLED | —           | 4       |
 | Res     | AVAILABLE | —           | 3       |
 
 ### Invariant protected
@@ -218,7 +219,7 @@ CAS R: CANCELLING → CANCELLED; writes request.cancelled outbox event
 
 ### Interleaving
 ```
-Worker-A issues CloseAttempt(Res, attemptA) → closure recorded (Res: no activeClaim, v2)
+Worker-A issues CloseAttempt(Res, attemptA) → closure recorded (no activeClaim; Res remains v1)
 ── FAULT: Worker-A's TryClaim from a delayed/stale execution arrives ──
 Delayed Worker-A issues TryClaim(Res, attemptA)
 FSM: checks closure table for attemptA → CLOSED; returns CLOSED; no claim written
@@ -230,14 +231,14 @@ Reconciler CAS R: MATCHING(v2,attemptA) → WAITING; schedules retry
 | Entity  | Status  | activeClaim | version |
 |---------|---------|-------------|---------|
 | R       | WAITING | —           | 3       |
-| Res     | AVAILABLE | —         | 2       |
+| Res     | AVAILABLE | —         | 1       |
 
 ### Invariant protected
 **I4 / §17:** A historical operation result is never proof of current ownership. A closure already in the table stops any delayed TryClaim from succeeding, even if the worker previously held the attempt.
 
 ---
 
-## SCH08 — Confirmation racing with retarget
+## SCH08 — Confirmation racing with retargeting
 
 **Source:** §27 "confirmation racing with retargeting"
 
@@ -256,7 +257,7 @@ Worker-B issues CAS R: MATCHING(v2,attemptA) → MATCHED   [confirmation attempt
 FSM: R is RETRYING(v3), not MATCHING(v2); version CAS fails → CONFLICT
 Worker-B's confirmation is rejected safely; RETRYING wins
 Worker-A issues CloseAttempt(Res, attemptA) → Res: AVAILABLE, v3; closure recorded
-Worker-A CAS R: RETRYING(v3) → MATCHING(v3,attemptB,Res2)
+Worker-A CAS R: RETRYING(v3) → MATCHING(attemptB,Res2), v4
 TryClaim(Res2, attemptB) → ASSIGNED
 CAS R: MATCHING(v4,attemptB) → MATCHED
 ```
@@ -285,8 +286,9 @@ CAS R: MATCHING(v4,attemptB) → MATCHED
 
 ### Interleaving
 ```
-Cancellation completes: CloseAttempt(Res, attemptA) → Res: AVAILABLE, v3
-CAS R: MATCHING → CANCELLED, v3; request.cancelled event committed
+Dispatcher CAS R: MATCHING(v2,attemptA) → CANCELLING, v3
+CloseAttempt(Res, attemptA) → Res: AVAILABLE, v3; closure recorded
+CAS R: CANCELLING(v3) → CANCELLED, v4; request.cancelled event committed
 ── REPLAY: stale outbox / message broker redelivers the original TryClaim SUCCESS result ──
 Consumer re-reads R  →  R is CANCELLED (terminal); result is harmless/obsolete
 Consumer does NOT issue new TryClaim or confirmation
@@ -296,7 +298,7 @@ Res remains AVAILABLE; no spurious MATCHED state
 ### Expected final state
 | Entity  | Status    | activeClaim | version |
 |---------|-----------|-------------|---------|
-| R       | CANCELLED | —           | 3       |
+| R       | CANCELLED | —           | 4       |
 | Res     | AVAILABLE | —           | 3       |
 
 ### Invariant protected
@@ -316,8 +318,8 @@ Res remains AVAILABLE; no spurious MATCHED state
 
 ### Interleaving
 ```
-Fulfillment: CloseAttempt(Res, attemptA, disposition=REUSABLE) → Res: AVAILABLE, v3
 CAS R: MATCHED(v3) → FULFILLING, v4
+CloseAttempt(Res, attemptA, disposition=AVAILABLE) → Res: AVAILABLE, v3
 CAS R: FULFILLING(v4) → FULFILLED, v5; writes request.fulfilled event [operationId=op-ff1]
 ── FAULT: outbox relay delivers request.fulfilled twice ──
 Consumer processes event 1: R is FULFILLED; records result; acks
@@ -369,7 +371,7 @@ Dispatcher calls FULFILL on CANCELLED R  →  409; terminal state; no-op
 
 ## SCH12 — Restart during snapshot creation
 
-**Source:** §27 "restart during snapshot creation"
+**Source:** §27 "restart during snapshot creation/restore"
 
 ### Initial state
 | Entity  | Status    | activeClaim | version |
@@ -476,9 +478,9 @@ Shard 1 requests remain queued; no silent data loss
 
 ### Interleaving
 ```
-Matcher tries to publish retry event to RabbitMQ relief.requests exchange
+Outbox relay tries to publish the pending retry event to RabbitMQ relief.requests exchange
 ── FAULT: broker is down; publish fails (no confirm received) ──
-Matcher does NOT ack RabbitMQ delivery (I6)
+Relay leaves the outbox row unpublished; there is no inbound delivery to ack
 R remains RETRYING in FSM (intent preserved, §18)
 Outbox relay detects pending row; backs off with bounded exponential delay
 Broker recovers; relay republishes with confirms and mandatory
@@ -490,11 +492,11 @@ TryClaim(Res, attemptB); CAS R→MATCHED
 ### Expected final state
 | Entity  | Status  | activeClaim | version |
 |---------|---------|-------------|---------|
-| R       | MATCHED | attemptB    | 4       |
+| R       | MATCHED | attemptB    | 5       |
 | Res     | ASSIGNED| attemptB    | 3       |
 
 ### Invariant protected
-**I6 / §18:** Broker outage during retry scheduling must not result in a lost intent. No delivery is acked before its durable handoff commits. The outbox relay ensures at-least-once delivery after recovery.
+**I6 / §18:** Broker outage during retry scheduling must not result in a lost intent. The outbox row is not marked published before a routed confirm. The relay ensures at-least-once delivery after recovery.
 
 ---
 
@@ -511,9 +513,8 @@ TryClaim(Res, attemptB); CAS R→MATCHED
 ### Interleaving
 ```
 Matcher consumer receives malformed message (unparseable / missing required fields)
-Consumer cannot parse; does not ack; does not nack(requeue=true) in a tight loop
-Consumer publishes message to matching.dead (DLX after delivery limit exceeded; §20/21)
-Consumer acks the original delivery after confirmed DLX routing
+Consumer cannot parse and nacks with requeue=false; it never acks or tight-loop requeues
+RabbitMQ routes the rejected delivery to matching.dead through the configured DLX (§20/21)
 Alert triggered on dead-letter queue depth
 Valid R message processed normally on matching.requests; R → MATCHED
 Dead-lettered message is never silently dropped; retained for investigation

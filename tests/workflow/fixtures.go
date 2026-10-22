@@ -10,30 +10,7 @@
 // Tags (SCH01_… – SCH17_…) are the canonical identifiers checked by verify-A0.2.sh.
 package workflow
 
-// RequestStatus mirrors the FSM request lifecycle states.
-type RequestStatus string
-
-const (
-	StatusPending    RequestStatus = "PENDING"
-	StatusWaiting    RequestStatus = "WAITING"
-	StatusMatching   RequestStatus = "MATCHING"
-	StatusMatched    RequestStatus = "MATCHED"
-	StatusRetrying   RequestStatus = "RETRYING"
-	StatusCancelling RequestStatus = "CANCELLING"
-	StatusCancelled  RequestStatus = "CANCELLED"
-	StatusFulfilling RequestStatus = "FULFILLING"
-	StatusFulfilled  RequestStatus = "FULFILLED"
-)
-
-// ResourceStatus mirrors the FSM resource lifecycle states.
-type ResourceStatus string
-
-const (
-	ResAvailable ResourceStatus = "AVAILABLE"
-	ResAssigned  ResourceStatus = "ASSIGNED"
-	ResOffline   ResourceStatus = "OFFLINE"
-	ResConsumed  ResourceStatus = "CONSUMED"
-)
+import "github.com/ParthMalhotra07/ReliefGrid/internal/store"
 
 // StepKind classifies the type of operation in an interleaving step.
 type StepKind string
@@ -60,11 +37,11 @@ type Step struct {
 
 // EntityState captures the expected durable state of a request or resource entity.
 type EntityState struct {
-	Entity      string         // "R" or "Res" (or named variant like "Res2")
-	ReqStatus   RequestStatus  // non-empty for request entities
-	ResStatus   ResourceStatus // non-empty for resource entities
-	ActiveClaim string         // attempt ID, or "" if none
-	Version     int            // expected committed version
+	Entity      string               // "R" or "Res" (or named variant like "Res2")
+	ReqStatus   store.RequestStatus  // non-empty for request entities
+	ResStatus   store.ResourceStatus // non-empty for resource entities
+	ActiveClaim string               // attempt ID, or "" if none
+	Version     int                  // expected committed version
 }
 
 // Invariant references the AGENTS.md invariant number(s) and §17–19 rules this schedule tests.
@@ -91,8 +68,8 @@ var Schedules = []ScheduleFixture{
 		Name:   "Both CAS proposals queued before either applies",
 		Source: "both CAS proposals queued before either applies",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusPending, Version: 1},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Steps: []Step{
 			{Actor: "Worker-A", Kind: StepCAS, Details: "PENDING→MATCHING(attemptA) v1→v2"},
@@ -104,8 +81,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker-A", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→MATCHED; match.completed outbox"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Protects: "I1/§17: serial FSM apply; exactly one CAS wins; no double-claim",
 	},
@@ -116,8 +93,8 @@ var Schedules = []ScheduleFixture{
 		Name:   "Dropped response after commit",
 		Source: "dropped response after commit",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusPending, Version: 1},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Steps: []Step{
 			{Actor: "Worker", Kind: StepCAS, Details: "PENDING→MATCHING(attemptA) operationId=op-1; commit succeeds"},
@@ -128,8 +105,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Protects: "I5/§18: unknown outcome ≠ rejection; retry same operationId returns original result",
 	},
@@ -140,8 +117,8 @@ var Schedules = []ScheduleFixture{
 		Name:   "Crash before matching step",
 		Source: "crash before/after every matching step",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusPending, Version: 1},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Steps: []Step{
 			{Actor: "Worker-A", Kind: StepReread, Details: "reads R=PENDING"},
@@ -152,8 +129,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker-B", Kind: StepCAS, Details: "MATCHING(v2,attemptB)→MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptB", Version: 3},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptB", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptB", Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptB", Version: 2},
 		},
 		Protects: "§17/I3: crash before intent leaves no orphan claim; recovery is transparent",
 	},
@@ -161,11 +138,11 @@ var Schedules = []ScheduleFixture{
 	// ── SCH04 ──────────────────────────────────────────────────────────────────
 	{
 		Tag:    "SCH04_CrashAfterMatchingStep",
-		Name:   "Crash after matching step (intent written, TryClaim not run)",
+		Name:   "Crash after matching step",
 		Source: "crash before/after every matching step",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusPending, Version: 1},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Steps: []Step{
 			{Actor: "Worker-A", Kind: StepCAS, Details: "PENDING→MATCHING(attemptA); R v1→v2"},
@@ -177,8 +154,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker-B", Kind: StepCAS, Details: "MATCHING(v4,attemptB)→MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptB", Version: 5},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptB", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptB", Version: 5},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptB", Version: 2},
 		},
 		Protects: "I3/§17: MATCHING intent is durable; reconciler resumes without losing the workflow",
 	},
@@ -189,19 +166,19 @@ var Schedules = []ScheduleFixture{
 		Name:   "Cancellation before TryClaim",
 		Source: "cancellation before/after TryClaim",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusPending, Version: 1},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Steps: []Step{
 			{Actor: "Worker-A", Kind: StepCAS, Details: "PENDING→MATCHING(attemptA); R v1→v2"},
 			{Actor: "Dispatcher", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→CANCELLING; intent retained; v2→v3"},
-			{Actor: "Worker-A", Kind: StepTryClaim, Details: "TryClaim(Res, attemptA); FSM: fence active → CLOSED"},
-			{Actor: "Reconciler", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA); no activeClaim; closure recorded"},
+			{Actor: "Reconciler", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA); no activeClaim; closure recorded; Res remains v1"},
+			{Actor: "Worker-A-delayed", Kind: StepTryClaim, Details: "TryClaim(Res, attemptA); committed closure exists → CLOSED"},
 			{Actor: "Reconciler", Kind: StepCAS, Details: "CANCELLING(v3)→CANCELLED; request.cancelled event"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusCancelled, Version: 4},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestCancelled, Version: 4},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Protects: "§19/I3: cancellation fence stops late TryClaim; Res never gets orphan claim",
 	},
@@ -212,8 +189,8 @@ var Schedules = []ScheduleFixture{
 		Name:   "Cancellation after TryClaim",
 		Source: "cancellation before/after TryClaim",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatching, ActiveClaim: "attemptA", Version: 2},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
 			{Actor: "Dispatcher", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→CANCELLING; intent+claim retained; v2→v3"},
@@ -221,8 +198,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Reconciler", Kind: StepCAS, Details: "CANCELLING(v3)→CANCELLED; request.cancelled event"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusCancelled, Version: 3},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 3},
+			{Entity: "R", ReqStatus: store.RequestCancelled, Version: 4},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 3},
 		},
 		Protects: "§19/I3: CloseAttempt is the only correct release path; no orphan claim after CANCELLED",
 	},
@@ -233,17 +210,17 @@ var Schedules = []ScheduleFixture{
 		Name:   "Stale TryClaim after CloseAttempt",
 		Source: "stale TryClaim after CloseAttempt",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatching, ActiveClaim: "attemptA", Version: 2},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Steps: []Step{
-			{Actor: "Worker-A", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA); closure recorded; Res v1→v2"},
+			{Actor: "Worker-A", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA); closure recorded; no active claim, so Res remains v1"},
 			{Actor: "Worker-A-delayed", Kind: StepTryClaim, Details: "stale TryClaim(Res,attemptA); FSM: closure exists → CLOSED; no claim"},
 			{Actor: "Reconciler", Kind: StepRetryWorkflow, Details: "CAS R MATCHING(v2)→WAITING; schedules retry"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusWaiting, Version: 3},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 2},
+			{Entity: "R", ReqStatus: store.RequestWaiting, Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 1},
 		},
 		Protects: "I4/§17: historical operation result is not current ownership; closure stops delayed TryClaim",
 	},
@@ -254,21 +231,21 @@ var Schedules = []ScheduleFixture{
 		Name:   "Confirmation racing with retargeting",
 		Source: "confirmation racing with retargeting",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatching, ActiveClaim: "attemptA", Version: 2},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
 			{Actor: "Worker-A", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→RETRYING; v2→v3"},
 			{Actor: "Worker-B", Kind: StepCAS, Details: "confirm MATCHING(v2,attemptA)→MATCHED; version mismatch (R=RETRYING v3) → CONFLICT"},
 			{Actor: "Worker-A", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA); Res→AVAILABLE v3; closure recorded"},
-			{Actor: "Worker-A", Kind: StepCAS, Details: "RETRYING(v3)→MATCHING(v3,attemptB,Res2)"},
+			{Actor: "Worker-A", Kind: StepCAS, Details: "RETRYING(v3)→MATCHING(attemptB,Res2); R v3→v4"},
 			{Actor: "Worker-A", Kind: StepTryClaim, Details: "TryClaim(Res2,attemptB) → ASSIGNED v2"},
 			{Actor: "Worker-A", Kind: StepCAS, Details: "MATCHING(v4,attemptB)→MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptB", Version: 5},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 3},
-			{Entity: "Res2", ResStatus: ResAssigned, ActiveClaim: "attemptB", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptB", Version: 5},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 3},
+			{Entity: "Res2", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptB", Version: 2},
 		},
 		Protects: "§17/§18/I3: RETRYING fences confirmation; exact CAS ensures only one path succeeds",
 	},
@@ -279,18 +256,20 @@ var Schedules = []ScheduleFixture{
 		Name:   "Stale successful operation-result replay after attempt closed",
 		Source: "stale successful operation-result replay after an attempt was closed",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatching, ActiveClaim: "attemptA", Version: 2},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
-			{Actor: "Dispatcher", Kind: StepCAS, Details: "→CANCELLING; CloseAttempt(Res,attemptA)→AVAILABLE v3; →CANCELLED v3"},
+			{Actor: "Dispatcher", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→CANCELLING; R v2→v3"},
+			{Actor: "Reconciler", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA)→AVAILABLE v3; closure recorded"},
+			{Actor: "Reconciler", Kind: StepCAS, Details: "CANCELLING(v3)→CANCELLED v4; request.cancelled event committed"},
 			{Actor: "Relay", Kind: StepFault, Details: "stale TryClaim SUCCESS result redelivered by broker"},
 			{Actor: "Consumer", Kind: StepReread, Details: "re-reads R=CANCELLED (terminal); result is harmless/obsolete"},
 			{Actor: "Consumer", Kind: StepBarrier, Details: "no new TryClaim or confirmation issued; delivery acked"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusCancelled, Version: 3},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 3},
+			{Entity: "R", ReqStatus: store.RequestCancelled, Version: 4},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 3},
 		},
 		Protects: "I4/§18: historical SUCCESS for closed attempt is not current ownership; consumers re-read state",
 	},
@@ -301,12 +280,12 @@ var Schedules = []ScheduleFixture{
 		Name:   "Duplicate terminal events",
 		Source: "duplicate terminal events",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
-			{Actor: "Worker", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA,REUSABLE) → Res:AVAILABLE v3"},
 			{Actor: "Worker", Kind: StepCAS, Details: "MATCHED(v3)→FULFILLING v4"},
+			{Actor: "Worker", Kind: StepCloseAttempt, Details: "CloseAttempt(Res,attemptA,AVAILABLE) → Res:AVAILABLE v3"},
 			{Actor: "Worker", Kind: StepCAS, Details: "FULFILLING(v4)→FULFILLED v5; operationId=op-ff1; event committed"},
 			{Actor: "Relay", Kind: StepPublish, Details: "request.fulfilled delivered to consumer (first)"},
 			{Actor: "Consumer", Kind: StepConsume, Details: "processes event 1; R=FULFILLED; acks"},
@@ -314,8 +293,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Consumer", Kind: StepConsume, Details: "operationId=op-ff1 already committed; idempotent no-op; acks"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusFulfilled, Version: 5},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 3},
+			{Entity: "R", ReqStatus: store.RequestFulfilled, Version: 5},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 3},
 		},
 		Protects: "I6/§18: operationId deduplication; duplicate terminal event is a harmless no-op",
 	},
@@ -326,8 +305,8 @@ var Schedules = []ScheduleFixture{
 		Name:   "Repeated cancel/fulfill calls",
 		Source: "repeated cancel/fulfill calls",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
 			{Actor: "Dispatcher", Kind: StepCAS, Details: "MATCHED(v3)→CANCELLING v4"},
@@ -337,8 +316,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Dispatcher", Kind: StepCAS, Details: "FULFILL call on CANCELLED R; returns 409"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusCancelled, Version: 5},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 3},
+			{Entity: "R", ReqStatus: store.RequestCancelled, Version: 5},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 3},
 		},
 		Protects: "§19/I3: repeated terminal calls return 409; no state mutation or duplicate resource release",
 	},
@@ -349,8 +328,8 @@ var Schedules = []ScheduleFixture{
 		Name:   "Restart during snapshot creation",
 		Source: "restart during snapshot creation/restore",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatching, ActiveClaim: "attemptA", Version: 2},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
 			{Actor: "Leader", Kind: StepBarrier, Details: "initiates FSM snapshot (§16)"},
@@ -360,8 +339,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→MATCHED; outbox event written"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Protects: "§16/I2: incomplete snapshot discarded; log replay restores committed state deterministically",
 	},
@@ -372,8 +351,8 @@ var Schedules = []ScheduleFixture{
 		Name:   "Restart during snapshot restore",
 		Source: "restart during snapshot creation/restore",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatching, ActiveClaim: "attemptA", Version: 2},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
 			{Actor: "NewNode", Kind: StepBarrier, Details: "begins installing snapshot from leader"},
@@ -383,8 +362,8 @@ var Schedules = []ScheduleFixture{
 			{Actor: "NewNode", Kind: StepBarrier, Details: "full snapshot installs; remaining log entries applied"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatching, ActiveClaim: "attemptA", Version: 2},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Protects: "§16/I2: node never applies partial snapshot; retries install; matches leader committed state",
 	},
@@ -396,7 +375,7 @@ var Schedules = []ScheduleFixture{
 		Source: "coordinator restart with one shard unavailable",
 		InitialState: []EntityState{
 			// Shard 0: healthy; Shard 1: unavailable (no quorum)
-			{Entity: "R", ReqStatus: StatusPending, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1},
 		},
 		Steps: []Step{
 			{Actor: "Coordinator", Kind: StepFault, Details: "pod restarts"},
@@ -407,7 +386,7 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
 		},
 		Protects: "I7/§10: coordinator restart preserves ring checksum; partial scan never returns empty; unavailable shard returns explicit error",
 	},
@@ -418,12 +397,12 @@ var Schedules = []ScheduleFixture{
 		Name:   "Broker outage during retry scheduling",
 		Source: "broker outage during retry scheduling",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusRetrying, Version: 3},
-			{Entity: "Res", ResStatus: ResAvailable, Version: 2},
+			{Entity: "R", ReqStatus: store.RequestRetrying, Version: 3},
+			{Entity: "Res", ResStatus: store.ResourceAvailable, Version: 2},
 		},
 		Steps: []Step{
-			{Actor: "Relay", Kind: StepPublish, Details: "tries to publish retry event to relief.requests; broker down"},
-			{Actor: "Relay", Kind: StepFault, Details: "no confirm received; relay does NOT ack delivery (I6)"},
+			{Actor: "Relay", Kind: StepPublish, Details: "tries to publish pending outbox event to relief.requests; broker down"},
+			{Actor: "Relay", Kind: StepFault, Details: "no routed confirm received; outbox row remains unpublished (I6)"},
 			{Actor: "FSM", Kind: StepBarrier, Details: "R remains RETRYING; intent preserved (§18)"},
 			{Actor: "Relay", Kind: StepBarrier, Details: "backs off; bounded exponential delay"},
 			{Actor: "Broker", Kind: StepBarrier, Details: "recovers"},
@@ -435,10 +414,10 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker", Kind: StepCAS, Details: "MATCHING(v4,attemptB)→MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptB", Version: 5},
-			{Entity: "Res", ResStatus: ResAssigned, ActiveClaim: "attemptB", Version: 3},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptB", Version: 5},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptB", Version: 3},
 		},
-		Protects: "I6/§18: no ack before durable handoff; outbox relay ensures at-least-once; intent preserved across outage",
+		Protects: "I6/§18: no outbox completion before routed confirm; relay ensures at-least-once; intent preserved across outage",
 	},
 
 	// ── SCH16 ──────────────────────────────────────────────────────────────────
@@ -447,18 +426,17 @@ var Schedules = []ScheduleFixture{
 		Name:   "Poison messages",
 		Source: "poison messages",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusPending, Version: 1}, // valid request
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1}, // valid request
 		},
 		Steps: []Step{
 			{Actor: "Consumer", Kind: StepConsume, Details: "receives malformed message (unparseable)"},
-			{Actor: "Consumer", Kind: StepBarrier, Details: "cannot parse; does NOT nack(requeue=true) in tight loop"},
-			{Actor: "Broker", Kind: StepBarrier, Details: "delivery limit exceeded; DLX routes to matching.dead (§21)"},
-			{Actor: "Consumer", Kind: StepConsume, Details: "acks original delivery after confirmed DLX routing"},
+			{Actor: "Consumer", Kind: StepConsume, Details: "nack(requeue=false); never ack and never tight-loop requeue"},
+			{Actor: "Broker", Kind: StepBarrier, Details: "configured DLX routes the rejected delivery to matching.dead (§21)"},
 			{Actor: "Consumer", Kind: StepConsume, Details: "processes valid R message on matching.requests normally"},
 			{Actor: "Worker", Kind: StepCAS, Details: "PENDING→MATCHING(attemptA); TryClaim; →MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
 			// malformed message: landed in matching.dead; retained for investigation
 		},
 		Protects: "§21/I6: poison messages don't block healthy traffic; DLQ retains them; no tight nack-requeue loop",
@@ -470,7 +448,7 @@ var Schedules = []ScheduleFixture{
 		Name:   "Partial candidate scan",
 		Source: "a partial candidate scan",
 		InitialState: []EntityState{
-			{Entity: "R", ReqStatus: StatusPending, Version: 1},
+			{Entity: "R", ReqStatus: store.RequestPending, Version: 1},
 			// Shard 1 holds some candidate resources but is unavailable
 		},
 		Steps: []Step{
@@ -485,7 +463,7 @@ var Schedules = []ScheduleFixture{
 			{Actor: "Worker", Kind: StepCAS, Details: "MATCHING(v2,attemptA)→MATCHED"},
 		},
 		FinalState: []EntityState{
-			{Entity: "R", ReqStatus: StatusMatched, ActiveClaim: "attemptA", Version: 3},
+			{Entity: "R", ReqStatus: store.RequestMatched, ActiveClaim: "attemptA", Version: 3},
 		},
 		Protects: "I7/§17: partial scan is never empty result; NO_CANDIDATE only after complete authoritative scan",
 	},

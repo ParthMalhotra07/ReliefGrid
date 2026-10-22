@@ -6,20 +6,7 @@
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-
-# Source Go env if available (sets PATH for snap go)
-if [ -f "$REPO_ROOT/scripts/_go-env.sh" ]; then
-  # shellcheck source=scripts/_go-env.sh
-  source "$REPO_ROOT/scripts/_go-env.sh"
-fi
-
-# Fallback: add snap Go to PATH if 'go' is still not found
-if ! command -v go &>/dev/null; then
-  GO_SNAP=$(find /snap/go/*/bin /snap/bin -name go -type f 2>/dev/null | head -1)
-  if [ -n "$GO_SNAP" ]; then
-    export PATH="$(dirname "$GO_SNAP"):$PATH"
-  fi
-fi
+cd "$REPO_ROOT"
 
 PASS=0
 FAIL=0
@@ -37,7 +24,14 @@ else
   fail "go vet ./..."
 fi
 
-# ---- 2. fixtures file exists ----
+# ---- 2. Go fixtures and Markdown agree ----
+if go test ./tests/workflow 2>&1; then
+  ok "go fixtures match schedules.md"
+else
+  fail "go fixtures match schedules.md"
+fi
+
+# ---- 3. fixtures file exists ----
 FIXTURES="$REPO_ROOT/tests/workflow/fixtures.go"
 if [ -f "$FIXTURES" ]; then
   ok "tests/workflow/fixtures.go exists"
@@ -52,7 +46,7 @@ else
   fail "tests/workflow/schedules.md missing"
 fi
 
-# ---- 3. Each §27 mandatory schedule appears exactly once in fixtures.go ----
+# ---- 4. Each §27 mandatory schedule appears exactly once in fixtures.go ----
 # The fixture names must match these canonical tags exactly.
 # Each tag corresponds to one mandatory adversarial schedule from §27.
 declare -a REQUIRED_TAGS=(
