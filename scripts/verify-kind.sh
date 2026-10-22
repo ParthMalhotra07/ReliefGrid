@@ -344,7 +344,7 @@ ids="$(docker ps -q --filter "label=io.x-k8s.kind.cluster=$CLUSTER")"
 	echo "## docker stats --no-stream (cluster containers)"
 	# shellcheck disable=SC2086 # ids is a whitespace-separated list
 	docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}' $ids
-} >"$EVIDENCE" 2>&1
+} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE" # kubectl/docker pad empty columns with spaces
 cat "$EVIDENCE"
 for section in '## kubectl get nodes -L role' '## free -h' '## docker stats'; do
 	check "evidence: $EVIDENCE has '$section'" grep -Fq "$section" "$EVIDENCE"
@@ -352,6 +352,11 @@ done
 rows="$(sed -n '/^## docker stats/,$p' "$EVIDENCE" | grep -c "^$CLUSTER-")"
 [ "$rows" -eq 5 ] && pass "evidence: docker stats lists 5 cluster containers" || fail "evidence: docker stats lists 5 cluster containers" "got $rows"
 check "evidence: free -h has a Mem: row" grep -Eq '^Mem:' "$EVIDENCE"
+if grep -Eq '[[:space:]]$' "$EVIDENCE"; then
+	fail "evidence: no trailing whitespace" "lines: $(grep -nE '[[:space:]]$' "$EVIDENCE" | cut -d: -f1 | tr '\n' ' ')"
+else
+	pass "evidence: no trailing whitespace"
+fi
 
 # --- 10. Previous goal still passes ----------------------------------------------
 if BASE="$BASE" scripts/verify-skeleton.sh >"$tmp/s01.out" 2>&1; then
