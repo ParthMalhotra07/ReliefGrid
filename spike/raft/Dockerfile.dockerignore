@@ -1,0 +1,6 @@
+# The build context is the repo root; send only what the spike build needs.
+*
+!go.mod
+!go.sum
+!spike/raft/*.go
+spike/raft/*_test.go
