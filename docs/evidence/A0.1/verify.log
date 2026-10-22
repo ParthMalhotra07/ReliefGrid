@@ -7,6 +7,8 @@ ok        contracts/events/resource_registered.json exists
 ok        contracts/events/match_proposed.json exists
 ok        contracts/events/request_state_changed.json exists
 ok        contracts/events/resource_state_changed.json exists
+ok    A0.1 public routes, enums, error envelope and event requirements
+ok        A0.1 frozen contract requirements
 ok        contracts/events/match_proposed.json: example(s) validate
 ok        contracts/events/request_created.json: example(s) validate
 ok        contracts/events/request_state_changed.json: example(s) validate
@@ -21,5 +23,5 @@ go tool oapi-codegen \
 ok        make gen: git status clean after gen
 ok        go build ./internal/api/gen/... compiles
 
-=== Results: 14 passed, 0 failed ===
+=== Results: 15 passed, 0 failed ===
 A0.1 VERIFY: ALL PASS
