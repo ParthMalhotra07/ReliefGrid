@@ -13,6 +13,14 @@ if [ -f "$REPO_ROOT/scripts/_go-env.sh" ]; then
   source "$REPO_ROOT/scripts/_go-env.sh"
 fi
 
+# Fallback: add snap Go to PATH if 'go' is still not found
+if ! command -v go &>/dev/null; then
+  GO_SNAP=$(find /snap/go/*/bin /snap/bin -name go -type f 2>/dev/null | head -1)
+  if [ -n "$GO_SNAP" ]; then
+    export PATH="$(dirname "$GO_SNAP"):$PATH"
+  fi
+fi
+
 PASS=0
 FAIL=0
 
