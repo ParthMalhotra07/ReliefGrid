@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Verify check for S0.3 (Raft spike). Run from the repo root with the kind cluster up:
 #   spike/raft-kill.sh
-#   ELECTION_MAX_SECONDS=5 LOAD_OPS=5000 KEEP_NAMESPACE=1 spike/raft-kill.sh
+#   ELECTION_MAX_SECONDS=5 LOAD_OPS=50000 KEEP_NAMESPACE=1 spike/raft-kill.sh
 # It builds the spike image, loads it into kind, deploys a fresh three-pod group in
 # namespace raft-spike, bootstraps it once, kills the leader and checks recovery.
 # Writes evidence to docs/evidence/spike/raft-<host>.txt. Exits non-zero if any
@@ -46,7 +46,7 @@ DIR=spike/raft
 ELECTION_MAX_SECONDS="${ELECTION_MAX_SECONDS:-10}"
 REJOIN_MAX_SECONDS="${REJOIN_MAX_SECONDS:-120}"
 PRE_BOOTSTRAP_SECONDS="${PRE_BOOTSTRAP_SECONDS:-15}"
-LOAD_OPS="${LOAD_OPS:-2000}"
+LOAD_OPS="${LOAD_OPS:-20000}"
 LOAD_CONCURRENCY="${LOAD_CONCURRENCY:-8}"
 EVIDENCE="docs/evidence/spike/raft-$(hostname -s).txt"
 
@@ -360,13 +360,19 @@ v="$(ctl "$leader" value spike 2>/dev/null)"
 	pass "re-bootstrap: value is still beta@2" || fail "re-bootstrap: value is still beta@2" "$v"
 
 # --- 12. Evidence and findings -------------------------------------------------------
+# Identify the code under test, not the commit: a docs-only amend must not make the
+# evidence stale, so FINDINGS.md is left out of both the fingerprint and the dirty check.
+code_paths=(go.mod go.sum spike/raft)
+code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | grep -v 'spike/raft/FINDINGS.md$' | git hash-object --stdin)"
+code_dirty="$(git status --porcelain -- "${code_paths[@]}" ':!spike/raft/FINDINGS.md' | grep -q . && echo yes || echo no)"
 mkdir -p "$(dirname "$EVIDENCE")"
 {
 	echo "# Raft spike, S0.3"
 	echo "host:        $(hostname -s)"
 	echo "date:        $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 	echo "kernel:      $(uname -r)"
-	echo "commit:      $(git rev-parse --short HEAD)"
+	echo "code tree:   ${code_tree:0:12} (git ls-tree -r HEAD -- go.mod go.sum spike/raft | grep -v FINDINGS.md\$ | git hash-object --stdin)"
+	echo "code dirty:  $code_dirty (uncommitted changes to go.mod, go.sum or spike/raft besides FINDINGS.md)"
 	echo "raft:        $(mod_version github.com/hashicorp/raft)"
 	echo "election:    ${election}s from leader pod delete to a survivor reporting Leader (term $old_term -> $term)"
 	echo "             old leader $old, new leader $leader; polled through kubectl exec (~0.2-0.5s resolution)"
