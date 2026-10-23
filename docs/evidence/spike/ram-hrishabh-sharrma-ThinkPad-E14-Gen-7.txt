@@ -1,0 +1,29 @@
+# Idle RAM, S0.2 kind cluster
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-10-22T12:55:17Z
+kernel:     7.0.0-34-generic
+docker:     29.9.1
+kind:       kind v0.33.0 go1.26.7 linux/amd64
+node image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+settled:    90s after all nodes Ready, no workloads deployed
+
+## kubectl get nodes -L role
+NAME                       STATUS   ROLES           AGE    VERSION   ROLE
+reliefgrid-control-plane   Ready    control-plane   2m8s   v1.37.0
+reliefgrid-worker          Ready    <none>          117s   v1.37.0   data
+reliefgrid-worker2         Ready    <none>          117s   v1.37.0   data
+reliefgrid-worker3         Ready    <none>          117s   v1.37.0   data
+reliefgrid-worker4         Ready    <none>          117s   v1.37.0   infra
+
+## free -h
+               total        used        free      shared  buff/cache   available
+Mem:            30Gi       9.1Gi       5.8Gi       1.2Gi        17Gi        21Gi
+Swap:          8.0Gi       1.0Mi       8.0Gi
+
+## docker stats --no-stream (cluster containers)
+NAME                       CPU %     MEM USAGE / LIMIT     MEM %
+reliefgrid-worker4         2.21%     120.8MiB / 30.37GiB   0.39%
+reliefgrid-control-plane   19.83%    570.1MiB / 30.37GiB   1.83%
+reliefgrid-worker          2.23%     117MiB / 30.37GiB     0.38%
+reliefgrid-worker2         2.23%     118.1MiB / 30.37GiB   0.38%
+reliefgrid-worker3         1.71%     120.2MiB / 30.37GiB   0.39%

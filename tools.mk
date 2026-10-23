@@ -9,3 +9,7 @@ KIND_VERSION          := v0.33.0
 KUBECTL_VERSION       := v1.37.1
 HELM_VERSION          := v3.22.1
 OAPI_CODEGEN_VERSION  := v2.8.0
+
+# The kindest/node image kind $(KIND_VERSION) was released with, pinned by digest
+# as kind's release notes require. Change it together with KIND_VERSION.
+KIND_NODE_IMAGE       := kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
