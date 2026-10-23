@@ -1,0 +1,11 @@
+apiVersion: v2
+name: reliefgrid
+description: Thin local ReliefGrid umbrella chart
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+dependencies:
+  - name: traefik
+    version: 42.1.2
+    repository: https://traefik.github.io/charts
+    condition: traefik.enabled
