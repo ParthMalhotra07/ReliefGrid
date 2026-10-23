@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -81,6 +82,19 @@ type FSM struct {
 // refuses a database that already has a schema, so callers always rebuild
 // it from a snapshot and the log instead of trusting an old file.
 func Open(ctx context.Context, dsn string) (*FSM, error) {
+	db, err := openDB(dsn)
+	if err != nil {
+		return nil, err
+	}
+	f := &FSM{db: db}
+	if err := f.init(ctx); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
+func openDB(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("fsm: open %s: %w", dsn, err)
@@ -91,13 +105,16 @@ func Open(ctx context.Context, dsn string) (*FSM, error) {
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(0)
 	db.SetConnMaxIdleTime(0)
+	return db, nil
+}
 
-	f := &FSM{db: db}
-	if err := f.init(ctx); err != nil {
-		_ = db.Close()
-		return nil, err
+func setPragmas(ctx context.Context, db *sql.DB) error {
+	for _, p := range []string{`PRAGMA journal_mode = WAL`, `PRAGMA synchronous = OFF`} {
+		if _, err := db.ExecContext(ctx, p); err != nil {
+			return fmt.Errorf("fsm: %s: %w", p, err)
+		}
 	}
-	return f, nil
+	return nil
 }
 
 func (f *FSM) init(ctx context.Context) error {
@@ -108,10 +125,8 @@ func (f *FSM) init(ctx context.Context) error {
 	if n != 0 {
 		return errors.New("fsm: database is not empty; FSM state is derived and must be rebuilt from snapshot and log")
 	}
-	for _, p := range []string{`PRAGMA journal_mode = WAL`, `PRAGMA synchronous = OFF`} {
-		if _, err := f.db.ExecContext(ctx, p); err != nil {
-			return fmt.Errorf("fsm: %s: %w", p, err)
-		}
+	if err := setPragmas(ctx, f.db); err != nil {
+		return err
 	}
 	tx, err := f.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -130,6 +145,67 @@ func (f *FSM) init(ctx context.Context) error {
 		return fmt.Errorf("fsm: commit schema: %w", err)
 	}
 	return nil
+}
+
+// OpenImage opens a database file written by VacuumInto (a snapshot image),
+// checks its schema version and takes its applied index. It sets WAL and
+// synchronous=OFF like Open.
+func OpenImage(ctx context.Context, path string) (*FSM, error) {
+	// SQLite would create a missing file; an image must already exist.
+	if _, err := os.Stat(path); err != nil {
+		return nil, fmt.Errorf("fsm: image %s: %w", path, err)
+	}
+	db, err := openDB("file:" + path)
+	if err != nil {
+		return nil, err
+	}
+	f := &FSM{db: db}
+	if err := f.loadImage(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("fsm: image %s: %w", path, err)
+	}
+	return f, nil
+}
+
+func (f *FSM) loadImage(ctx context.Context) error {
+	if err := setPragmas(ctx, f.db); err != nil {
+		return err
+	}
+	var version, applied string
+	if err := f.db.QueryRowContext(ctx, `SELECT v FROM meta WHERE k = 'schema_version'`).Scan(&version); err != nil {
+		return fmt.Errorf("read schema version: %w", err)
+	}
+	if version != schemaVersion {
+		return fmt.Errorf("schema version %q, want %q", version, schemaVersion)
+	}
+	if err := f.db.QueryRowContext(ctx, `SELECT v FROM meta WHERE k = 'applied_index'`).Scan(&applied); err != nil {
+		return fmt.Errorf("read applied index: %w", err)
+	}
+	n, err := strconv.ParseUint(applied, 10, 64)
+	if err != nil {
+		return fmt.Errorf("applied index %q: %w", applied, err)
+	}
+	f.applied.Store(n)
+	return nil
+}
+
+// VacuumInto writes a consistent copy of the database to path, which must
+// not exist. Raft serialises FSM.Snapshot with Apply, so the copy is exactly
+// the state at AppliedIndex.
+func (f *FSM) VacuumInto(ctx context.Context, path string) error {
+	if _, err := f.db.ExecContext(ctx, `VACUUM INTO ?`, path); err != nil {
+		return fmt.Errorf("fsm: vacuum into %s: %w", path, err)
+	}
+	return nil
+}
+
+// JournalMode reports SQLite's journal_mode ("wal" for every FSM database).
+func (f *FSM) JournalMode(ctx context.Context) (string, error) {
+	var mode string
+	if err := f.db.QueryRowContext(ctx, `PRAGMA journal_mode`).Scan(&mode); err != nil {
+		return "", fmt.Errorf("fsm: journal mode: %w", err)
+	}
+	return mode, nil
 }
 
 func (f *FSM) Close() error { return f.db.Close() }

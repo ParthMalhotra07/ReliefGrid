@@ -2,9 +2,11 @@ package fsm_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -686,4 +688,81 @@ func TestForgedEntryFieldIsRejected(t *testing.T) {
 	if r := h.read(store.ResourceKey("r1")).Resource; r.Status != store.ResourceAvailable || r.ActiveClaim != nil {
 		t.Fatalf("forged entry changed the resource: %s %+v", r.Status, r.ActiveClaim)
 	}
+}
+
+// A VacuumInto image reopened with OpenImage has the same rows and applied
+// index, and keeps applying from the next index.
+func TestVacuumIntoOpenImageRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness(t)
+	h.apply(store.CompareAndSet{Meta: meta("kv-1"), Key: "kv:a", Value: json.RawMessage(`1`)})
+	h.apply(store.CreateEntity{Meta: meta("c-r1"), Key: store.ResourceKey("r1"), Resource: resource("r1", store.TypeWater, store.ResourceAvailable)})
+	h.apply(closeAttempt("close-a1", "r1", "q1", attempt("a1", "r1")))
+
+	path := filepath.Join(t.TempDir(), "image.db")
+	if err := h.f.VacuumInto(ctx, path); err != nil {
+		t.Fatalf("VacuumInto: %v", err)
+	}
+	if err := h.f.VacuumInto(ctx, path); err == nil {
+		t.Fatal("VacuumInto over an existing file succeeded")
+	}
+	img, err := fsm.OpenImage(ctx, path)
+	if err != nil {
+		t.Fatalf("OpenImage: %v", err)
+	}
+	t.Cleanup(func() { _ = img.Close() })
+
+	want, err := h.f.Dump(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := img.Dump(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("image rows differ:\n got %v\nwant %v", got, want)
+	}
+	if img.AppliedIndex() != h.f.AppliedIndex() {
+		t.Fatalf("image applied index = %d, want %d", img.AppliedIndex(), h.f.AppliedIndex())
+	}
+	if _, err := img.Apply(h.f.AppliedIndex(), mustEncode(t, store.CompareAndSet{Meta: meta("kv-dup"), Key: "kv:b"})); err == nil {
+		t.Fatal("image accepted an entry at its own applied index")
+	}
+	entry := mustEncode(t, store.CompareAndSet{Meta: meta("kv-2"), Key: "kv:a", ExpectedVersion: 1, Value: json.RawMessage(`2`)})
+	res, err := img.Apply(h.f.AppliedIndex()+1, entry)
+	if err != nil {
+		t.Fatalf("Apply after image: %v", err)
+	}
+	expectOutcome(t, "CAS after image", res, store.OutcomeOK)
+}
+
+func TestOpenImageRejectsForeignDatabase(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "foreign.db")
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)`); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+	if f, err := fsm.OpenImage(ctx, path); err == nil {
+		_ = f.Close()
+		t.Fatal("OpenImage accepted a database without the FSM schema")
+	}
+	if f, err := fsm.OpenImage(ctx, filepath.Join(t.TempDir(), "missing.db")); err == nil {
+		_ = f.Close()
+		t.Fatal("OpenImage accepted a missing file")
+	}
+}
+
+func mustEncode(t *testing.T, body any) []byte {
+	t.Helper()
+	b, err := fsm.Encode(body)
+	if err != nil {
+		t.Fatalf("Encode(%T): %v", body, err)
+	}
+	return b
 }

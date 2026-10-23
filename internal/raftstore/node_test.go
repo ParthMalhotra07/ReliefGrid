@@ -1,0 +1,644 @@
+package raftstore
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"reflect"
+	"sort"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/hashicorp/go-hclog"
+	"github.com/hashicorp/raft"
+
+	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
+)
+
+// testProfile elects fast and never snapshots on its own; tests call
+// Node.Snapshot. TrailingLogs is small so a snapshot really compacts the log.
+var testProfile = Profile{
+	Name:               "test",
+	SnapshotThreshold:  1 << 30,
+	TrailingLogs:       4,
+	SnapshotInterval:   time.Hour,
+	HeartbeatTimeout:   200 * time.Millisecond,
+	ElectionTimeout:    200 * time.Millisecond,
+	LeaderLeaseTimeout: 100 * time.Millisecond,
+}
+
+const waitFor = 10 * time.Second
+
+type testCluster struct {
+	t     *testing.T
+	cfgs  []Config
+	nodes []*Node // nil while killed
+}
+
+// newTestCluster opens n nodes on loopback, each advertising a name
+// (localhost:<port>) that the transport resolves on every dial. It does not
+// bootstrap them.
+func newTestCluster(t *testing.T, n int, p Profile) *testCluster {
+	t.Helper()
+	c := &testCluster{t: t, cfgs: make([]Config, n), nodes: make([]*Node, n)}
+	for i := range n {
+		root := t.TempDir()
+		c.cfgs[i] = Config{
+			PodName:       fmt.Sprintf("storage-1-%d", i),
+			GroupID:       "shard-1",
+			Shard:         1,
+			DataDir:       filepath.Join(root, "pvc"),
+			FSMDir:        filepath.Join(root, "emptydir"),
+			BindAddr:      "127.0.0.1:0",
+			AdvertiseAddr: "localhost:0",
+			Profile:       p,
+			Logger:        hclog.New(&hclog.LoggerOptions{Name: fmt.Sprintf("raft-%d", i), Level: hclog.Warn, Output: os.Stderr}),
+		}
+		c.open(i)
+		// Restarts reuse the same port and name, as a pod keeps its DNS name.
+		_, port, err := net.SplitHostPort(string(c.nodes[i].Addr()))
+		if err != nil {
+			t.Fatalf("node %d address %q: %v", i, c.nodes[i].Addr(), err)
+		}
+		c.cfgs[i].BindAddr = "127.0.0.1:" + port
+		c.cfgs[i].AdvertiseAddr = "localhost:" + port
+	}
+	t.Cleanup(func() {
+		for i := range c.nodes {
+			c.kill(i)
+		}
+	})
+	return c
+}
+
+// newBootstrappedCluster is a three-node group bootstrapped through node 0.
+func newBootstrappedCluster(t *testing.T, p Profile) *testCluster {
+	t.Helper()
+	c := newTestCluster(t, 3, p)
+	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
+	defer cancel()
+	if err := c.nodes[0].Bootstrap(ctx, c.servers()); err != nil {
+		t.Fatalf("Bootstrap: %v", err)
+	}
+	c.waitLeader()
+	return c
+}
+
+func (c *testCluster) open(i int) {
+	c.t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
+	defer cancel()
+	n, err := Open(ctx, c.cfgs[i])
+	if err != nil {
+		c.t.Fatalf("Open node %d: %v", i, err)
+	}
+	c.nodes[i] = n
+}
+
+func (c *testCluster) kill(i int) {
+	c.t.Helper()
+	if c.nodes[i] == nil {
+		return
+	}
+	if err := c.nodes[i].Close(); err != nil {
+		c.t.Errorf("Close node %d: %v", i, err)
+	}
+	c.nodes[i] = nil
+}
+
+func (c *testCluster) restart(i int) {
+	c.t.Helper()
+	c.kill(i)
+	c.open(i)
+}
+
+func (c *testCluster) servers() []raft.Server {
+	var out []raft.Server
+	for _, n := range c.nodes {
+		out = append(out, raft.Server{Suffrage: raft.Voter, ID: n.Identity().ServerID(), Address: n.Addr()})
+	}
+	return out
+}
+
+// waitLeader waits until exactly one live node reports Leader and every live
+// node agrees on it.
+func (c *testCluster) waitLeader() (int, *Node) {
+	c.t.Helper()
+	deadline := time.Now().Add(waitFor)
+	for time.Now().Before(deadline) {
+		leader, agreed := -1, true
+		for i, n := range c.nodes {
+			if n == nil {
+				continue
+			}
+			s := n.Status()
+			if s.State == raft.Leader.String() {
+				if leader >= 0 {
+					agreed = false
+				}
+				leader = i
+			}
+		}
+		if leader >= 0 && agreed {
+			want := c.nodes[leader].Identity().ServerID()
+			for _, n := range c.nodes {
+				if n != nil && n.Status().LeaderID != want {
+					agreed = false
+				}
+			}
+			if agreed {
+				return leader, c.nodes[leader]
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	c.t.Fatalf("no single agreed leader within %s", waitFor)
+	return -1, nil
+}
+
+func (c *testCluster) follower(leader int) (int, *Node) {
+	for i, n := range c.nodes {
+		if i != leader && n != nil {
+			return i, n
+		}
+	}
+	c.t.Fatal("no live follower")
+	return -1, nil
+}
+
+func testCtx(t *testing.T) context.Context {
+	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
+	t.Cleanup(cancel)
+	return ctx
+}
+
+func mustApply(t *testing.T, n *Node, cmd any) store.Result {
+	t.Helper()
+	res, err := n.Apply(testCtx(t), cmd)
+	if err != nil {
+		t.Fatalf("Apply(%T): %v", cmd, err)
+	}
+	return res
+}
+
+func readKV(ctx context.Context, n *Node, mode ReadMode, key string) (store.Record, ReadInfo, error) {
+	var rec store.Record
+	info, err := n.Read(ctx, mode, func(ctx context.Context, r Reader) error {
+		var err error
+		rec, err = r.ReadRecord(ctx, key)
+		return err
+	})
+	return rec, info, err
+}
+
+func expectValue(t *testing.T, rec store.Record, version uint64, value int) {
+	t.Helper()
+	if rec.Version != version || string(rec.Value) != fmt.Sprint(value) {
+		t.Fatalf("record %s = version %d value %s, want version %d value %d", rec.Key, rec.Version, rec.Value, version, value)
+	}
+}
+
+func dumpOf(t *testing.T, n *Node) map[string][]string {
+	t.Helper()
+	var out map[string][]string
+	if _, err := n.Read(testCtx(t), ReadStale, func(ctx context.Context, r Reader) error {
+		var err error
+		out, err = r.Dump(ctx)
+		return err
+	}); err != nil {
+		t.Fatalf("Dump: %v", err)
+	}
+	return out
+}
+
+// Pods never self-bootstrap: fresh nodes stay without a configuration or a
+// leader, and refuse writes, until Bootstrap is called.
+func TestFreshNodesNeverSelfBootstrap(t *testing.T) {
+	c := newTestCluster(t, 3, testProfile)
+	time.Sleep(10 * testProfile.ElectionTimeout)
+	for i, n := range c.nodes {
+		s := n.Status()
+		if s.State == raft.Leader.String() || s.Term != 0 || s.LastLogIndex != 0 || s.HasState {
+			t.Fatalf("node %d without bootstrap: %+v", i, s)
+		}
+		if _, err := n.Apply(testCtx(t), cas("op-1", "kv:a", 0, 1)); !errors.Is(err, ErrNotLeader) {
+			t.Fatalf("node %d Apply before bootstrap: err = %v, want ErrNotLeader", i, err)
+		}
+	}
+}
+
+func TestBootstrapRefusesExistingState(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	leader, _ := c.waitLeader()
+	mustApply(t, c.nodes[leader], cas("op-1", "kv:a", 0, 1))
+
+	for i, n := range c.nodes {
+		if err := n.Bootstrap(testCtx(t), c.servers()); !errors.Is(err, ErrHasState) {
+			t.Fatalf("node %d re-bootstrap: err = %v, want ErrHasState", i, err)
+		}
+	}
+	// Still refused after a restart, which must not bootstrap either.
+	servers := c.servers()
+	c.restart(0)
+	if err := c.nodes[0].Bootstrap(testCtx(t), servers); !errors.Is(err, ErrHasState) {
+		t.Fatalf("re-bootstrap after restart: err = %v, want ErrHasState", err)
+	}
+	_, n := c.waitLeader()
+	rec, _, err := readKV(testCtx(t), n, ReadStrong, "kv:a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectValue(t, rec, 1, 1)
+}
+
+func TestBootstrapRequiresSelfInConfiguration(t *testing.T) {
+	c := newTestCluster(t, 3, testProfile)
+	others := c.servers()[1:]
+	err := c.nodes[0].Bootstrap(testCtx(t), others)
+	if err == nil || errors.Is(err, ErrHasState) {
+		t.Fatalf("bootstrap without self: err = %v, want a refusal that is not ErrHasState", err)
+	}
+	if c.nodes[0].Status().HasState {
+		t.Fatal("a refused bootstrap wrote Raft state")
+	}
+}
+
+// Verify (S1.3): a write is still readable through the new leader after
+// the old leader is killed, and the old leader catches up on restart.
+func TestWriteSurvivesLeaderKill(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	oldLeader, l := c.waitLeader()
+	res := mustApply(t, l, cas("op-1", "kv:x", 0, 1))
+	if res.Outcome != store.OutcomeOK || res.Shard != 1 {
+		t.Fatalf("write = %+v", res)
+	}
+	oldID := l.Identity().ServerID()
+
+	c.kill(oldLeader)
+	newLeader, nl := c.waitLeader()
+	if nl.Identity().ServerID() == oldID {
+		t.Fatal("killed leader is still the leader")
+	}
+	rec, info, err := readKV(testCtx(t), nl, ReadStrong, "kv:x")
+	if err != nil {
+		t.Fatalf("strong read through new leader: %v", err)
+	}
+	expectValue(t, rec, 1, 1)
+	if info.Consistency != "strong" || info.StalePossible || info.ServedBy != c.cfgs[newLeader].PodName || info.AppliedIndex < res.AppliedIndex {
+		t.Fatalf("read info = %+v, want strong from %s at >= %d", info, c.cfgs[newLeader].PodName, res.AppliedIndex)
+	}
+	res2 := mustApply(t, nl, cas("op-2", "kv:x", 1, 2))
+	if res2.Outcome != store.OutcomeOK {
+		t.Fatalf("write through new leader = %+v", res2)
+	}
+
+	c.open(oldLeader)
+	if err := c.nodes[oldLeader].WaitApplied(testCtx(t), res2.AppliedIndex); err != nil {
+		t.Fatalf("restarted old leader did not catch up: %v", err)
+	}
+	rec, info, err = readKV(testCtx(t), c.nodes[oldLeader], ReadStale, "kv:x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectValue(t, rec, 2, 2)
+	if !info.StalePossible || info.Consistency != "stale" {
+		t.Fatalf("stale read info = %+v", info)
+	}
+}
+
+// A follower refuses writes and strong reads with a hint naming the leader,
+// and serves stale reads only when asked, marked stalePossible.
+func TestFollowerNotLeaderHintAndStaleRead(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	leader, l := c.waitLeader()
+	res := mustApply(t, l, cas("op-1", "kv:a", 0, 1))
+	fi, f := c.follower(leader)
+
+	_, err := f.Apply(testCtx(t), cas("op-2", "kv:a", 1, 2))
+	var nle *NotLeaderError
+	if !errors.As(err, &nle) || !errors.Is(err, ErrNotLeader) {
+		t.Fatalf("follower Apply: err = %v, want *NotLeaderError", err)
+	}
+	if nle.LeaderID != l.Identity().ServerID() || nle.LeaderAddr != l.Addr() {
+		t.Fatalf("hint = %+v, want %s at %s", nle, l.Identity().ServerID(), l.Addr())
+	}
+	if errors.Is(err, store.ErrUnknownOutcome) {
+		t.Fatal("not-leader must be definite, not an unknown outcome")
+	}
+	if _, _, err := readKV(testCtx(t), f, ReadStrong, "kv:a"); !errors.Is(err, ErrNotLeader) {
+		t.Fatalf("follower strong read: err = %v, want ErrNotLeader", err)
+	}
+
+	if err := f.WaitApplied(testCtx(t), res.AppliedIndex); err != nil {
+		t.Fatal(err)
+	}
+	rec, info, err := readKV(testCtx(t), f, ReadStale, "kv:a")
+	if err != nil {
+		t.Fatalf("follower stale read: %v", err)
+	}
+	expectValue(t, rec, 1, 1)
+	if info.Consistency != "stale" || !info.StalePossible || info.ServedBy != c.cfgs[fi].PodName || info.AppliedIndex < res.AppliedIndex {
+		t.Fatalf("stale read info = %+v", info)
+	}
+}
+
+// Spike finding C1: raft.AppliedIndex() runs ahead of the FSM. With the
+// leader's SQLite apply paused, Raft reports the entry applied but the FSM
+// has not committed it: a strong read and WaitApplied must wait for the FSM,
+// and the node must not report itself caught up.
+func TestStrongReadWaitsForFSMNotRaftAppliedIndex(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	_, l := c.waitLeader()
+	mustApply(t, l, cas("op-1", "kv:a", 0, 1))
+
+	var paused atomic.Bool
+	release := make(chan struct{})
+	l.sm.setBeforeApply(func(uint64) {
+		if paused.Load() {
+			<-release
+		}
+	})
+	paused.Store(true)
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+
+	written := make(chan store.Result, 1)
+	go func() {
+		res, err := l.Apply(context.Background(), cas("op-2", "kv:a", 1, 2))
+		if err != nil {
+			t.Errorf("paused write: %v", err)
+		}
+		written <- res
+	}()
+
+	// Wait until Raft has handed the entry to the FSM goroutine.
+	var s Status
+	deadline := time.Now().Add(waitFor)
+	for {
+		s = l.Status()
+		if s.RaftAppliedIndex > s.AppliedIndex {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("raft applied index never ran ahead of the paused FSM: %+v", s)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if s.CaughtUp {
+		t.Fatalf("node reports caught up with the FSM behind: %+v", s)
+	}
+	short, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if err := l.WaitApplied(short, s.RaftAppliedIndex); err == nil {
+		t.Fatal("WaitApplied returned while the FSM was paused")
+	}
+
+	type readResult struct {
+		rec  store.Record
+		info ReadInfo
+		err  error
+	}
+	read := make(chan readResult, 1)
+	go func() {
+		rec, info, err := readKV(context.Background(), l, ReadStrong, "kv:a")
+		read <- readResult{rec, info, err}
+	}()
+	select {
+	case r := <-read:
+		t.Fatalf("strong read returned before the FSM applied the write: %+v", r)
+	case <-time.After(300 * time.Millisecond):
+	}
+
+	paused.Store(false)
+	close(release)
+	released = true
+	res := <-written
+	r := <-read
+	if r.err != nil {
+		t.Fatalf("strong read: %v", r.err)
+	}
+	expectValue(t, r.rec, 2, 2)
+	if r.info.AppliedIndex < res.AppliedIndex {
+		t.Fatalf("read observed index %d, before the write at %d", r.info.AppliedIndex, res.AppliedIndex)
+	}
+}
+
+// Invariant 5: when the leader loses its quorum mid-write, the outcome is
+// unknown, not a rejection, and a retry of the same command after recovery
+// gets a stored or fresh result, never OPERATION_ID_REUSED.
+func TestLostQuorumIsUnknownOutcome(t *testing.T) {
+	// A lease long enough that the leader is still leader when the write is
+	// proposed, after both followers are gone.
+	p := testProfile
+	p.HeartbeatTimeout, p.ElectionTimeout, p.LeaderLeaseTimeout = 2*time.Second, 2*time.Second, 2*time.Second
+	c := newBootstrappedCluster(t, p)
+	leader, l := c.waitLeader()
+	mustApply(t, l, cas("op-1", "kv:a", 0, 1))
+
+	var down []int
+	for i := range c.nodes {
+		if i != leader {
+			c.kill(i)
+			down = append(down, i)
+		}
+	}
+	cmd := cas("op-2", "kv:a", 1, 2)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	_, err := l.Apply(ctx, cmd)
+	if !errors.Is(err, store.ErrUnknownOutcome) || errors.Is(err, ErrNotLeader) {
+		t.Fatalf("write without quorum: err = %v, want ErrUnknownOutcome", err)
+	}
+
+	for _, i := range down {
+		c.open(i)
+	}
+	_, nl := c.waitLeader()
+	res := mustApply(t, nl, cmd)
+	if res.Outcome != store.OutcomeOK {
+		t.Fatalf("retry of the same command = %+v, want OK (fresh or replayed)", res)
+	}
+	rec, _, err := readKV(testCtx(t), nl, ReadStrong, "kv:a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectValue(t, rec, 2, 2)
+}
+
+// Verify (S1.3): a full restart rebuilds every FSM from the snapshot plus
+// the log, over stale FSM files, and all replicas end with identical rows.
+func TestRestartRebuildsFSMFromSnapshotAndLog(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	_, l := c.waitLeader()
+	const keys = 10
+	version := make([]uint64, keys)
+	write := func(round int) store.Result {
+		var last store.Result
+		for k := range keys {
+			last = mustApply(t, l, cas(fmt.Sprintf("op-%d-%d", round, k), fmt.Sprintf("kv:%d", k), version[k], round))
+			if last.Outcome != store.OutcomeOK {
+				t.Fatalf("round %d key %d = %+v", round, k, last)
+			}
+			version[k] = last.Version
+		}
+		return last
+	}
+	write(1)
+	write(2)
+	last := write(3)
+	for i, n := range c.nodes {
+		if err := n.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
+			t.Fatalf("node %d: %v", i, err)
+		}
+		if err := n.Snapshot(testCtx(t)); err != nil {
+			t.Fatalf("node %d Snapshot: %v", i, err)
+		}
+	}
+	write(4) // the suffix replayed from the log
+
+	for i := range c.nodes {
+		c.kill(i)
+	}
+	for i, cfg := range c.cfgs {
+		if err := os.WriteFile(filepath.Join(cfg.FSMDir, "fsm-1.db"), []byte("stale derived file"), 0o600); err != nil {
+			t.Fatalf("node %d: %v", i, err)
+		}
+		c.open(i)
+	}
+
+	_, l = c.waitLeader()
+	final := mustApply(t, l, cas("op-final", "kv:final", 0, 5))
+	for k := range keys {
+		rec, _, err := readKV(testCtx(t), l, ReadStrong, fmt.Sprintf("kv:%d", k))
+		if err != nil {
+			t.Fatalf("key %d: %v", k, err)
+		}
+		expectValue(t, rec, 4, 4)
+	}
+	var dumps []map[string][]string
+	for i, n := range c.nodes {
+		if err := n.WaitApplied(testCtx(t), final.AppliedIndex); err != nil {
+			t.Fatalf("node %d: %v", i, err)
+		}
+		if s := n.Status(); s.AppliedIndex != final.AppliedIndex {
+			t.Fatalf("node %d applied index %d, want %d", i, s.AppliedIndex, final.AppliedIndex)
+		}
+		dumps = append(dumps, dumpOf(t, n))
+	}
+	for i := 1; i < len(dumps); i++ {
+		if !reflect.DeepEqual(dumps[0], dumps[i]) {
+			t.Fatalf("node %d rows differ from node 0 at the same applied index", i)
+		}
+	}
+}
+
+// Identity survives a restart and is the Raft LocalID; the PVC holds only
+// identity, Raft log/stable store and snapshots, and the FSM lives on the
+// emptyDir (M3).
+func TestIdentityAndDiskLayout(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	before := c.nodes[1].Identity()
+	if s := c.nodes[1].Status(); s.ServerID != before.ServerID() || s.Address != c.nodes[1].Addr() {
+		t.Fatalf("status id/address = %s / %s, want %s / %s", s.ServerID, s.Address, before.ServerID(), c.nodes[1].Addr())
+	}
+	c.restart(1)
+	if after := c.nodes[1].Identity(); after != before {
+		t.Fatalf("identity after restart = %+v, want %+v", after, before)
+	}
+
+	ents, err := os.ReadDir(c.cfgs[1].DataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, e := range ents {
+		names = append(names, e.Name())
+	}
+	sort.Strings(names)
+	if want := []string{identityFile, "raft", "snapshots"}; !reflect.DeepEqual(names, want) {
+		t.Fatalf("PVC holds %v, want %v", names, want)
+	}
+	matches, err := filepath.Glob(filepath.Join(c.cfgs[1].FSMDir, "fsm-*.db"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("emptyDir FSM files = %v (err %v), want exactly one", matches, err)
+	}
+}
+
+func TestNotLeaderErrorIs(t *testing.T) {
+	err := fmt.Errorf("wrapped: %w", &NotLeaderError{LeaderID: "storage-1-0/x", LeaderAddr: "a:1"})
+	if !errors.Is(err, ErrNotLeader) {
+		t.Fatal("NotLeaderError does not match ErrNotLeader")
+	}
+}
+
+// An index inside the compacted range is satisfied once the FSM holds the
+// newest snapshot's image; WaitApplied and CaughtUp never error or hang on
+// it. The last entry before the snapshot is a barrier (a strong read), so
+// Raft's snapshot index is an entry the SQLite FSM never records.
+func TestWaitAppliedOnCompactedRange(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	li, l := c.waitLeader()
+	var first, last store.Result
+	for i := range 20 {
+		last = mustApply(t, l, cas(fmt.Sprintf("op-%d", i), "kv:a", uint64(i), i+1))
+		if i == 0 {
+			first = last
+		}
+	}
+	if _, _, err := readKV(testCtx(t), l, ReadStrong, "kv:a"); err != nil { // barrier entry
+		t.Fatal(err)
+	}
+	barrierIndex := l.Status().LastLogIndex
+	if barrierIndex <= last.AppliedIndex {
+		t.Fatalf("last log index %d is not after the last command %d", barrierIndex, last.AppliedIndex)
+	}
+	if err := l.Snapshot(testCtx(t)); err != nil {
+		t.Fatal(err)
+	}
+	logFirst, err := l.logs.FirstIndex()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if logFirst <= first.AppliedIndex {
+		t.Fatalf("log first index %d: index %d was not compacted (TrailingLogs %d)", logFirst, first.AppliedIndex, testProfile.TrailingLogs)
+	}
+
+	check := func(n *Node, what string) {
+		t.Helper()
+		for _, idx := range []uint64{first.AppliedIndex, logFirst - 1, barrierIndex} {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			err := n.WaitApplied(ctx, idx)
+			cancel()
+			if err != nil {
+				t.Fatalf("%s: WaitApplied(%d) with log first index %d: %v", what, idx, logFirst, err)
+			}
+		}
+		deadline := time.Now().Add(waitFor)
+		for !n.Status().CaughtUp {
+			if time.Now().After(deadline) {
+				t.Fatalf("%s: never caught up: %+v", what, n.Status())
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	check(l, "leader")
+
+	// After a restart the log starts after the compacted range and the FSM
+	// comes back from the snapshot alone.
+	c.restart(li)
+	c.waitLeader()
+	check(c.nodes[li], "restarted node")
+	rec, _, err := readKV(testCtx(t), c.nodes[li], ReadStale, "kv:a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectValue(t, rec, 20, 20)
+}
