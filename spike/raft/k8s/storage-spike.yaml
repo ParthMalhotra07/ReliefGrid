@@ -1,0 +1,103 @@
+# S0.3 Raft spike: one three-replica Raft group. Applied by spike/raft-kill.sh;
+# bootstrap is a separate one-time Job (bootstrap-job.yaml), never pod start.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: raft-spike
+---
+# Headless, and publishes unready pods so peers resolve each other before readiness.
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-spike
+  namespace: raft-spike
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: storage-spike
+  ports:
+    - name: raft
+      port: 7000
+    - name: http
+      port: 8080
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storage-spike
+  namespace: raft-spike
+spec:
+  serviceName: storage-spike
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: storage-spike
+  template:
+    metadata:
+      labels:
+        app: storage-spike
+    spec:
+      nodeSelector:
+        role: data
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: storage-spike
+      terminationGracePeriodSeconds: 10
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+      containers:
+        - name: spike
+          image: reliefgrid/raft-spike:dev
+          imagePullPolicy: Never
+          args: [serve]
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+            - name: SERVICE
+              value: storage-spike
+            # M4 demo profile: small enough that the spike's load takes snapshots.
+            - name: SNAPSHOT_THRESHOLD
+              value: "1024"
+            - name: TRAILING_LOGS
+              value: "512"
+            - name: SNAPSHOT_INTERVAL_SECONDS
+              value: "30"
+          ports:
+            - name: raft
+              containerPort: 7000
+            - name: http
+              containerPort: 8080
+          # Readiness means the HTTP endpoint answers, not that the node has a leader.
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 2
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {memory: 256Mi}
+          volumeMounts:
+            - name: data # Raft log, stable store, snapshots
+              mountPath: /data
+            - name: fsm # derived SQLite FSM (M3)
+              mountPath: /fsm
+      volumes:
+        - name: fsm
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

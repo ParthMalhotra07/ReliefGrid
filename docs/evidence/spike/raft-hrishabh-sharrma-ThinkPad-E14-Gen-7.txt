@@ -1,0 +1,35 @@
+# Raft spike, S0.3
+host:        hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:        2026-10-22T17:45:56Z
+kernel:      7.0.0-34-generic
+code tree:   f9a397ee6657 (git ls-tree -r HEAD -- go.mod go.sum spike/raft | grep -v FINDINGS.md$ | git hash-object --stdin)
+code dirty:  no (uncommitted changes to go.mod, go.sum or spike/raft besides FINDINGS.md)
+raft:        v1.8.0
+election:    1.6s from leader pod delete to a survivor reporting Leader (term 2 -> 3)
+             old leader storage-spike-0, new leader storage-spike-1; polled through kubectl exec (~0.2-0.5s resolution)
+rejoin:      storage-spike-0 pod IP 10.244.3.60 -> 10.244.3.62 (peers dial it by DNS name)
+catch-up:    after Ready, raft applied index matched the leader at 0.2s (FSM at 20006 of 20006)
+             FSM applied index matched the leader at 0.2s
+load:        {"errors":0,"ops":20000,"opsPerSecond":2569.1,"seconds":7.8}
+
+## kubectl get pods -o wide
+NAME                            READY   STATUS    RESTARTS   AGE   IP            NODE                 NOMINATED NODE   READINESS GATES
+storage-spike-0                 1/1     Running   0          9s    10.244.3.62   reliefgrid-worker    <none>           <none>
+storage-spike-1                 1/1     Running   0          46s   10.244.4.36   reliefgrid-worker3   <none>           <none>
+storage-spike-2                 1/1     Running   0          46s   10.244.1.34   reliefgrid-worker2   <none>           <none>
+storage-spike-bootstrap-scvtx   0/1     Error     0          7s    10.244.3.63   reliefgrid-worker    <none>           <none>
+
+## pod memory (from /status, after load and failover)
+storage-spike-0 rss=27M cgroup=21M
+storage-spike-1 rss=27M cgroup=26M
+storage-spike-2 rss=26M cgroup=26M
+
+## statuses before the kill
+{"id":"storage-spike-0","advertise":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","state":"Leader","leader":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","leaderId":"storage-spike-0","term":2,"appliedIndex":20004,"raftAppliedIndex":20004,"commitIndex":20004,"lastIndex":20004,"servers":[{"id":"storage-spike-0","address":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-1","address":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-2","address":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"}],"memory":{"rssBytes":23052288,"cgroupBytes":26664960}}
+{"id":"storage-spike-1","advertise":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","state":"Follower","leader":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","leaderId":"storage-spike-0","term":2,"appliedIndex":20004,"raftAppliedIndex":20004,"commitIndex":20004,"lastIndex":20004,"servers":[{"id":"storage-spike-0","address":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-1","address":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-2","address":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"}],"memory":{"rssBytes":22896640,"cgroupBytes":26316800}}
+{"id":"storage-spike-2","advertise":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","state":"Follower","leader":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","leaderId":"storage-spike-0","term":2,"appliedIndex":20004,"raftAppliedIndex":20004,"commitIndex":20004,"lastIndex":20004,"servers":[{"id":"storage-spike-0","address":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-1","address":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-2","address":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"}],"memory":{"rssBytes":22937600,"cgroupBytes":26677248}}
+
+## statuses at the end
+{"id":"storage-spike-0","advertise":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","state":"Follower","leader":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","leaderId":"storage-spike-1","term":3,"appliedIndex":20006,"raftAppliedIndex":20006,"commitIndex":20006,"lastIndex":20006,"servers":[{"id":"storage-spike-0","address":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-1","address":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-2","address":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"}],"memory":{"rssBytes":28172288,"cgroupBytes":21118976}}
+{"id":"storage-spike-1","advertise":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","state":"Leader","leader":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","leaderId":"storage-spike-1","term":3,"appliedIndex":20006,"raftAppliedIndex":20006,"commitIndex":20006,"lastIndex":20006,"servers":[{"id":"storage-spike-0","address":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-1","address":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-2","address":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"}],"memory":{"rssBytes":27557888,"cgroupBytes":27353088}}
+{"id":"storage-spike-2","advertise":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","state":"Follower","leader":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","leaderId":"storage-spike-1","term":3,"appliedIndex":20006,"raftAppliedIndex":20006,"commitIndex":20006,"lastIndex":20006,"servers":[{"id":"storage-spike-0","address":"storage-spike-0.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-1","address":"storage-spike-1.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"},{"id":"storage-spike-2","address":"storage-spike-2.storage-spike.raft-spike.svc.cluster.local:7000","suffrage":"Voter"}],"memory":{"rssBytes":27140096,"cgroupBytes":27332608}}
