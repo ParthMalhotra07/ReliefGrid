@@ -1,0 +1,15 @@
+# The fixed consistent-hash ring (plan §09), the single source of truth for
+# routing: internal/ring loads this file and the coordinator ConfigMap is built
+# from it. Every value feeds the checksum and Load refuses a file whose checksum
+# does not match. Editing a number here is not rebalancing; moving keys needs
+# the fenced migration protocol.
+#
+# Token for vnode v of shard s: xxhash64("shard-{s}-vnode-{v}"). Tokens sorted
+# by (hash, shard, vnode); a key belongs to the first token >= xxhash64(key),
+# wrapping to the first. checksum = sha256 over the canonical encoding in
+# internal/ring (header, then "%016x shard vnode" per token in ring order).
+ringVersion: 1
+hash: xxhash64
+shards: 3
+vnodesPerShard: 128
+checksum: sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360

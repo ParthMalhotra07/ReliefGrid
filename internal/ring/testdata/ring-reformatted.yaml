@@ -1,0 +1,7 @@
+# Same ring as contracts/ring.yaml, laid out differently on purpose:
+# reordered fields, quoting and trailing comments must not change routing.
+checksum: "sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360"
+vnodesPerShard: 128
+shards: 3
+hash: "xxhash64"
+ringVersion: 1 # unchanged
