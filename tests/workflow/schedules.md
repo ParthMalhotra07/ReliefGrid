@@ -9,6 +9,12 @@ Each schedule specifies:
 - **Expected final state** — request status + resource status after all operations settle.
 - **Invariant protected** — the AGENTS.md invariant (I1–I8) or §17–19 rule this schedule tests.
 
+The request's `activeClaim` column denotes its recorded attempt/assignment, not
+a resource-side claim. Cleanup retains that attempt until closure commits.
+Resources released to AVAILABLE below are reusable and inside their validated
+availability window. Each committed request transition increments R once;
+claim acquisition/release increments Res once, while fence-only closure does not.
+
 ---
 
 ## SCH01 — Both CAS proposals queued before either applies
@@ -27,9 +33,9 @@ Worker-A reads R (v1=PENDING), selects Res, issues CAS PENDING→MATCHING(attemp
 Worker-B reads R (v1=PENDING), selects Res, issues CAS PENDING→MATCHING(attemptB)
 ── BARRIER: both CAS commands are queued in the FSM log before either is applied ──
 FSM applies Worker-A's CAS first  →  R: MATCHING(attemptA), v2
-FSM applies Worker-B's CAS        →  version mismatch; CAS rejected; returns CONFLICT
-Worker-B receives CONFLICT_CLOSED; records closure for attemptB
-Worker-A receives SUCCESS; proceeds to TryClaim(Res, attemptA)
+FSM applies Worker-B's CAS        →  version mismatch; CAS rejected; returns VERSION_CONFLICT
+Worker-B never acquired an intent; no TryClaim or resource closure is issued
+Worker-A receives OK; proceeds to TryClaim(Res, attemptA)
 TryClaim commits Res.activeClaim = attemptA, Res.status = ASSIGNED, v2
 Worker-A CAS R: MATCHING(v2,attemptA) → MATCHED; writes match.completed outbox event
 ```
@@ -61,7 +67,7 @@ Worker reads R, issues CAS PENDING→MATCHING(attemptA)  [operationId=op-1]
 FSM commits R: MATCHING(attemptA), v2  →  response is committed
 ── FAULT: network drops the response; Worker never sees the reply ──
 Worker treats missing reply as unknown outcome (I5)
-Worker retries with same operationId=op-1  →  FSM returns cached deduplicated result: SUCCESS
+Worker retries with same operationId=op-1  →  FSM returns cached deduplicated result: OK
 Worker proceeds with confirmed attempt
 Worker TryClaim(Res, attemptA); Res: ASSIGNED, v2
 Worker CAS R: MATCHING(v2,attemptA) → MATCHED
@@ -126,17 +132,18 @@ Worker-A CAS PENDING→MATCHING(attemptA)  →  R: MATCHING(attemptA), v2
 ── FAULT: Worker-A crashes immediately after the CAS commit ──
 R is stuck in MATCHING; Res is still AVAILABLE (TryClaim never ran)
 Reconciler observes MATCHING with no progress past threshold
-Reconciler issues CloseAttempt(Res, attemptA) with no active claim → CLOSED (no-op on resource)
-Reconciler CAS R: MATCHING(v2,attemptA) → WAITING (durable retry schedule recorded)
-New worker CAS R: WAITING(v3) → MATCHING(attemptB), v4
+Reconciler CAS R: MATCHING(v2,attemptA) → RETRYING(v3); confirmation is fenced
+Reconciler issues CloseAttempt(Res, attemptA) → OK; closure commits; Res stays AVAILABLE v1
+Reconciler CAS R: RETRYING(v3,attemptA) → WAITING(v4); retry schedule and outbox committed
+New worker CAS R: WAITING(v4) → MATCHING(attemptB), v5
 TryClaim(Res, attemptB) → ASSIGNED
-CAS R: MATCHING(v4,attemptB) → MATCHED, v5
+CAS R: MATCHING(v5,attemptB) → MATCHED, v6
 ```
 
 ### Expected final state
 | Entity  | Status  | activeClaim | version |
 |---------|---------|-------------|---------|
-| R       | MATCHED | attemptB    | 5       |
+| R       | MATCHED | attemptB    | 6       |
 | Res     | ASSIGNED| attemptB    | 2       |
 
 ### Invariant protected
@@ -158,7 +165,7 @@ CAS R: MATCHING(v4,attemptB) → MATCHED, v5
 ```
 Worker-A CAS PENDING→MATCHING(attemptA)  →  R: MATCHING(attemptA), v2
 ── BARRIER: cancellation arrives before TryClaim is issued ──
-Dispatcher CAS R: MATCHING(v2,attemptA) → CANCELLING (retains intent, disposition=CANCEL)
+Dispatcher CAS R: MATCHING(v2,attemptA) → CANCELLING(v3) (retains intent, disposition=AVAILABLE)
 Reconciler sees CANCELLING; issues CloseAttempt(Res, attemptA) → closure recorded (no claim to release; Res remains v1)
 Delayed Worker-A issues TryClaim(Res, attemptA)
 FSM: checks the committed closure for attemptA → returns CLOSED
@@ -190,7 +197,7 @@ Reconciler CAS R: CANCELLING → CANCELLED
 ### Interleaving
 ```
 ── Attempt is live; Res is already ASSIGNED ──
-Dispatcher CAS R: MATCHING(v2,attemptA) → CANCELLING (retains intent+claim, disposition=CANCEL)
+Dispatcher CAS R: MATCHING(v2,attemptA) → CANCELLING(v3) (retains intent+claim, disposition=AVAILABLE)
 Reconciler/helper issues CloseAttempt(Res, attemptA)
 FSM: activeClaim == attemptA → release claim; Res: AVAILABLE, v3; closure recorded
 CAS R: CANCELLING → CANCELLED; writes request.cancelled outbox event
@@ -219,18 +226,19 @@ CAS R: CANCELLING → CANCELLED; writes request.cancelled outbox event
 
 ### Interleaving
 ```
-Worker-A issues CloseAttempt(Res, attemptA) → closure recorded (no activeClaim; Res remains v1)
+Worker-A CAS R: MATCHING(v2,attemptA) → RETRYING(v3); confirmation is fenced
+Worker-A issues CloseAttempt(Res, attemptA) → OK; closure recorded (no activeClaim; Res remains v1)
 ── FAULT: Worker-A's TryClaim from a delayed/stale execution arrives ──
 Delayed Worker-A issues TryClaim(Res, attemptA)
 FSM: checks closure table for attemptA → CLOSED; returns CLOSED; no claim written
 Res remains AVAILABLE (no orphan assignment)
-Reconciler CAS R: MATCHING(v2,attemptA) → WAITING; schedules retry
+Reconciler CAS R: RETRYING(v3,attemptA) → WAITING(v4); retry outbox committed
 ```
 
 ### Expected final state
 | Entity  | Status  | activeClaim | version |
 |---------|---------|-------------|---------|
-| R       | WAITING | —           | 3       |
+| R       | WAITING | —           | 4       |
 | Res     | AVAILABLE | —         | 1       |
 
 ### Invariant protected
@@ -247,6 +255,7 @@ Reconciler CAS R: MATCHING(v2,attemptA) → WAITING; schedules retry
 |---------|-----------|-------------|---------|
 | R       | MATCHING  | attemptA    | 2       |
 | Res     | ASSIGNED  | attemptA    | 2       |
+| Res2    | AVAILABLE | —           | 1       |
 
 ### Interleaving
 ```
@@ -254,18 +263,19 @@ Worker-A observes a transient error; decides to retarget to attemptB
 Worker-A CAS R: MATCHING(v2,attemptA) → RETRYING   [starts retarget]
 ── RACE: Worker-B (slow confirmation of attemptA) also runs ──
 Worker-B issues CAS R: MATCHING(v2,attemptA) → MATCHED   [confirmation attempt]
-FSM: R is RETRYING(v3), not MATCHING(v2); version CAS fails → CONFLICT
+FSM: R is RETRYING(v3), not MATCHING(v2); version CAS fails → VERSION_CONFLICT
 Worker-B's confirmation is rejected safely; RETRYING wins
 Worker-A issues CloseAttempt(Res, attemptA) → Res: AVAILABLE, v3; closure recorded
-Worker-A CAS R: RETRYING(v3) → MATCHING(attemptB,Res2), v4
+Worker-A CAS R: RETRYING(v3,attemptA) → WAITING(v4); retry outbox committed
+Worker-A CAS R: WAITING(v4) → MATCHING(attemptB,Res2), v5
 TryClaim(Res2, attemptB) → ASSIGNED
-CAS R: MATCHING(v4,attemptB) → MATCHED
+CAS R: MATCHING(v5,attemptB) → MATCHED(v6)
 ```
 
 ### Expected final state
 | Entity   | Status   | activeClaim | version |
 |----------|----------|-------------|---------|
-| R        | MATCHED  | attemptB    | 5       |
+| R        | MATCHED  | attemptB    | 6       |
 | Res      | AVAILABLE| —           | 3       |
 | Res2     | ASSIGNED | attemptB    | 2       |
 
@@ -289,9 +299,10 @@ CAS R: MATCHING(v4,attemptB) → MATCHED
 Dispatcher CAS R: MATCHING(v2,attemptA) → CANCELLING, v3
 CloseAttempt(Res, attemptA) → Res: AVAILABLE, v3; closure recorded
 CAS R: CANCELLING(v3) → CANCELLED, v4; request.cancelled event committed
-── REPLAY: stale outbox / message broker redelivers the original TryClaim SUCCESS result ──
-Consumer re-reads R  →  R is CANCELLED (terminal); result is harmless/obsolete
-Consumer does NOT issue new TryClaim or confirmation
+── REPLAY: delayed worker retries TryClaim with its original operationId and payload ──
+FSM returns the historical SUCCESS without recreating a claim; Res remains AVAILABLE v3
+Worker re-reads R  →  R is CANCELLED (terminal); historical result is not ownership
+Worker does NOT issue a fresh TryClaim or confirmation; obsolete delivery is acknowledged
 Res remains AVAILABLE; no spurious MATCHED state
 ```
 
@@ -353,7 +364,7 @@ Dispatcher calls CANCEL on R  →  CAS R: MATCHED(v3) → CANCELLING(v4)
 CloseAttempt(Res, attemptA) → Res: AVAILABLE, v3
 CAS R: CANCELLING(v4) → CANCELLED(v5)
 ── Repeated CANCEL call (idempotency test) ──
-Dispatcher calls CANCEL again on R  →  R is already CANCELLED (terminal); returns 409/idempotent
+Dispatcher calls CANCEL again on R  →  R is already CANCELLED (terminal); returns the existing result (200), no write
 ── Repeated FULFILL call ──
 Dispatcher calls FULFILL on CANCELLED R  →  409; terminal state; no-op
 ```
@@ -365,7 +376,7 @@ Dispatcher calls FULFILL on CANCELLED R  →  409; terminal state; no-op
 | Res     | AVAILABLE | —           | 3       |
 
 ### Invariant protected
-**§19 / I3:** Repeated cancel or fulfill on a terminal request returns a deterministic error (409) without altering state or releasing resources a second time.
+**§19 / I3:** Repeating cancellation returns the existing cancelled result without a write or a second release. An incompatible fulfillment of that cancelled request returns 409. Repeated fulfillment of a fulfilled request follows the same idempotent rule.
 
 ---
 
@@ -437,11 +448,12 @@ Confirmed state (R=MATCHING, Res=ASSIGNED) fully present
 **Source:** §27 "coordinator restart with one shard unavailable"
 
 ### Initial state
-| Entity      | Status    | Notes                       |
-|-------------|-----------|-----------------------------|
-| Coordinator | Running   | Ring v5, 3 shards healthy   |
-| Shard 1     | UNAVAILABLE | Lost quorum                |
-| R           | PENDING   | routed to Shard 0           |
+| Entity      | Status      | activeClaim | version | Notes |
+|-------------|-------------|-------------|---------|-------|
+| Coordinator | Running     | —           | —       | Fixed ring v1 |
+| Shard 1     | UNAVAILABLE | —           | —       | Lost quorum |
+| R           | PENDING     | —           | 1       | Routed to Shard 0 |
+| Res         | AVAILABLE   | —           | 1       | Known eligible resource on Shard 0 |
 
 ### Interleaving
 ```
@@ -450,16 +462,20 @@ Coordinator reloads ring config (same ring version + checksum; §10/§17)
 Coordinator discovers Shard 1 is still unavailable
 Coordinator routes reads/writes for Shard 0 keys normally
 Shard 1 operations return explicit error; not empty/success
-Worker reads R (Shard 0): PENDING; issues CAS → MATCHING; proceeds normally
+Worker resumes the known candidate on Shard 0; no incomplete scan is treated as NO_CANDIDATE
+CAS R: PENDING(v1) → MATCHING(attemptA), v2
+TryClaim(Res,attemptA) on Shard 0 → ASSIGNED v2
+CAS R: MATCHING(v2,attemptA) → MATCHED(v3)
 Shard 1 requests remain queued; no silent data loss
 ```
 
 ### Expected final state
-| Entity      | Status  | Notes                              |
-|-------------|---------|------------------------------------|
-| Coordinator | Running | Same ring checksum after restart   |
-| R (Shard 0) | MATCHED | Normal completion on available shard |
-| Shard 1 ops | ERROR   | Explicit failure; never empty result |
+| Entity      | Status   | activeClaim | version | Notes |
+|-------------|----------|-------------|---------|-------|
+| Coordinator | Running  | —           | —       | Same ring checksum after restart |
+| R           | MATCHED  | attemptA    | 3       | Normal completion on Shard 0 |
+| Res         | ASSIGNED | attemptA    | 2       | Reciprocal resource claim on Shard 0 |
+| Shard 1 ops | ERROR    | —           | —       | Explicit failure; never empty result |
 
 ### Invariant protected
 **I7 / §10:** A partial shard scan is never an empty result. After coordinator restart the ring checksum is identical; no accidental re-bootstrap or lost routing state occurs.
@@ -473,8 +489,8 @@ Shard 1 requests remain queued; no silent data loss
 ### Initial state
 | Entity  | Status    | activeClaim | version |
 |---------|-----------|-------------|---------|
-| R       | RETRYING  | —           | 3       |
-| Res     | AVAILABLE | —           | 2       |
+| R       | RETRYING  | attemptA    | 3       |
+| Res     | ASSIGNED  | attemptA    | 2       |
 
 ### Interleaving
 ```
@@ -485,15 +501,19 @@ R remains RETRYING in FSM (intent preserved, §18)
 Outbox relay detects pending row; backs off with bounded exponential delay
 Broker recovers; relay republishes with confirms and mandatory
 Relay marks event published only after routed confirm received
-Matcher consumer picks up retry event; re-reads R; resumes RETRYING→MATCHING
-TryClaim(Res, attemptB); CAS R→MATCHED
+Matcher consumer picks up retry event; re-reads R=RETRYING with attemptA preserved
+CloseAttempt(Res,attemptA) → OK; closure committed; Res AVAILABLE v3
+CAS R: RETRYING(v3,attemptA) → WAITING(v4); retry outbox committed
+CAS R: WAITING(v4) → MATCHING(attemptB), v5
+TryClaim(Res,attemptB) → ASSIGNED v4
+CAS R: MATCHING(v5,attemptB) → MATCHED(v6)
 ```
 
 ### Expected final state
 | Entity  | Status  | activeClaim | version |
 |---------|---------|-------------|---------|
-| R       | MATCHED | attemptB    | 5       |
-| Res     | ASSIGNED| attemptB    | 3       |
+| R       | MATCHED | attemptB    | 6       |
+| Res     | ASSIGNED| attemptB    | 4       |
 
 ### Invariant protected
 **I6 / §18:** Broker outage during retry scheduling must not result in a lost intent. The outbox row is not marked published before a routed confirm. The relay ensures at-least-once delivery after recovery.
@@ -505,10 +525,11 @@ TryClaim(Res, attemptB); CAS R→MATCHED
 **Source:** §27 "poison messages"
 
 ### Initial state
-| Entity           | Status   | Notes                          |
-|------------------|----------|--------------------------------|
-| matching.requests | —       | Queue with one malformed message |
-| R                | PENDING  | Separate valid request          |
+| Entity            | Status    | activeClaim | version | Notes |
+|-------------------|-----------|-------------|---------|-------|
+| matching.requests | —         | —           | —       | Queue with one malformed message |
+| R                 | PENDING   | —           | 1       | Separate valid request |
+| Res               | AVAILABLE | —           | 1       | Eligible resource for valid R |
 
 ### Interleaving
 ```
@@ -516,15 +537,18 @@ Matcher consumer receives malformed message (unparseable / missing required fiel
 Consumer cannot parse and nacks with requeue=false; it never acks or tight-loop requeues
 RabbitMQ routes the rejected delivery to matching.dead through the configured DLX (§20/21)
 Alert triggered on dead-letter queue depth
-Valid R message processed normally on matching.requests; R → MATCHED
+Valid R message processed normally on matching.requests
+CAS R: PENDING(v1) → MATCHING(attemptA), v2; TryClaim(Res,attemptA) → ASSIGNED v2
+CAS R: MATCHING(v2,attemptA) → MATCHED(v3)
 Dead-lettered message is never silently dropped; retained for investigation
 ```
 
 ### Expected final state
-| Entity              | Status    | Notes                                   |
-|---------------------|-----------|-----------------------------------------|
-| R (valid)           | MATCHED   | Normal processing unaffected            |
-| malformed message   | DLX'ed    | Landed in matching.dead; not lost       |
+| Entity              | Status   | activeClaim | version | Notes |
+|---------------------|----------|-------------|---------|-------|
+| R                   | MATCHED  | attemptA    | 3       | Valid request processing unaffected |
+| Res                 | ASSIGNED | attemptA    | 2       | Reciprocal claim for R |
+| malformed message   | DLX'ed   | —           | —       | Landed in matching.dead; not lost |
 
 ### Invariant protected
 **§21 / I6:** Malformed messages must not block healthy messages or cause tight nack-requeue loops. Dead-lettering is the correct disposal path; the DLQ retains the message for forensics.
@@ -536,12 +560,13 @@ Dead-lettered message is never silently dropped; retained for investigation
 **Source:** §27 "a partial candidate scan"
 
 ### Initial state
-| Entity  | Status    | Notes                              |
-|---------|-----------|------------------------------------|
-| R       | PENDING   | type=MEDICAL, radius=50 km         |
-| Shard 1 | UNAVAILABLE | Holds some candidate resources   |
-| Shard 0 | AVAILABLE | Holds other candidate resources   |
-| Shard 2 | AVAILABLE | Holds other candidate resources   |
+| Entity  | Status      | activeClaim | version | Notes |
+|---------|-------------|-------------|---------|-------|
+| R       | PENDING     | —           | 1       | type=MEDICINE, radius=50 km |
+| Res     | AVAILABLE   | —           | 1       | Eligible candidate on Shard 1 |
+| Shard 1 | UNAVAILABLE | —           | —       | Holds some candidate resources |
+| Shard 0 | AVAILABLE   | —           | —       | Holds other candidate resources |
+| Shard 2 | AVAILABLE   | —           | —       | Holds other candidate resources |
 
 ### Interleaving
 ```
@@ -551,15 +576,17 @@ Shard 1 scan times out / returns error
 Matcher records scan as incomplete; does not issue NO_CANDIDATE
 Matcher does NOT CAS R → WAITING with reason NO_CANDIDATE
 Matcher returns partial-scan indicator to scheduler
-R remains PENDING; retry is scheduled after Shard 1 recovers
+R remains PENDING v1; no durable handoff has committed
+Consumer keeps the delivery unacked and backs off/reconnects until Shard 1 recovers
 Shard 1 recovers; full scan completes; eligible candidates found
 Matcher proceeds: CAS PENDING→MATCHING; TryClaim; CAS→MATCHED
 ```
 
 ### Expected final state
-| Entity  | Status  | activeClaim | Notes                         |
-|---------|---------|-------------|-------------------------------|
-| R       | MATCHED | attemptA    | Only after full scan completes |
+| Entity  | Status   | activeClaim | version | Notes |
+|---------|----------|-------------|---------|-------|
+| R       | MATCHED  | attemptA    | 3       | Only after full scan completes |
+| Res     | ASSIGNED | attemptA    | 2       | Reciprocal claim for R |
 
 ### Invariant protected
 **I7 / §17:** A failed or partial shard scan is never reported as an empty result. NO_CANDIDATE is only issued after a complete authoritative scan of all shards returns zero eligible resources.
