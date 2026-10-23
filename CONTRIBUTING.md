@@ -43,12 +43,18 @@ those pins; run it after any pin change.
 | --- | --- | --- |
 | Go | `GO_VERSION` | tarball from go.dev/dl into `~/.local/go`; put `~/.local/go/bin` and `~/go/bin` on `PATH`. `go.mod`'s `toolchain` line matches the pin. |
 | golangci-lint | `GOLANGCI_LINT_VERSION` | release binary from GitHub into `~/.local/bin` (not `go install`, as its maintainers recommend) |
-| kind | `KIND_VERSION` | release binary into `~/.local/bin` |
+| kind | `KIND_VERSION` | release binary into `~/.local/bin`. Its node image is pinned as `KIND_NODE_IMAGE` (tag and digest from that kind release's notes); `make cluster-up` pulls it. |
 | kubectl | `KUBECTL_VERSION` | release binary from dl.k8s.io into `~/.local/bin` |
 | helm | `HELM_VERSION` | Helm 3 tarball from get.helm.sh into `~/.local/bin` |
 | oapi-codegen | `OAPI_CODEGEN_VERSION` | nothing to install: it is a `tool` in `go.mod`, run as `go tool oapi-codegen` |
+| Docker | not pinned | Docker Engine (Linux) or Docker Desktop with WSL2 integration; your user must reach the daemon without `sudo`. |
 
 Check each download against its published SHA-256 before installing it.
+
+`make doctor` also checks that the Docker daemon answers, that enough RAM is available
+(`MemAvailable`: 8 GiB for the full five-node profile, 4 GiB with `PROFILE=lean`; override with
+`MIN_AVAILABLE_RAM_GIB=<n>`), and that the cluster's host ports (6443, 8080, 8443 on 127.0.0.1)
+are free or already held by the `reliefgrid` cluster.
 
 ## Make targets
 
@@ -56,8 +62,10 @@ Check each download against its published SHA-256 before installing it.
 | --- | --- |
 | `make check` | gofmt, go vet, golangci-lint, `go test -race ./...`. Must pass before every push. |
 | `make gen` | Regenerates code from `contracts/`. Must leave no diff. |
-| `make doctor` | Checks tool versions against `tools.mk`. |
-| `make dev` | Lean development stack (arrives with the kind cluster goal). |
+| `make doctor` | Checks tool versions against `tools.mk`, Docker, available RAM and host ports. |
+| `make cluster-up` | Creates the `reliefgrid` kind cluster from `deploy/kind/cluster.yaml` (1 control plane, 3 `role=data` workers, 1 `role=infra` worker tainted `role=infra:NoSchedule`) and switches kubectl to `kind-reliefgrid`. No-op if it exists. |
+| `make cluster-down` | Deletes the `reliefgrid` kind cluster. No-op if it is absent. |
+| `make dev` | Development stack. For now it only runs `make cluster-up`. |
 
 ## One goal, one branch, one PR
 
