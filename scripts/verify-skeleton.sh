@@ -88,13 +88,7 @@ for t in check test dev doctor gen; do
 	check "make: target '$t' exists" make -n "$t"
 done
 check "make gen: passes (no-op until contracts land)" make gen
-if out="$(make dev 2>&1)"; then
-	fail "make dev: exits non-zero as a stub" "it exited 0"
-elif grep -q 'not yet: S0.2' <<<"$out"; then
-	pass "make dev: exits non-zero with 'not yet: S0.2'"
-else
-	fail "make dev: exits non-zero with 'not yet: S0.2'" "output: $out"
-fi
+# make dev was a stub here; S0.2 (scripts/verify-kind.sh) checks what it does now.
 
 # make doctor against stub tools: matching pins pass, one mismatch fails.
 stub() { # stub <dir> <name> <output>
