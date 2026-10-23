@@ -197,7 +197,7 @@ type Closure struct {
 
 // OutboxEvent is written in the same transaction as the state change it
 // describes. The proposer supplies EventID and payload; the FSM fills
-// EntityKey, EntityVersion and CreatedAt.
+// EntityKey, EntityVersion and CreatedAt, so a proposer leaves them empty.
 type OutboxEvent struct {
 	EventID       string          `json:"eventId"`
 	EventType     string          `json:"eventType"`
@@ -205,9 +205,9 @@ type OutboxEvent struct {
 	Exchange      string          `json:"exchange"`
 	RoutingKey    string          `json:"routingKey"`
 	Payload       json.RawMessage `json:"payload"`
-	EntityKey     string          `json:"entityKey"`
-	EntityVersion uint64          `json:"entityVersion"`
-	CreatedAt     int64           `json:"createdAt"`
+	EntityKey     string          `json:"entityKey,omitempty"`     // server-filled
+	EntityVersion uint64          `json:"entityVersion,omitempty"` // server-filled
+	CreatedAt     int64           `json:"createdAt,omitempty"`     // server-filled
 	Published     bool            `json:"published"`
 }
 

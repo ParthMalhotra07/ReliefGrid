@@ -23,7 +23,7 @@ endif
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen dev doctor cluster-up cluster-down
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -46,8 +46,14 @@ lint:
 test: ## go test -race ./...
 	go test -race ./...
 
-gen: ## Regenerate code from contracts/ (no-op until contracts land)
-	@echo "gen: no contracts yet, nothing to generate"
+gen: gen-public gen-internal ## Regenerate code from contracts/ (must leave no diff)
+
+gen-public: ## contracts/public.yaml -> internal/api/gen (lands with A0.1)
+	@echo "gen-public: no contracts/public.yaml yet"
+
+gen-internal: ## contracts/internal.yaml -> internal/internalapi
+	go tool oapi-codegen -generate types -package internalapi \
+		-o internal/internalapi/types.gen.go contracts/internal.yaml
 
 dev: cluster-up ## Deploy the development stack (for now: just the kind cluster)
 
