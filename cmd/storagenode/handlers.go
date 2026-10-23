@@ -1,0 +1,472 @@
+package main
+
+import (
+	"context"
+	"crypto/subtle"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/hashicorp/raft"
+
+	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
+)
+
+// Mutations decode the body strictly (unknown fields are 400), check
+// ringVersion (409 RING_VERSION_MISMATCH, not proposed) and key ownership
+// (400 INVALID, not proposed), build the store command with the key taken
+// from the path, Apply it under the request timeout and write the result
+// with writeResult or the failure with writeFailure.
+//
+// Reads parse ?consistency (strong default, linearizable served as strong
+// until S4.1, stale opt-in), check key ownership (a foreign key is 400,
+// never a 404 "absent") and run through node.Read.
+
+const maxBodyBytes = 1 << 20
+
+func (s *server) putData(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	inm, im := r.Header.Get("If-None-Match"), r.Header.Get("If-Match")
+	if (inm == "") == (im == "") {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "exactly one of If-None-Match: * or If-Match is required")
+		return
+	}
+	if inm != "" && inm != "*" {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "If-None-Match must be *")
+		return
+	}
+	var expected uint64
+	if im != "" {
+		v, err := internalapi.ParseETag(im)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, internalapi.INVALID, "If-Match: "+err.Error())
+			return
+		}
+		expected = v
+	}
+	var body internalapi.PutDataBody
+	if !s.decode(w, r, &body) || !s.checkRing(w, body.RingVersion) || !s.ownsKey(w, key) {
+		return
+	}
+	m := store.Meta{OperationID: body.OperationId, At: body.At}
+	if inm == "*" {
+		s.apply(w, r, store.CreateEntity{Meta: m, Key: key, Request: body.Request, Resource: body.Resource,
+			Value: deref(body.Value), Outbox: deref(body.Outbox)}, true)
+		return
+	}
+	if body.Request != nil || body.Resource != nil || body.Outbox != nil {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "If-Match writes a generic value only; domain records change through their routes")
+		return
+	}
+	s.apply(w, r, store.CompareAndSet{Meta: m, Key: key, ExpectedVersion: expected, Value: deref(body.Value)}, true)
+}
+
+func (s *server) deleteData(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	expected, err := internalapi.ParseETag(r.Header.Get("If-Match"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "If-Match is required: "+err.Error())
+		return
+	}
+	q := r.URL.Query()
+	opID := q.Get("operationId")
+	at, aerr := strconv.ParseInt(q.Get("at"), 10, 64)
+	rv, rerr := strconv.ParseUint(q.Get("ringVersion"), 10, 64)
+	if opID == "" || aerr != nil || rerr != nil {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "operationId, at and ringVersion query parameters are required")
+		return
+	}
+	if !s.checkRing(w, rv) || !s.ownsKey(w, key) {
+		return
+	}
+	s.apply(w, r, store.CompareAndSet{Meta: store.Meta{OperationID: opID, At: at}, Key: key, ExpectedVersion: expected, Delete: true}, true)
+}
+
+func (s *server) transitionRequest(w http.ResponseWriter, r *http.Request) {
+	key := store.RequestKey(r.PathValue("id"))
+	var b internalapi.TransitionRequestBody
+	if !s.decode(w, r, &b) || !s.checkRing(w, b.RingVersion) || !s.ownsKey(w, key) {
+		return
+	}
+	s.apply(w, r, store.TransitionRequest{
+		Meta: store.Meta{OperationID: b.OperationId, At: b.At}, Key: key,
+		ExpectedVersion: b.ExpectedVersion, ExpectedStatus: b.ExpectedStatus, ExpectedAttemptID: b.ExpectedAttemptId,
+		To: b.To, Attempt: b.Attempt, Disposition: deref(b.Disposition), NextAttemptAt: deref(b.NextAttemptAt),
+		LastError: deref(b.LastError), Outbox: deref(b.Outbox),
+	}, false)
+}
+
+func (s *server) retryWorkflow(w http.ResponseWriter, r *http.Request) {
+	key := store.RequestKey(r.PathValue("id"))
+	var b internalapi.RetryWorkflowBody
+	if !s.decode(w, r, &b) || !s.checkRing(w, b.RingVersion) || !s.ownsKey(w, key) {
+		return
+	}
+	s.apply(w, r, store.RetryWorkflow{
+		Meta: store.Meta{OperationID: b.OperationId, At: b.At}, Key: key, ExpectedVersion: b.ExpectedVersion,
+		NextAttemptAt: b.NextAttemptAt, LastError: deref(b.LastError), Outbox: deref(b.Outbox),
+	}, false)
+}
+
+func (s *server) transitionResource(w http.ResponseWriter, r *http.Request) {
+	key := store.ResourceKey(r.PathValue("id"))
+	var b internalapi.TransitionResourceBody
+	if !s.decode(w, r, &b) || !s.checkRing(w, b.RingVersion) || !s.ownsKey(w, key) {
+		return
+	}
+	s.apply(w, r, store.TransitionResource{
+		Meta: store.Meta{OperationID: b.OperationId, At: b.At}, Key: key, ExpectedVersion: b.ExpectedVersion,
+		Status: deref(b.Status), Availability: b.Availability, Outbox: deref(b.Outbox),
+	}, false)
+}
+
+func (s *server) tryClaim(w http.ResponseWriter, r *http.Request) {
+	key := store.ResourceKey(r.PathValue("id"))
+	var b internalapi.TryClaimBody
+	if !s.decode(w, r, &b) || !s.checkRing(w, b.RingVersion) || !s.ownsKey(w, key) {
+		return
+	}
+	s.apply(w, r, store.TryClaim{
+		Meta: store.Meta{OperationID: b.OperationId, At: b.At}, ResourceKey: key,
+		RequestID: b.RequestId, Attempt: b.Attempt, Type: b.Type,
+	}, false)
+}
+
+func (s *server) closeAttempt(w http.ResponseWriter, r *http.Request) {
+	key := store.ResourceKey(r.PathValue("id"))
+	var b internalapi.CloseAttemptBody
+	if !s.decode(w, r, &b) || !s.checkRing(w, b.RingVersion) || !s.ownsKey(w, key) {
+		return
+	}
+	s.apply(w, r, store.CloseAttempt{
+		Meta: store.Meta{OperationID: b.OperationId, At: b.At}, ResourceKey: key, RequestID: b.RequestId,
+		Attempt: b.Attempt, Disposition: b.Disposition, Reason: b.Reason,
+	}, false)
+}
+
+func (s *server) markOutboxPublished(w http.ResponseWriter, r *http.Request) {
+	if !s.ownsShard(w, r.URL.Query().Get("shard")) {
+		return
+	}
+	var b internalapi.MarkPublishedBody
+	if !s.decode(w, r, &b) || !s.checkRing(w, b.RingVersion) {
+		return
+	}
+	if len(b.EventIds) == 0 || len(b.EventIds) > 100 {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, fmt.Sprintf("eventIds must hold 1 to 100 events, have %d", len(b.EventIds)))
+		return
+	}
+	s.apply(w, r, store.MarkOutboxPublished{Meta: store.Meta{OperationID: b.OperationId, At: b.At}, Shard: s.shard, EventIDs: b.EventIds}, false)
+}
+
+func (s *server) apply(w http.ResponseWriter, r *http.Request, cmd any, etag bool) {
+	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
+	defer cancel()
+	res, err := s.node.Apply(ctx, cmd)
+	if err != nil {
+		s.writeFailure(w, err)
+		return
+	}
+	s.writeResult(w, res, etag)
+}
+
+func (s *server) getData(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	mode, ok := s.readMode(w, r)
+	if !ok || !s.ownsKey(w, key) {
+		return
+	}
+	var rec store.Record
+	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+		rec, err = rd.ReadRecord(ctx, key)
+		return err
+	})
+	if !ok {
+		return
+	}
+	w.Header().Set("ETag", internalapi.FormatETag(rec.Version))
+	writeJSON(w, http.StatusOK, internalapi.RecordResponse{Record: rec, RingVersion: s.ring.Version(), Read: info})
+}
+
+func (s *server) getClosure(w http.ResponseWriter, r *http.Request) {
+	key, attemptID := store.ResourceKey(r.PathValue("id")), r.PathValue("attemptId")
+	mode, ok := s.readMode(w, r)
+	if !ok || !s.ownsKey(w, key) {
+		return
+	}
+	var c store.Closure
+	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+		c, err = rd.ReadClosure(ctx, key, attemptID)
+		return err
+	})
+	if ok {
+		writeJSON(w, http.StatusOK, internalapi.ClosureResponse{Closure: c, RingVersion: s.ring.Version(), Read: info})
+	}
+}
+
+func (s *server) getOperation(w http.ResponseWriter, r *http.Request) {
+	opID, key := r.PathValue("operationId"), r.URL.Query().Get("key")
+	mode, ok := s.readMode(w, r)
+	if !ok {
+		return
+	}
+	if key == "" {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "the key query parameter (owning entity key) is required")
+		return
+	}
+	if !s.ownsKey(w, key) {
+		return
+	}
+	var res store.Result
+	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+		res, err = rd.Operation(ctx, opID)
+		return err
+	})
+	if ok {
+		res.Shard = s.shard
+		writeJSON(w, http.StatusOK, internalapi.OperationResponse{Result: res, RingVersion: s.ring.Version(), Read: info})
+	}
+}
+
+func (s *server) pendingOutbox(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	if !s.ownsShard(w, q.Get("shard")) {
+		return
+	}
+	limit, err := strconv.Atoi(q.Get("limit"))
+	if err != nil || limit < 1 || limit > 100 {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "limit must be 1 to 100")
+		return
+	}
+	var events []store.OutboxEvent
+	_, ok := s.read(w, r, raftstore.ReadStrong, func(ctx context.Context, rd raftstore.Reader) (err error) {
+		events, err = rd.PendingOutbox(ctx, limit)
+		return err
+	})
+	if ok {
+		writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: s.shard, Events: nonNil(events), RingVersion: s.ring.Version()})
+	}
+}
+
+// scan reads this shard only; the coordinator merges shards (S1.4).
+func (s *server) scan(w http.ResponseWriter, r *http.Request) {
+	mode, ok := s.readMode(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	sq := store.ScanQuery{Kind: store.Kind(q.Get("kind")), Type: store.ResourceType(q.Get("type")),
+		Statuses: q["statuses"], GeohashPrefixes: q["geohashPrefixes"]}
+	switch sq.Kind {
+	case store.KindRequest, store.KindResource, store.KindKV:
+	default:
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "kind must be request, resource or kv")
+		return
+	}
+	if l := q.Get("limit"); l != "" {
+		n, err := strconv.Atoi(l)
+		if err != nil || n < 0 {
+			writeError(w, http.StatusBadRequest, internalapi.INVALID, "limit must be a non-negative integer")
+			return
+		}
+		sq.Limit = n
+	}
+	var recs []store.Record
+	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+		recs, err = rd.Scan(ctx, sq)
+		return err
+	})
+	if ok {
+		writeJSON(w, http.StatusOK, internalapi.ScanResponse{
+			Records: nonNil(recs), Positions: []store.ShardPosition{{Shard: s.shard, AppliedIndex: info.AppliedIndex}},
+			RingVersion: s.ring.Version(), Consistency: internalapi.ScanResponseConsistency(info.Consistency),
+		})
+	}
+}
+
+// read runs fn through the node under the request timeout and writes any
+// failure; ok reports whether the caller should write the response.
+func (s *server) read(w http.ResponseWriter, r *http.Request, mode raftstore.ReadMode, fn func(context.Context, raftstore.Reader) error) (internalapi.ReadInfo, bool) {
+	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
+	defer cancel()
+	info, err := s.node.Read(ctx, mode, fn)
+	if err != nil {
+		s.writeReadFailure(w, err)
+		return internalapi.ReadInfo{}, false
+	}
+	return internalapi.ReadInfo{
+		Consistency: internalapi.ReadInfoConsistency(info.Consistency), ServedBy: info.ServedBy,
+		AppliedIndex: info.AppliedIndex, StalePossible: info.StalePossible,
+	}, true
+}
+
+// readMode parses ?consistency. linearizable is served as strong until the
+// S4.1 read fence lands; the response reports "strong".
+func (s *server) readMode(w http.ResponseWriter, r *http.Request) (raftstore.ReadMode, bool) {
+	switch c := r.URL.Query().Get("consistency"); c {
+	case "", "strong", "linearizable":
+		return raftstore.ReadStrong, true
+	case "stale":
+		return raftstore.ReadStale, true
+	default:
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, fmt.Sprintf("consistency %q: want strong, linearizable or stale", c))
+		return 0, false
+	}
+}
+
+// decode reads a JSON body strictly: unknown fields and trailing data are 400.
+func (s *server) decode(w http.ResponseWriter, r *http.Request, v any) bool {
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	dec.DisallowUnknownFields()
+	err := dec.Decode(v)
+	if err == nil {
+		if _, terr := dec.Token(); !errors.Is(terr, io.EOF) {
+			err = errors.New("trailing data after the JSON body")
+		}
+	}
+	if err != nil {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "body: "+err.Error())
+		return false
+	}
+	return true
+}
+
+// checkRing refuses a caller whose ringVersion differs; nothing is proposed.
+func (s *server) checkRing(w http.ResponseWriter, v uint64) bool {
+	if have := s.ring.Version(); v != have {
+		writeJSON(w, http.StatusConflict, internalapi.Error{
+			Code: internalapi.RINGVERSIONMISMATCH, Message: fmt.Sprintf("caller ringVersion %d, node has %d", v, have),
+			Retryable: true, RingVersion: &have,
+		})
+		return false
+	}
+	return true
+}
+
+// ownsKey refuses a key another shard owns: a mutation is never proposed
+// and a read never reports such a key as absent.
+func (s *server) ownsKey(w http.ResponseWriter, key string) bool {
+	owner, err := s.ring.Owner(key)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, err.Error())
+		return false
+	}
+	if owner != s.shard {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID,
+			fmt.Sprintf("key %q is owned by shard %d; this node serves shard %d", key, owner, s.shard))
+		return false
+	}
+	return true
+}
+
+func (s *server) ownsShard(w http.ResponseWriter, raw string) bool {
+	n, err := strconv.Atoi(raw)
+	if err != nil || n != s.shard {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, fmt.Sprintf("shard %q: this node serves shard %d", raw, s.shard))
+		return false
+	}
+	return true
+}
+
+func (s *server) status(w http.ResponseWriter, r *http.Request) {
+	st := s.node.Status()
+	writeJSON(w, http.StatusOK, statusResponse{
+		PodName: st.PodName, Incarnation: st.Incarnation, GroupID: st.GroupID, Shard: st.Shard,
+		ServerID: string(st.ServerID), Address: string(st.Address), State: st.State, Term: st.Term,
+		LeaderID: string(st.LeaderID), LeaderAddr: string(st.LeaderAddr), CommitIndex: st.CommitIndex,
+		LastLogIndex: st.LastLogIndex, RaftAppliedIndex: st.RaftAppliedIndex, AppliedIndex: st.AppliedIndex,
+		HasState: st.HasState, CaughtUp: st.CaughtUp, RingVersion: s.ring.Version(),
+	})
+}
+
+// bootstrap is operator-only (v3.1 §11): bearer OPERATOR_TOKEN, and disabled
+// when no token is configured.
+func (s *server) bootstrap(w http.ResponseWriter, r *http.Request) {
+	if !s.operatorOnly(w, r) {
+		return
+	}
+	var body bootstrapRequest
+	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&body); err != nil {
+		writeMgmtError(w, http.StatusBadRequest, "body: "+err.Error())
+		return
+	}
+	if len(body.Servers) == 0 {
+		writeMgmtError(w, http.StatusBadRequest, "servers must list the group's voters")
+		return
+	}
+	servers := make([]raft.Server, 0, len(body.Servers))
+	for _, sv := range body.Servers {
+		if sv.ID == "" || sv.Address == "" {
+			writeMgmtError(w, http.StatusBadRequest, "every server needs an id and an address")
+			return
+		}
+		servers = append(servers, raft.Server{Suffrage: raft.Voter, ID: raft.ServerID(sv.ID), Address: raft.ServerAddress(sv.Address)})
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
+	defer cancel()
+	switch err := s.node.Bootstrap(ctx, servers); {
+	case errors.Is(err, raftstore.ErrHasState):
+		writeMgmtError(w, http.StatusConflict, "refused: "+s.podName+" already has Raft state; bootstrap only forms a new group")
+	case err != nil:
+		writeMgmtError(w, http.StatusInternalServerError, "bootstrap: "+err.Error())
+	default:
+		writeJSON(w, http.StatusOK, map[string]string{"bootstrapped": s.podName})
+	}
+}
+
+func (s *server) operatorOnly(w http.ResponseWriter, r *http.Request) bool {
+	if s.operatorToken == "" {
+		writeMgmtError(w, http.StatusForbidden, "disabled: no operator token is configured")
+		return false
+	}
+	scheme, token, ok := strings.Cut(r.Header.Get("Authorization"), " ")
+	if !ok || !strings.EqualFold(scheme, "Bearer") || subtle.ConstantTimeCompare([]byte(token), []byte(s.operatorToken)) != 1 {
+		w.Header().Set("WWW-Authenticate", `Bearer realm="storagenode"`)
+		writeMgmtError(w, http.StatusUnauthorized, "operator bearer token required")
+		return false
+	}
+	return true
+}
+
+func (s *server) healthz(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// readyz is data readiness: the FSM has completed every command up to the
+// commit index (never raft.AppliedIndex()).
+func (s *server) readyz(w http.ResponseWriter, r *http.Request) {
+	if st := s.node.Status(); !st.CaughtUp {
+		writeMgmtError(w, http.StatusServiceUnavailable, fmt.Sprintf("not caught up: fsm at %d, commit %d", st.AppliedIndex, st.CommitIndex))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
+}
+
+func writeMgmtError(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+func deref[T any](p *T) T {
+	var zero T
+	if p == nil {
+		return zero
+	}
+	return *p
+}
+
+func nonNil[T any](s []T) []T {
+	if s == nil {
+		return []T{}
+	}
+	return s
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }
