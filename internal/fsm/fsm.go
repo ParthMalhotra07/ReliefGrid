@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -72,32 +73,82 @@ var dumpOrder = []struct{ table, orderBy string }{
 // FSM is one shard's deterministic state machine on SQLite. Apply must be
 // called serially in log order; reads may run concurrently with it.
 type FSM struct {
-	db      *sql.DB
+	db      *sql.DB // the one write connection: schema, Apply, VacuumInto
+	rdb     *sql.DB // reads: a query_only pool on a file database, else db
 	applied atomic.Uint64
 }
+
+// readConns caps the read pool. WAL readers never block the writer or each
+// other, so a long scan cannot hold the connection Apply needs.
+const readConns = 4
 
 // Open creates the schema in a fresh database at dsn (for example
 // "file:shard0?mode=memory"). The FSM file is derived state (M3): Open
 // refuses a database that already has a schema, so callers always rebuild
 // it from a snapshot and the log instead of trusting an old file.
 func Open(ctx context.Context, dsn string) (*FSM, error) {
-	db, err := sql.Open("sqlite", dsn)
+	db, err := openDB(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("fsm: open %s: %w", dsn, err)
+		return nil, err
 	}
-	// One connection: an in-memory database exists per connection, and
-	// Apply is serial anyway. The connection is never recycled.
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-	db.SetConnMaxLifetime(0)
-	db.SetConnMaxIdleTime(0)
-
 	f := &FSM{db: db}
 	if err := f.init(ctx); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
+	if f.rdb, err = openReadPool(ctx, dsn, db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return f, nil
+}
+
+func openDB(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("fsm: open %s: %w", dsn, err)
+	}
+	// One write connection: an in-memory database exists per connection,
+	// and Apply is serial anyway. The connection is never recycled. Reads
+	// on a file use their own pool (openReadPool).
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
+	db.SetConnMaxIdleTime(0)
+	return db, nil
+}
+
+// openReadPool opens the pool reads use. An in-memory database exists per
+// connection, so it reads through db. A file gets a separate pool opened
+// after the writer has set WAL; query_only makes any write on it fail.
+func openReadPool(ctx context.Context, dsn string, db *sql.DB) (*sql.DB, error) {
+	if strings.Contains(dsn, "mode=memory") || strings.Contains(dsn, ":memory:") {
+		return db, nil
+	}
+	sep := "?"
+	if strings.Contains(dsn, "?") {
+		sep = "&"
+	}
+	rdb, err := sql.Open("sqlite", dsn+sep+"_pragma=query_only(1)&_busy_timeout=5000")
+	if err != nil {
+		return nil, fmt.Errorf("fsm: open read pool %s: %w", dsn, err)
+	}
+	rdb.SetMaxOpenConns(readConns)
+	rdb.SetMaxIdleConns(readConns)
+	if err := rdb.PingContext(ctx); err != nil {
+		_ = rdb.Close()
+		return nil, fmt.Errorf("fsm: open read pool %s: %w", dsn, err)
+	}
+	return rdb, nil
+}
+
+func setPragmas(ctx context.Context, db *sql.DB) error {
+	for _, p := range []string{`PRAGMA journal_mode = WAL`, `PRAGMA synchronous = OFF`} {
+		if _, err := db.ExecContext(ctx, p); err != nil {
+			return fmt.Errorf("fsm: %s: %w", p, err)
+		}
+	}
+	return nil
 }
 
 func (f *FSM) init(ctx context.Context) error {
@@ -108,10 +159,8 @@ func (f *FSM) init(ctx context.Context) error {
 	if n != 0 {
 		return errors.New("fsm: database is not empty; FSM state is derived and must be rebuilt from snapshot and log")
 	}
-	for _, p := range []string{`PRAGMA journal_mode = WAL`, `PRAGMA synchronous = OFF`} {
-		if _, err := f.db.ExecContext(ctx, p); err != nil {
-			return fmt.Errorf("fsm: %s: %w", p, err)
-		}
+	if err := setPragmas(ctx, f.db); err != nil {
+		return err
 	}
 	tx, err := f.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -132,7 +181,82 @@ func (f *FSM) init(ctx context.Context) error {
 	return nil
 }
 
-func (f *FSM) Close() error { return f.db.Close() }
+// OpenImage opens a database file written by VacuumInto (a snapshot image),
+// checks its schema version and takes its applied index. It sets WAL and
+// synchronous=OFF like Open.
+func OpenImage(ctx context.Context, path string) (*FSM, error) {
+	// SQLite would create a missing file; an image must already exist.
+	if _, err := os.Stat(path); err != nil {
+		return nil, fmt.Errorf("fsm: image %s: %w", path, err)
+	}
+	dsn := "file:" + path
+	db, err := openDB(dsn)
+	if err != nil {
+		return nil, err
+	}
+	f := &FSM{db: db}
+	if err := f.loadImage(ctx); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("fsm: image %s: %w", path, err)
+	}
+	if f.rdb, err = openReadPool(ctx, dsn, db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	return f, nil
+}
+
+func (f *FSM) loadImage(ctx context.Context) error {
+	if err := setPragmas(ctx, f.db); err != nil {
+		return err
+	}
+	var version, applied string
+	if err := f.db.QueryRowContext(ctx, `SELECT v FROM meta WHERE k = 'schema_version'`).Scan(&version); err != nil {
+		return fmt.Errorf("read schema version: %w", err)
+	}
+	if version != schemaVersion {
+		return fmt.Errorf("schema version %q, want %q", version, schemaVersion)
+	}
+	if err := f.db.QueryRowContext(ctx, `SELECT v FROM meta WHERE k = 'applied_index'`).Scan(&applied); err != nil {
+		return fmt.Errorf("read applied index: %w", err)
+	}
+	n, err := strconv.ParseUint(applied, 10, 64)
+	if err != nil {
+		return fmt.Errorf("applied index %q: %w", applied, err)
+	}
+	f.applied.Store(n)
+	return nil
+}
+
+// VacuumInto writes a consistent copy of the database to path, which must
+// not exist. Raft serialises FSM.Snapshot with Apply, so the copy is exactly
+// the state at AppliedIndex.
+func (f *FSM) VacuumInto(ctx context.Context, path string) error {
+	if _, err := f.db.ExecContext(ctx, `VACUUM INTO ?`, path); err != nil {
+		return fmt.Errorf("fsm: vacuum into %s: %w", path, err)
+	}
+	return nil
+}
+
+// JournalMode reports SQLite's journal_mode ("wal" for every FSM database).
+func (f *FSM) JournalMode(ctx context.Context) (string, error) {
+	var mode string
+	if err := f.rdb.QueryRowContext(ctx, `PRAGMA journal_mode`).Scan(&mode); err != nil {
+		return "", fmt.Errorf("fsm: journal mode: %w", err)
+	}
+	return mode, nil
+}
+
+// Close closes the read pool and the write connection.
+func (f *FSM) Close() error {
+	var rerr error
+	if f.rdb != f.db {
+		rerr = f.rdb.Close()
+	}
+	return errors.Join(rerr, f.db.Close())
+}
+
+func (f *FSM) reads() *sql.DB { return f.rdb }
 
 // AppliedIndex is the index of the last entry whose transaction committed.
 func (f *FSM) AppliedIndex() uint64 { return f.applied.Load() }
@@ -167,7 +291,7 @@ func (f *FSM) Apply(index uint64, entry []byte) (store.Result, error) {
 }
 
 func (f *FSM) ReadRecord(ctx context.Context, key string) (store.Record, error) {
-	rec, ok, err := readRecord(ctx, f.db, key)
+	rec, ok, err := readRecord(ctx, f.rdb, key)
 	if err != nil {
 		return store.Record{}, err
 	}
@@ -178,7 +302,7 @@ func (f *FSM) ReadRecord(ctx context.Context, key string) (store.Record, error) 
 }
 
 func (f *FSM) ReadClosure(ctx context.Context, resourceKey, attemptID string) (store.Closure, error) {
-	c, ok, err := readClosure(ctx, f.db, resourceKey, attemptID)
+	c, ok, err := readClosure(ctx, f.rdb, resourceKey, attemptID)
 	if err != nil {
 		return store.Closure{}, err
 	}
@@ -215,7 +339,7 @@ func (f *FSM) Scan(ctx context.Context, q store.ScanQuery) ([]store.Record, erro
 		query += ` LIMIT ?`
 		args = append(args, q.Limit)
 	}
-	rows, err := f.db.QueryContext(ctx, query, args...)
+	rows, err := f.rdb.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("fsm: scan: %w", err)
 	}
@@ -245,7 +369,7 @@ func (f *FSM) PendingOutbox(ctx context.Context, limit int) ([]store.OutboxEvent
 		query += ` LIMIT ?`
 		args = append(args, limit)
 	}
-	rows, err := f.db.QueryContext(ctx, query, args...)
+	rows, err := f.rdb.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("fsm: outbox: %w", err)
 	}
@@ -271,7 +395,7 @@ func (f *FSM) PendingOutbox(ctx context.Context, limit int) ([]store.OutboxEvent
 // Operation returns the stored result of an operation, marked Replayed: it
 // is history, never proof of current ownership.
 func (f *FSM) Operation(ctx context.Context, operationID string) (store.Result, error) {
-	res, _, ok, err := readOperation(ctx, f.db, operationID)
+	res, _, ok, err := readOperation(ctx, f.rdb, operationID)
 	if err != nil {
 		return store.Result{}, err
 	}
@@ -288,7 +412,7 @@ func (f *FSM) Operation(ctx context.Context, operationID string) (store.Result, 
 func (f *FSM) Dump(ctx context.Context) (map[string][]string, error) {
 	out := make(map[string][]string, len(dumpOrder))
 	for _, d := range dumpOrder {
-		rows, err := f.db.QueryContext(ctx, `SELECT * FROM `+d.table+` ORDER BY `+d.orderBy)
+		rows, err := f.rdb.QueryContext(ctx, `SELECT * FROM `+d.table+` ORDER BY `+d.orderBy)
 		if err != nil {
 			return nil, fmt.Errorf("fsm: dump %s: %w", d.table, err)
 		}
