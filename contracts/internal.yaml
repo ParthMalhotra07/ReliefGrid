@@ -951,7 +951,8 @@ components:
     Unavailable:
       description: |
         Not leader (never proposed; retry at leaderHint), no leader or quorum
-        (never proposed), or unknown outcome (may have committed: retry the
+        (never proposed), local storage failure (e.g. a SQLite read error;
+        nothing committed by this request), or unknown outcome (may have committed: retry the
         same operationId or read the operation; never treat as a rejection).
       headers:
         Retry-After: {$ref: "#/components/headers/RetryAfter"}
@@ -970,6 +971,12 @@ components:
               value:
                 code: NO_LEADER
                 message: shard 1 has no leader
+                retryable: true
+                outcomeUnknown: false
+            storageUnavailable:
+              value:
+                code: STORAGE_UNAVAILABLE
+                message: local storage read failed
                 retryable: true
                 outcomeUnknown: false
             outcomeUnknown:
@@ -1359,7 +1366,7 @@ components:
       properties:
         code:
           type: string
-          enum: [INVALID, NOT_FOUND, DOMAIN_CONFLICT, OPERATION_ID_REUSED, VERSION_CONFLICT, EXISTS, RING_VERSION_MISMATCH, NOT_LEADER, NO_LEADER, OUTCOME_UNKNOWN]
+          enum: [INVALID, NOT_FOUND, DOMAIN_CONFLICT, OPERATION_ID_REUSED, VERSION_CONFLICT, EXISTS, RING_VERSION_MISMATCH, NOT_LEADER, NO_LEADER, STORAGE_UNAVAILABLE, OUTCOME_UNKNOWN]
         message: {type: string}
         retryable: {type: boolean}
         outcomeUnknown:

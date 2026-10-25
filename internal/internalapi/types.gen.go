@@ -20,6 +20,7 @@ const (
 	OPERATIONIDREUSED   ErrorCode = "OPERATION_ID_REUSED"
 	OUTCOMEUNKNOWN      ErrorCode = "OUTCOME_UNKNOWN"
 	RINGVERSIONMISMATCH ErrorCode = "RING_VERSION_MISMATCH"
+	STORAGEUNAVAILABLE  ErrorCode = "STORAGE_UNAVAILABLE"
 	VERSIONCONFLICT     ErrorCode = "VERSION_CONFLICT"
 )
 
@@ -43,6 +44,8 @@ func (e ErrorCode) Valid() bool {
 	case OUTCOMEUNKNOWN:
 		return true
 	case RINGVERSIONMISMATCH:
+		return true
+	case STORAGEUNAVAILABLE:
 		return true
 	case VERSIONCONFLICT:
 		return true

@@ -588,7 +588,7 @@ func TestOutcomeTable(t *testing.T) {
 
 	want := slices.Clone(storeEnums(t)["Outcome"])
 	want = append(want, storeErrors(t)...)
-	want = append(want, "no leader", "not leader", "idempotency mismatch")
+	want = append(want, "no leader", "not leader", "local storage failure", "idempotency mismatch")
 	for _, k := range want {
 		if _, ok := rows[strings.ToLower(k)]; !ok {
 			t.Errorf("table has no row for %s", k)
@@ -619,6 +619,7 @@ func TestOutcomeTable(t *testing.T) {
 		status("OPERATION_ID_REUSED", c, "409")
 		status("ErrUnknownOutcome", c, "503")
 		status("no leader", c, "503")
+		status("local storage failure", c, "503")
 	}
 	// Internal follows §40 and the store.go comments.
 	status("VERSION_CONFLICT", "internal", "412")
@@ -642,6 +643,11 @@ func TestOutcomeTable(t *testing.T) {
 	contains("not leader", "notes", "leaderHint")
 	contains("not leader", "notes", "retryable=true")
 	contains("not leader", "notes", "outcomeUnknown=false")
+	if row, ok := rows["local storage failure"]; ok && strings.Trim(row["code"], "` ") != "STORAGE_UNAVAILABLE" {
+		t.Errorf("local storage failure code %q; want STORAGE_UNAVAILABLE", row["code"])
+	}
+	contains("local storage failure", "notes", "retryable=true")
+	contains("local storage failure", "notes", "outcomeUnknown=false")
 
 	// internal.yaml's error codes are exactly the table's internal errors.
 	var tableCodes []string

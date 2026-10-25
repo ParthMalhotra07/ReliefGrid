@@ -42,3 +42,4 @@ Every error body has `code`, `message`, `retryable` and `outcomeUnknown`.
 | `ErrUnknownOutcome` | `OUTCOME_UNKNOWN` | 503 | 503 | May have committed. retryable=true, outcomeUnknown=true, with Retry-After. Retry the same operationId or read the operation; never treat it as a rejection. |
 | not leader | `NOT_LEADER` | 503 | 503 | Never proposed. leaderHint names the leader. retryable=true, outcomeUnknown=false. The coordinator retries at the hint within its budget. |
 | no leader | `NO_LEADER` | 503 | 503 | No leader or quorum lost; never proposed. retryable=true, outcomeUnknown=false, with Retry-After. |
+| local storage failure | `STORAGE_UNAVAILABLE` | 503 | 503 | The node's local storage failed (for example a SQLite read error); nothing was committed by this request. retryable=true, outcomeUnknown=false. |
