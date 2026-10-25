@@ -186,6 +186,26 @@ func mustApply(t *testing.T, n *Node, cmd any) store.Result {
 	return res
 }
 
+// stepDown transfers n's leadership away and waits until n is no longer
+// leader. raft v1.8.0 answers LeadershipTransfer with "leadership transfer
+// timeout" once one ElectionTimeout passes, even when the target goes on to
+// win (raft.go:727-757); a stalled CI runner hits that. So n's state decides,
+// not the future's error, and the transfer is retried while n stays leader.
+func stepDown(t *testing.T, n *Node) {
+	t.Helper()
+	const attempts = 5
+	var err error
+	for range attempts {
+		err = n.raft.LeadershipTransfer().Error()
+		for deadline := time.Now().Add(waitFor / attempts); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+			if n.raft.State() != raft.Leader {
+				return
+			}
+		}
+	}
+	t.Fatalf("still leader after %d leadership transfers (last error: %v)", attempts, err)
+}
+
 func readKV(ctx context.Context, n *Node, mode ReadMode, key string) (store.Record, ReadInfo, error) {
 	var rec store.Record
 	info, err := n.Read(ctx, mode, func(ctx context.Context, r Reader) error {
@@ -843,9 +863,7 @@ func TestWaitApplyAfter(t *testing.T) {
 		close(done)
 	}()
 	time.Sleep(50 * time.Millisecond)
-	if err := l.raft.LeadershipTransfer().Error(); err != nil {
-		t.Fatalf("leadership transfer: %v", err)
-	}
+	stepDown(t, l)
 	select {
 	case <-done:
 	case <-time.After(waitFor):
