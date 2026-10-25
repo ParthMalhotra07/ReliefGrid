@@ -319,7 +319,7 @@ type Outcome string
 
 const (
 	OutcomeOK              Outcome = "OK"
-	OutcomeVersionConflict Outcome = "VERSION_CONFLICT" // expected version/state/attempt did not match (412)
+	OutcomeVersionConflict Outcome = "VERSION_CONFLICT" // expected version/state/attempt did not match (412 generic CAS, 409 domain transition)
 	OutcomeNotFound        Outcome = "NOT_FOUND"        // 404
 	OutcomeExists          Outcome = "EXISTS"           // create on an existing key (412)
 	OutcomeInvalid         Outcome = "INVALID"          // malformed command: missing field, bad enum, From >= Until (400)

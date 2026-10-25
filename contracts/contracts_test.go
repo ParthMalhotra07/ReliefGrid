@@ -53,7 +53,7 @@ const (
 var envelopeFields = []string{"ringVersion"}
 
 // readMethods take an explicit consistency mode (M5: strong unless asked).
-var readMethods = []string{"ReadRecord", "ReadClosure", "Scan", "Operation"}
+var readMethods = []string{"ReadRecord", "ReadClosure", "Scan", "PendingOutbox", "Operation"}
 
 var readModes = []string{"linearizable", "stale", "strong"}
 
@@ -911,4 +911,272 @@ func compareSchema(t *testing.T, where string, typ reflect.Type, schema *openapi
 			t.Errorf("%s: enum %v; store.Outcome has %v", where, got, values)
 		}
 	}
+}
+
+// incarnationRE is a disk-incarnation UUID; serverIDRE is the Raft ServerID
+// podName/incarnation (v3.1 §10).
+var (
+	incarnationRE = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	serverIDRE    = regexp.MustCompile(`^[a-z0-9-]+/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+)
+
+// TestNodeIdentity: registration and heartbeats carry the full identity
+// (groupId, shardId, incarnation; §10, M7). nodeId is the pod name and
+// leaderId is the Raft ServerID, in the schemas and in every example.
+func TestNodeIdentity(t *testing.T) {
+	doc := loadSpec(t)
+	for _, name := range []string{"NodeRegistration", "Heartbeat", "NodeStatus"} {
+		ref, ok := doc.Components.Schemas[name]
+		if !ok {
+			t.Errorf("components.schemas.%s is missing", name)
+			continue
+		}
+		s := ref.Value
+		for _, p := range []string{"nodeId", "groupId", "shardId", "incarnation"} {
+			if _, ok := s.Properties[p]; !ok {
+				t.Errorf("%s has no %s", name, p)
+			}
+			if !slices.Contains(s.Required, p) {
+				t.Errorf("%s.%s must be required", name, p)
+			}
+		}
+		if p, ok := s.Properties["nodeId"]; ok && !strings.Contains(p.Value.Description, "pod name") {
+			t.Errorf("%s.nodeId description %q must say it is the pod name", name, p.Value.Description)
+		}
+	}
+	for _, name := range []string{"Heartbeat", "NodeStatus", "ShardLeader", "Placement"} {
+		ref, ok := doc.Components.Schemas[name]
+		if !ok {
+			continue
+		}
+		if p, ok := ref.Value.Properties["leaderId"]; !ok || !strings.Contains(p.Value.Description, "podName/incarnation") {
+			t.Errorf("%s.leaderId must be described as the Raft ServerID podName/incarnation", name)
+		}
+	}
+
+	raw, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tree any
+	if err := yaml.Unmarshal(raw, &tree); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]int{}
+	walkYAML(tree, func(k string, v any) {
+		s, ok := v.(string)
+		if !ok {
+			return
+		}
+		switch k {
+		case "nodeId":
+			seen[k]++
+			if strings.Contains(s, "/") {
+				t.Errorf("example nodeId %q is a ServerID; nodeId is the pod name", s)
+			}
+		case "leaderId":
+			seen[k]++
+			if !serverIDRE.MatchString(s) {
+				t.Errorf("example leaderId %q is not a ServerID podName/incarnation", s)
+			}
+		case "incarnation":
+			seen[k]++
+			if !incarnationRE.MatchString(s) {
+				t.Errorf("example incarnation %q is not a UUID", s)
+			}
+		}
+	})
+	for _, k := range []string{"nodeId", "leaderId", "incarnation"} {
+		if seen[k] == 0 {
+			t.Errorf("no example %s in %s", k, specFile)
+		}
+	}
+}
+
+// walkYAML calls fn for every mapping key and value under v.
+func walkYAML(v any, fn func(k string, v any)) {
+	switch n := v.(type) {
+	case map[string]any:
+		for k, child := range n {
+			fn(k, child)
+			walkYAML(child, fn)
+		}
+	case []any:
+		for _, child := range n {
+			walkYAML(child, fn)
+		}
+	}
+}
+
+// maxScanLimit is the documented per-shard bound on one scan page (§14
+// bounded lists; §40 bounded scan).
+const maxScanLimit = 1000
+
+// TestScanIsBoundedAndRingFenced: §40 scans are bounded and carry
+// ringVersion; limit is required and in [1, maxScanLimit], ringVersion is
+// optional and a mismatch is a 409.
+func TestScanIsBoundedAndRingFenced(t *testing.T) {
+	doc := loadSpec(t)
+	for _, r := range routes(doc) {
+		if !slices.Contains(storeMethods(r.op), "Scan") {
+			continue
+		}
+		limit := r.params.GetByInAndName("query", "limit")
+		switch {
+		case limit == nil:
+			t.Errorf("%s: no limit parameter", r.name)
+		case !limit.Required:
+			t.Errorf("%s: limit must be required", r.name)
+		default:
+			s := limit.Schema.Value
+			if s.Min == nil || *s.Min != 1 || s.Max == nil || *s.Max != maxScanLimit {
+				t.Errorf("%s: limit must be in [1, %d]; have min %v max %v", r.name, maxScanLimit, s.Min, s.Max)
+			}
+			if strings.Contains(limit.Description, "no limit") {
+				t.Errorf("%s: limit description %q still allows an unbounded scan", r.name, limit.Description)
+			}
+		}
+		rv := r.params.GetByInAndName("query", "ringVersion")
+		if rv == nil || rv.Required {
+			t.Errorf("%s: ringVersion must be an optional query parameter", r.name)
+		}
+		if r.op.Responses.Status(409) == nil {
+			t.Errorf("%s: no 409 for RING_VERSION_MISMATCH", r.name)
+		}
+		return
+	}
+	t.Fatal("no route serves Scan")
+}
+
+// TestVersionConflictStatusByRoute: §40 gives 412 for a failed generic CAS
+// and 409 for a domain/attempt conflict. The FSM reports a version, status
+// or attempt mismatch on a domain transition as VERSION_CONFLICT, so the
+// status follows the route: 412 on the generic data routes, 409 on the
+// domain transition routes.
+func TestVersionConflictStatusByRoute(t *testing.T) {
+	doc := loadSpec(t)
+	generic := []string{"CreateEntity", "CompareAndSet"}
+	domain := []string{"TransitionRequest", "RetryWorkflow", "TransitionResource"}
+	found := map[string]bool{}
+	for _, r := range routes(doc) {
+		methods := storeMethods(r.op)
+		switch {
+		case slices.ContainsFunc(methods, func(m string) bool { return slices.Contains(generic, m) }):
+			if !responseHasCode(r.op, 412, "VERSION_CONFLICT") {
+				t.Errorf("%s: 412 must give VERSION_CONFLICT (generic CAS)", r.name)
+			}
+		case slices.ContainsFunc(methods, func(m string) bool { return slices.Contains(domain, m) }):
+			for _, m := range methods {
+				found[m] = true
+			}
+			if r.op.Responses.Status(412) != nil {
+				t.Errorf("%s: a domain transition never answers 412", r.name)
+			}
+			if !responseHasCode(r.op, 409, "VERSION_CONFLICT") {
+				t.Errorf("%s: 409 must give VERSION_CONFLICT (expected version, status or attempt mismatch)", r.name)
+			}
+		}
+	}
+	for _, m := range domain {
+		if !found[m] {
+			t.Errorf("no route serves %s", m)
+		}
+	}
+	rows := outcomeTable(t)
+	row := rows["version_conflict"]
+	for _, want := range []string{"412", "409"} {
+		if !strings.Contains(row["internal"], want) {
+			t.Errorf("README VERSION_CONFLICT internal cell %q does not mention %s", row["internal"], want)
+		}
+	}
+}
+
+// responseHasCode reports whether the operation's response for status has an
+// example whose code is code.
+func responseHasCode(op *openapi3.Operation, status int, code string) bool {
+	resp := op.Responses.Status(status)
+	if resp == nil {
+		return false
+	}
+	mt := resp.Value.Content.Get(jsonMedia)
+	if mt == nil {
+		return false
+	}
+	values := []any{mt.Example}
+	for _, ex := range mt.Examples {
+		values = append(values, ex.Value.Value)
+	}
+	for _, v := range values {
+		if m, ok := v.(map[string]any); ok && m["code"] == code {
+			return true
+		}
+	}
+	return false
+}
+
+// TestNoLeaderMeansNothingProposed: NO_LEADER covers no known leader and a
+// read that could not be fenced; a leader that loses quorum after proposing
+// is OUTCOME_UNKNOWN (invariant 5), never NO_LEADER.
+func TestNoLeaderMeansNothingProposed(t *testing.T) {
+	notes := strings.ToLower(outcomeTable(t)["no leader"]["notes"])
+	for _, want := range []string{"no leader known", "could not be fenced", "nothing was proposed"} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("README no-leader notes %q do not say %q", notes, want)
+		}
+	}
+	if strings.Contains(notes, "quorum lost") {
+		t.Errorf("README no-leader notes %q: a lost quorum after proposing is OUTCOME_UNKNOWN", notes)
+	}
+}
+
+// TestAuthErrorsHaveErrorBody: 401 and 403 use the Error body like every
+// other error (README: every error body has code, message, retryable and
+// outcomeUnknown).
+func TestAuthErrorsHaveErrorBody(t *testing.T) {
+	doc := loadSpec(t)
+	n := 0
+	for _, r := range routes(doc) {
+		for _, status := range []int{401, 403} {
+			resp := r.op.Responses.Status(status)
+			if resp == nil {
+				continue
+			}
+			n++
+			if mt := resp.Value.Content.Get(jsonMedia); mt == nil || mt.Schema == nil || mt.Schema.Ref != "#/components/schemas/Error" {
+				t.Errorf("%s: %d body is not the Error schema", r.name, status)
+			}
+		}
+	}
+	if n == 0 {
+		t.Error("no route answers 401 or 403")
+	}
+}
+
+// TestOutboxLongPoll: GET /internal/outbox may long-poll (§14) for at most
+// one second, within the storage wait budget, and its read is strong unless
+// stale is asked for (M5).
+func TestOutboxLongPoll(t *testing.T) {
+	doc := loadSpec(t)
+	for _, r := range routes(doc) {
+		if !slices.Contains(storeMethods(r.op), "PendingOutbox") {
+			continue
+		}
+		wait := r.params.GetByInAndName("query", "wait")
+		switch {
+		case wait == nil:
+			t.Errorf("%s: no wait parameter", r.name)
+		case wait.Required:
+			t.Errorf("%s: wait must be optional", r.name)
+		default:
+			s := wait.Schema.Value
+			if s.Min == nil || *s.Min != 0 || s.Max == nil || *s.Max != 1 {
+				t.Errorf("%s: wait must be in [0, 1] seconds; have min %v max %v", r.name, s.Min, s.Max)
+			}
+		}
+		if s := responseSchema(r.op, 200); s == nil || !slices.Contains(s.Required, "read") {
+			t.Errorf("%s: 200 body must report how the read was served (read)", r.name)
+		}
+		return
+	}
+	t.Fatal("no route serves PendingOutbox")
 }

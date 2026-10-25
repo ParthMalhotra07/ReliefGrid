@@ -13,6 +13,7 @@ import (
 const (
 	DOMAINCONFLICT      ErrorCode = "DOMAIN_CONFLICT"
 	EXISTS              ErrorCode = "EXISTS"
+	FORBIDDEN           ErrorCode = "FORBIDDEN"
 	INVALID             ErrorCode = "INVALID"
 	NOLEADER            ErrorCode = "NO_LEADER"
 	NOTFOUND            ErrorCode = "NOT_FOUND"
@@ -21,6 +22,7 @@ const (
 	OUTCOMEUNKNOWN      ErrorCode = "OUTCOME_UNKNOWN"
 	RINGVERSIONMISMATCH ErrorCode = "RING_VERSION_MISMATCH"
 	STORAGEUNAVAILABLE  ErrorCode = "STORAGE_UNAVAILABLE"
+	UNAUTHORIZED        ErrorCode = "UNAUTHORIZED"
 	VERSIONCONFLICT     ErrorCode = "VERSION_CONFLICT"
 )
 
@@ -30,6 +32,8 @@ func (e ErrorCode) Valid() bool {
 	case DOMAINCONFLICT:
 		return true
 	case EXISTS:
+		return true
+	case FORBIDDEN:
 		return true
 	case INVALID:
 		return true
@@ -46,6 +50,8 @@ func (e ErrorCode) Valid() bool {
 	case RINGVERSIONMISMATCH:
 		return true
 	case STORAGEUNAVAILABLE:
+		return true
+	case UNAUTHORIZED:
 		return true
 	case VERSIONCONFLICT:
 		return true
@@ -225,6 +231,27 @@ func (e GetOperationParamsConsistency) Valid() bool {
 	}
 }
 
+// Defines values for PendingOutboxParamsConsistency.
+const (
+	PendingOutboxParamsConsistencyLinearizable PendingOutboxParamsConsistency = "linearizable"
+	PendingOutboxParamsConsistencyStale        PendingOutboxParamsConsistency = "stale"
+	PendingOutboxParamsConsistencyStrong       PendingOutboxParamsConsistency = "strong"
+)
+
+// Valid indicates whether the value is a known member of the PendingOutboxParamsConsistency enum.
+func (e PendingOutboxParamsConsistency) Valid() bool {
+	switch e {
+	case PendingOutboxParamsConsistencyLinearizable:
+		return true
+	case PendingOutboxParamsConsistencyStale:
+		return true
+	case PendingOutboxParamsConsistencyStrong:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetClosureParamsConsistency.
 const (
 	GetClosureParamsConsistencyLinearizable GetClosureParamsConsistency = "linearizable"
@@ -371,13 +398,22 @@ type Health string
 type Heartbeat struct {
 	AppliedIndex uint64 `json:"appliedIndex"`
 	CommitIndex  uint64 `json:"commitIndex"`
-	Health       Health `json:"health"`
 
-	// LeaderId Empty when the node knows no leader
-	LeaderId *string `json:"leaderId,omitempty"`
-	NodeId   string  `json:"nodeId"`
-	ShardId  int     `json:"shardId"`
-	Term     uint64  `json:"term"`
+	// GroupId Raft group, e.g. shard-1
+	GroupId string `json:"groupId"`
+	Health  Health `json:"health"`
+
+	// Incarnation Disk incarnation UUID, created once on a new PVC and kept across
+	// ordinary restarts (v3.1 §10). A wiped disk gets a new one.
+	Incarnation Incarnation `json:"incarnation"`
+
+	// LeaderId The leader's Raft ServerID, podName/incarnation; omitted when no leader is known
+	LeaderId *ServerID `json:"leaderId,omitempty"`
+
+	// NodeId The pod name; the Raft ServerID is nodeId/incarnation
+	NodeId  PodName `json:"nodeId"`
+	ShardId int     `json:"shardId"`
+	Term    uint64  `json:"term"`
 }
 
 // HeartbeatResponse Routing and config hints; never overrides Raft authority
@@ -386,6 +422,10 @@ type HeartbeatResponse struct {
 	Leaders     []ShardLeader `json:"leaders"`
 	RingVersion uint64        `json:"ringVersion"`
 }
+
+// Incarnation Disk incarnation UUID, created once on a new PVC and kept across
+// ordinary restarts (v3.1 §10). A wiped disk gets a new one.
+type Incarnation = string
 
 // Kind defines model for Kind.
 type Kind = store.Kind
@@ -424,25 +464,47 @@ type MutationResponse struct {
 // NodeRegistration defines model for NodeRegistration.
 type NodeRegistration struct {
 	// Address Stable DNS host:port
-	Address         string `json:"address"`
-	NodeId          string `json:"nodeId"`
-	ProtocolVersion int    `json:"protocolVersion"`
-	SchemaVersion   int    `json:"schemaVersion"`
-	ShardId         int    `json:"shardId"`
+	Address string `json:"address"`
+
+	// GroupId Raft group, e.g. shard-1
+	GroupId string `json:"groupId"`
+
+	// Incarnation Disk incarnation UUID, created once on a new PVC and kept across
+	// ordinary restarts (v3.1 §10). A wiped disk gets a new one.
+	Incarnation Incarnation `json:"incarnation"`
+
+	// NodeId The pod name; the Raft ServerID is nodeId/incarnation
+	NodeId          PodName `json:"nodeId"`
+	ProtocolVersion int     `json:"protocolVersion"`
+	SchemaVersion   int     `json:"schemaVersion"`
+	ShardId         int     `json:"shardId"`
 }
 
 // NodeStatus defines model for NodeStatus.
 type NodeStatus struct {
-	Address         string  `json:"address"`
-	Admitted        bool    `json:"admitted"`
-	AppliedIndex    uint64  `json:"appliedIndex"`
-	CommitIndex     uint64  `json:"commitIndex"`
-	Health          Health  `json:"health"`
-	LastHeartbeatAt int64   `json:"lastHeartbeatAt"`
-	LeaderId        *string `json:"leaderId,omitempty"`
-	NodeId          string  `json:"nodeId"`
-	ShardId         int     `json:"shardId"`
-	Term            uint64  `json:"term"`
+	Address string `json:"address"`
+
+	// Admitted This incarnation is admitted (M7: admitted[nodeId] = incarnation)
+	Admitted     bool   `json:"admitted"`
+	AppliedIndex uint64 `json:"appliedIndex"`
+	CommitIndex  uint64 `json:"commitIndex"`
+
+	// GroupId Raft group, e.g. shard-1
+	GroupId string `json:"groupId"`
+	Health  Health `json:"health"`
+
+	// Incarnation Disk incarnation UUID, created once on a new PVC and kept across
+	// ordinary restarts (v3.1 §10). A wiped disk gets a new one.
+	Incarnation     Incarnation `json:"incarnation"`
+	LastHeartbeatAt int64       `json:"lastHeartbeatAt"`
+
+	// LeaderId The leader's Raft ServerID, podName/incarnation; omitted when no leader is known
+	LeaderId *ServerID `json:"leaderId,omitempty"`
+
+	// NodeId The pod name; the Raft ServerID is nodeId/incarnation
+	NodeId  PodName `json:"nodeId"`
+	ShardId int     `json:"shardId"`
+	Term    uint64  `json:"term"`
 }
 
 // OperationResponse defines model for OperationResponse.
@@ -463,9 +525,12 @@ type OutboxEvent = store.OutboxEvent
 
 // OutboxPage defines model for OutboxPage.
 type OutboxPage struct {
-	Events      []OutboxEvent `json:"events"`
-	RingVersion uint64        `json:"ringVersion"`
-	Shard       int           `json:"shard"`
+	Events []OutboxEvent `json:"events"`
+
+	// Read How a read was served (§13)
+	Read        ReadInfo `json:"read"`
+	RingVersion uint64   `json:"ringVersion"`
+	Shard       int      `json:"shard"`
 }
 
 // Outcome defines model for Outcome.
@@ -474,19 +539,28 @@ type Outcome = store.Outcome
 // Peer defines model for Peer.
 type Peer struct {
 	Address string `json:"address"`
-	NodeId  string `json:"nodeId"`
+
+	// NodeId The pod name; the Raft ServerID is nodeId/incarnation
+	NodeId PodName `json:"nodeId"`
 }
 
 // Placement Logical placement (shard) shown separately from replica copies
 type Placement struct {
 	// Hash xxhash64 of the key, 16 hex digits
-	Hash        string   `json:"hash"`
-	Key         string   `json:"key"`
-	LeaderId    *string  `json:"leaderId,omitempty"`
-	Replicas    []string `json:"replicas"`
-	RingVersion uint64   `json:"ringVersion"`
-	Shard       int      `json:"shard"`
+	Hash string `json:"hash"`
+	Key  string `json:"key"`
+
+	// LeaderId The shard leader's Raft ServerID, podName/incarnation
+	LeaderId *ServerID `json:"leaderId,omitempty"`
+
+	// Replicas Pod names of the shard's replicas
+	Replicas    []PodName `json:"replicas"`
+	RingVersion uint64    `json:"ringVersion"`
+	Shard       int       `json:"shard"`
 }
+
+// PodName The StatefulSet pod name, e.g. storage-1-0. Not the Raft ServerID.
+type PodName = string
 
 // PutDataBody CreateEntity (If-None-Match *) or CompareAndSet (If-Match)
 type PutDataBody struct {
@@ -616,12 +690,17 @@ type ScanResponse struct {
 // ScanResponseConsistency defines model for ScanResponse.Consistency.
 type ScanResponseConsistency string
 
+// ServerID The Raft ServerID, podName/incarnation (v3.1 §10)
+type ServerID = string
+
 // ShardLeader defines model for ShardLeader.
 type ShardLeader struct {
-	Address  string `json:"address"`
-	LeaderId string `json:"leaderId"`
-	Shard    int    `json:"shard"`
-	Term     uint64 `json:"term"`
+	Address string `json:"address"`
+
+	// LeaderId The leader's Raft ServerID, podName/incarnation
+	LeaderId ServerID `json:"leaderId"`
+	Shard    int      `json:"shard"`
+	Term     uint64   `json:"term"`
 }
 
 // ShardPosition defines model for ShardPosition.
@@ -728,6 +807,9 @@ type ResourceIDAsKey = string
 // ResourceIDAsResourceKey defines model for ResourceIDAsResourceKey.
 type ResourceIDAsResourceKey = string
 
+// RingVersionOptional defines model for RingVersionOptional.
+type RingVersionOptional = uint64
+
 // RingVersionQuery defines model for RingVersionQuery.
 type RingVersionQuery = uint64
 
@@ -737,11 +819,23 @@ type BadRequest = Error
 // Conflict See contracts/README.md for the code → status mapping.
 type Conflict = Error
 
+// Forbidden See contracts/README.md for the code → status mapping.
+type Forbidden = Error
+
 // NotFound See contracts/README.md for the code → status mapping.
 type NotFound = Error
 
 // PreconditionFailed See contracts/README.md for the code → status mapping.
 type PreconditionFailed = Error
+
+// RingVersionMismatch See contracts/README.md for the code → status mapping.
+type RingVersionMismatch = Error
+
+// TransitionConflict See contracts/README.md for the code → status mapping.
+type TransitionConflict = Error
+
+// Unauthorized See contracts/README.md for the code → status mapping.
+type Unauthorized = Error
 
 // Unavailable See contracts/README.md for the code → status mapping.
 type Unavailable = Error
@@ -804,7 +898,18 @@ type GetOperationParamsConsistency string
 type PendingOutboxParams struct {
 	Shard int `form:"shard" json:"shard"`
 	Limit int `form:"limit" json:"limit"`
+
+	// Wait Long-poll seconds when nothing is pending; 0 (default) returns at once
+	Wait *int `form:"wait,omitempty" json:"wait,omitempty"`
+
+	// Consistency strong (default, M5): executed through the log in FSM order.
+	// linearizable: the §13 read fence (S4.1); falls back to strong until enabled.
+	// stale: local diagnostic read; read.stalePossible=true.
+	Consistency *PendingOutboxParamsConsistency `form:"consistency,omitempty" json:"consistency,omitempty"`
 }
+
+// PendingOutboxParamsConsistency defines parameters for PendingOutbox.
+type PendingOutboxParamsConsistency string
 
 // MarkOutboxPublishedParams defines parameters for MarkOutboxPublished.
 type MarkOutboxPublishedParams struct {
@@ -833,8 +938,11 @@ type ScanParams struct {
 	// GeohashPrefixes Each prefix p matches the key range [p, p+"\xff")
 	GeohashPrefixes *[]string `form:"geohashPrefixes,omitempty" json:"geohashPrefixes,omitempty"`
 
-	// Limit Per shard; 0 means no limit
-	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+	// Limit Records per shard, 1 to 1000
+	Limit int `form:"limit" json:"limit"`
+
+	// RingVersion The caller's ringVersion, if it has one; a mismatch is 409 RING_VERSION_MISMATCH
+	RingVersion *RingVersionOptional `form:"ringVersion,omitempty" json:"ringVersion,omitempty"`
 
 	// Consistency strong (default, M5): executed through the log in FSM order.
 	// linearizable: the §13 read fence (S4.1); falls back to strong until enabled.

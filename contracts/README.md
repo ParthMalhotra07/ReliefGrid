@@ -36,10 +36,12 @@ Every error body has `code`, `message`, `retryable` and `outcomeUnknown`.
 | `DOMAIN_CONFLICT` | `DOMAIN_CONFLICT` | 409 | 409 | Forbidden by a domain rule: illegal transition, protected key, immutable-input mismatch, update of an assigned resource. |
 | `OPERATION_ID_REUSED` | `OPERATION_ID_REUSED` | 409 | 409 | Same operationId, different payload. Never stored. |
 | idempotency mismatch | `CONFLICT_IDEMPOTENCY_KEY` | — | 409 | Public only: same Idempotency-Key, different payload hash. |
-| `VERSION_CONFLICT` | `VERSION_CONFLICT` | 412 | 409 | Expected version, status or attempt did not match. Public becomes 412 with If-Match in week three. |
+| `VERSION_CONFLICT` | `VERSION_CONFLICT` | 412 on the generic data routes (`PUT`/`DELETE /internal/data`); 409 on the domain transition routes | 409 | Expected version, status or attempt did not match. §40: 412 for a failed generic CAS, 409 for a domain or attempt conflict. The FSM reports all three mismatches as this one outcome, so the status follows the route. Public becomes 412 with If-Match in week three. |
 | `EXISTS` | `EXISTS` | 412 | replay the original 201 + Location if the payload hash matches, else 409 | Create on an existing key (internal: `If-None-Match: *` failed). |
 | ring version mismatch | `RING_VERSION_MISMATCH` | 409 | 503 | Never proposed; the body gives the server's ringVersion. The coordinator refreshes and retries; the public API sees 503 only when that fails. retryable=true, outcomeUnknown=false. |
 | `ErrUnknownOutcome` | `OUTCOME_UNKNOWN` | 503 | 503 | May have committed. retryable=true, outcomeUnknown=true, with Retry-After. Retry the same operationId or read the operation; never treat it as a rejection. |
 | not leader | `NOT_LEADER` | 503 | 503 | Never proposed. leaderHint names the leader. retryable=true, outcomeUnknown=false. The coordinator retries at the hint within its budget. |
-| no leader | `NO_LEADER` | 503 | 503 | No leader or quorum lost; never proposed. retryable=true, outcomeUnknown=false, with Retry-After. |
+| no leader | `NO_LEADER` | 503 | 503 | No leader known, or a read could not be fenced; nothing was proposed. A leader that loses quorum after proposing answers `OUTCOME_UNKNOWN`. retryable=true, outcomeUnknown=false, with Retry-After. |
+| missing or bad operator token | `UNAUTHORIZED` | 401 | — | Internal `/admin` only. retryable=false, outcomeUnknown=false. |
+| token lacks the operator role | `FORBIDDEN` | 403 | — | Internal `/admin` only. retryable=false, outcomeUnknown=false. |
 | local storage failure | `STORAGE_UNAVAILABLE` | 503 | 503 | The node's local storage failed (for example a SQLite read error); nothing was committed by this request. retryable=true, outcomeUnknown=false. |

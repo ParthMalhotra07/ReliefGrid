@@ -44,10 +44,12 @@ paths:
       operationId: registerNode
       summary: Register a storage node
       description: |
-        A node reports its identity on start. The response carries the
-        accepted configuration and discovery hints. Registration never
-        bootstraps Raft: a node with an empty disk stays unadmitted
-        (admitted=false) until an operator admits it with storagectl (M7).
+        A node reports its identity on start: pod name, Raft group, shard
+        and disk incarnation (v3.1 §10). Its Raft ServerID is
+        nodeId/incarnation. The response carries the accepted configuration
+        and discovery hints. Registration never bootstraps Raft: a node with
+        an empty disk stays unadmitted (admitted=false) until an operator
+        admits that incarnation with storagectl (M7).
       requestBody:
         required: true
         content:
@@ -55,7 +57,9 @@ paths:
             schema: {$ref: "#/components/schemas/NodeRegistration"}
             example:
               nodeId: storage-1-0
+              groupId: shard-1
               shardId: 1
+              incarnation: a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
               address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080
               protocolVersion: 1
               schemaVersion: 1
@@ -97,9 +101,11 @@ paths:
             schema: {$ref: "#/components/schemas/Heartbeat"}
             example:
               nodeId: storage-1-0
+              groupId: shard-1
               shardId: 1
+              incarnation: a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
               health: ok
-              leaderId: storage-1-0
+              leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
               term: 7
               appliedIndex: 4182
               commitIndex: 4182
@@ -113,9 +119,9 @@ paths:
                 ringVersion: 1
                 checksum: sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360
                 leaders:
-                  - {shard: 0, leaderId: storage-0-1, address: storage-0-1.storage-0-headless.reliefgrid.svc.cluster.local:8080, term: 4}
-                  - {shard: 1, leaderId: storage-1-0, address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080, term: 7}
-                  - {shard: 2, leaderId: storage-2-2, address: storage-2-2.storage-2-headless.reliefgrid.svc.cluster.local:8080, term: 3}
+                  - {shard: 0, leaderId: storage-0-1/4b2a7c9e-1f6d-4e3a-a8b5-0c9d2e7f6a41, address: storage-0-1.storage-0-headless.reliefgrid.svc.cluster.local:8080, term: 4}
+                  - {shard: 1, leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24, address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080, term: 7}
+                  - {shard: 2, leaderId: storage-2-2/e6d1c8a3-9b4f-4027-8e5c-3a7f1b2d9c06, address: storage-2-2.storage-2-headless.reliefgrid.svc.cluster.local:8080, term: 3}
         "400": {$ref: "#/components/responses/BadRequest"}
         "404": {$ref: "#/components/responses/NotFound"}
 
@@ -263,7 +269,9 @@ paths:
       summary: Conditional tombstone of a generic key
       description: |
         CompareAndSet with delete=true. Protected domain records (req:, res:)
-        give 409 DOMAIN_CONFLICT; an absent key gives 404.
+        give 409 DOMAIN_CONFLICT. The version is checked first: on an absent
+        key, `If-Match: "0"` gives 404 NOT_FOUND and any other version gives
+        412 VERSION_CONFLICT.
       x-store-method: CompareAndSet
       x-store-fixed: {delete: true, value: null}
       parameters:
@@ -299,6 +307,11 @@ paths:
         shard. A shard that fails sets partial=true and is listed in
         failedShards. A partial scan is never an empty result and never
         justifies NO_CANDIDATE. positions has one entry per shard that answered.
+
+        A scan is bounded: limit (1 to 1000) caps the records returned per
+        shard, so a page never exceeds limit × shards records. Cursor paging
+        follows later (§14). When ringVersion is given and differs from the
+        server's, the scan is refused with 409 RING_VERSION_MISMATCH.
       x-store-method: Scan
       parameters:
         - {name: kind, in: query, required: true, schema: {$ref: "#/components/schemas/Kind"}}
@@ -315,7 +328,12 @@ paths:
           style: form
           explode: true
           schema: {type: array, items: {type: string}}
-        - {name: limit, in: query, description: Per shard; 0 means no limit, schema: {type: integer, minimum: 0}}
+        - name: limit
+          in: query
+          required: true
+          description: Records per shard, 1 to 1000
+          schema: {type: integer, minimum: 1, maximum: 1000}
+        - $ref: "#/components/parameters/RingVersionOptional"
         - $ref: "#/components/parameters/Consistency"
       responses:
         "200":
@@ -347,6 +365,7 @@ paths:
                       - {shard: 0, appliedIndex: 3020}
                       - {shard: 1, appliedIndex: 4182}
         "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/RingVersionMismatch"}
         "503": {$ref: "#/components/responses/Unavailable"}
 
   /internal/requests/{id}/transition:
@@ -357,8 +376,9 @@ paths:
       operationId: transitionRequest
       summary: Move a request along its lifecycle (v3.1 §8)
       description: |
-        Expected version, status and attempt must all match. The entity
-        update and its outbox rows commit in one transaction.
+        Expected version, status and attempt must all match; any mismatch is
+        409 VERSION_CONFLICT with the committed result (re-read and decide).
+        The entity update and its outbox rows commit in one transaction.
       x-store-method: TransitionRequest
       x-store-result: result
       requestBody:
@@ -386,8 +406,7 @@ paths:
                 result: {outcome: OK, operationId: op-1c44, key: "req:r-1001", version: 3, shard: 1, appliedIndex: 4182}
         "400": {$ref: "#/components/responses/BadRequest"}
         "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/Conflict"}
-        "412": {$ref: "#/components/responses/PreconditionFailed"}
+        "409": {$ref: "#/components/responses/TransitionConflict"}
         "503": {$ref: "#/components/responses/Unavailable"}
 
   /internal/requests/{id}/retry:
@@ -422,8 +441,7 @@ paths:
                 result: {outcome: OK, operationId: op-52aa, key: "req:r-1001", version: 5, shard: 1, appliedIndex: 4190}
         "400": {$ref: "#/components/responses/BadRequest"}
         "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/Conflict"}
-        "412": {$ref: "#/components/responses/PreconditionFailed"}
+        "409": {$ref: "#/components/responses/TransitionConflict"}
         "503": {$ref: "#/components/responses/Unavailable"}
 
   /internal/resources/{id}/transition:
@@ -462,8 +480,7 @@ paths:
                 result: {outcome: OK, operationId: op-6e10, key: "res:s-77", version: 2, shard: 2, appliedIndex: 930}
         "400": {$ref: "#/components/responses/BadRequest"}
         "404": {$ref: "#/components/responses/NotFound"}
-        "409": {$ref: "#/components/responses/Conflict"}
-        "412": {$ref: "#/components/responses/PreconditionFailed"}
+        "409": {$ref: "#/components/responses/TransitionConflict"}
         "503": {$ref: "#/components/responses/Unavailable"}
 
   /internal/resources/{id}/claim:
@@ -597,11 +614,22 @@ paths:
       tags: [outbox]
       operationId: pendingOutbox
       summary: Page unpublished events of one shard in commit order
+      description: |
+        With wait > 0 the call long-polls (§14): if no event is pending it
+        waits up to wait seconds for a commit notification, outside the FSM,
+        any SQL transaction and the snapshot/apply lock, then reads a fenced
+        page. A leadership change ends the wait early. An empty page after
+        the wait is a real "nothing pending", never a failed read.
       x-store-method: PendingOutbox
       x-store-result: events
       parameters:
         - {name: shard, in: query, required: true, schema: {type: integer, minimum: 0}}
         - {name: limit, in: query, required: true, schema: {type: integer, minimum: 1, maximum: 100}}
+        - name: wait
+          in: query
+          description: Long-poll seconds when nothing is pending; 0 (default) returns at once
+          schema: {type: integer, minimum: 0, maximum: 1, default: 0}
+        - $ref: "#/components/parameters/Consistency"
       responses:
         "200":
           description: Pending events
@@ -611,6 +639,7 @@ paths:
               example:
                 ringVersion: 1
                 shard: 2
+                read: {consistency: strong, servedBy: storage-2-2, appliedIndex: 911, stalePossible: false}
                 events:
                   - eventId: ev-5d21
                     eventType: resource.registered
@@ -725,11 +754,13 @@ paths:
               example:
                 nodes:
                   - nodeId: storage-1-0
+                    groupId: shard-1
                     shardId: 1
+                    incarnation: a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
                     address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080
                     admitted: true
                     health: ok
-                    leaderId: storage-1-0
+                    leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
                     term: 7
                     appliedIndex: 4182
                     commitIndex: 4182
@@ -756,7 +787,7 @@ paths:
                 hash: "9c3f5a0e12b7d4a1"
                 shard: 1
                 ringVersion: 1
-                leaderId: storage-1-0
+                leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
                 replicas: [storage-1-0, storage-1-1, storage-1-2]
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
@@ -869,6 +900,11 @@ components:
       required: true
       description: The caller's ringVersion; a mismatch is 409 RING_VERSION_MISMATCH
       schema: {type: integer, format: uint64}
+    RingVersionOptional:
+      name: ringVersion
+      in: query
+      description: The caller's ringVersion, if it has one; a mismatch is 409 RING_VERSION_MISMATCH
+      schema: {type: integer, format: uint64}
 
   headers:
     ETag:
@@ -922,14 +958,56 @@ components:
                 result: {outcome: OPERATION_ID_REUSED, operationId: op-1c44, key: "req:r-1001", version: 0, reason: operationId already used with a different payload, shard: 1, appliedIndex: 4301}
             ringVersionMismatch:
               summary: Not proposed; refresh the ring and retry
-              value:
+              value: &ringVersionMismatchExample
                 code: RING_VERSION_MISMATCH
                 message: caller ringVersion 1, node has 2
                 retryable: true
                 outcomeUnknown: false
                 ringVersion: 2
+    RingVersionMismatch:
+      description: Stale ringVersion; nothing was read or proposed
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example: *ringVersionMismatchExample
+    TransitionConflict:
+      description: |
+        A domain transition was refused: expected version, status or attempt
+        did not match (VERSION_CONFLICT; re-read and decide), the transition
+        is forbidden (DOMAIN_CONFLICT), the operationId was reused with a
+        different payload, or ringVersion is stale. §40: 409 for a domain or
+        attempt conflict; 412 is only for a failed generic CAS.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          examples:
+            versionConflict:
+              summary: Expected status or attempt did not match
+              value:
+                code: VERSION_CONFLICT
+                message: expected v2 PENDING attempt "", have v3 MATCHING attempt "a-1"
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: VERSION_CONFLICT, operationId: op-1c44, key: "req:r-1001", version: 3, reason: "expected v2 PENDING attempt \"\", have v3 MATCHING attempt \"a-1\"", shard: 1, appliedIndex: 4183}
+            domainConflict:
+              value:
+                code: DOMAIN_CONFLICT
+                message: illegal transition FULFILLED -> MATCHING
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: DOMAIN_CONFLICT, operationId: op-1c45, key: "req:r-1001", version: 9, reason: illegal transition FULFILLED -> MATCHING, shard: 1, appliedIndex: 4300}
+            operationIdReused:
+              value:
+                code: OPERATION_ID_REUSED
+                message: operationId already used with a different payload
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: OPERATION_ID_REUSED, operationId: op-1c44, key: "req:r-1001", version: 0, reason: operationId already used with a different payload, shard: 1, appliedIndex: 4301}
+            ringVersionMismatch:
+              summary: Not proposed; refresh the ring and retry
+              value: *ringVersionMismatchExample
     PreconditionFailed:
-      description: Committed VERSION_CONFLICT or EXISTS
+      description: Committed VERSION_CONFLICT (generic CAS) or EXISTS
       content:
         application/json:
           schema: {$ref: "#/components/schemas/Error"}
@@ -950,8 +1028,8 @@ components:
                 result: {outcome: EXISTS, operationId: op-3b9e, key: "res:s-77", version: 1, reason: key exists, shard: 2, appliedIndex: 920}
     Unavailable:
       description: |
-        Not leader (never proposed; retry at leaderHint), no leader or quorum
-        (never proposed), local storage failure (e.g. a SQLite read error;
+        Not leader (never proposed; retry at leaderHint), no leader known or
+        a read could not be fenced (nothing was proposed), local storage failure (e.g. a SQLite read error;
         nothing committed by this request), or unknown outcome (may have committed: retry the
         same operationId or read the operation; never treat as a rejection).
       headers:
@@ -987,8 +1065,24 @@ components:
                 outcomeUnknown: true
     Unauthorized:
       description: Missing or invalid operator token
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example:
+            code: UNAUTHORIZED
+            message: operator bearer token required
+            retryable: false
+            outcomeUnknown: false
     Forbidden:
       description: Token lacks the operator role
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example:
+            code: FORBIDDEN
+            message: token lacks the operator role
+            retryable: false
+            outcomeUnknown: false
 
   schemas:
     EntityTag:
@@ -1333,8 +1427,9 @@ components:
         consistency: {type: string, enum: [strong, linearizable, stale]}
     OutboxPage:
       type: object
-      required: [shard, events, ringVersion]
+      required: [shard, events, ringVersion, read]
       properties:
+        read: {$ref: "#/components/schemas/ReadInfo"}
         shard: {type: integer}
         events:
           type: array
@@ -1366,7 +1461,7 @@ components:
       properties:
         code:
           type: string
-          enum: [INVALID, NOT_FOUND, DOMAIN_CONFLICT, OPERATION_ID_REUSED, VERSION_CONFLICT, EXISTS, RING_VERSION_MISMATCH, NOT_LEADER, NO_LEADER, STORAGE_UNAVAILABLE, OUTCOME_UNKNOWN]
+          enum: [INVALID, NOT_FOUND, DOMAIN_CONFLICT, OPERATION_ID_REUSED, VERSION_CONFLICT, EXISTS, RING_VERSION_MISMATCH, NOT_LEADER, NO_LEADER, STORAGE_UNAVAILABLE, OUTCOME_UNKNOWN, UNAUTHORIZED, FORBIDDEN]
         message: {type: string}
         retryable: {type: boolean}
         outcomeUnknown:
@@ -1378,12 +1473,30 @@ components:
         ringVersion: {type: integer, format: uint64, description: The server's ringVersion on RING_VERSION_MISMATCH}
 
     # ── nodes and admin ──────────────────────────────────────────────────────
+    PodName:
+      type: string
+      description: The StatefulSet pod name, e.g. storage-1-0. Not the Raft ServerID.
+      pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
+    Incarnation:
+      type: string
+      description: |
+        Disk incarnation UUID, created once on a new PVC and kept across
+        ordinary restarts (v3.1 §10). A wiped disk gets a new one.
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    ServerID:
+      type: string
+      description: The Raft ServerID, podName/incarnation (v3.1 §10)
+      pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     NodeRegistration:
       type: object
-      required: [nodeId, shardId, address, protocolVersion, schemaVersion]
+      required: [nodeId, groupId, shardId, incarnation, address, protocolVersion, schemaVersion]
       properties:
-        nodeId: {type: string}
+        nodeId: &nodeIdProp
+          allOf: [{$ref: "#/components/schemas/PodName"}]
+          description: The pod name; the Raft ServerID is nodeId/incarnation
+        groupId: &groupIdProp {type: string, description: "Raft group, e.g. shard-1"}
         shardId: {type: integer, minimum: 0}
+        incarnation: &incarnationProp {$ref: "#/components/schemas/Incarnation"}
         address: {type: string, description: Stable DNS host:port}
         protocolVersion: {type: integer}
         schemaVersion: {type: integer}
@@ -1391,7 +1504,7 @@ components:
       type: object
       required: [nodeId, address]
       properties:
-        nodeId: {type: string}
+        nodeId: *nodeIdProp
         address: {type: string}
     RegisterResponse:
       type: object
@@ -1409,12 +1522,16 @@ components:
       enum: [ok, degraded, unavailable]
     Heartbeat:
       type: object
-      required: [nodeId, shardId, health, term, appliedIndex, commitIndex]
+      required: [nodeId, groupId, shardId, incarnation, health, term, appliedIndex, commitIndex]
       properties:
-        nodeId: {type: string}
+        nodeId: *nodeIdProp
+        groupId: *groupIdProp
         shardId: {type: integer, minimum: 0}
+        incarnation: *incarnationProp
         health: {$ref: "#/components/schemas/Health"}
-        leaderId: {type: string, description: Empty when the node knows no leader}
+        leaderId: &leaderIdProp
+          allOf: [{$ref: "#/components/schemas/ServerID"}]
+          description: The leader's Raft ServerID, podName/incarnation; omitted when no leader is known
         term: {type: integer, format: uint64}
         appliedIndex: {type: integer, format: uint64}
         commitIndex: {type: integer, format: uint64}
@@ -1423,7 +1540,9 @@ components:
       required: [shard, leaderId, address, term]
       properties:
         shard: {type: integer}
-        leaderId: {type: string}
+        leaderId:
+          allOf: [{$ref: "#/components/schemas/ServerID"}]
+          description: The leader's Raft ServerID, podName/incarnation
         address: {type: string}
         term: {type: integer, format: uint64}
     HeartbeatResponse:
@@ -1446,14 +1565,16 @@ components:
           items: {type: integer}
     NodeStatus:
       type: object
-      required: [nodeId, shardId, address, admitted, health, term, appliedIndex, commitIndex, lastHeartbeatAt]
+      required: [nodeId, groupId, shardId, incarnation, address, admitted, health, term, appliedIndex, commitIndex, lastHeartbeatAt]
       properties:
-        nodeId: {type: string}
+        nodeId: *nodeIdProp
+        groupId: *groupIdProp
         shardId: {type: integer}
+        incarnation: *incarnationProp
         address: {type: string}
-        admitted: {type: boolean}
+        admitted: {type: boolean, description: "This incarnation is admitted (M7: admitted[nodeId] = incarnation)"}
         health: {$ref: "#/components/schemas/Health"}
-        leaderId: {type: string}
+        leaderId: *leaderIdProp
         term: {type: integer, format: uint64}
         appliedIndex: {type: integer, format: uint64}
         commitIndex: {type: integer, format: uint64}
@@ -1474,10 +1595,13 @@ components:
         hash: {type: string, description: "xxhash64 of the key, 16 hex digits"}
         shard: {type: integer}
         ringVersion: {type: integer, format: uint64}
-        leaderId: {type: string}
+        leaderId:
+          allOf: [{$ref: "#/components/schemas/ServerID"}]
+          description: The shard leader's Raft ServerID, podName/incarnation
         replicas:
           type: array
-          items: {type: string}
+          description: Pod names of the shard's replicas
+          items: {$ref: "#/components/schemas/PodName"}
     Distribution:
       type: object
       required: [ringVersion, shards]
