@@ -1,0 +1,1618 @@
+openapi: "3.0.3"
+info:
+  title: ReliefGrid Internal API
+  version: "1.0.0"
+  description: |
+    Coordinator and storage-node routes (plan v3.1 §40). Not exposed publicly.
+
+    The coordinator serves every route. It routes each domain command to the
+    shard that owns its key (contracts/ring.yaml) and forwards operationId,
+    expected version and ringVersion unchanged. A storage node serves the
+    /internal/data, /internal/requests, /internal/resources, /internal/scan,
+    /internal/outbox and /internal/operations routes for its own shard only,
+    and answers 503 NOT_LEADER with a leader hint when it is not the leader.
+
+    Bodies mirror internal/store: a command body is the store command plus
+    ringVersion, and committed results are store.Result. Every committed
+    outcome, including a rejection, is stored under its operationId and
+    returned verbatim (replayed=true) when the same command is retried.
+    contracts/README.md maps each store outcome to its HTTP status.
+
+    Reads are strong by default (M5): executed through the Raft log in FSM
+    order. linearizable (the §13 read fence, S4.1) and stale (a local
+    diagnostic read) are explicit opt-ins.
+
+    Internal-call authentication ships before the enhanced/cloud release;
+    /admin views are protected from the first install.
+servers:
+  - url: http://coordinator.reliefgrid.svc.cluster.local:8080
+    description: Coordinator (all routes)
+tags:
+  - name: nodes
+    description: Storage-node registration and heartbeats (coordinator only)
+  - name: data
+    description: Domain commands and reads, routed to the owning shard
+  - name: outbox
+    description: Per-shard transactional outbox for the relay
+  - name: admin
+    description: Protected diagnostic views
+
+paths:
+  /internal/nodes/register:
+    post:
+      tags: [nodes]
+      operationId: registerNode
+      summary: Register a storage node
+      description: |
+        A node reports its identity on start: pod name, Raft group, shard
+        and disk incarnation (v3.1 §10). Its Raft ServerID is
+        nodeId/incarnation. The response carries the accepted configuration
+        and discovery hints. Registration never bootstraps Raft: a node with
+        an empty disk stays unadmitted (admitted=false) until an operator
+        admits that incarnation with storagectl (M7).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/NodeRegistration"}
+            example:
+              nodeId: storage-1-0
+              groupId: shard-1
+              shardId: 1
+              incarnation: a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
+              address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080
+              protocolVersion: 1
+              schemaVersion: 1
+      responses:
+        "200":
+          description: Registration recorded
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RegisterResponse"}
+              example:
+                accepted: true
+                admitted: true
+                ring: &ringExample
+                  ringVersion: 1
+                  hash: xxhash64
+                  shards: 3
+                  vnodesPerShard: 128
+                  checksum: sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360
+                peers:
+                  - nodeId: storage-1-1
+                    address: storage-1-1.storage-1-headless.reliefgrid.svc.cluster.local:8080
+                  - nodeId: storage-1-2
+                    address: storage-1-2.storage-1-headless.reliefgrid.svc.cluster.local:8080
+        "400": {$ref: "#/components/responses/BadRequest"}
+
+  /internal/nodes/heartbeat:
+    post:
+      tags: [nodes]
+      operationId: nodeHeartbeat
+      summary: Report node health and Raft position
+      description: |
+        Sent periodically by every node. The coordinator treats it as an
+        observation for routing. The response carries routing and config
+        hints, never an instruction overriding Raft authority.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/Heartbeat"}
+            example:
+              nodeId: storage-1-0
+              groupId: shard-1
+              shardId: 1
+              incarnation: a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
+              health: ok
+              leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
+              term: 7
+              appliedIndex: 4182
+              commitIndex: 4182
+      responses:
+        "200":
+          description: Heartbeat recorded
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/HeartbeatResponse"}
+              example:
+                ringVersion: 1
+                checksum: sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360
+                leaders:
+                  - {shard: 0, leaderId: storage-0-1/4b2a7c9e-1f6d-4e3a-a8b5-0c9d2e7f6a41, address: storage-0-1.storage-0-headless.reliefgrid.svc.cluster.local:8080, term: 4}
+                  - {shard: 1, leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24, address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080, term: 7}
+                  - {shard: 2, leaderId: storage-2-2/e6d1c8a3-9b4f-4027-8e5c-3a7f1b2d9c06, address: storage-2-2.storage-2-headless.reliefgrid.svc.cluster.local:8080, term: 3}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+
+  /internal/ring:
+    get:
+      tags: [data]
+      operationId: getRing
+      summary: The fixed ring configuration and shard count
+      description: The loaded, checksum-verified contracts/ring.yaml.
+      x-store-method: Shards
+      x-store-result: shards
+      responses:
+        "200":
+          description: Ring configuration
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Ring"}
+              example: *ringExample
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/data/{key}:
+    parameters:
+      - $ref: "#/components/parameters/DataKey"
+    put:
+      tags: [data]
+      operationId: putData
+      summary: Create-only or conditional write
+      description: |
+        Exactly one of If-None-Match or If-Match is required.
+
+        - `If-None-Match: *` is CreateEntity: create-only. The body carries the
+          request (req: keys), resource (res: keys) or value (any other key)
+          and its outbox rows. A key that exists, live or tombstoned, gives
+          412 EXISTS.
+        - `If-Match: "<version>"` (a strong entity tag, e.g. `"4"`) is CompareAndSet on a generic key. Domain keys
+          give 409 DOMAIN_CONFLICT: they change only through the domain
+          routes. A version mismatch gives 412 VERSION_CONFLICT.
+      x-store-method: [CreateEntity, CompareAndSet]
+      x-store-fixed: {delete: false}
+      parameters:
+        - $ref: "#/components/parameters/IfNoneMatch"
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PutDataBody"}
+            examples:
+              createResource:
+                summary: CreateEntity (If-None-Match *) of res:s-77
+                value:
+                  operationId: op-3b9e
+                  at: 1792800000000
+                  ringVersion: 1
+                  resource: &resourceExample
+                    id: s-77
+                    type: WATER
+                    name: Tanker 77
+                    location: {lat: 28.61, lng: 77.23}
+                    geohash: ttnfv8k
+                    availableFrom: 1792800000000
+                    availableUntil: 1792886400000
+                    status: AVAILABLE
+                    reusable: true
+                    locationRevision: 1
+                    createdAt: 1792800000000
+                    updatedAt: 1792800000000
+                  outbox:
+                    -
+                      eventId: ev-5d21
+                      eventType: resource.registered
+                      schemaVersion: 1
+                      exchange: relief.resources
+                      routingKey: resource.registered.water
+                      payload: {resourceId: s-77, type: WATER}
+                      published: false
+              compareAndSet:
+                summary: CompareAndSet (If-Match "4") of a generic key
+                value:
+                  operationId: op-9a01
+                  at: 1792800001000
+                  ringVersion: 1
+                  value: {radiusKm: 50}
+      responses:
+        "200":
+          description: Committed
+          headers:
+            ETag: {$ref: "#/components/headers/ETag"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: op-3b9e, key: "res:s-77", version: 1, shard: 2, appliedIndex: 911}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "412": {$ref: "#/components/responses/PreconditionFailed"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+      x-store-result: result
+    get:
+      tags: [data]
+      operationId: getData
+      summary: Read one record
+      description: A tombstone is returned with deleted=true; an absent key is 404.
+      x-store-method: ReadRecord
+      x-store-result: record
+      parameters:
+        - $ref: "#/components/parameters/Consistency"
+      responses:
+        "200":
+          description: The committed record
+          headers:
+            ETag: {$ref: "#/components/headers/ETag"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RecordResponse"}
+              example:
+                ringVersion: 1
+                read: {consistency: strong, servedBy: storage-1-0, appliedIndex: 4182, stalePossible: false}
+                record:
+                  key: "req:r-1001"
+                  kind: request
+                  version: 3
+                  updatedAt: 1792800005000
+                  request:
+                    id: r-1001
+                    type: WATER
+                    location: {lat: 28.6139, lng: 77.209}
+                    geohash: ttnfv2u
+                    peopleAffected: 40
+                    urgency: 3
+                    status: MATCHING
+                    workflowGeneration: 1
+                    currentAttempt: {attemptId: a-1, resourceId: s-77, fingerprint: fp-3c1a9e}
+                    retryCount: 0
+                    createdAt: 1792800000000
+                    updatedAt: 1792800005000
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+    delete:
+      tags: [data]
+      operationId: deleteData
+      summary: Conditional tombstone of a generic key
+      description: |
+        CompareAndSet with delete=true. Protected domain records (req:, res:)
+        give 409 DOMAIN_CONFLICT. The version is checked first: on an absent
+        key, `If-Match: "0"` gives 404 NOT_FOUND and any other version gives
+        412 VERSION_CONFLICT.
+      x-store-method: CompareAndSet
+      x-store-fixed: {delete: true, value: null}
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRequired"
+        - $ref: "#/components/parameters/OperationIdQuery"
+        - $ref: "#/components/parameters/AtQuery"
+        - $ref: "#/components/parameters/RingVersionQuery"
+      responses:
+        "200":
+          description: Tombstone committed
+          headers:
+            ETag: {$ref: "#/components/headers/ETag"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: op-77c0, key: "cfg:matcher", version: 5, shard: 0, appliedIndex: 3020}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "412": {$ref: "#/components/responses/PreconditionFailed"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+      x-store-result: result
+
+  /internal/scan:
+    get:
+      tags: [data]
+      operationId: scan
+      summary: Bounded scan across every shard
+      description: |
+        Scatter-gather over all shards; results are ordered by key within each
+        shard. A shard that fails sets partial=true and is listed in
+        failedShards. A partial scan is never an empty result and never
+        justifies NO_CANDIDATE. positions has one entry per shard that answered.
+
+        A scan is bounded: limit (1 to 1000) caps the records returned per
+        shard, so a page never exceeds limit × shards records. Cursor paging
+        follows later (§14). When ringVersion is given and differs from the
+        server's, the scan is refused with 409 RING_VERSION_MISMATCH.
+      x-store-method: Scan
+      parameters:
+        - {name: kind, in: query, required: true, schema: {$ref: "#/components/schemas/Kind"}}
+        - {name: type, in: query, schema: {$ref: "#/components/schemas/ResourceType"}}
+        - name: statuses
+          in: query
+          description: RequestStatus or ResourceStatus values for kind
+          style: form
+          explode: true
+          schema: {type: array, items: {type: string}}
+        - name: geohashPrefixes
+          in: query
+          description: Each prefix p matches the key range [p, p+"\xff")
+          style: form
+          explode: true
+          schema: {type: array, items: {type: string}}
+        - name: limit
+          in: query
+          required: true
+          description: Records per shard, 1 to 1000
+          schema: {type: integer, minimum: 1, maximum: 1000}
+        - $ref: "#/components/parameters/RingVersionOptional"
+        - $ref: "#/components/parameters/Consistency"
+      responses:
+        "200":
+          description: Merged scan result
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ScanResponse"}
+              examples:
+                complete:
+                  value:
+                    ringVersion: 1
+                    consistency: strong
+                    records:
+                      - {key: "res:s-77", kind: resource, version: 1, updatedAt: 1792800000000, resource: *resourceExample}
+                    partial: false
+                    positions:
+                      - {shard: 0, appliedIndex: 3020}
+                      - {shard: 1, appliedIndex: 4182}
+                      - {shard: 2, appliedIndex: 911}
+                partial:
+                  summary: Shard 2 failed; not an empty result
+                  value:
+                    ringVersion: 1
+                    consistency: stale
+                    records: []
+                    partial: true
+                    failedShards: [2]
+                    positions:
+                      - {shard: 0, appliedIndex: 3020}
+                      - {shard: 1, appliedIndex: 4182}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/RingVersionMismatch"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/requests/{id}/transition:
+    parameters:
+      - $ref: "#/components/parameters/RequestID"
+    post:
+      tags: [data]
+      operationId: transitionRequest
+      summary: Move a request along its lifecycle (v3.1 §8)
+      description: |
+        Expected version, status and attempt must all match; any mismatch is
+        409 VERSION_CONFLICT with the committed result (re-read and decide).
+        The entity update and its outbox rows commit in one transaction.
+      x-store-method: TransitionRequest
+      x-store-result: result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TransitionRequestBody"}
+            example:
+              operationId: op-1c44
+              at: 1792800005000
+              ringVersion: 1
+              expectedVersion: 2
+              expectedStatus: PENDING
+              expectedAttemptId: ""
+              to: MATCHING
+              attempt: {attemptId: a-1, resourceId: s-77, fingerprint: fp-3c1a9e}
+      responses:
+        "200":
+          description: Committed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: op-1c44, key: "req:r-1001", version: 3, shard: 1, appliedIndex: 4182}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/TransitionConflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/requests/{id}/retry:
+    parameters:
+      - $ref: "#/components/parameters/RequestID"
+    post:
+      tags: [data]
+      operationId: retryWorkflow
+      summary: Record a retry due time without changing status or intent
+      x-store-method: RetryWorkflow
+      x-store-result: result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/RetryWorkflowBody"}
+            example:
+              operationId: op-52aa
+              at: 1792800010000
+              ringVersion: 1
+              expectedVersion: 4
+              nextAttemptAt: 1792800040000
+              lastError: no candidate within 50 km
+      responses:
+        "200":
+          description: Committed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: op-52aa, key: "req:r-1001", version: 5, shard: 1, appliedIndex: 4190}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/TransitionConflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/resources/{id}/transition:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIDAsKey"
+    post:
+      tags: [data]
+      operationId: transitionResource
+      summary: Public resource update (v3.1 §19)
+      description: |
+        status may only become AVAILABLE or OFFLINE; ASSIGNED and CONSUMED are
+        reached only through claim and close-attempt. An ASSIGNED resource
+        cannot change status, and nothing here touches activeClaim
+        (409 DOMAIN_CONFLICT).
+      x-store-method: TransitionResource
+      x-store-result: result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TransitionResourceBody"}
+            example:
+              operationId: op-6e10
+              at: 1792800020000
+              ringVersion: 1
+              expectedVersion: 1
+              status: OFFLINE
+      responses:
+        "200":
+          description: Committed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: op-6e10, key: "res:s-77", version: 2, shard: 2, appliedIndex: 930}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/TransitionConflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/resources/{id}/claim:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIDAsResourceKey"
+    post:
+      tags: [data]
+      operationId: tryClaim
+      summary: TryClaim a resource for one bound attempt
+      description: |
+        Eligibility is discrete: type equality and `at` inside the
+        availability window. The committed outcome is SUCCESS,
+        CONFLICT_CLOSED, REJECTED_CLOSED or CLOSED, all with 200. Only a
+        CONFLICT_CLOSED, REJECTED_CLOSED or CLOSED result (or a closure)
+        permits retargeting away from the attempt; an unknown outcome does not.
+      x-store-method: TryClaim
+      x-store-result: result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/TryClaimBody"}
+            example:
+              operationId: op-claim-a-1
+              at: 1792800006000
+              ringVersion: 1
+              requestId: r-1001
+              attempt: {attemptId: a-1, resourceId: s-77, fingerprint: fp-3c1a9e}
+              type: WATER
+      responses:
+        "200":
+          description: Committed claim outcome
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              examples:
+                success:
+                  value:
+                    ringVersion: 1
+                    result: {outcome: SUCCESS, operationId: op-claim-a-1, key: "res:s-77", version: 2, shard: 2, appliedIndex: 915}
+                conflictClosed:
+                  summary: Held by another attempt; this attempt is now closed
+                  value:
+                    ringVersion: 1
+                    result: {outcome: CONFLICT_CLOSED, operationId: op-claim-a-1, key: "res:s-77", version: 2, reason: held by attempt a-9, shard: 2, appliedIndex: 915}
+                closed:
+                  summary: A committed closure already fences this attempt
+                  value:
+                    ringVersion: 1
+                    result: {outcome: CLOSED, operationId: op-claim-a-1, key: "res:s-77", version: 1, shard: 2, appliedIndex: 916}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/resources/{id}/close-attempt:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIDAsResourceKey"
+    post:
+      tags: [data]
+      operationId: closeAttempt
+      summary: Record the permanent fence for an attempt
+      description: |
+        Records the closure whether or not the claim has arrived, and releases
+        the resource to disposition only if this exact attempt holds it. The
+        first closure's disposition is kept on every retry.
+      x-store-method: CloseAttempt
+      x-store-result: result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CloseAttemptBody"}
+            example:
+              operationId: op-close-a-1
+              at: 1792800030000
+              ringVersion: 1
+              requestId: r-1001
+              attempt: {attemptId: a-1, resourceId: s-77, fingerprint: fp-3c1a9e}
+              disposition: AVAILABLE
+              reason: request cancelled
+      responses:
+        "200":
+          description: Closure committed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: op-close-a-1, key: "res:s-77", version: 3, shard: 2, appliedIndex: 940}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/resources/{id}/closures/{attemptId}:
+    parameters:
+      - $ref: "#/components/parameters/ResourceIDAsResourceKey"
+      - {name: attemptId, in: path, required: true, schema: {type: string}}
+    get:
+      tags: [data]
+      operationId: getClosure
+      summary: Read the durable closure for one resource and attempt
+      x-store-method: ReadClosure
+      x-store-result: closure
+      parameters:
+        - $ref: "#/components/parameters/Consistency"
+      responses:
+        "200":
+          description: The closure
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ClosureResponse"}
+              example:
+                ringVersion: 1
+                read: {consistency: strong, servedBy: storage-2-2, appliedIndex: 940, stalePossible: false}
+                closure:
+                  resourceKey: "res:s-77"
+                  attemptId: a-1
+                  requestId: r-1001
+                  fingerprint: fp-3c1a9e
+                  reason: request cancelled
+                  disposition: AVAILABLE
+                  closedAt: 1792800030000
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/outbox:
+    get:
+      tags: [outbox]
+      operationId: pendingOutbox
+      summary: Page unpublished events of one shard in commit order
+      description: |
+        With wait > 0 the call long-polls (§14): if no event is pending it
+        waits up to wait seconds for a commit notification, outside the FSM,
+        any SQL transaction and the snapshot/apply lock, then reads a fenced
+        page. A leadership change ends the wait early. An empty page after
+        the wait is a real "nothing pending", never a failed read.
+      x-store-method: PendingOutbox
+      x-store-result: events
+      parameters:
+        - {name: shard, in: query, required: true, schema: {type: integer, minimum: 0}}
+        - {name: limit, in: query, required: true, schema: {type: integer, minimum: 1, maximum: 100}}
+        - name: wait
+          in: query
+          description: Long-poll seconds when nothing is pending; 0 (default) returns at once
+          schema: {type: integer, minimum: 0, maximum: 1, default: 0}
+        - $ref: "#/components/parameters/Consistency"
+      responses:
+        "200":
+          description: Pending events
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OutboxPage"}
+              example:
+                ringVersion: 1
+                shard: 2
+                read: {consistency: strong, servedBy: storage-2-2, appliedIndex: 911, stalePossible: false}
+                events:
+                  - eventId: ev-5d21
+                    eventType: resource.registered
+                    schemaVersion: 1
+                    exchange: relief.resources
+                    routingKey: resource.registered.water
+                    payload: {resourceId: s-77, type: WATER}
+                    entityKey: "res:s-77"
+                    entityVersion: 1
+                    createdAt: 1792800000000
+                    published: false
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/outbox/published:
+    post:
+      tags: [outbox]
+      operationId: markOutboxPublished
+      summary: Mark up to 100 same-shard events published
+      description: |
+        Called only after the broker's routed confirm. Idempotent under the
+        batch operationId.
+      x-store-method: MarkOutboxPublished
+      x-store-result: result
+      parameters:
+        - name: shard
+          in: query
+          required: true
+          x-store-field: shard
+          schema: {type: integer, minimum: 0}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/MarkPublishedBody"}
+            example:
+              operationId: op-pub-2-0007
+              at: 1792800001500
+              ringVersion: 1
+              eventIds: [ev-5d21]
+      responses:
+        "200":
+          description: Committed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: op-pub-2-0007, key: "", version: 0, shard: 2, appliedIndex: 912}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /internal/operations/{operationId}:
+    get:
+      tags: [data]
+      operationId: getOperation
+      summary: Historical result of an operation
+      description: |
+        Routed by the owning entity key. A historical result is never proof
+        of current ownership; re-read the entity before acting.
+      x-store-method: Operation
+      x-store-result: result
+      parameters:
+        - {name: operationId, in: path, required: true, schema: {type: string}}
+        - {name: key, in: query, required: true, description: Owning entity key, schema: {type: string}}
+        - $ref: "#/components/parameters/Consistency"
+      responses:
+        "200":
+          description: The stored result
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OperationResponse"}
+              example:
+                ringVersion: 1
+                read: {consistency: strong, servedBy: storage-2-2, appliedIndex: 940, stalePossible: false}
+                result: {outcome: SUCCESS, operationId: op-claim-a-1, key: "res:s-77", version: 2, shard: 2, appliedIndex: 915}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
+  /admin/ring:
+    get:
+      tags: [admin]
+      operationId: adminRing
+      summary: Ring placement view
+      security: [{operatorToken: []}]
+      responses:
+        "200":
+          description: Ring configuration and per-shard token counts
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminRing"}
+              example:
+                ring: *ringExample
+                tokensPerShard: [128, 128, 128]
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /admin/nodes:
+    get:
+      tags: [admin]
+      operationId: adminNodes
+      summary: Registered nodes and their last heartbeat
+      security: [{operatorToken: []}]
+      responses:
+        "200":
+          description: Nodes
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminNodes"}
+              example:
+                nodes:
+                  - nodeId: storage-1-0
+                    groupId: shard-1
+                    shardId: 1
+                    incarnation: a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
+                    address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080
+                    admitted: true
+                    health: ok
+                    leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
+                    term: 7
+                    appliedIndex: 4182
+                    commitIndex: 4182
+                    lastHeartbeatAt: 1792800006000
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /admin/locate/{key}:
+    get:
+      tags: [admin]
+      operationId: adminLocate
+      summary: Logical placement of a key, separate from its replicas
+      security: [{operatorToken: []}]
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: Placement
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Placement"}
+              example:
+                key: "req:r-1001"
+                hash: "9c3f5a0e12b7d4a1"
+                shard: 1
+                ringVersion: 1
+                leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
+                replicas: [storage-1-0, storage-1-1, storage-1-2]
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+  /admin/distribution:
+    get:
+      tags: [admin]
+      operationId: adminDistribution
+      summary: Logical records per shard, counted once
+      security: [{operatorToken: []}]
+      responses:
+        "200":
+          description: Distribution
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Distribution"}
+              example:
+                ringVersion: 1
+                shards:
+                  - {shard: 0, records: 312, replicas: 3}
+                  - {shard: 1, records: 298, replicas: 3}
+                  - {shard: 2, records: 305, replicas: 3}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+
+components:
+  securitySchemes:
+    operatorToken:
+      type: http
+      scheme: bearer
+
+  parameters:
+    DataKey:
+      name: key
+      in: path
+      required: true
+      description: Canonical key; req:{id} and res:{id} are domain keys, anything else is generic
+      x-store-field: key
+      schema: {type: string}
+    RequestID:
+      name: id
+      in: path
+      required: true
+      description: Request ID; the store key is req:{id}
+      x-store-field: key
+      schema: {type: string}
+    ResourceIDAsKey:
+      name: id
+      in: path
+      required: true
+      description: Resource ID; the store key is res:{id}
+      x-store-field: key
+      schema: {type: string}
+    ResourceIDAsResourceKey:
+      name: id
+      in: path
+      required: true
+      description: Resource ID; the store resourceKey is res:{id}
+      x-store-field: resourceKey
+      schema: {type: string}
+    Consistency:
+      name: consistency
+      in: query
+      description: |
+        strong (default, M5): executed through the log in FSM order.
+        linearizable: the §13 read fence (S4.1); falls back to strong until enabled.
+        stale: local diagnostic read; read.stalePossible=true.
+      schema:
+        type: string
+        enum: [strong, linearizable, stale]
+        default: strong
+    IfNoneMatch:
+      name: If-None-Match
+      in: header
+      description: "`*` selects CreateEntity (create-only)"
+      schema: {type: string, enum: ["*"]}
+    IfMatch:
+      name: If-Match
+      in: header
+      description: |
+        Selects CompareAndSet. One strong entity tag holding the expected
+        version, e.g. "7" (internalapi.FormatETag / ParseETag); "0" means the
+        key must be absent. Weak tags, lists and * are rejected (400).
+      x-store-field: expectedVersion
+      x-store-encoding: etag
+      schema: {$ref: "#/components/schemas/EntityTag"}
+    IfMatchRequired:
+      name: If-Match
+      in: header
+      required: true
+      description: One strong entity tag holding the expected version, e.g. "7"
+      x-store-field: expectedVersion
+      x-store-encoding: etag
+      schema: {$ref: "#/components/schemas/EntityTag"}
+    OperationIdQuery:
+      name: operationId
+      in: query
+      required: true
+      description: Proposer-chosen; identical on every retry
+      schema: {type: string}
+    AtQuery:
+      name: at
+      in: query
+      required: true
+      description: Proposer-chosen unix ms; identical on every retry
+      schema: {type: integer, format: int64}
+    RingVersionQuery:
+      name: ringVersion
+      in: query
+      required: true
+      description: The caller's ringVersion; a mismatch is 409 RING_VERSION_MISMATCH
+      schema: {type: integer, format: uint64}
+    RingVersionOptional:
+      name: ringVersion
+      in: query
+      description: The caller's ringVersion, if it has one; a mismatch is 409 RING_VERSION_MISMATCH
+      schema: {type: integer, format: uint64}
+
+  headers:
+    ETag:
+      description: Strong entity tag of the record version after the read or write, e.g. "7"
+      schema: {$ref: "#/components/schemas/EntityTag"}
+    RetryAfter:
+      description: Seconds to wait before retrying
+      schema: {type: integer, minimum: 0}
+
+  responses:
+    BadRequest:
+      description: Malformed request or committed INVALID
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example:
+            code: INVALID
+            message: attempt is required for MATCHING
+            retryable: false
+            outcomeUnknown: false
+            result: {outcome: INVALID, operationId: op-1c44, key: "req:r-1001", version: 2, reason: attempt is required for MATCHING, shard: 1, appliedIndex: 4181}
+    NotFound:
+      description: No committed record, closure, operation or node
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example:
+            code: NOT_FOUND
+            message: no request req:r-404
+            retryable: false
+            outcomeUnknown: false
+    Conflict:
+      description: Domain or attempt conflict, reused operationId, or stale ringVersion
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          examples:
+            domainConflict:
+              value:
+                code: DOMAIN_CONFLICT
+                message: illegal transition FULFILLED -> MATCHING
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: DOMAIN_CONFLICT, operationId: op-1c45, key: "req:r-1001", version: 9, reason: illegal transition FULFILLED -> MATCHING, shard: 1, appliedIndex: 4300}
+            operationIdReused:
+              value:
+                code: OPERATION_ID_REUSED
+                message: operationId already used with a different payload
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: OPERATION_ID_REUSED, operationId: op-1c44, key: "req:r-1001", version: 0, reason: operationId already used with a different payload, shard: 1, appliedIndex: 4301}
+            ringVersionMismatch:
+              summary: Not proposed; refresh the ring and retry
+              value: &ringVersionMismatchExample
+                code: RING_VERSION_MISMATCH
+                message: caller ringVersion 1, node has 2
+                retryable: true
+                outcomeUnknown: false
+                ringVersion: 2
+    RingVersionMismatch:
+      description: Stale ringVersion; nothing was read or proposed
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example: *ringVersionMismatchExample
+    TransitionConflict:
+      description: |
+        A domain transition was refused: expected version, status or attempt
+        did not match (VERSION_CONFLICT; re-read and decide), the transition
+        is forbidden (DOMAIN_CONFLICT), the operationId was reused with a
+        different payload, or ringVersion is stale. §40: 409 for a domain or
+        attempt conflict; 412 is only for a failed generic CAS.
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          examples:
+            versionConflict:
+              summary: Expected status or attempt did not match
+              value:
+                code: VERSION_CONFLICT
+                message: expected v2 PENDING attempt "", have v3 MATCHING attempt "a-1"
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: VERSION_CONFLICT, operationId: op-1c44, key: "req:r-1001", version: 3, reason: "expected v2 PENDING attempt \"\", have v3 MATCHING attempt \"a-1\"", shard: 1, appliedIndex: 4183}
+            domainConflict:
+              value:
+                code: DOMAIN_CONFLICT
+                message: illegal transition FULFILLED -> MATCHING
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: DOMAIN_CONFLICT, operationId: op-1c45, key: "req:r-1001", version: 9, reason: illegal transition FULFILLED -> MATCHING, shard: 1, appliedIndex: 4300}
+            operationIdReused:
+              value:
+                code: OPERATION_ID_REUSED
+                message: operationId already used with a different payload
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: OPERATION_ID_REUSED, operationId: op-1c44, key: "req:r-1001", version: 0, reason: operationId already used with a different payload, shard: 1, appliedIndex: 4301}
+            ringVersionMismatch:
+              summary: Not proposed; refresh the ring and retry
+              value: *ringVersionMismatchExample
+    PreconditionFailed:
+      description: Committed VERSION_CONFLICT (generic CAS) or EXISTS
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          examples:
+            versionConflict:
+              value:
+                code: VERSION_CONFLICT
+                message: expected version 2, have 3
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: VERSION_CONFLICT, operationId: op-1c44, key: "req:r-1001", version: 3, reason: "expected version 2, have 3", shard: 1, appliedIndex: 4183}
+            exists:
+              value:
+                code: EXISTS
+                message: key exists
+                retryable: false
+                outcomeUnknown: false
+                result: {outcome: EXISTS, operationId: op-3b9e, key: "res:s-77", version: 1, reason: key exists, shard: 2, appliedIndex: 920}
+    Unavailable:
+      description: |
+        Not leader (never proposed; retry at leaderHint), no leader known or
+        a read could not be fenced (nothing was proposed), local storage failure (e.g. a SQLite read error;
+        nothing committed by this request), or unknown outcome (may have committed: retry the
+        same operationId or read the operation; never treat as a rejection).
+      headers:
+        Retry-After: {$ref: "#/components/headers/RetryAfter"}
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          examples:
+            notLeader:
+              value:
+                code: NOT_LEADER
+                message: storage-1-1 is not the leader of shard 1
+                retryable: true
+                outcomeUnknown: false
+                leaderHint: {nodeId: storage-1-0, address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080, term: 7}
+            noLeader:
+              value:
+                code: NO_LEADER
+                message: shard 1 has no leader
+                retryable: true
+                outcomeUnknown: false
+            storageUnavailable:
+              value:
+                code: STORAGE_UNAVAILABLE
+                message: local storage read failed
+                retryable: true
+                outcomeUnknown: false
+            outcomeUnknown:
+              value:
+                code: OUTCOME_UNKNOWN
+                message: commit not confirmed before the deadline
+                retryable: true
+                outcomeUnknown: true
+    Unauthorized:
+      description: Missing or invalid operator token
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example:
+            code: UNAUTHORIZED
+            message: operator bearer token required
+            retryable: false
+            outcomeUnknown: false
+    Forbidden:
+      description: Token lacks the operator role
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+          example:
+            code: FORBIDDEN
+            message: token lacks the operator role
+            retryable: false
+            outcomeUnknown: false
+
+  schemas:
+    EntityTag:
+      type: string
+      description: A strong entity tag holding a decimal entity version, quotes included
+      pattern: '^"(0|[1-9][0-9]*)"$'
+      example: '"7"'
+
+    # ── internal/store types (x-go-type reuses them in generated code) ──────
+    Kind:
+      type: string
+      enum: [request, resource, kv]
+      x-go-type: store.Kind
+      x-go-type-import: &storeImport {path: github.com/ParthMalhotra07/ReliefGrid/internal/store}
+    ResourceType:
+      type: string
+      enum: [WATER, FOOD, MEDICINE, TRANSPORTATION, SHELTER]
+      x-go-type: store.ResourceType
+      x-go-type-import: *storeImport
+    RequestStatus:
+      type: string
+      enum: [PENDING, WAITING, MATCHING, MATCHED, IN_PROGRESS, RETRYING, CANCELLING, FULFILLING, CANCELLED, FULFILLED]
+      x-go-type: store.RequestStatus
+      x-go-type-import: *storeImport
+    ResourceStatus:
+      type: string
+      enum: [AVAILABLE, ASSIGNED, OFFLINE, CONSUMED]
+      x-go-type: store.ResourceStatus
+      x-go-type-import: *storeImport
+    Disposition:
+      description: Cleanup disposition; AVAILABLE (reusable, in window), CONSUMED or OFFLINE
+      type: string
+      enum: [AVAILABLE, CONSUMED, OFFLINE]
+      x-go-type: store.ResourceStatus
+      x-go-type-import: *storeImport
+    Outcome:
+      type: string
+      enum: [OK, VERSION_CONFLICT, NOT_FOUND, EXISTS, INVALID, DOMAIN_CONFLICT, OPERATION_ID_REUSED, SUCCESS, CONFLICT_CLOSED, REJECTED_CLOSED, CLOSED]
+      x-go-type: store.Outcome
+      x-go-type-import: *storeImport
+    Location:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat: {type: number, format: double}
+        lng: {type: number, format: double}
+      x-go-type: store.Location
+      x-go-type-import: *storeImport
+    Attempt:
+      type: object
+      description: A request's recorded intent; immutable once recorded
+      required: [attemptId, resourceId, fingerprint]
+      properties:
+        attemptId: {type: string}
+        resourceId: {type: string}
+        fingerprint: {type: string, description: Matcher hash over the immutable eligibility inputs}
+      x-go-type: store.Attempt
+      x-go-type-import: *storeImport
+    Claim:
+      type: object
+      required: [requestId, attemptId, fingerprint]
+      properties:
+        requestId: {type: string}
+        attemptId: {type: string}
+        fingerprint: {type: string}
+      x-go-type: store.Claim
+      x-go-type-import: *storeImport
+    Window:
+      type: object
+      description: Availability window in unix ms, from < until
+      required: [from, until]
+      properties:
+        from: {type: integer, format: int64}
+        until: {type: integer, format: int64}
+      x-go-type: store.Window
+      x-go-type-import: *storeImport
+    Request:
+      type: object
+      required: [id, type, location, geohash, peopleAffected, urgency, status, workflowGeneration, retryCount, createdAt, updatedAt]
+      properties:
+        id: {type: string}
+        type: {$ref: "#/components/schemas/ResourceType"}
+        location: {$ref: "#/components/schemas/Location"}
+        geohash: {type: string}
+        peopleAffected: {type: integer}
+        urgency: {type: integer}
+        details: {description: Opaque request details (JSON)}
+        status: {$ref: "#/components/schemas/RequestStatus"}
+        workflowGeneration: {type: integer, format: uint64}
+        currentAttempt: {$ref: "#/components/schemas/Attempt"}
+        assignedResourceId: {type: string}
+        disposition: {$ref: "#/components/schemas/Disposition"}
+        nextAttemptAt: {type: integer, format: int64}
+        retryCount: {type: integer}
+        lastError: {type: string}
+        createdAt: {type: integer, format: int64}
+        updatedAt: {type: integer, format: int64}
+      x-go-type: store.Request
+      x-go-type-import: *storeImport
+    Resource:
+      type: object
+      required: [id, type, name, location, geohash, availableFrom, availableUntil, status, reusable, locationRevision, createdAt, updatedAt]
+      properties:
+        id: {type: string}
+        type: {$ref: "#/components/schemas/ResourceType"}
+        name: {type: string}
+        location: {$ref: "#/components/schemas/Location"}
+        geohash: {type: string}
+        availableFrom: {type: integer, format: int64, description: "Unix ms, inclusive"}
+        availableUntil: {type: integer, format: int64, description: "Unix ms, exclusive"}
+        status: {$ref: "#/components/schemas/ResourceStatus"}
+        reusable: {type: boolean}
+        activeClaim: {$ref: "#/components/schemas/Claim"}
+        locationRevision: {type: integer, format: uint64}
+        createdAt: {type: integer, format: int64}
+        updatedAt: {type: integer, format: int64}
+      x-go-type: store.Resource
+      x-go-type-import: *storeImport
+    Record:
+      type: object
+      description: One committed row; exactly one of request, resource or value is set, by kind
+      required: [key, kind, version, updatedAt]
+      properties:
+        key: {type: string}
+        kind: {$ref: "#/components/schemas/Kind"}
+        version: {type: integer, format: uint64, description: "Per-key revision, never reused"}
+        deleted: {type: boolean}
+        request: {$ref: "#/components/schemas/Request"}
+        resource: {$ref: "#/components/schemas/Resource"}
+        value: {description: Generic value (JSON)}
+        updatedAt: {type: integer, format: int64}
+      x-go-type: store.Record
+      x-go-type-import: *storeImport
+    Closure:
+      type: object
+      description: The permanent fence for one resource/attempt
+      required: [resourceKey, attemptId, requestId, fingerprint, reason, closedAt]
+      properties:
+        resourceKey: {type: string}
+        attemptId: {type: string}
+        requestId: {type: string}
+        fingerprint: {type: string}
+        reason: {type: string}
+        disposition: {$ref: "#/components/schemas/Disposition"}
+        closedAt: {type: integer, format: int64}
+      x-go-type: store.Closure
+      x-go-type-import: *storeImport
+    OutboxEvent:
+      type: object
+      description: |
+        Written in the same transaction as its state change. The proposer
+        supplies eventId and payload; the FSM fills entityKey, entityVersion
+        and createdAt: they are readOnly, and a proposer omits them.
+      required: [eventId, eventType, schemaVersion, exchange, routingKey, payload, published]
+      properties:
+        eventId: {type: string}
+        eventType: {type: string}
+        schemaVersion: {type: integer}
+        exchange: {type: string}
+        routingKey: {type: string}
+        payload: {description: "Event payload (JSON, contracts/events)"}
+        entityKey: {type: string, readOnly: true}
+        entityVersion: {type: integer, format: uint64, readOnly: true}
+        createdAt: {type: integer, format: int64, readOnly: true}
+        published: {type: boolean}
+      x-go-type: store.OutboxEvent
+      x-go-type-import: *storeImport
+    Result:
+      type: object
+      description: |
+        The committed outcome of one mutation. version is the entity version
+        after apply, or the current one on rejection.
+      required: [outcome, operationId, key, version, shard, appliedIndex]
+      properties:
+        outcome: {$ref: "#/components/schemas/Outcome"}
+        operationId: {type: string}
+        key: {type: string}
+        version: {type: integer, format: uint64}
+        reason: {type: string}
+        replayed: {type: boolean}
+        shard: {type: integer}
+        appliedIndex: {type: integer, format: uint64}
+      x-go-type: store.Result
+      x-go-type-import: *storeImport
+    ShardPosition:
+      type: object
+      required: [shard, appliedIndex]
+      properties:
+        shard: {type: integer}
+        appliedIndex: {type: integer, format: uint64}
+      x-go-type: store.ShardPosition
+      x-go-type-import: *storeImport
+
+    # ── command bodies: the store command plus ringVersion ──────────────────
+    PutDataBody:
+      type: object
+      description: CreateEntity (If-None-Match *) or CompareAndSet (If-Match)
+      required: [operationId, at, ringVersion]
+      properties:
+        operationId: &operationIdProp {type: string, description: Proposer-chosen; identical on every retry}
+        at: &atProp {type: integer, format: int64, description: Proposer-chosen unix ms; identical on every retry}
+        ringVersion: &ringVersionProp {type: integer, format: uint64, description: The caller's ringVersion; a mismatch is 409 RING_VERSION_MISMATCH}
+        request: {$ref: "#/components/schemas/Request"}
+        resource: {$ref: "#/components/schemas/Resource"}
+        value:
+          description: Generic value (JSON)
+          x-go-type: json.RawMessage
+        outbox: &outboxProp
+          type: array
+          items: {$ref: "#/components/schemas/OutboxEvent"}
+    TransitionRequestBody:
+      type: object
+      required: [operationId, at, ringVersion, expectedVersion, expectedStatus, expectedAttemptId, to]
+      properties:
+        operationId: *operationIdProp
+        at: *atProp
+        ringVersion: *ringVersionProp
+        expectedVersion: {type: integer, format: uint64}
+        expectedStatus: {$ref: "#/components/schemas/RequestStatus"}
+        expectedAttemptId: {type: string, description: Empty when no intent is expected}
+        to: {$ref: "#/components/schemas/RequestStatus"}
+        attempt: {$ref: "#/components/schemas/Attempt"}
+        disposition: {$ref: "#/components/schemas/Disposition"}
+        nextAttemptAt: {type: integer, format: int64}
+        lastError: {type: string}
+        outbox: *outboxProp
+    RetryWorkflowBody:
+      type: object
+      required: [operationId, at, ringVersion, expectedVersion, nextAttemptAt]
+      properties:
+        operationId: *operationIdProp
+        at: *atProp
+        ringVersion: *ringVersionProp
+        expectedVersion: {type: integer, format: uint64}
+        nextAttemptAt: {type: integer, format: int64}
+        lastError: {type: string}
+        outbox: *outboxProp
+    TransitionResourceBody:
+      type: object
+      required: [operationId, at, ringVersion, expectedVersion]
+      properties:
+        operationId: *operationIdProp
+        at: *atProp
+        ringVersion: *ringVersionProp
+        expectedVersion: {type: integer, format: uint64}
+        status:
+          type: string
+          description: Omit to leave status unchanged
+          enum: [AVAILABLE, OFFLINE]
+          x-go-type: store.ResourceStatus
+          x-go-type-import: *storeImport
+        availability: {$ref: "#/components/schemas/Window"}
+        outbox: *outboxProp
+    TryClaimBody:
+      type: object
+      required: [operationId, at, ringVersion, requestId, attempt, type]
+      properties:
+        operationId: *operationIdProp
+        at: *atProp
+        ringVersion: *ringVersionProp
+        requestId: {type: string}
+        attempt: {$ref: "#/components/schemas/Attempt"}
+        type: {$ref: "#/components/schemas/ResourceType"}
+    CloseAttemptBody:
+      type: object
+      required: [operationId, at, ringVersion, requestId, attempt, disposition, reason]
+      properties:
+        operationId: *operationIdProp
+        at: *atProp
+        ringVersion: *ringVersionProp
+        requestId: {type: string}
+        attempt: {$ref: "#/components/schemas/Attempt"}
+        disposition: {$ref: "#/components/schemas/Disposition"}
+        reason: {type: string}
+    MarkPublishedBody:
+      type: object
+      required: [operationId, at, ringVersion, eventIds]
+      properties:
+        operationId: *operationIdProp
+        at: *atProp
+        ringVersion: *ringVersionProp
+        eventIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: {type: string}
+
+    # ── responses ────────────────────────────────────────────────────────────
+    MutationResponse:
+      type: object
+      required: [result, ringVersion]
+      properties:
+        result: {$ref: "#/components/schemas/Result"}
+        ringVersion: {type: integer, format: uint64}
+    ReadInfo:
+      type: object
+      description: How a read was served (§13)
+      required: [consistency, servedBy, appliedIndex, stalePossible]
+      properties:
+        consistency: {type: string, enum: [strong, linearizable, stale]}
+        servedBy: {type: string, description: nodeId that executed the read}
+        appliedIndex: {type: integer, format: uint64, description: Completed FSM position the read reflects}
+        stalePossible: {type: boolean, description: True only for stale reads}
+    RecordResponse:
+      type: object
+      required: [record, ringVersion, read]
+      properties:
+        record: {$ref: "#/components/schemas/Record"}
+        ringVersion: {type: integer, format: uint64}
+        read: {$ref: "#/components/schemas/ReadInfo"}
+    ClosureResponse:
+      type: object
+      required: [closure, ringVersion, read]
+      properties:
+        closure: {$ref: "#/components/schemas/Closure"}
+        ringVersion: {type: integer, format: uint64}
+        read: {$ref: "#/components/schemas/ReadInfo"}
+    OperationResponse:
+      type: object
+      required: [result, ringVersion, read]
+      properties:
+        result: {$ref: "#/components/schemas/Result"}
+        ringVersion: {type: integer, format: uint64}
+        read: {$ref: "#/components/schemas/ReadInfo"}
+    ScanResponse:
+      type: object
+      description: store.ScanResult plus ringVersion and the read mode used
+      required: [records, partial, positions, ringVersion, consistency]
+      properties:
+        records:
+          type: array
+          items: {$ref: "#/components/schemas/Record"}
+        partial: {type: boolean, description: True if any shard failed; never an empty result}
+        failedShards:
+          type: array
+          items: {type: integer}
+        positions:
+          type: array
+          description: One entry per shard that answered
+          items: {$ref: "#/components/schemas/ShardPosition"}
+        ringVersion: {type: integer, format: uint64}
+        consistency: {type: string, enum: [strong, linearizable, stale]}
+    OutboxPage:
+      type: object
+      required: [shard, events, ringVersion, read]
+      properties:
+        read: {$ref: "#/components/schemas/ReadInfo"}
+        shard: {type: integer}
+        events:
+          type: array
+          items: {$ref: "#/components/schemas/OutboxEvent"}
+        ringVersion: {type: integer, format: uint64}
+    Ring:
+      type: object
+      description: contracts/ring.yaml as loaded and checksum-verified by internal/ring
+      required: [ringVersion, hash, shards, vnodesPerShard, checksum]
+      properties:
+        ringVersion: {type: integer, format: uint64}
+        hash: {type: string, enum: [xxhash64]}
+        shards: {type: integer, minimum: 1}
+        vnodesPerShard: {type: integer, minimum: 1}
+        checksum: {type: string, pattern: "^sha256:[0-9a-f]{64}$"}
+      example: *ringExample
+    LeaderHint:
+      type: object
+      description: The node believed to lead the shard; a hint, not authority
+      required: [nodeId, address]
+      properties:
+        nodeId: {type: string}
+        address: {type: string}
+        term: {type: integer, format: uint64}
+    Error:
+      type: object
+      description: See contracts/README.md for the code → status mapping.
+      required: [code, message, retryable, outcomeUnknown]
+      properties:
+        code:
+          type: string
+          enum: [INVALID, NOT_FOUND, DOMAIN_CONFLICT, OPERATION_ID_REUSED, VERSION_CONFLICT, EXISTS, RING_VERSION_MISMATCH, NOT_LEADER, NO_LEADER, STORAGE_UNAVAILABLE, OUTCOME_UNKNOWN, UNAUTHORIZED, FORBIDDEN]
+        message: {type: string}
+        retryable: {type: boolean}
+        outcomeUnknown:
+          type: boolean
+          description: True only when the command may have committed
+        leaderHint: {$ref: "#/components/schemas/LeaderHint"}
+        result:
+          $ref: "#/components/schemas/Result"
+        ringVersion: {type: integer, format: uint64, description: The server's ringVersion on RING_VERSION_MISMATCH}
+
+    # ── nodes and admin ──────────────────────────────────────────────────────
+    PodName:
+      type: string
+      description: The StatefulSet pod name, e.g. storage-1-0. Not the Raft ServerID.
+      pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
+    Incarnation:
+      type: string
+      description: |
+        Disk incarnation UUID, created once on a new PVC and kept across
+        ordinary restarts (v3.1 §10). A wiped disk gets a new one.
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    ServerID:
+      type: string
+      description: The Raft ServerID, podName/incarnation (v3.1 §10)
+      pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    NodeRegistration:
+      type: object
+      required: [nodeId, groupId, shardId, incarnation, address, protocolVersion, schemaVersion]
+      properties:
+        nodeId: &nodeIdProp
+          allOf: [{$ref: "#/components/schemas/PodName"}]
+          description: The pod name; the Raft ServerID is nodeId/incarnation
+        groupId: &groupIdProp {type: string, description: "Raft group, e.g. shard-1"}
+        shardId: {type: integer, minimum: 0}
+        incarnation: &incarnationProp {$ref: "#/components/schemas/Incarnation"}
+        address: {type: string, description: Stable DNS host:port}
+        protocolVersion: {type: integer}
+        schemaVersion: {type: integer}
+    Peer:
+      type: object
+      required: [nodeId, address]
+      properties:
+        nodeId: *nodeIdProp
+        address: {type: string}
+    RegisterResponse:
+      type: object
+      required: [accepted, admitted, ring, peers]
+      properties:
+        accepted: {type: boolean}
+        admitted: {type: boolean, description: False for an empty disk until storagectl replace admits it (M7)}
+        reason: {type: string}
+        ring: {$ref: "#/components/schemas/Ring"}
+        peers:
+          type: array
+          items: {$ref: "#/components/schemas/Peer"}
+    Health:
+      type: string
+      enum: [ok, degraded, unavailable]
+    Heartbeat:
+      type: object
+      required: [nodeId, groupId, shardId, incarnation, health, term, appliedIndex, commitIndex]
+      properties:
+        nodeId: *nodeIdProp
+        groupId: *groupIdProp
+        shardId: {type: integer, minimum: 0}
+        incarnation: *incarnationProp
+        health: {$ref: "#/components/schemas/Health"}
+        leaderId: &leaderIdProp
+          allOf: [{$ref: "#/components/schemas/ServerID"}]
+          description: The leader's Raft ServerID, podName/incarnation; omitted when no leader is known
+        term: {type: integer, format: uint64}
+        appliedIndex: {type: integer, format: uint64}
+        commitIndex: {type: integer, format: uint64}
+    ShardLeader:
+      type: object
+      required: [shard, leaderId, address, term]
+      properties:
+        shard: {type: integer}
+        leaderId:
+          allOf: [{$ref: "#/components/schemas/ServerID"}]
+          description: The leader's Raft ServerID, podName/incarnation
+        address: {type: string}
+        term: {type: integer, format: uint64}
+    HeartbeatResponse:
+      type: object
+      description: Routing and config hints; never overrides Raft authority
+      required: [ringVersion, checksum, leaders]
+      properties:
+        ringVersion: {type: integer, format: uint64}
+        checksum: {type: string}
+        leaders:
+          type: array
+          items: {$ref: "#/components/schemas/ShardLeader"}
+    AdminRing:
+      type: object
+      required: [ring, tokensPerShard]
+      properties:
+        ring: {$ref: "#/components/schemas/Ring"}
+        tokensPerShard:
+          type: array
+          items: {type: integer}
+    NodeStatus:
+      type: object
+      required: [nodeId, groupId, shardId, incarnation, address, admitted, health, term, appliedIndex, commitIndex, lastHeartbeatAt]
+      properties:
+        nodeId: *nodeIdProp
+        groupId: *groupIdProp
+        shardId: {type: integer}
+        incarnation: *incarnationProp
+        address: {type: string}
+        admitted: {type: boolean, description: "This incarnation is admitted (M7: admitted[nodeId] = incarnation)"}
+        health: {$ref: "#/components/schemas/Health"}
+        leaderId: *leaderIdProp
+        term: {type: integer, format: uint64}
+        appliedIndex: {type: integer, format: uint64}
+        commitIndex: {type: integer, format: uint64}
+        lastHeartbeatAt: {type: integer, format: int64}
+    AdminNodes:
+      type: object
+      required: [nodes]
+      properties:
+        nodes:
+          type: array
+          items: {$ref: "#/components/schemas/NodeStatus"}
+    Placement:
+      type: object
+      description: Logical placement (shard) shown separately from replica copies
+      required: [key, hash, shard, ringVersion, replicas]
+      properties:
+        key: {type: string}
+        hash: {type: string, description: "xxhash64 of the key, 16 hex digits"}
+        shard: {type: integer}
+        ringVersion: {type: integer, format: uint64}
+        leaderId:
+          allOf: [{$ref: "#/components/schemas/ServerID"}]
+          description: The shard leader's Raft ServerID, podName/incarnation
+        replicas:
+          type: array
+          description: Pod names of the shard's replicas
+          items: {$ref: "#/components/schemas/PodName"}
+    Distribution:
+      type: object
+      required: [ringVersion, shards]
+      properties:
+        ringVersion: {type: integer, format: uint64}
+        shards:
+          type: array
+          items:
+            type: object
+            required: [shard, records, replicas]
+            properties:
+              shard: {type: integer}
+              records: {type: integer, description: "Logical records, counted once"}
+              replicas: {type: integer, description: Replica copies of each record}
