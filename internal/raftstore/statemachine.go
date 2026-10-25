@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,6 +78,7 @@ type stateMachine struct {
 
 	snapSeq     atomic.Uint64
 	beforeApply atomic.Pointer[func(index uint64)] // tests only: runs before each command
+	beforeSwap  func()                             // tests only: runs in Restore before the swap; set before Raft starts
 }
 
 var _ raft.FSM = (*stateMachine)(nil)
@@ -193,8 +195,12 @@ func (sn *fsmSnapshot) persist(w io.Writer) error {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("raftstore: rewind snapshot image: %w", err)
 	}
-	if n, err := io.Copy(w, f); err != nil || n != size {
+	n, err := io.Copy(w, f)
+	if err != nil {
 		return fmt.Errorf("raftstore: write snapshot image (%d of %d bytes): %w", n, size, err)
+	}
+	if n != size {
+		return fmt.Errorf("raftstore: snapshot image changed while writing: %d of %d bytes", n, size)
 	}
 	return nil
 }
@@ -240,14 +246,19 @@ func (s *stateMachine) Restore(rc io.ReadCloser) error {
 		return err
 	}
 
+	if s.beforeSwap != nil {
+		s.beforeSwap()
+	}
 	s.mu.Lock() // waits for in-flight reads on the old database
 	old, oldGen := s.f, s.gen
 	s.f, s.gen = next, gen
 	s.mu.Unlock()
 	s.setApplied(next.AppliedIndex())
 
+	// The new database is live; failing Restore now would make Raft treat
+	// the install as failed while reads already see it.
 	if err := old.Close(); err != nil {
-		return fmt.Errorf("raftstore: close replaced fsm: %w", err)
+		slog.Warn("raftstore: close replaced fsm", "gen", oldGen, "err", err)
 	}
 	removeDB(s.dbPath(oldGen))
 	return nil

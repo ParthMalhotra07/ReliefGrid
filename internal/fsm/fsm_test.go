@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -765,4 +766,71 @@ func mustEncode(t *testing.T, body any) []byte {
 		t.Fatalf("Encode(%T): %v", body, err)
 	}
 	return b
+}
+
+// openFileFSM opens an FSM on a database file, as the storage node does,
+// and returns a second FSM opened from its image.
+func openFileFSM(t *testing.T) (*fsm.FSM, *fsm.FSM) {
+	t.Helper()
+	ctx := context.Background()
+	dir := t.TempDir()
+	f, err := fsm.Open(ctx, "file:"+filepath.Join(dir, "fsm-0.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	if _, err := f.Apply(1, mustEncode(t, store.CompareAndSet{Meta: meta("kv-1"), Key: "kv:a", Value: json.RawMessage(`1`)})); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "image.db")
+	if err := f.VacuumInto(ctx, path); err != nil {
+		t.Fatal(err)
+	}
+	img, err := fsm.OpenImage(ctx, path)
+	if err != nil {
+		t.Fatalf("OpenImage: %v", err)
+	}
+	t.Cleanup(func() { _ = img.Close() })
+	return f, img
+}
+
+// On a database file, reads use their own read-only pool: a long read never
+// holds the connection Apply needs, and the read pool cannot write.
+func TestFileReadsDoNotBlockApply(t *testing.T) {
+	ctx := context.Background()
+	f, img := openFileFSM(t)
+	for name, db := range map[string]*fsm.FSM{"Open": f, "OpenImage": img} {
+		release, err := db.HoldRead(ctx)
+		if err != nil {
+			t.Fatalf("%s: HoldRead: %v", name, err)
+		}
+		done := make(chan error, 1)
+		go func() {
+			res, err := db.Apply(db.AppliedIndex()+1, mustEncode(t, store.CompareAndSet{Meta: meta("kv-2-" + name), Key: "kv:b", Value: json.RawMessage(`2`)}))
+			if err == nil && res.Outcome != store.OutcomeOK {
+				err = fmt.Errorf("outcome %s", res.Outcome)
+			}
+			done <- err
+		}()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("%s: Apply during a read: %v", name, err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Errorf("%s: Apply blocked behind an open read", name)
+			release()
+			if err := <-done; err != nil {
+				t.Errorf("%s: Apply after the read ended: %v", name, err)
+			}
+			continue
+		}
+		release()
+		if _, err := db.ReadRecord(ctx, "kv:b"); err != nil {
+			t.Errorf("%s: read after apply: %v", name, err)
+		}
+		if err := db.ExecOnReadPool(ctx, `DELETE FROM records`); err == nil {
+			t.Errorf("%s: the read pool accepted a write", name)
+		}
+	}
 }

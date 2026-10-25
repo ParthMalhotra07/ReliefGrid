@@ -59,6 +59,10 @@ type Config struct {
 	Profile Profile
 	// Logger receives Raft's own logs; nil logs at info to stderr.
 	Logger hclog.Logger
+
+	// beforeRestoreSwap, tests only, runs in Restore after the image is
+	// staged and before the database is swapped in.
+	beforeRestoreSwap func()
 }
 
 // raftConfig builds the library config for this node from the profile.

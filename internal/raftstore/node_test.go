@@ -16,6 +16,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -641,4 +642,150 @@ func TestWaitAppliedOnCompactedRange(t *testing.T) {
 		t.Fatal(err)
 	}
 	expectValue(t, rec, 20, 20)
+}
+
+// A node restarted after its identity was created but before any bootstrap
+// keeps its incarnation, and can still be bootstrapped: the incarnation in
+// the stable store is not Raft state.
+func TestRestartBeforeBootstrapKeepsIdentity(t *testing.T) {
+	c := newTestCluster(t, 1, testProfile)
+	before := c.nodes[0].Identity()
+	c.restart(0)
+	if after := c.nodes[0].Identity(); after != before {
+		t.Fatalf("identity after restart = %+v, want %+v", after, before)
+	}
+	if s := c.nodes[0].Status(); s.HasState {
+		t.Fatal("restart before bootstrap reports Raft state")
+	}
+	if err := c.nodes[0].Bootstrap(testCtx(t), c.servers()); err != nil {
+		t.Fatalf("Bootstrap after restart: %v", err)
+	}
+	c.waitLeader()
+}
+
+// Deleting raft/ while identity.json survives must not let the node rejoin
+// under its old ServerID with an empty log (it could vote twice in a term
+// or ack entries it no longer has). Open refuses it, bootstrapped or not.
+func TestWipedRaftDirWithIdentityRefused(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	_, l := c.waitLeader()
+	mustApply(t, l, cas("op-1", "kv:a", 0, 1))
+	fresh := newTestCluster(t, 1, testProfile)
+	for name, tc := range map[string]struct {
+		c *testCluster
+		i int
+	}{"bootstrapped member": {c, 1}, "never bootstrapped": {fresh, 0}} {
+		tc.c.kill(tc.i)
+		cfg := tc.c.cfgs[tc.i]
+		if err := os.RemoveAll(filepath.Join(cfg.DataDir, "raft")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(cfg.DataDir, identityFile)); err != nil {
+			t.Fatalf("%s: identity file: %v", name, err)
+		}
+		n, err := Open(testCtx(t), cfg)
+		if err == nil {
+			_ = n.Close()
+		}
+		if !errors.Is(err, ErrIdentityMismatch) {
+			t.Errorf("%s: Open with raft/ wiped = %v, want ErrIdentityMismatch", name, err)
+		}
+	}
+}
+
+// A follower that falls behind the leader's compacted log catches up through
+// InstallSnapshot over the network: it restores the leader's image into a
+// new database generation, removes the old one, and ends with the leader's
+// rows. A read in flight on the old database finishes before the swap.
+func TestLaggingFollowerInstallsSnapshotOverNetwork(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	li, l := c.waitLeader()
+	fi, f := c.follower(li)
+	var last store.Result
+	for i := range 3 {
+		last = mustApply(t, l, cas(fmt.Sprintf("op-a%d", i), "kv:a", uint64(i), i+1))
+	}
+	if err := f.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
+		t.Fatal(err)
+	}
+	followerLast := f.Status().LastLogIndex
+	c.kill(fi)
+	if snaps, err := os.ReadDir(filepath.Join(c.cfgs[fi].DataDir, "snapshots")); err != nil || len(snaps) != 0 {
+		t.Fatalf("follower has local snapshots %v (err %v); the test needs it to depend on the leader's", snaps, err)
+	}
+
+	for i := range 5 * int(testProfile.TrailingLogs) {
+		last = mustApply(t, l, cas(fmt.Sprintf("op-b%d", i), fmt.Sprintf("kv:%d", i), 0, i))
+	}
+	if err := l.Snapshot(testCtx(t)); err != nil {
+		t.Fatal(err)
+	}
+	if first, err := l.logs.FirstIndex(); err != nil || first <= followerLast+1 {
+		t.Fatalf("leader log first index %d (err %v): the follower's next entry %d was not compacted", first, err, followerLast+1)
+	}
+
+	// The swap waits until a stale read on the old database is in flight.
+	readStarted, swapWaiting := make(chan struct{}), make(chan struct{})
+	var swaps atomic.Int32
+	c.cfgs[fi].beforeRestoreSwap = func() {
+		if swaps.Add(1) == 1 {
+			<-readStarted
+			close(swapWaiting)
+		}
+	}
+	c.open(fi)
+	f = c.nodes[fi]
+	type inflight struct {
+		gen uint64
+		err error
+	}
+	readDone := make(chan inflight, 1)
+	go func() {
+		var got inflight
+		_, err := f.Read(testCtx(t), ReadStale, func(ctx context.Context, r Reader) error {
+			close(readStarted)
+			select {
+			case <-swapWaiting:
+			case <-time.After(waitFor):
+				return errors.New("InstallSnapshot never reached the swap")
+			}
+			time.Sleep(100 * time.Millisecond) // Restore is now blocked on the read lock
+			got.gen = f.sm.gen                 // read lock held: Restore cannot write it
+			_, err := r.Dump(ctx)              // the old handle must still be open
+			return err
+		})
+		got.err = err
+		readDone <- got
+	}()
+	got := <-readDone
+	if got.err != nil {
+		t.Fatalf("read in flight during restore: %v", got.err)
+	}
+	if got.gen != 0 {
+		t.Fatalf("read in flight saw generation %d: the swap did not wait for it", got.gen)
+	}
+
+	final := mustApply(t, l, cas("op-final", "kv:final", 0, 1))
+	for _, n := range []*Node{l, f} {
+		if err := n.WaitApplied(testCtx(t), final.AppliedIndex); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var gen uint64
+	if err := f.sm.read(func(*fsm.FSM) error { gen = f.sm.gen; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if gen == 0 || swaps.Load() == 0 {
+		t.Fatalf("follower generation %d after %d swaps: it did not restore via InstallSnapshot", gen, swaps.Load())
+	}
+	old, err := filepath.Glob(filepath.Join(c.cfgs[fi].FSMDir, "fsm-0.db*"))
+	if err != nil || len(old) != 0 {
+		t.Fatalf("old database files %v survived the restore (err %v)", old, err)
+	}
+	if _, err := os.Stat(f.sm.dbPath(gen)); err != nil {
+		t.Fatalf("restored database: %v", err)
+	}
+	if !reflect.DeepEqual(dumpOf(t, l), dumpOf(t, f)) {
+		t.Fatal("follower rows differ from the leader's at the same applied index")
+	}
 }

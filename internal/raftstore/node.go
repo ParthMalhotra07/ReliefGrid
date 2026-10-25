@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -94,6 +95,10 @@ type Node struct {
 	snaps *raft.FileSnapshotStore
 	trans *raft.NetworkTransport
 
+	// hasState caches raft.HasExistingState once it is true; Raft state is
+	// never removed while the node runs.
+	hasState atomic.Bool
+
 	mu        sync.Mutex
 	mapped    indexMapping // last committed Raft index mapped to a command index
 	snapCache snapshotTarget
@@ -116,7 +121,7 @@ const retainSnapshots = 2
 // Open starts a replica: it loads or creates the identity, opens the Raft
 // stores on the PVC, rebuilds the FSM in FSMDir and starts Raft. It never
 // bootstraps; a fresh disk waits with an empty configuration.
-func Open(ctx context.Context, cfg Config) (n *Node, err error) {
+func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 	if cfg.PodName == "" || cfg.GroupID == "" || cfg.DataDir == "" || cfg.FSMDir == "" {
 		return nil, errors.New("raftstore: PodName, GroupID, DataDir and FSMDir are required")
 	}
@@ -132,7 +137,9 @@ func Open(ctx context.Context, cfg Config) (n *Node, err error) {
 		return nil, fmt.Errorf("raftstore: create %s: %w", raftDir, err)
 	}
 
-	n = &Node{cfg: cfg}
+	// n is not the named result: "return nil, err" would clear it before
+	// this cleanup runs.
+	n := &Node{cfg: cfg}
 	defer func() {
 		if err != nil {
 			n.closeStores()
@@ -149,12 +156,13 @@ func Open(ctx context.Context, cfg Config) (n *Node, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("raftstore: inspect raft state: %w", err)
 	}
-	if n.id, err = loadOrCreateIdentity(cfg.DataDir, Identity{PodName: cfg.PodName, GroupID: cfg.GroupID, Shard: cfg.Shard}, hasState); err != nil {
+	if n.id, err = loadOrCreateIdentity(cfg.DataDir, Identity{PodName: cfg.PodName, GroupID: cfg.GroupID, Shard: cfg.Shard}, n.logs, hasState); err != nil {
 		return nil, err
 	}
 	if n.sm, err = newStateMachine(ctx, cfg.FSMDir, cfg.GroupID, cfg.Shard); err != nil {
 		return nil, err
 	}
+	n.sm.beforeSwap = cfg.beforeRestoreSwap
 	if n.trans, err = newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, logger.Named("transport")); err != nil {
 		return nil, err
 	}
@@ -285,7 +293,13 @@ func (n *Node) Status() Status {
 		return v
 	}
 	leaderAddr, leaderID := n.raft.LeaderWithID()
-	has, _ := raft.HasExistingState(n.logs, n.logs, n.snaps)
+	has := n.hasState.Load()
+	if !has {
+		var err error
+		if has, err = raft.HasExistingState(n.logs, n.logs, n.snaps); err == nil && has {
+			n.hasState.Store(true)
+		}
+	}
 	s := Status{
 		Identity:         n.id,
 		ServerID:         n.id.ServerID(),

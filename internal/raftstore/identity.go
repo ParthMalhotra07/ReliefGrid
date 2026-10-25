@@ -13,9 +13,14 @@ import (
 
 const identityFile = "identity.json"
 
+// incarnationKey holds the incarnation in the Raft stable store (raft.db),
+// next to CurrentTerm, so identity.json cannot outlive the log it belongs to.
+var incarnationKey = []byte("ReliefGridIncarnation")
+
 var (
 	// ErrIdentityMismatch: the PVC's identity belongs to another pod, group
-	// or shard.
+	// or shard, or identity.json and the Raft stable store disagree on the
+	// incarnation (raft/ was wiped or replaced under a surviving identity).
 	ErrIdentityMismatch = errors.New("raftstore: identity on disk does not match this node")
 	// ErrIdentityMissing: Raft state exists without an identity file. The disk
 	// is inconsistent; a new incarnation must not adopt an old member's log.
@@ -38,9 +43,20 @@ func (id Identity) ServerID() raft.ServerID {
 }
 
 // loadOrCreateIdentity reads dir/identity.json and checks it against want
-// (whose Incarnation is ignored). If the file is absent it creates one with
-// a new incarnation, but only when the disk has no Raft state.
-func loadOrCreateIdentity(dir string, want Identity, hasRaftState bool) (Identity, error) {
+// (whose Incarnation is ignored) and against the incarnation recorded in the
+// Raft stable store. The two must agree: identity.json without the stable
+// store's copy means raft/ was wiped or replaced, and the node must not
+// rejoin under its old ServerID with a log it no longer has.
+//
+// If identity.json is absent it creates one, but only when the disk has no
+// Raft state. The stable store is written first, so a crash in between
+// leaves the incarnation only there; with no Raft state that creation is
+// finished with the same incarnation.
+func loadOrCreateIdentity(dir string, want Identity, stable raft.StableStore, hasRaftState bool) (Identity, error) {
+	stored, err := storedIncarnation(stable)
+	if err != nil {
+		return Identity{}, err
+	}
 	path := filepath.Join(dir, identityFile)
 	b, err := os.ReadFile(path)
 	switch {
@@ -56,6 +72,10 @@ func loadOrCreateIdentity(dir string, want Identity, hasRaftState bool) (Identit
 			return Identity{}, fmt.Errorf("%w: disk has %s/%s shard %d, node is %s/%s shard %d", ErrIdentityMismatch,
 				id.PodName, id.GroupID, id.Shard, want.PodName, want.GroupID, want.Shard)
 		}
+		if stored != id.Incarnation {
+			return Identity{}, fmt.Errorf("%w: %s has incarnation %s, raft stable store has %q", ErrIdentityMismatch,
+				path, id.Incarnation, stored)
+		}
 		return id, nil
 	case !errors.Is(err, os.ErrNotExist):
 		return Identity{}, fmt.Errorf("raftstore: read %s: %w", path, err)
@@ -64,7 +84,13 @@ func loadOrCreateIdentity(dir string, want Identity, hasRaftState bool) (Identit
 	}
 
 	id := want
-	id.Incarnation = uuid.NewString()
+	id.Incarnation = stored
+	if id.Incarnation == "" {
+		id.Incarnation = uuid.NewString()
+		if err := stable.Set(incarnationKey, []byte(id.Incarnation)); err != nil {
+			return Identity{}, fmt.Errorf("raftstore: record incarnation in stable store: %w", err)
+		}
+	}
 	b, err = json.Marshal(id)
 	if err != nil {
 		return Identity{}, fmt.Errorf("raftstore: encode identity: %w", err)
@@ -73,6 +99,23 @@ func loadOrCreateIdentity(dir string, want Identity, hasRaftState bool) (Identit
 		return Identity{}, err
 	}
 	return id, nil
+}
+
+// storedIncarnation is the incarnation in the stable store, or "" if none.
+func storedIncarnation(stable raft.StableStore) (string, error) {
+	v, err := stable.Get(incarnationKey)
+	// StableStore has no not-found sentinel; raft's own HasExistingState
+	// matches this message too.
+	if err != nil && err.Error() == "not found" {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("raftstore: read incarnation from stable store: %w", err)
+	}
+	if _, err := uuid.Parse(string(v)); err != nil {
+		return "", fmt.Errorf("raftstore: stable store incarnation %q: %w", v, err)
+	}
+	return string(v), nil
 }
 
 // writeFileSync writes dir/name through a temporary file, fsyncs it, renames
