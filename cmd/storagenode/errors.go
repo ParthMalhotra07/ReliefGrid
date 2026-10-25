@@ -18,7 +18,9 @@ import (
 //	INVALID                         400  (error body carries the Result)
 //	NOT_FOUND, read ErrNotFound     404
 //	DOMAIN_CONFLICT, OPERATION_ID_REUSED  409
-//	VERSION_CONFLICT, EXISTS        412
+//	VERSION_CONFLICT                412 on PUT/DELETE /internal/data (generic CAS),
+//	                                409 on the domain routes (§40)
+//	EXISTS                          412
 //	ringVersion mismatch            409 RING_VERSION_MISMATCH, ringVersion set, never proposed
 //	raftstore.ErrNotLeader          503 NOT_LEADER with leaderHint, or NO_LEADER (Retry-After) if none is known
 //	raftstore.ErrUnavailable        503 NO_LEADER, Retry-After
@@ -30,8 +32,10 @@ import (
 const retryAfterSeconds = "1"
 
 // outcomeStatus is the HTTP status and error code of a committed outcome;
-// the code is empty for a 200.
-func outcomeStatus(o store.Outcome) (int, internalapi.ErrorCode) {
+// the code is empty for a 200. genericCAS is true on PUT/DELETE
+// /internal/data, where VERSION_CONFLICT is a failed precondition (412); on
+// the domain routes it also covers a status or attempt mismatch (409).
+func outcomeStatus(o store.Outcome, genericCAS bool) (int, internalapi.ErrorCode) {
 	switch o {
 	case store.OutcomeOK, store.ClaimSuccess, store.ClaimConflictClosed, store.ClaimRejectedClosed, store.ClaimClosed:
 		return http.StatusOK, ""
@@ -44,7 +48,10 @@ func outcomeStatus(o store.Outcome) (int, internalapi.ErrorCode) {
 	case store.OutcomeOperationIDReuse:
 		return http.StatusConflict, internalapi.OPERATIONIDREUSED
 	case store.OutcomeVersionConflict:
-		return http.StatusPreconditionFailed, internalapi.VERSIONCONFLICT
+		if genericCAS {
+			return http.StatusPreconditionFailed, internalapi.VERSIONCONFLICT
+		}
+		return http.StatusConflict, internalapi.VERSIONCONFLICT
 	case store.OutcomeExists:
 		return http.StatusPreconditionFailed, internalapi.EXISTS
 	}
@@ -54,12 +61,12 @@ func outcomeStatus(o store.Outcome) (int, internalapi.ErrorCode) {
 }
 
 // writeResult writes a committed Result: 200 MutationResponse (with the ETag
-// when etag is set), or the error body with the Result for a committed
-// rejection.
-func (s *server) writeResult(w http.ResponseWriter, res store.Result, etag bool) {
-	status, code := outcomeStatus(res.Outcome)
+// on the generic data routes), or the error body with the Result for a
+// committed rejection.
+func (s *server) writeResult(w http.ResponseWriter, res store.Result, genericCAS bool) {
+	status, code := outcomeStatus(res.Outcome, genericCAS)
 	if status == http.StatusOK {
-		if etag {
+		if genericCAS {
 			w.Header().Set("ETag", internalapi.FormatETag(res.Version))
 		}
 		writeJSON(w, http.StatusOK, internalapi.MutationResponse{Result: res, RingVersion: s.ring.Version()})
@@ -107,7 +114,7 @@ func (s *server) writeNotProposed(w http.ResponseWriter, err error) bool {
 	var nle *raftstore.NotLeaderError
 	switch {
 	case errors.As(err, &nle) && nle.LeaderID != "":
-		term := s.node.Status().Term
+		term := s.node.Term()
 		podName, _, _ := strings.Cut(string(nle.LeaderID), "/")
 		writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{
 			Code:       internalapi.NOTLEADER,

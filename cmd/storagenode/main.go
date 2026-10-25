@@ -47,7 +47,7 @@ type config struct {
 	MgmtAddr       string        // MGMT_ADDR, default :8081
 	HTTPPort       string        // port peers' data endpoints listen on, from HTTP_ADDR; used in leader hints
 	RingPath       string        // RING_PATH, default /etc/reliefgrid/ring.yaml
-	RequestTimeout time.Duration // REQUEST_TIMEOUT_MS, default 5000; the deadline on every Apply and read
+	RequestTimeout time.Duration // REQUEST_TIMEOUT_MS, default 3000; the deadline on every Apply and read
 	OperatorToken  string        // OPERATOR_TOKEN (a Secret); empty disables /mgmt/bootstrap
 }
 
@@ -79,7 +79,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
-	timeoutMS, err := strconv.Atoi(get("REQUEST_TIMEOUT_MS", "5000"))
+	timeoutMS, err := strconv.Atoi(get("REQUEST_TIMEOUT_MS", "3000"))
 	if err != nil || timeoutMS <= 0 {
 		return config{}, fmt.Errorf("REQUEST_TIMEOUT_MS %q must be a positive integer", getenv("REQUEST_TIMEOUT_MS"))
 	}

@@ -18,7 +18,9 @@ import (
 type node interface {
 	Apply(ctx context.Context, cmd any) (store.Result, error)
 	Read(ctx context.Context, mode raftstore.ReadMode, fn func(context.Context, raftstore.Reader) error) (raftstore.ReadInfo, error)
+	WaitApplyAfter(ctx context.Context, index uint64)
 	Status() raftstore.Status
+	Term() uint64
 	Bootstrap(ctx context.Context, servers []raft.Server) error
 }
 
@@ -64,8 +66,9 @@ func (s *server) dataRoutes() http.Handler {
 //
 //	GET  /mgmt/status     raftstore.Status plus ringVersion
 //	POST /mgmt/bootstrap  {"servers":[{"id","address"}]}; operator bearer token
-//	                      (401 without it, 403 if none is configured); 409 if
-//	                      Raft state exists
+//	                      (401 UNAUTHORIZED without it, 403 FORBIDDEN if none
+//	                      is configured); 400 if the servers omit this node or
+//	                      give it another address; 409 if Raft state exists
 //	GET  /healthz         200 while the process serves
 //	GET  /readyz          200 only when the FSM has caught up (Status.CaughtUp)
 func (s *server) mgmtRoutes() http.Handler {

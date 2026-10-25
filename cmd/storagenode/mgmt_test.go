@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/hashicorp/raft"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 )
 
@@ -60,6 +62,14 @@ func TestMgmtBootstrap(t *testing.T) {
 		rec := do(t, newTestServer(t, n).mgmtRoutes(), call{method: http.MethodPost, path: "/mgmt/bootstrap", header: operatorAuth, body: body})
 		if rec.Code != http.StatusConflict {
 			t.Fatalf("status %d, want 409", rec.Code)
+		}
+	})
+	t.Run("configuration without this node is 400", func(t *testing.T) {
+		n := newFakeNode(t)
+		n.bootErr = fmt.Errorf("%w: it does not include this node", raftstore.ErrBadBootstrap)
+		rec := do(t, newTestServer(t, n).mgmtRoutes(), call{method: http.MethodPost, path: "/mgmt/bootstrap", header: operatorAuth, body: body})
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status %d (%s), want 400", rec.Code, rec.Body.String())
 		}
 	})
 	t.Run("other failure is 500", func(t *testing.T) {
@@ -120,6 +130,11 @@ func TestMgmtBootstrapRequiresOperatorToken(t *testing.T) {
 			if tc.status == http.StatusUnauthorized && rec.Header().Get("WWW-Authenticate") == "" {
 				t.Fatal("401 without WWW-Authenticate")
 			}
+			if code, ok := map[int]internalapi.ErrorCode{http.StatusUnauthorized: internalapi.UNAUTHORIZED, http.StatusForbidden: internalapi.FORBIDDEN}[tc.status]; ok {
+				if e := expectError(t, rec, tc.status, code); e.Retryable || e.OutcomeUnknown || e.Message == "" {
+					t.Fatalf("error body = %+v, want %s, not retryable, with a message", e, code)
+				}
+			}
 		})
 	}
 	// The open endpoints need no token, even with none configured.
@@ -166,7 +181,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("raft config = %+v", r)
 	}
 	if cfg.HTTPAddr != ":8080" || cfg.MgmtAddr != ":8081" || cfg.HTTPPort != "8080" ||
-		cfg.RingPath != "/etc/reliefgrid/ring.yaml" || cfg.RequestTimeout != 5*time.Second || cfg.OperatorToken != "s3cret" {
+		cfg.RingPath != "/etc/reliefgrid/ring.yaml" || cfg.RequestTimeout != 3*time.Second || cfg.OperatorToken != "s3cret" {
 		t.Fatalf("config = %+v", cfg)
 	}
 

@@ -70,8 +70,16 @@ type fakeNode struct {
 	f        *fsm.FSM
 	index    uint64
 	status   raftstore.Status
+	statuses int // Status calls
+	term     uint64
 	bootErr  error
 	booted   []raft.Server
+
+	reading      bool          // a Read is running
+	waits        []uint64      // WaitApplyAfter indexes
+	waitedInRead bool          // WaitApplyAfter ran inside a Read
+	onWait       func()        // if set, WaitApplyAfter runs it and returns (a commit)
+	waitDone     chan struct{} // closed when a WaitApplyAfter returns
 }
 
 var fakeSeq atomic.Int64
@@ -120,10 +128,41 @@ func (n *fakeNode) Read(ctx context.Context, mode raftstore.ReadMode, fn func(co
 	if mode == raftstore.ReadStale {
 		info.Consistency, info.StalePossible = "stale", true
 	}
+	n.setReading(true)
+	defer n.setReading(false)
 	return info, fn(ctx, n.f)
 }
 
-func (n *fakeNode) Status() raftstore.Status { return n.status }
+func (n *fakeNode) setReading(v bool) {
+	n.mu.Lock()
+	n.reading = v
+	n.mu.Unlock()
+}
+
+func (n *fakeNode) WaitApplyAfter(ctx context.Context, index uint64) {
+	n.mu.Lock()
+	n.waits = append(n.waits, index)
+	n.waitedInRead = n.waitedInRead || n.reading
+	onWait, done := n.onWait, n.waitDone
+	n.mu.Unlock()
+	if done != nil {
+		defer close(done)
+	}
+	if onWait != nil {
+		onWait()
+		return
+	}
+	<-ctx.Done()
+}
+
+func (n *fakeNode) Status() raftstore.Status {
+	n.mu.Lock()
+	n.statuses++
+	n.mu.Unlock()
+	return n.status
+}
+
+func (n *fakeNode) Term() uint64 { return n.term }
 
 func (n *fakeNode) Bootstrap(ctx context.Context, servers []raft.Server) error {
 	n.booted = servers

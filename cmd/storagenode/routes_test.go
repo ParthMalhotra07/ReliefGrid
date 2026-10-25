@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
@@ -192,7 +193,8 @@ func TestMutationsRejectedBeforeProposal(t *testing.T) {
 	}
 }
 
-// contracts/README.md: committed outcomes and their HTTP status.
+// contracts/README.md: committed outcomes and their HTTP status on a domain
+// route.
 func TestCommittedOutcomeMapping(t *testing.T) {
 	rg := loadRing(t)
 	_, resID := keyOn(t, rg, testShard, store.ResourceKeyPrefix, "s")
@@ -212,12 +214,12 @@ func TestCommittedOutcomeMapping(t *testing.T) {
 		{store.OutcomeNotFound, http.StatusNotFound, internalapi.NOTFOUND},
 		{store.OutcomeDomainConflict, http.StatusConflict, internalapi.DOMAINCONFLICT},
 		{store.OutcomeOperationIDReuse, http.StatusConflict, internalapi.OPERATIONIDREUSED},
-		{store.OutcomeVersionConflict, http.StatusPreconditionFailed, internalapi.VERSIONCONFLICT},
+		{store.OutcomeVersionConflict, http.StatusConflict, internalapi.VERSIONCONFLICT},
 		{store.OutcomeExists, http.StatusPreconditionFailed, internalapi.EXISTS},
 	}
 	for _, tc := range cases {
 		t.Run(string(tc.outcome), func(t *testing.T) {
-			status, code := outcomeStatus(tc.outcome)
+			status, code := outcomeStatus(tc.outcome, false)
 			if status != tc.status || code != tc.code {
 				t.Fatalf("outcomeStatus = %d %q, want %d %q", status, code, tc.status, tc.code)
 			}
@@ -249,13 +251,16 @@ func TestFailureMapping(t *testing.T) {
 
 	t.Run("not leader with hint", func(t *testing.T) {
 		n := newFakeNode(t)
-		n.status.Term = 7
+		n.term = 7
 		n.applyErr = fmt.Errorf("apply: %w", &raftstore.NotLeaderError{LeaderID: "storage-1-0/5f0c", LeaderAddr: "storage-1-0.storage-1.ns.svc.cluster.local:7000"})
 		e := expectError(t, do(t, newTestServer(t, n).dataRoutes(), put), http.StatusServiceUnavailable, internalapi.NOTLEADER)
 		want := internalapi.LeaderHint{NodeId: "storage-1-0", Address: "http-of-storage-1-0.storage-1.ns.svc.cluster.local:7000"}
 		if e.LeaderHint == nil || e.LeaderHint.NodeId != want.NodeId || e.LeaderHint.Address != want.Address ||
 			e.LeaderHint.Term == nil || *e.LeaderHint.Term != 7 {
 			t.Fatalf("leaderHint = %+v, want %+v at term 7", e.LeaderHint, want)
+		}
+		if n.statuses != 0 {
+			t.Fatalf("leaderHint called Status %d times; the term lookup must be cheap", n.statuses)
 		}
 		if !e.Retryable || e.OutcomeUnknown {
 			t.Fatalf("not leader = %+v, want retryable and a known outcome", e)
@@ -387,7 +392,7 @@ func TestReadsRejectForeignKeys(t *testing.T) {
 	}
 	t.Run("scan reports only this shard", func(t *testing.T) {
 		n := newFakeNode(t)
-		rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: "/internal/scan?kind=kv"})
+		rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: "/internal/scan?kind=kv&limit=10"})
 		resp := decodeJSON[internalapi.ScanResponse](t, rec)
 		if rec.Code != http.StatusOK || len(resp.Positions) != 1 || resp.Positions[0].Shard != testShard || resp.Partial {
 			t.Fatalf("%d %+v", rec.Code, resp)
@@ -449,5 +454,154 @@ func TestOtherReadRoutes(t *testing.T) {
 		}
 		expectError(t, do(t, h, call{method: http.MethodGet, path: "/internal/scan"}), http.StatusBadRequest, internalapi.INVALID)
 		expectError(t, do(t, h, call{method: http.MethodGet, path: "/internal/scan?kind=planet"}), http.StatusBadRequest, internalapi.INVALID)
+	})
+}
+
+// §40: VERSION_CONFLICT is 412 for a failed generic CAS (PUT/DELETE
+// /internal/data) and 409 on the domain transition routes, where it also
+// covers a status or attempt mismatch.
+func TestVersionConflictStatusFollowsRoute(t *testing.T) {
+	rg := loadRing(t)
+	_, reqID := keyOn(t, rg, testShard, store.RequestKeyPrefix, "r")
+	_, resID := keyOn(t, rg, testShard, store.ResourceKeyPrefix, "s")
+	kvKey, _ := keyOn(t, rg, testShard, "", "kv:cfg")
+	cases := []struct {
+		name   string
+		call   call
+		status int
+	}{
+		{"transition request", call{method: http.MethodPost, path: "/internal/requests/" + reqID + "/transition",
+			body: map[string]any{"operationId": "op-t", "at": t0, "ringVersion": 1, "expectedVersion": 2,
+				"expectedStatus": "PENDING", "expectedAttemptId": "", "to": "CANCELLED"}}, http.StatusConflict},
+		{"retry workflow", call{method: http.MethodPost, path: "/internal/requests/" + reqID + "/retry",
+			body: map[string]any{"operationId": "op-r", "at": t0, "ringVersion": 1, "expectedVersion": 4, "nextAttemptAt": t0}}, http.StatusConflict},
+		{"transition resource", call{method: http.MethodPost, path: "/internal/resources/" + resID + "/transition",
+			body: map[string]any{"operationId": "op-tr", "at": t0, "ringVersion": 1, "expectedVersion": 1, "status": "OFFLINE"}}, http.StatusConflict},
+		{"put if-match", call{method: http.MethodPut, path: "/internal/data/" + kvKey, header: map[string]string{"If-Match": `"4"`},
+			body: map[string]any{"operationId": "op-cas", "at": t0, "ringVersion": 1, "value": 1}}, http.StatusPreconditionFailed},
+		{"delete", call{method: http.MethodDelete, path: fmt.Sprintf("/internal/data/%s?operationId=op-del&at=%d&ringVersion=1", kvKey, t0),
+			header: map[string]string{"If-Match": `"5"`}}, http.StatusPreconditionFailed},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			n := newFakeNode(t)
+			n.applyRes = store.Result{Outcome: store.OutcomeVersionConflict, OperationID: "op", Key: "k", Version: 3, Reason: "mismatch", Shard: testShard, AppliedIndex: 9}
+			e := expectError(t, do(t, newTestServer(t, n).dataRoutes(), tc.call), tc.status, internalapi.VERSIONCONFLICT)
+			if e.Result == nil || *e.Result != n.applyRes || e.Retryable || e.OutcomeUnknown {
+				t.Fatalf("error = %+v, want the committed result", e)
+			}
+		})
+	}
+}
+
+// Scan is bounded (limit 1 to 1000, required) and checks an optional
+// ringVersion before reading.
+func TestScanLimitAndRingVersion(t *testing.T) {
+	for _, q := range []string{"kind=kv", "kind=kv&limit=0", "kind=kv&limit=1001", "kind=kv&limit=x", "kind=kv&limit=-1",
+		"kind=kv&limit=10&ringVersion=x"} {
+		t.Run(q, func(t *testing.T) {
+			n := newFakeNode(t)
+			expectError(t, do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: "/internal/scan?" + q}),
+				http.StatusBadRequest, internalapi.INVALID)
+			if len(n.modes) != 0 {
+				t.Fatal("a bad scan still read")
+			}
+		})
+	}
+	t.Run("stale ringVersion", func(t *testing.T) {
+		n := newFakeNode(t)
+		e := expectError(t, do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: "/internal/scan?kind=kv&limit=10&ringVersion=2"}),
+			http.StatusConflict, internalapi.RINGVERSIONMISMATCH)
+		if !e.Retryable || e.RingVersion == nil || *e.RingVersion != 1 || len(n.modes) != 0 {
+			t.Fatalf("mismatch = %+v (reads %v), want retryable, ringVersion 1, nothing read", e, n.modes)
+		}
+	})
+	for _, q := range []string{"kind=kv&limit=1000", "kind=kv&limit=1&ringVersion=1"} {
+		t.Run(q, func(t *testing.T) {
+			n := newFakeNode(t)
+			if rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: "/internal/scan?" + q}); rec.Code != http.StatusOK {
+				t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+// GET /internal/outbox: consistency (strong default), the read block, and
+// wait (0 to 1 s) long-polling outside the read.
+func TestOutboxConsistencyAndLongPoll(t *testing.T) {
+	rg := loadRing(t)
+	resKey, resID := keyOn(t, rg, testShard, store.ResourceKeyPrefix, "s")
+	create := store.CreateEntity{Meta: meta("op-create"), Key: resKey, Outbox: []store.OutboxEvent{{EventID: "ev-1", EventType: "resource.registered",
+		SchemaVersion: 1, Exchange: "relief.resources", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":"x"}`)}},
+		Resource: &store.Resource{ID: resID, Type: store.TypeWater, Name: "T", Geohash: "ttnfv8k", AvailableFrom: t0,
+			AvailableUntil: t0 + 86_400_000, Status: store.ResourceAvailable, Reusable: true}}
+	path := func(q string) string { return fmt.Sprintf("/internal/outbox?shard=%d&limit=10%s", testShard, q) }
+
+	for _, tc := range []struct {
+		query string
+		mode  raftstore.ReadMode
+		read  internalapi.ReadInfoConsistency
+	}{
+		{"", raftstore.ReadStrong, internalapi.ReadInfoConsistencyStrong},
+		{"&consistency=linearizable", raftstore.ReadStrong, internalapi.ReadInfoConsistencyStrong},
+		{"&consistency=stale", raftstore.ReadStale, internalapi.ReadInfoConsistencyStale},
+	} {
+		t.Run("consistency"+tc.query, func(t *testing.T) {
+			n := newFakeNode(t)
+			n.seed(t, create)
+			rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: path(tc.query + "&wait=1")})
+			resp := decodeJSON[internalapi.OutboxPage](t, rec)
+			if rec.Code != http.StatusOK || len(resp.Events) != 1 || len(n.modes) != 1 || n.modes[0] != tc.mode {
+				t.Fatalf("%d %+v modes %v", rec.Code, resp, n.modes)
+			}
+			if resp.Read.Consistency != tc.read || resp.Read.ServedBy != testPod || resp.Read.AppliedIndex != 1 ||
+				resp.Read.StalePossible != (tc.mode == raftstore.ReadStale) {
+				t.Fatalf("read = %+v", resp.Read)
+			}
+			if len(n.waits) != 0 {
+				t.Fatal("waited although events were pending")
+			}
+		})
+	}
+	for _, q := range []string{"&consistency=eventual", "&wait=2", "&wait=-1", "&wait=x"} {
+		t.Run("bad"+q, func(t *testing.T) {
+			n := newFakeNode(t)
+			expectError(t, do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: path(q)}), http.StatusBadRequest, internalapi.INVALID)
+			if len(n.modes) != 0 {
+				t.Fatal("a bad request still read")
+			}
+		})
+	}
+	t.Run("wait=0 returns at once", func(t *testing.T) {
+		n := newFakeNode(t)
+		rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: path("")})
+		if resp := decodeJSON[internalapi.OutboxPage](t, rec); rec.Code != http.StatusOK || len(resp.Events) != 0 || len(n.waits) != 0 {
+			t.Fatalf("%d %+v waits %v", rec.Code, resp, n.waits)
+		}
+	})
+	t.Run("a commit during the wait is returned", func(t *testing.T) {
+		n := newFakeNode(t)
+		n.onWait = func() { n.seed(t, create) }
+		start := time.Now()
+		rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: path("&wait=1")})
+		resp := decodeJSON[internalapi.OutboxPage](t, rec)
+		if rec.Code != http.StatusOK || len(resp.Events) != 1 || resp.Events[0].EventID != "ev-1" || resp.Read.AppliedIndex != 1 {
+			t.Fatalf("%d %+v", rec.Code, resp)
+		}
+		if !reflect.DeepEqual(n.waits, []uint64{0}) || n.waitedInRead || len(n.modes) != 2 {
+			t.Fatalf("waits %v (inside a read: %v), reads %v: want one wait after index 0, outside the read, then a re-read", n.waits, n.waitedInRead, n.modes)
+		}
+		if d := time.Since(start); d > 500*time.Millisecond {
+			t.Fatalf("took %v; a commit must end the wait", d)
+		}
+	})
+	t.Run("nothing pending after the wait is an empty page", func(t *testing.T) {
+		n := newFakeNode(t)
+		start := time.Now()
+		rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: path("&wait=1")})
+		resp := decodeJSON[internalapi.OutboxPage](t, rec)
+		if d := time.Since(start); rec.Code != http.StatusOK || len(resp.Events) != 0 || d < 900*time.Millisecond || d > 3*time.Second {
+			t.Fatalf("%d %+v after %v, want an empty 200 after about 1 s", rec.Code, resp, d)
+		}
 	})
 }

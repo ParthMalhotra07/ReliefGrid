@@ -309,12 +309,17 @@ func removeDB(path string) {
 // appliedIndex is the index of the last command SQLite has committed.
 func (s *stateMachine) appliedIndex() uint64 { return s.applied.Load() }
 
+// appliedChanged is closed the next time the applied index moves.
+func (s *stateMachine) appliedChanged() <-chan struct{} {
+	s.appliedMu.Lock()
+	defer s.appliedMu.Unlock()
+	return s.appliedCh
+}
+
 // waitApplied blocks until appliedIndex() >= index or ctx ends.
 func (s *stateMachine) waitApplied(ctx context.Context, index uint64) error {
 	for {
-		s.appliedMu.Lock()
-		ch := s.appliedCh
-		s.appliedMu.Unlock()
+		ch := s.appliedChanged()
 		if s.appliedIndex() >= index {
 			return nil
 		}

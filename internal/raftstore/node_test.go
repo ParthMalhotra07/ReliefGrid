@@ -260,8 +260,13 @@ func TestBootstrapRequiresSelfInConfiguration(t *testing.T) {
 	c := newTestCluster(t, 3, testProfile)
 	others := c.servers()[1:]
 	err := c.nodes[0].Bootstrap(testCtx(t), others)
-	if err == nil || errors.Is(err, ErrHasState) {
-		t.Fatalf("bootstrap without self: err = %v, want a refusal that is not ErrHasState", err)
+	if !errors.Is(err, ErrBadBootstrap) || errors.Is(err, ErrHasState) {
+		t.Fatalf("bootstrap without self: err = %v, want ErrBadBootstrap", err)
+	}
+	moved := c.servers()
+	moved[0].Address = "localhost:1"
+	if err := c.nodes[0].Bootstrap(testCtx(t), moved); !errors.Is(err, ErrBadBootstrap) {
+		t.Fatalf("bootstrap with a wrong advertise address: err = %v, want ErrBadBootstrap", err)
 	}
 	if c.nodes[0].Status().HasState {
 		t.Fatal("a refused bootstrap wrote Raft state")
@@ -787,5 +792,63 @@ func TestLaggingFollowerInstallsSnapshotOverNetwork(t *testing.T) {
 	}
 	if !reflect.DeepEqual(dumpOf(t, l), dumpOf(t, f)) {
 		t.Fatal("follower rows differ from the leader's at the same applied index")
+	}
+}
+
+// Term is the current term without building a full Status.
+func TestTermMatchesStatus(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	_, l := c.waitLeader()
+	if term := l.Term(); term == 0 || term != l.Status().Term {
+		t.Fatalf("Term() = %d, Status().Term = %d", term, l.Status().Term)
+	}
+}
+
+// WaitApplyAfter returns when the FSM applies a later command, when this
+// node's leadership changes, or when ctx ends, and never holds the read lock
+// (a Restore could otherwise wait behind a long-poll).
+func TestWaitApplyAfter(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	li, l := c.waitLeader()
+	first := mustApply(t, l, cas("op-1", "kv:a", 0, 1))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	start := time.Now()
+	l.WaitApplyAfter(ctx, first.AppliedIndex)
+	cancel()
+	if d := time.Since(start); d < 100*time.Millisecond {
+		t.Fatalf("returned after %v with nothing new applied", d)
+	}
+
+	done := make(chan struct{})
+	go func() {
+		l.WaitApplyAfter(testCtx(t), first.AppliedIndex)
+		close(done)
+	}()
+	time.Sleep(50 * time.Millisecond)
+	// The wait holds no lock that would stop a Restore's swap.
+	l.sm.mu.Lock()
+	l.sm.mu.Unlock() //nolint:staticcheck // checks the lock is free
+	mustApply(t, l, cas("op-2", "kv:a", 1, 2))
+	select {
+	case <-done:
+	case <-time.After(waitFor):
+		t.Fatal("a commit did not end the wait")
+	}
+
+	idle := l.sm.appliedIndex()
+	done = make(chan struct{})
+	go func() {
+		l.WaitApplyAfter(testCtx(t), idle)
+		close(done)
+	}()
+	time.Sleep(50 * time.Millisecond)
+	if err := l.raft.LeadershipTransfer().Error(); err != nil {
+		t.Fatalf("leadership transfer: %v", err)
+	}
+	select {
+	case <-done:
+	case <-time.After(waitFor):
+		t.Fatalf("losing leadership (node %d) did not end the wait", li)
 	}
 }

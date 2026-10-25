@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/raft"
 
@@ -28,7 +29,11 @@ import (
 // until S4.1, stale opt-in), check key ownership (a foreign key is 400,
 // never a 404 "absent") and run through node.Read.
 
-const maxBodyBytes = 1 << 20
+const (
+	maxBodyBytes  = 1 << 20
+	maxScanLimit  = 1000 // records per shard per scan
+	maxOutboxWait = 1    // seconds a pending-outbox read may long-poll
+)
 
 func (s *server) putData(w http.ResponseWriter, r *http.Request) {
 	key := r.PathValue("key")
@@ -165,7 +170,9 @@ func (s *server) markOutboxPublished(w http.ResponseWriter, r *http.Request) {
 	s.apply(w, r, store.MarkOutboxPublished{Meta: store.Meta{OperationID: b.OperationId, At: b.At}, Shard: s.shard, EventIDs: b.EventIds}, false)
 }
 
-func (s *server) apply(w http.ResponseWriter, r *http.Request, cmd any, etag bool) {
+// apply proposes cmd; genericCAS marks PUT/DELETE /internal/data (ETag, and
+// 412 for VERSION_CONFLICT).
+func (s *server) apply(w http.ResponseWriter, r *http.Request, cmd any, genericCAS bool) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
 	defer cancel()
 	res, err := s.node.Apply(ctx, cmd)
@@ -173,7 +180,7 @@ func (s *server) apply(w http.ResponseWriter, r *http.Request, cmd any, etag boo
 		s.writeFailure(w, err)
 		return
 	}
-	s.writeResult(w, res, etag)
+	s.writeResult(w, res, genericCAS)
 }
 
 func (s *server) getData(w http.ResponseWriter, r *http.Request) {
@@ -244,14 +251,38 @@ func (s *server) pendingOutbox(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, internalapi.INVALID, "limit must be 1 to 100")
 		return
 	}
+	wait := 0
+	if v := q.Get("wait"); v != "" {
+		if wait, err = strconv.Atoi(v); err != nil || wait < 0 || wait > maxOutboxWait {
+			writeError(w, http.StatusBadRequest, internalapi.INVALID, fmt.Sprintf("wait must be 0 to %d seconds", maxOutboxWait))
+			return
+		}
+	}
+	mode, ok := s.readMode(w, r)
+	if !ok {
+		return
+	}
 	var events []store.OutboxEvent
-	_, ok := s.read(w, r, raftstore.ReadStrong, func(ctx context.Context, rd raftstore.Reader) (err error) {
+	page := func(ctx context.Context, rd raftstore.Reader) (err error) {
 		events, err = rd.PendingOutbox(ctx, limit)
 		return err
-	})
-	if ok {
-		writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: s.shard, Events: nonNil(events), RingVersion: s.ring.Version()})
 	}
+	info, ok := s.read(w, r, mode, page)
+	if !ok {
+		return
+	}
+	// Long-poll (§14): wait for a commit outside the read, then read a
+	// fenced page once more. An empty page after the wait is a real
+	// "nothing pending".
+	if len(events) == 0 && wait > 0 {
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(wait)*time.Second)
+		s.node.WaitApplyAfter(ctx, info.AppliedIndex)
+		cancel()
+		if info, ok = s.read(w, r, mode, page); !ok {
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: s.shard, Events: nonNil(events), RingVersion: s.ring.Version(), Read: info})
 }
 
 // scan reads this shard only; the coordinator merges shards (S1.4).
@@ -269,13 +300,21 @@ func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, internalapi.INVALID, "kind must be request, resource or kv")
 		return
 	}
-	if l := q.Get("limit"); l != "" {
-		n, err := strconv.Atoi(l)
-		if err != nil || n < 0 {
-			writeError(w, http.StatusBadRequest, internalapi.INVALID, "limit must be a non-negative integer")
+	n, err := strconv.Atoi(q.Get("limit"))
+	if err != nil || n < 1 || n > maxScanLimit {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, fmt.Sprintf("limit is required, 1 to %d records per shard", maxScanLimit))
+		return
+	}
+	sq.Limit = n
+	if v := q.Get("ringVersion"); v != "" {
+		rv, err := strconv.ParseUint(v, 10, 64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, internalapi.INVALID, "ringVersion must be an unsigned integer")
 			return
 		}
-		sq.Limit = n
+		if !s.checkRing(w, rv) {
+			return
+		}
 	}
 	var recs []store.Record
 	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
@@ -413,6 +452,8 @@ func (s *server) bootstrap(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
 	defer cancel()
 	switch err := s.node.Bootstrap(ctx, servers); {
+	case errors.Is(err, raftstore.ErrBadBootstrap):
+		writeMgmtError(w, http.StatusBadRequest, err.Error())
 	case errors.Is(err, raftstore.ErrHasState):
 		writeMgmtError(w, http.StatusConflict, "refused: "+s.podName+" already has Raft state; bootstrap only forms a new group")
 	case err != nil:
@@ -424,13 +465,13 @@ func (s *server) bootstrap(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) operatorOnly(w http.ResponseWriter, r *http.Request) bool {
 	if s.operatorToken == "" {
-		writeMgmtError(w, http.StatusForbidden, "disabled: no operator token is configured")
+		writeError(w, http.StatusForbidden, internalapi.FORBIDDEN, "bootstrap is disabled: no operator token is configured")
 		return false
 	}
 	scheme, token, ok := strings.Cut(r.Header.Get("Authorization"), " ")
 	if !ok || !strings.EqualFold(scheme, "Bearer") || subtle.ConstantTimeCompare([]byte(token), []byte(s.operatorToken)) != 1 {
 		w.Header().Set("WWW-Authenticate", `Bearer realm="storagenode"`)
-		writeMgmtError(w, http.StatusUnauthorized, "operator bearer token required")
+		writeError(w, http.StatusUnauthorized, internalapi.UNAUTHORIZED, "operator bearer token required")
 		return false
 	}
 	return true
