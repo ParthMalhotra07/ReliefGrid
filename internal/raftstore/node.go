@@ -24,6 +24,9 @@ var (
 	// ErrNotLeader: this node is not the leader, and the command was never
 	// appended to its log. The error is a *NotLeaderError with a hint.
 	ErrNotLeader = errors.New("raftstore: not the leader")
+	// ErrBadBootstrap: the bootstrap configuration omits this node or lists
+	// it at an address other than the one it advertises. Nothing was written.
+	ErrBadBootstrap = errors.New("raftstore: bad bootstrap configuration")
 	// ErrHasState: Bootstrap refused because Raft state already exists.
 	ErrHasState = errors.New("raftstore: raft state exists; refusing to bootstrap")
 	// ErrUnavailable: a read could not be fenced (no quorum, shutting down).
@@ -195,19 +198,20 @@ func (n *Node) Addr() raft.ServerAddress { return n.trans.LocalAddr() }
 
 // Bootstrap installs servers as the group's first configuration. It is the
 // only way a group is formed. It returns ErrHasState if this node has any
-// Raft state, and refuses a configuration that does not include this node.
+// Raft state, and ErrBadBootstrap for a configuration that omits this node
+// or lists it at another address.
 func (n *Node) Bootstrap(ctx context.Context, servers []raft.Server) error {
 	self := false
 	for _, s := range servers {
 		if s.ID == n.id.ServerID() {
 			if s.Address != n.Addr() {
-				return fmt.Errorf("raftstore: bootstrap lists %s at %s, but it advertises %s", s.ID, s.Address, n.Addr())
+				return fmt.Errorf("%w: it lists %s at %s, but the node advertises %s", ErrBadBootstrap, s.ID, s.Address, n.Addr())
 			}
 			self = true
 		}
 	}
 	if !self {
-		return fmt.Errorf("raftstore: bootstrap configuration does not include this node (%s)", n.id.ServerID())
+		return fmt.Errorf("%w: it does not include this node (%s)", ErrBadBootstrap, n.id.ServerID())
 	}
 	has, err := raft.HasExistingState(n.logs, n.logs, n.snaps)
 	if err != nil {
@@ -284,6 +288,38 @@ func (n *Node) Read(ctx context.Context, mode ReadMode, fn func(context.Context,
 func (n *Node) notLeader() error {
 	addr, id := n.raft.LeaderWithID()
 	return &NotLeaderError{LeaderID: id, LeaderAddr: addr}
+}
+
+// Term is the current Raft term, without the cost of Status.
+func (n *Node) Term() uint64 { return n.raft.CurrentTerm() }
+
+// leadershipPoll is how often WaitApplyAfter checks for a leadership change.
+const leadershipPoll = 20 * time.Millisecond
+
+// WaitApplyAfter blocks until the FSM has applied a command after index,
+// this node's role or term changes, or ctx ends, whichever is first. It
+// holds no FSM, SQL or snapshot/apply lock, so a long-poll never delays
+// Apply or Restore. The caller reads again afterwards; waking is a hint,
+// not a result.
+func (n *Node) WaitApplyAfter(ctx context.Context, index uint64) {
+	state, term := n.raft.State(), n.raft.CurrentTerm()
+	tick := time.NewTicker(leadershipPoll)
+	defer tick.Stop()
+	for {
+		ch := n.sm.appliedChanged()
+		if n.sm.appliedIndex() > index {
+			return
+		}
+		select {
+		case <-ch:
+		case <-ctx.Done():
+			return
+		case <-tick.C:
+			if n.raft.State() != state || n.raft.CurrentTerm() != term {
+				return
+			}
+		}
+	}
 }
 
 func (n *Node) Status() Status {
