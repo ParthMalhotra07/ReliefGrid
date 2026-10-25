@@ -23,6 +23,7 @@ import (
 //	raftstore.ErrNotLeader          503 NOT_LEADER with leaderHint, or NO_LEADER (Retry-After) if none is known
 //	raftstore.ErrUnavailable        503 NO_LEADER, Retry-After
 //	store.ErrUnknownOutcome         503 OUTCOME_UNKNOWN, outcomeUnknown=true, Retry-After
+//	any other read error            503 STORAGE_UNAVAILABLE, Retry-After (local storage failed)
 //
 // Only OUTCOME_UNKNOWN sets outcomeUnknown; every 503 is retryable.
 
@@ -85,6 +86,8 @@ func (s *server) writeFailure(w http.ResponseWriter, err error) {
 
 // writeReadFailure writes a Read error. A read changes nothing, so it is
 // never an unknown outcome; a failed read is never an empty result either.
+// An error that is neither not-found nor not-proposed is a local storage
+// failure (e.g. SQLite), not a missing leader.
 func (s *server) writeReadFailure(w http.ResponseWriter, err error) {
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, internalapi.NOTFOUND, err.Error())
@@ -95,7 +98,7 @@ func (s *server) writeReadFailure(w http.ResponseWriter, err error) {
 	}
 	slog.Error("read failed", "err", err)
 	w.Header().Set("Retry-After", retryAfterSeconds)
-	writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{Code: internalapi.NOLEADER, Message: "read failed: " + err.Error(), Retryable: true})
+	writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{Code: internalapi.STORAGEUNAVAILABLE, Message: "local storage read failed: " + err.Error(), Retryable: true})
 }
 
 // writeNotProposed handles not-leader and unavailable, which mean nothing

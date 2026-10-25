@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -284,6 +285,15 @@ func TestFailureMapping(t *testing.T) {
 		e := expectError(t, do(t, newTestServer(t, n).dataRoutes(), get), http.StatusServiceUnavailable, internalapi.NOLEADER)
 		if e.OutcomeUnknown {
 			t.Fatal("a read never has an unknown outcome")
+		}
+	})
+	t.Run("local read failure", func(t *testing.T) {
+		n := newFakeNode(t)
+		n.readErr = fmt.Errorf("query entity: %w", errors.New("sqlite: disk I/O error"))
+		rec := do(t, newTestServer(t, n).dataRoutes(), get)
+		e := expectError(t, rec, http.StatusServiceUnavailable, internalapi.STORAGEUNAVAILABLE)
+		if !e.Retryable || e.OutcomeUnknown || e.LeaderHint != nil || rec.Header().Get("Retry-After") == "" {
+			t.Fatalf("local read failure = %+v (Retry-After %q)", e, rec.Header().Get("Retry-After"))
 		}
 	})
 	t.Run("read on follower", func(t *testing.T) {
