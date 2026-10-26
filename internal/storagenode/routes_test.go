@@ -331,6 +331,7 @@ func TestReadConsistency(t *testing.T) {
 	for _, tc := range cases {
 		t.Run("consistency="+strings.TrimPrefix(tc.query, "?"), func(t *testing.T) {
 			n := newFakeNode(t)
+			n.status.CaughtUp = true // a stale read needs a caught-up replica
 			n.seed(t, store.CompareAndSet{Meta: meta("op-1"), Key: kvKey, Value: json.RawMessage(`7`)})
 			rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: "/internal/data/" + kvKey + tc.query})
 			if rec.Code != http.StatusOK {
@@ -564,6 +565,7 @@ func TestOutboxConsistencyAndLongPoll(t *testing.T) {
 	} {
 		t.Run("consistency"+tc.query, func(t *testing.T) {
 			n := newFakeNode(t)
+			n.status.CaughtUp = true // a stale read needs a caught-up replica
 			n.seed(t, create)
 			rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: path(tc.query + "&wait=1")})
 			resp := decodeJSON[internalapi.OutboxPage](t, rec)

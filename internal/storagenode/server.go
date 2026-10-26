@@ -4,10 +4,12 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/hashicorp/raft"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -22,6 +24,7 @@ type node interface {
 	Status() raftstore.Status
 	Term() uint64
 	Bootstrap(ctx context.Context, servers []raft.Server) error
+	StepDown(ctx context.Context) error
 	Snapshot(ctx context.Context) (raftstore.SnapshotInfo, error)
 }
 
@@ -35,8 +38,12 @@ type server struct {
 	podName string
 	timeout time.Duration
 	// leaderHTTP turns the Raft leader's address into the address of its
-	// data endpoint for leaderHint (production: same host, HTTP port).
+	// data endpoint for leaderHint when the coordinator has not named it
+	// (production: same host, this replica's HTTP port).
 	leaderHTTP func(raft.ServerAddress) string
+	// leaders is the coordinator's last answer for this shard: the leader
+	// and its advertised HTTP address, a hint for leaderHint only.
+	leaders atomic.Pointer[internalapi.ShardLeader]
 	// operatorToken guards /mgmt/bootstrap; empty disables it (403).
 	operatorToken string
 }
@@ -77,13 +84,20 @@ func (s *server) dataRoutes() http.Handler {
 //	                      rows{table: count}}; compare replicas only at equal
 //	                      appliedIndex
 //	GET  /healthz         200 while the process serves
-//	GET  /readyz          200 only when the FSM has caught up (Status.CaughtUp)
+//	POST /mgmt/transfer-leader
+//	                      operator token: the leader hands leadership to
+//	                      another voter (raftstore.StepDown); 200 {podName,
+//	                      state, term, leaderId} once it no longer leads, 409
+//	                      NOT_LEADER on a follower, 503 if it still leads
+//	GET  /readyz          200 only when the FSM covers the leader's commit
+//	                      index (Status.CaughtUp)
 func (s *server) mgmtRoutes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /mgmt/status", s.status)
 	mux.HandleFunc("POST /mgmt/bootstrap", s.bootstrap)
 	mux.HandleFunc("POST /mgmt/snapshot", s.snapshot)
 	mux.HandleFunc("GET /mgmt/dump", s.dump)
+	mux.HandleFunc("POST /mgmt/transfer-leader", s.transferLeader)
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /readyz", s.readyz)
 	return mux
@@ -109,6 +123,18 @@ type statusResponse struct {
 	HasState         bool   `json:"hasState"`
 	CaughtUp         bool   `json:"caughtUp"`
 	RingVersion      uint64 `json:"ringVersion"`
+	// LeaderCommitIndex: the leader's commit index as this replica learned
+	// it; caughtUp is judged against it.
+	LeaderCommitIndex uint64 `json:"leaderCommitIndex"`
+}
+
+// transferResponse is the /mgmt/transfer-leader body: this replica after
+// handing leadership over.
+type transferResponse struct {
+	PodName  string `json:"podName"`
+	State    string `json:"state"`
+	Term     uint64 `json:"term"`
+	LeaderID string `json:"leaderId"`
 }
 
 // snapshotResponse is the /mgmt/snapshot body.
