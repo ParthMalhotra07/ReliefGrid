@@ -20,8 +20,12 @@ go tool oapi-codegen \
 	-package gen \
 	-o internal/api/gen/types.gen.go \
 	contracts/public.yaml
+go tool oapi-codegen -generate types -package internalapi \
+	-o internal/internalapi/types.gen.go contracts/internal.yaml
 ok        make gen: git status clean after gen
 ok        go build ./internal/api/gen/... compiles
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	0.056s
+ok        public contract boundary and invalid-input regressions
 
-=== Results: 15 passed, 0 failed ===
+=== Results: 16 passed, 0 failed ===
 A0.1 VERIFY: ALL PASS
