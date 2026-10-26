@@ -6,7 +6,8 @@
 # storage image, installs deploy/helm/storage and checks bootstrap, placement, the
 # bootstrap guard and failover. It leaves the cluster running (KEEP_CLUSTER=0 deletes
 # it). Writes evidence to docs/evidence/S1.5/storage-k8s-<host>.txt, identified by a
-# fingerprint of the code under test and a dirty flag. Exits non-zero
+# fingerprint of the code under test and a dirty flag, every PASS/FAIL line and the
+# result, once the result is known (a failed run is written, marked FAILED). Exits non-zero
 # if any check fails; prints one PASS/FAIL line per check.
 #
 # Interface under test:
@@ -45,7 +46,9 @@
 #     labels app.kubernetes.io/{name=storage,component=storage-manifest,managed-by=storagectl},
 #     no Helm ownership; groupId shard-N, shard, ringVersion (= contracts/ring.yaml), peers
 #     (JSON [{podName,address}] with the stable FQDNs), phase PENDING -> BOOTSTRAPPING ->
-#     BOOTSTRAPPED, peerIds (JSON list of podName/incarnation)
+#     BOOTSTRAPPED, peerIds (JSON list of podName/incarnation); an existing one without
+#     managed-by=storagectl, or whose groupId, shard, ringVersion or peers differ from the
+#     Job's spec, is refused (exit 2) before any peer is contacted
 #     value bootstrap.debugHoldSeconds: the Job sleeps that long after bootstrapping shard 0
 #       and before recording BOOTSTRAPPED, logging "holding" (gives the kill a fixed window)
 #   /storagectl status [--addr host:port] [--timeout d]
@@ -72,15 +75,26 @@ HOLD_SECONDS="${HOLD_SECONDS:-60}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-1}"
 EVIDENCE="docs/evidence/S1.5/storage-k8s-$(hostname -s).txt"
 
-failures=0
-pass() { printf 'PASS  %s\n' "$1"; }
-fail() { printf 'FAIL  %s\n' "$1"; [ -n "${2:-}" ] && printf '      %s\n' "$2"; failures=$((failures + 1)); }
+failures=0 passes=0
+results="" # every PASS/FAIL line, for the evidence; set to a file once $tmp exists
+pass() {
+	printf 'PASS  %s\n' "$1" | tee -a "${results:-/dev/null}"
+	passes=$((passes + 1))
+}
+fail() {
+	{
+		printf 'FAIL  %s\n' "$1"
+		[ -n "${2:-}" ] && printf '      %s\n' "$2"
+	} | tee -a "${results:-/dev/null}"
+	failures=$((failures + 1))
+}
 check() { # check <description> <command...>
 	local desc="$1"
 	shift
 	if "$@" >/dev/null 2>&1; then pass "$desc"; else fail "$desc"; fi
 }
 finish() {
+	write_evidence
 	[ "$KEEP_CLUSTER" = 0 ] && make -s cluster-down >/dev/null 2>&1
 	echo
 	if [ "$failures" -eq 0 ]; then
@@ -97,6 +111,8 @@ abort() { # abort <description> [detail]: a failure that makes later checks mean
 }
 
 tmp="$(mktemp -d)"
+results="$tmp/results"
+: >"$results"
 pf_pid=""
 cleanup() {
 	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
@@ -203,6 +219,41 @@ read_key() {
 }
 # exec_dial <from-pod> <host:port>: storagectl dial from inside a storage pod
 exec_dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --timeout 3s >/dev/null 2>&1; }
+# write_evidence: called by finish, once the result is known. Identifies the code
+# under test, not the commit: committing the evidence (or any docs change) must not
+# make it stale, so only these paths are fingerprinted.
+write_evidence() {
+	local code_paths code_tree code_dirty result s p
+	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl internal deploy/helm/storage scripts/verify-storage-k8s.sh)
+	code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin)"
+	code_dirty="$(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
+	if [ "$failures" -eq 0 ]; then result="PASSED ($passes/$passes checks)"; else result="FAILED ($failures of $((passes + failures)) checks failed)"; fi
+	mkdir -p "$(dirname "$EVIDENCE")"
+	{
+		echo "# S1.5 storage on Kubernetes"
+		echo "result:     $result"
+		echo "host:       $(hostname -s)"
+		echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+		echo "code tree:  ${code_tree:0:12} (git ls-tree -r HEAD -- ${code_paths[*]} | git hash-object --stdin)"
+		echo "code dirty: $code_dirty (uncommitted changes under those paths)"
+		echo
+		echo "## checks"
+		cat "$results"
+		echo
+		echo "## kubectl get pods -o wide"
+		kn get pods -o wide
+		echo
+		for s in "${SHARDS[@]}"; do
+			echo "## shard-$s"
+			for p in $(pod_names "$s"); do st "$p" | jq -c '{podName, serverId, state, term, leaderId, commitIndex, appliedIndex, caughtUp}'; done
+			kn get configmap "$(sts_name "$s")-manifest" -o jsonpath='{.data}' | jq -c .
+			echo
+		done
+		echo "## bootstrap Job logs (${j2:-$(job_name)})"
+		job_logs "${j2:-$(job_name)}"
+	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE"
+	echo "evidence: $EVIDENCE ($result)"
+}
 
 for tool in kind kubectl helm docker jq python3 curl; do
 	command -v "$tool" >/dev/null || abort "tools: $tool is installed"
@@ -538,12 +589,23 @@ job_logs "$ju" | grep -Eq 'created manifest|msg="?[^ ]*: bootstrapped' && fail "
 # --- 6d. helm rollback to revision 1 cannot touch the manifests ----------------------------
 declare -A pids_before
 for s in "${SHARDS[@]}"; do pids_before[$s]="$(peer_ids "$s")"; done
+job_uids() { kn get jobs -l app.kubernetes.io/component=storage-bootstrap -o jsonpath='{range .items[*]}{.metadata.uid}{"\n"}{end}' 2>/dev/null; }
+uids_before_rb="$(job_uids)"
 if helm --kube-context "$CTX" rollback "$RELEASE" 1 -n "$NS" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/rollback.out" 2>&1; then
 	pass "rollback: helm rollback $RELEASE 1 succeeds"
 else
 	fail "rollback: helm rollback $RELEASE 1 succeeds" "$(tail -3 "$tmp/rollback.out" | tr '\n' '|')"
 fi
+# Revision 1's Job was deleted by the upgrade (its name left the chart), so the
+# rollback re-creates it and it runs again: it must verify, not create or bootstrap.
+jr="$(job_name)"
+jr_uid="$(kn get job "$jr" -o jsonpath='{.metadata.uid}' 2>/dev/null)"
+[ -n "$jr_uid" ] && ! grep -qx "$jr_uid" <<<"$uids_before_rb" && pass "rollback: a new bootstrap Job ran ($jr, uid $jr_uid)" ||
+	fail "rollback: a new bootstrap Job ran" "newest '$jr' uid '$jr_uid', existing before: $(tr '\n' ' ' <<<"$uids_before_rb")"
+job_logs "$jr" | grep -Eq 'created manifest|msg="?[^ ]*: bootstrapped' && fail "rollback: the Job created or bootstrapped nothing" "$(job_logs "$jr" | tr '\n' '|')" ||
+	pass "rollback: the Job created or bootstrapped nothing"
 for s in "${SHARDS[@]}"; do
+	job_logs "$jr" | grep -q "shard-$s: verified" && pass "rollback: Job $jr verified shard-$s" || fail "rollback: Job $jr verified shard-$s" "$(job_logs "$jr" | tail -3 | tr '\n' '|')"
 	[ "$(manifest_rv "$s")" = "${rv_before[$s]}" ] && [ "$(phase "$s")" = BOOTSTRAPPED ] && [ "$(peer_ids "$s")" = "${pids_before[$s]}" ] &&
 		pass "rollback: manifest shard-$s untouched (resourceVersion, BOOTSTRAPPED, peerIds)" ||
 		fail "rollback: manifest shard-$s untouched" "rv ${rv_before[$s]} -> $(manifest_rv "$s"), phase $(phase "$s"), peerIds $(peer_ids "$s")"
@@ -567,7 +629,8 @@ reason="$(kn get job "$j" -o jsonpath='{.status.conditions[?(@.type=="Failed")].
 codes="$(kn get pods -l "job-name=$j" -o jsonpath='{range .items[*]}{.status.containerStatuses[0].state.terminated.exitCode}{" "}{end}' 2>/dev/null)"
 [ "$reason" = PodFailurePolicy ] && [ "$codes" = "2 " ] && pass "guard: failed by podFailurePolicy after one pod exited 2" ||
 	fail "guard: failed by podFailurePolicy after one pod exited 2" "reason '$reason', exit codes '$codes'"
-job_logs "$j" | grep -q 'storagectl: refused:' && pass "guard: the Job logs 'refused:'" || fail "guard: the Job logs 'refused:'"
+job_logs "$j" | grep -q 'refused: .*no reachable peer has Raft state' && pass "guard: the Job refused because no reachable peer has Raft state" ||
+	fail "guard: the Job refused because no reachable peer has Raft state" "$(job_logs "$j" | tail -3 | tr '\n' '|')"
 echo "waiting ${NO_SELF_BOOTSTRAP_SECONDS}s to confirm no pod bootstraps itself..."
 sleep "$NO_SELF_BOOTSTRAP_SECONDS"
 for s in "${SHARDS[@]}"; do
@@ -648,31 +711,4 @@ if [ -n "${kv0:-}" ]; then
 fi
 
 # --- 10. Evidence ---------------------------------------------------------------------------
-# Identify the code under test, not the commit: committing the evidence (or any
-# docs change) must not make it stale, so only these paths are fingerprinted.
-code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl internal deploy/helm/storage scripts/verify-storage-k8s.sh)
-code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin)"
-code_dirty="$(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
-mkdir -p "$(dirname "$EVIDENCE")"
-{
-	echo "# S1.5 storage on Kubernetes"
-	echo "host:       $(hostname -s)"
-	echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-	echo "code tree:  ${code_tree:0:12} (git ls-tree -r HEAD -- ${code_paths[*]} | git hash-object --stdin)"
-	echo "code dirty: $code_dirty (uncommitted changes under those paths)"
-	echo
-	echo "## kubectl get pods -o wide"
-	kn get pods -o wide
-	echo
-	for s in "${SHARDS[@]}"; do
-		echo "## shard-$s"
-		for p in $(pod_names "$s"); do st "$p" | jq -c '{podName, serverId, state, term, leaderId, commitIndex, appliedIndex, caughtUp}'; done
-		kn get configmap "$(sts_name "$s")-manifest" -o jsonpath='{.data}' | jq -c .
-		echo
-	done
-	echo "## bootstrap Job logs ($j2)"
-	job_logs "$j2"
-} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE"
-check "evidence: $EVIDENCE written" test -s "$EVIDENCE"
-
 finish

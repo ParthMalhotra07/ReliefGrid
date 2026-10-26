@@ -77,6 +77,7 @@ type configMap struct {
 	raw     map[string]any
 	version string
 	data    map[string]string
+	labels  map[string]string
 }
 
 func (k *kubeStore) do(ctx context.Context, method, name string, body []byte) (*http.Response, error) {
@@ -116,7 +117,8 @@ func (k *kubeStore) getRaw(ctx context.Context, name string) (configMap, error) 
 	}
 	var obj struct {
 		Metadata struct {
-			ResourceVersion string `json:"resourceVersion"`
+			ResourceVersion string            `json:"resourceVersion"`
+			Labels          map[string]string `json:"labels"`
 		} `json:"metadata"`
 		Data map[string]string `json:"data"`
 	}
@@ -127,7 +129,7 @@ func (k *kubeStore) getRaw(ctx context.Context, name string) (configMap, error) 
 	if err := json.Unmarshal(b, &cm.raw); err != nil {
 		return configMap{}, fmt.Errorf("storagectl: decode configmap %s: %w", name, err)
 	}
-	cm.version, cm.data = obj.Metadata.ResourceVersion, obj.Data
+	cm.version, cm.data, cm.labels = obj.Metadata.ResourceVersion, obj.Data, obj.Metadata.Labels
 	return cm, nil
 }
 
@@ -136,18 +138,25 @@ func (k *kubeStore) Get(ctx context.Context, name string) (manifest, error) {
 	if err != nil {
 		return manifest{}, err
 	}
-	return parseManifest(name, cm.version, cm.data)
+	m, err := parseManifest(name, cm.version, cm.data)
+	m.ManagedBy = cm.labels[labelManagedBy]
+	return m, err
 }
+
+const (
+	labelManagedBy      = "app.kubernetes.io/managed-by"
+	managedByStoragectl = "storagectl"
+)
 
 // manifestLabels select manifests for make storage-reset. There are no Helm
 // ownership labels or annotations: the manifest is storagectl's, so helm
 // upgrade, rollback and uninstall never write or delete it.
 func manifestLabels(m manifest) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":       "storage",
-		"app.kubernetes.io/component":  "storage-manifest",
-		"app.kubernetes.io/managed-by": "storagectl",
-		"reliefgrid.io/shard":          strconv.Itoa(m.Shard),
+		"app.kubernetes.io/name":      "storage",
+		"app.kubernetes.io/component": "storage-manifest",
+		labelManagedBy:                managedByStoragectl,
+		"reliefgrid.io/shard":         strconv.Itoa(m.Shard),
 	}
 }
 

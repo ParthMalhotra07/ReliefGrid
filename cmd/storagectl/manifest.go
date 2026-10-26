@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 )
 
@@ -19,6 +20,7 @@ const (
 type manifest struct {
 	Name            string // ConfigMap name
 	ResourceVersion string // for compare-and-swap updates
+	ManagedBy       string // its app.kubernetes.io/managed-by label
 
 	GroupID     string
 	Shard       int
@@ -83,6 +85,26 @@ func (m manifest) data() map[string]string {
 		d["peerIds"] = string(ids)
 	}
 	return d
+}
+
+// differs is empty if m is storagectl's record of the group spec describes;
+// otherwise it says what differs. Only phase and peerIds may change after
+// creation, so anything else means the ConfigMap was planted, left by an
+// older chart, or describes another group.
+func (m manifest) differs(spec manifest) string {
+	switch {
+	case m.ManagedBy != managedByStoragectl:
+		return fmt.Sprintf("label %s is %q, not %q", labelManagedBy, m.ManagedBy, managedByStoragectl)
+	case m.GroupID != spec.GroupID:
+		return fmt.Sprintf("groupId is %s, the chart's is %s", m.GroupID, spec.GroupID)
+	case m.Shard != spec.Shard:
+		return fmt.Sprintf("shard is %d, the chart's is %d", m.Shard, spec.Shard)
+	case m.RingVersion != spec.RingVersion:
+		return fmt.Sprintf("ringVersion is %d, the chart's is %d", m.RingVersion, spec.RingVersion)
+	case !slices.Equal(m.Peers, spec.Peers):
+		return fmt.Sprintf("peers are %v, the chart's are %v", m.Peers, spec.Peers)
+	}
+	return ""
 }
 
 func (m manifest) majority() int { return len(m.Peers)/2 + 1 }

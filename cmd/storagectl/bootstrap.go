@@ -30,7 +30,7 @@ type bootstrapper struct {
 }
 
 // run takes the chart's manifest specs, in shard order. Every manifest
-// exists before any group is bootstrapped.
+// exists, and is checked against its spec, before any peer is contacted.
 func (b *bootstrapper) run(ctx context.Context, specs []manifest) error {
 	for _, spec := range specs {
 		if err := b.ensure(ctx, spec); err != nil {
@@ -38,7 +38,7 @@ func (b *bootstrapper) run(ctx context.Context, specs []manifest) error {
 		}
 	}
 	for _, spec := range specs {
-		if err := b.shard(ctx, spec.Name); err != nil {
+		if err := b.shard(ctx, spec); err != nil {
 			return err
 		}
 	}
@@ -48,14 +48,33 @@ func (b *bootstrapper) run(ctx context.Context, specs []manifest) error {
 // ensure creates spec's manifest as PENDING if there is none. An existing
 // manifest is the record and is used as it is: a spec never resets it, so
 // nothing the chart renders (or a helm rollback replays) can undo a phase.
+// But it must be storagectl's record of this group: anything with create on
+// configmaps could have planted one naming its own peers, which would then
+// receive the operator token with the bootstrap call.
 func (b *bootstrapper) ensure(ctx context.Context, spec manifest) error {
 	spec.Phase, spec.PeerIDs = phasePending, nil
 	switch err := b.store.Create(ctx, spec); {
 	case err == nil:
 		b.log.Info(spec.GroupID+": created manifest", "manifest", spec.Name)
+		return nil
 	case errors.Is(err, errExists):
 	default:
 		return err
+	}
+	m, err := b.store.Get(ctx, spec.Name)
+	if err != nil {
+		return err
+	}
+	return refuseForeign(m, spec)
+}
+
+// refuseForeign refuses a manifest that is not storagectl's record of spec's
+// group. Left by an older chart or planted, it is only cleared by a
+// deliberate make storage-reset.
+func refuseForeign(m, spec manifest) error {
+	if why := m.differs(spec); why != "" {
+		return fmt.Errorf("%w: %s (%s): the existing manifest is not storagectl's record of this group: %s (make storage-reset clears it)",
+			errRefused, spec.GroupID, spec.Name, why)
 	}
 	return nil
 }
@@ -63,12 +82,18 @@ func (b *bootstrapper) ensure(ctx context.Context, spec manifest) error {
 // shard drives one manifest to BOOTSTRAPPED, or refuses. Every decision is
 // made from a fresh read of the manifest and the peers, so a run killed at
 // any point is resumed by the next one.
-func (b *bootstrapper) shard(ctx context.Context, name string) error {
+func (b *bootstrapper) shard(ctx context.Context, spec manifest) error {
+	name := spec.Name
 	issued := false // this run's bootstrap call succeeded
 	lastWhy := ""
 	for {
 		m, err := b.store.Get(ctx, name)
 		if err != nil {
+			return err
+		}
+		// Every read, not only ensure's: the ConfigMap can be replaced
+		// (deleted and re-created) while the Job runs.
+		if err := refuseForeign(m, spec); err != nil {
 			return err
 		}
 		sts := b.statuses(ctx, m)
@@ -85,6 +110,11 @@ func (b *bootstrapper) shard(ctx context.Context, name string) error {
 			if cur, err := b.store.Get(ctx, name); err != nil {
 				return err
 			} else if cur.ResourceVersion != m.ResourceVersion {
+				// Poll first: a manifest that keeps changing (M7
+				// admissions, an operator's edits) must not make this spin.
+				if err := sleep(ctx, b.poll); err != nil {
+					return fmt.Errorf("%s: %w (last: %s)", m.GroupID, err, why)
+				}
 				continue
 			}
 			return fmt.Errorf("%w: %s (%s): %s", errRefused, m.GroupID, m.Name, why)

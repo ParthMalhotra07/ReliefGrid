@@ -144,7 +144,7 @@ func TestKubeStoreCreateIfAbsent(t *testing.T) {
 		t.Fatal("manifest carries Helm ownership")
 	}
 	got, err := k.Get(t.Context(), m.Name)
-	if err != nil || got.Phase != phasePending || got.GroupID != "shard-2" || len(got.Peers) != 3 {
+	if err != nil || got.Phase != phasePending || got.GroupID != "shard-2" || len(got.Peers) != 3 || got.ManagedBy != managedByStoragectl {
 		t.Fatalf("get after create: %+v %v", got, err)
 	}
 
