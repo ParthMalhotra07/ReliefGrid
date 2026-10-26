@@ -22,13 +22,14 @@ endif
 
 # Storage on kind (S1.5): the standalone chart deploy/helm/storage.
 STORAGE_IMAGE   ?= reliefgrid/storagenode:dev
+COORDINATOR_IMAGE ?= reliefgrid/coordinator:dev
 STORAGE_NS      ?= reliefgrid
 STORAGE_RELEASE ?= storage
 
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image storage-reset
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image coordinator-image storage-reset
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -83,6 +84,10 @@ print-%: ## Print a pin, e.g. make -s print-GOLANGCI_LINT_VERSION
 storage-image: ## Build the storage node image (storagenode + storagectl) and load it into kind
 	docker build -f cmd/storagenode/Dockerfile -t $(STORAGE_IMAGE) .
 	kind load docker-image --name $(CLUSTER) $(STORAGE_IMAGE)
+
+coordinator-image: ## Build the coordinator image and load it into kind
+	docker build -f cmd/coordinator/Dockerfile -t $(COORDINATOR_IMAGE) .
+	kind load docker-image --name $(CLUSTER) $(COORDINATOR_IMAGE)
 
 # The bootstrap manifests belong to storagectl, not Helm, so helm uninstall
 # leaves them and wiped disks never re-bootstrap by accident (v3.1 §10);
