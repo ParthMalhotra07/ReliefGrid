@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -534,5 +535,53 @@ func TestRingVersionMismatchRefreshesAndRetriesOnce(t *testing.T) {
 	}
 	if n := len(f2.requests()); n > 2 {
 		t.Fatalf("%d attempts on a persistent mismatch, want at most 2", n)
+	}
+}
+
+// The client's timeout caps the whole call, ring refresh and retry
+// included, not each request inside it.
+func TestTimeoutCapsTheWholeCall(t *testing.T) {
+	two := uint64(2)
+	mismatch := internalapi.Error{Code: internalapi.RINGVERSIONMISMATCH, Retryable: true, RingVersion: &two}
+	for name, call := range map[string]func(*coordclient.Client) error{
+		"mutation": func(c *coordclient.Client) error {
+			_, err := c.CreateEntity(context.Background(), store.CreateEntity{Meta: meta("op-1"), Key: "kv:a", Value: json.RawMessage(`1`)})
+			if !errors.Is(err, store.ErrUnknownOutcome) {
+				return fmt.Errorf("err = %w, want ErrUnknownOutcome (the retry was sent)", err)
+			}
+			return nil
+		},
+		"read": func(c *coordclient.Client) error {
+			_, err := c.Scan(context.Background(), store.ScanQuery{Kind: store.KindResource, Limit: 10})
+			var ce *coordclient.Error
+			if err == nil || errors.Is(err, store.ErrUnknownOutcome) || !errors.As(err, &ce) || !ce.Retryable {
+				return fmt.Errorf("err = %w, want a retryable read error", err)
+			}
+			return nil
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f := newFake(t)
+			c := newClient(t, f, coordclient.WithTimeout(400*time.Millisecond))
+			f.mu.Lock()
+			f.ring.RingVersion = 2
+			f.mu.Unlock()
+			f.setAnswer(func(w http.ResponseWriter, r *http.Request, n int) {
+				if n == 1 {
+					time.Sleep(300 * time.Millisecond)
+					writeJSON(w, http.StatusConflict, mismatch)
+					return
+				}
+				<-r.Context().Done() // the retry hangs
+			})
+			start := time.Now()
+			if err := call(c); err != nil {
+				t.Fatal(err)
+			}
+			if d := time.Since(start); d > 600*time.Millisecond {
+				t.Fatalf("call took %s with a 400ms timeout", d)
+			}
+		})
 	}
 }

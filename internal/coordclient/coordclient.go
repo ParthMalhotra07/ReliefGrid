@@ -22,7 +22,8 @@
 // store.ErrUnknownOutcome, whatever the server said.
 //
 // Mutations and scans carry the client's ringVersion. Every call has a
-// deadline: the caller's, capped at the client's timeout.
+// deadline: the caller's, capped at the client's timeout. The cap covers the
+// whole call, a ring refresh and its retry included.
 package coordclient
 
 import (
@@ -83,6 +84,8 @@ func New(ctx context.Context, baseURL string, opts ...Option) (*Client, error) {
 	for _, o := range opts {
 		o(c)
 	}
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 	if _, err := c.refreshRing(ctx); err != nil {
 		return nil, err
 	}
@@ -161,10 +164,9 @@ type transportError struct {
 func (e *transportError) Error() string { return e.err.Error() }
 func (e *transportError) Unwrap() error { return e.err }
 
-// send makes one call under the client's timeout.
+// send makes one request under ctx, which the calling method has already
+// capped at the client's timeout.
 func (c *Client) send(ctx context.Context, method, path string, query url.Values, header map[string]string, body []byte) (answer, error) {
-	ctx, cancel := context.WithTimeout(ctx, c.timeout)
-	defer cancel()
 	var wrote atomic.Bool
 	ctx = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{WroteHeaders: func() { wrote.Store(true) }})
 	u := c.base + path
@@ -208,8 +210,11 @@ type mutation struct {
 
 // mutate sends m and maps the answer (contracts/README.md). On
 // RING_VERSION_MISMATCH it refreshes the ring and, if the version changed,
-// retries once with the same command and the new ringVersion.
+// retries once with the same command and the new ringVersion. The client's
+// timeout caps all of it.
 func (c *Client) mutate(ctx context.Context, m mutation) (store.Result, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 	for retried := false; ; retried = true {
 		rv := c.ringVersion()
 		res, err := c.mutateOnce(ctx, m, rv)
@@ -293,7 +298,10 @@ func commandBody(cmd any, rv uint64, drop []string) ([]byte, error) {
 
 // read sends a GET and decodes a 200 into out. Every failure is an *Error
 // that is never ErrUnknownOutcome; a 404 NOT_FOUND matches ErrNotFound.
+// The client's timeout caps the call, refresh and retry included.
 func (c *Client) read(ctx context.Context, path string, query url.Values, out any) error {
+	ctx, cancel := context.WithTimeout(ctx, c.timeout)
+	defer cancel()
 	for retried := false; ; retried = true {
 		rv := c.ringVersion()
 		if query.Has("ringVersion") {
@@ -437,7 +445,8 @@ func (c *Client) ReadClosure(ctx context.Context, resourceKey, attemptID string)
 
 // Scan is one bounded page per shard. A shard the coordinator could not
 // read is in FailedShards with Partial set; an answer that is missing a
-// shard without saying so is made partial here too (invariant 7).
+// shard without saying so is made partial here too (CONTRIBUTING.md,
+// Invariants, 7).
 func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult, error) {
 	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
 		return store.ScanResult{}, invalid("scan limit %d must be 1 to %d records per shard", q.Limit, store.MaxScanLimit)
