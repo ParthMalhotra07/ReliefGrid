@@ -4,12 +4,19 @@
 | --- | --- |
 | `ring.yaml` | The consistent-hash ring: ringVersion, shards, vnodes and the token-map checksum. |
 | `internal.yaml` | Coordinator and storage-node routes (plan v3.1 §40). Generated types: `internal/internalapi`. |
-| `public.yaml` | The public API (v3.1 §7). |
+| `public.yaml` | The public API (v3.1 §7). `make gen-public` generates `internal/api/gen`. |
 | `events/*.json` | Broker event schemas. |
 
 Contracts are frozen after 21 October. A change needs both owners' approval, and the regenerated
 code (`make gen`) must be in the same PR. `go test ./contracts` checks `internal.yaml` against
 `internal/store`, `ring.yaml` and the table below.
+
+`make gen` runs both `gen-public` and `gen-internal`; neither generator replaces the other.
+Public contract tests also validate examples and reject unsupported request fields,
+invalid geography/urgency and client assignment writes. Public IDs/types map to the stored
+entities; public versions are opaque strings. Event `schemaVersion` is an integer, matching
+the outbox. Public urgency NORMAL/HIGH/CRITICAL maps to stored and explicit AMQP priority
+values 1/2/3; zero is never an application urgency.
 
 ## Store outcome → HTTP status
 
@@ -22,6 +29,7 @@ internal API a committed rejection carries the store `Result` in the error body'
   lands in week three.
 
 Every error body has `code`, `message`, `retryable` and `outcomeUnknown`.
+Public errors additionally require `correlationId` and may carry validation `details`.
 
 | Store result | Code | Internal HTTP | Public HTTP | Notes |
 | --- | --- | --- | --- | --- |

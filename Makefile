@@ -54,12 +54,20 @@ test: ## go test -race ./...
 
 gen: gen-public gen-internal ## Regenerate code from contracts/ (must leave no diff)
 
-gen-public: ## contracts/public.yaml -> internal/api/gen (lands with A0.1)
-	@echo "gen-public: no contracts/public.yaml yet"
+gen-public: ## contracts/public.yaml -> internal/api/gen
+	mkdir -p internal/api/gen
+	go tool oapi-codegen \
+		-generate types \
+		-package gen \
+		-o internal/api/gen/types.gen.go \
+		contracts/public.yaml
 
 gen-internal: ## contracts/internal.yaml -> internal/internalapi
 	go tool oapi-codegen -generate types -package internalapi \
 		-o internal/internalapi/types.gen.go contracts/internal.yaml
+
+verify-A0.1: ## Run the A0.1 Verify script
+	bash scripts/verify-A0.1.sh
 
 dev: cluster-up ## Deploy the development stack (for now: just the kind cluster)
 
