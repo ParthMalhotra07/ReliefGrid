@@ -4,6 +4,11 @@
 //	HTTP_ADDR (:8080)  data routes of contracts/internal.yaml for this shard
 //	MGMT_ADDR (:8081)  management: status, bootstrap, liveness, readiness
 //
+// With COORDINATOR_URL set it registers with the coordinator and heartbeats
+// every HEARTBEAT_INTERVAL_MS (1000), advertising HTTP_ADVERTISE (default:
+// RAFT_ADVERTISE's host on the HTTP_ADDR port). Without it the node serves
+// but the coordinator cannot route to it.
+//
 // The management listener is separate so that M7 admission (S4.2) can keep a
 // fresh disk on management only, with the data and Raft listeners closed.
 package main
@@ -15,6 +20,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -50,6 +56,7 @@ type config struct {
 	RingPath       string        // RING_PATH, default /etc/reliefgrid/ring.yaml
 	RequestTimeout time.Duration // REQUEST_TIMEOUT_MS, default 3000; the deadline on every Apply and read
 	OperatorToken  string        // OPERATOR_TOKEN (a Secret); empty disables /mgmt/bootstrap
+	Heartbeat      storagenode.HeartbeatConfig
 }
 
 // loadConfig reads POD_NAME, SHARD, GROUP_ID (default shard-<SHARD>),
@@ -104,6 +111,20 @@ func loadConfig(getenv func(string) string) (config, error) {
 	if _, _, err := net.SplitHostPort(cfg.MgmtAddr); err != nil {
 		return config{}, fmt.Errorf("MGMT_ADDR %q: %w", cfg.MgmtAddr, err)
 	}
+	hb := &cfg.Heartbeat
+	hb.CoordinatorURL = getenv("COORDINATOR_URL")
+	if u, err := url.Parse(hb.CoordinatorURL); hb.CoordinatorURL != "" && (err != nil || u.Scheme != "http" && u.Scheme != "https" || u.Host == "") {
+		return config{}, fmt.Errorf("COORDINATOR_URL %q must be an http(s) URL", hb.CoordinatorURL)
+	}
+	hb.Address = get("HTTP_ADVERTISE", storagenode.HTTPAddrFor(raft.ServerAddress(cfg.Raft.AdvertiseAddr), port))
+	if _, _, err := net.SplitHostPort(hb.Address); err != nil {
+		return config{}, fmt.Errorf("HTTP_ADVERTISE %q: %w", hb.Address, err)
+	}
+	intervalMS, err := strconv.Atoi(get("HEARTBEAT_INTERVAL_MS", "1000"))
+	if err != nil || intervalMS <= 0 {
+		return config{}, fmt.Errorf("HEARTBEAT_INTERVAL_MS %q must be a positive integer", getenv("HEARTBEAT_INTERVAL_MS"))
+	}
+	hb.Interval = time.Duration(intervalMS) * time.Millisecond
 	return cfg, nil
 }
 
@@ -138,6 +159,17 @@ func run(ctx context.Context, cfg config) error {
 	for _, srv := range servers {
 		go func() { errc <- srv.ListenAndServe() }()
 	}
+	hbCtx, stopHeartbeats := context.WithCancel(ctx)
+	hbDone := make(chan struct{})
+	if cfg.Heartbeat.CoordinatorURL == "" {
+		slog.Warn("COORDINATOR_URL is not set; not registering with the coordinator")
+		close(hbDone)
+	} else {
+		go func() {
+			defer close(hbDone)
+			_ = s.RunHeartbeats(hbCtx, cfg.Heartbeat)
+		}()
+	}
 	slog.Info("serving", "pod", cfg.Raft.PodName, "shard", cfg.Raft.Shard, "raft", n.Addr(),
 		"data", cfg.HTTPAddr, "mgmt", cfg.MgmtAddr, "profile", cfg.Raft.Profile.Name, "ringVersion", rg.Version())
 
@@ -145,6 +177,8 @@ func run(ctx context.Context, cfg config) error {
 	case <-ctx.Done():
 	case err = <-errc:
 	}
+	stopHeartbeats()
+	<-hbDone // before the node closes under it
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	for _, srv := range servers {

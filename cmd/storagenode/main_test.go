@@ -55,7 +55,8 @@ func TestLoadConfig(t *testing.T) {
 			t.Errorf("missing %s accepted", missing)
 		}
 	}
-	for k, v := range map[string]string{"SHARD": "-1", "PROFILE": "fast", "REQUEST_TIMEOUT_MS": "soon", "HTTP_ADDR": "8080"} {
+	for k, v := range map[string]string{"SHARD": "-1", "PROFILE": "fast", "REQUEST_TIMEOUT_MS": "soon", "HTTP_ADDR": "8080",
+		"HEARTBEAT_INTERVAL_MS": "0", "HTTP_ADVERTISE": "no-port", "COORDINATOR_URL": "coordinator:8080"} {
 		m := map[string]string{}
 		for bk, bv := range base {
 			m[bk] = bv
@@ -64,5 +65,31 @@ func TestLoadConfig(t *testing.T) {
 		if _, err := loadConfig(env(m)); err == nil {
 			t.Errorf("%s=%q accepted", k, v)
 		}
+	}
+}
+
+// Heartbeats go to COORDINATOR_URL; the address the coordinator routes to
+// is HTTP_ADVERTISE, by default RAFT_ADVERTISE's host on the HTTP port.
+func TestLoadConfigHeartbeats(t *testing.T) {
+	base := map[string]string{
+		"POD_NAME": "storage-1-2", "SHARD": "1", "DATA_DIR": "/data", "FSM_DIR": "/fsm",
+		"RAFT_ADVERTISE": "storage-1-2.storage-1.reliefgrid.svc.cluster.local:7000",
+	}
+	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
+	cfg, err := loadConfig(env(base))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Heartbeat.CoordinatorURL != "" || cfg.Heartbeat.Address != "storage-1-2.storage-1.reliefgrid.svc.cluster.local:8080" || cfg.Heartbeat.Interval != time.Second {
+		t.Fatalf("heartbeat defaults = %+v", cfg.Heartbeat)
+	}
+	base["COORDINATOR_URL"] = "http://coordinator.reliefgrid.svc.cluster.local:8080"
+	base["HTTP_ADVERTISE"] = "10.0.0.7:8080"
+	base["HEARTBEAT_INTERVAL_MS"] = "250"
+	if cfg, err = loadConfig(env(base)); err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Heartbeat.CoordinatorURL != base["COORDINATOR_URL"] || cfg.Heartbeat.Address != "10.0.0.7:8080" || cfg.Heartbeat.Interval != 250*time.Millisecond {
+		t.Fatalf("heartbeat overrides = %+v", cfg.Heartbeat)
 	}
 }

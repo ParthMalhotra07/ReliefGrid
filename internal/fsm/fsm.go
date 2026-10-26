@@ -509,3 +509,42 @@ func readOperation(ctx context.Context, q querier, operationID string) (store.Re
 	}
 	return res, hash, true, nil
 }
+
+// Counts are the FSM's record rows: live rows by kind, and tombstones.
+type Counts struct {
+	Request, Resource, KV, Tombstones int
+}
+
+// Counts counts the records table in one read (S1.4: heartbeat recordCounts).
+func (f *FSM) Counts(ctx context.Context) (Counts, error) {
+	rows, err := f.rdb.QueryContext(ctx, `SELECT kind, deleted, count(*) FROM records GROUP BY kind, deleted`)
+	if err != nil {
+		return Counts{}, fmt.Errorf("fsm: counts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var c Counts
+	for rows.Next() {
+		var (
+			kind    string
+			deleted bool
+			n       int
+		)
+		if err := rows.Scan(&kind, &deleted, &n); err != nil {
+			return Counts{}, fmt.Errorf("fsm: counts: %w", err)
+		}
+		switch {
+		case deleted:
+			c.Tombstones += n
+		case kind == string(store.KindRequest):
+			c.Request = n
+		case kind == string(store.KindResource):
+			c.Resource = n
+		case kind == string(store.KindKV):
+			c.KV = n
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return Counts{}, fmt.Errorf("fsm: counts: %w", err)
+	}
+	return c, nil
+}
