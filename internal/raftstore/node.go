@@ -89,8 +89,17 @@ type Status struct {
 	// restored since Open (at start, or by InstallSnapshot); 0 if none.
 	RestoredIndex uint64
 
+	// LeaderCommitIndex is the leader's commit index as this replica last
+	// learned it (the leader: its own); 0 until an append of the current
+	// term has carried one.
+	LeaderCommitIndex uint64
+
 	HasState bool // any term, log or snapshot on disk
-	CaughtUp bool // the FSM has completed every command up to CommitIndex
+	// CaughtUp: a leader is known and the FSM has completed every command up
+	// to LeaderCommitIndex, which this replica's log already holds. Never
+	// judged against the local CommitIndex alone: after a restart that is 0
+	// until the first append, though heartbeats already name the leader.
+	CaughtUp bool
 }
 
 // Node is one running replica.
@@ -101,7 +110,8 @@ type Node struct {
 	sm    *stateMachine
 	logs  *raftboltdb.BoltStore // log and stable store
 	snaps *raft.FileSnapshotStore
-	trans *raft.NetworkTransport
+	trans *fenceTransport
+	fence commitFence
 
 	// hasState caches raft.HasExistingState once it is true; Raft state is
 	// never removed while the node runs.
@@ -176,9 +186,11 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 		return nil, err
 	}
 	n.sm.beforeSwap = cfg.beforeRestoreSwap
-	if n.trans, err = newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, logger.Named("transport")); err != nil {
+	nt, err := newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, logger.Named("transport"))
+	if err != nil {
 		return nil, err
 	}
+	n.trans = newFenceTransport(nt, &n.fence, cfg.beforeRPC)
 	rc := cfg.raftConfig(n.id.ServerID())
 	rc.Logger = logger
 	// NewRaft restores the latest snapshot into the fresh FSM before it
@@ -361,8 +373,16 @@ func (n *Node) Status() Status {
 		RestoredIndex:    n.sm.restoredIndex(),
 		HasState:         has,
 	}
-	if has && leaderID != "" {
-		target, err := n.commandTarget(s.CommitIndex)
+	known := false // a commit index from the current term's leader
+	if s.State == raft.Leader.String() {
+		s.LeaderCommitIndex, known = s.CommitIndex, true
+	} else if term, commit := n.fence.get(); term == s.Term && commit > 0 {
+		s.LeaderCommitIndex, known = commit, true
+	}
+	// walkToCommand reads an index missing from the log as compacted, so an
+	// index past this replica's last entry must never reach it.
+	if has && leaderID != "" && known && s.LeaderCommitIndex <= n.raft.LastIndex() {
+		target, err := n.commandTarget(s.LeaderCommitIndex)
 		s.CaughtUp = err == nil && s.AppliedIndex >= target
 	}
 	return s
