@@ -7,6 +7,23 @@ image:
   digest: ""
   pullPolicy: Never
 
+# Coordinator (S1.5b): one stateless replica on the infra worker. It routes to
+# shard leaders and serves /admin; storage pods register and heartbeat to it.
+coordinator:
+  image:
+    repository: reliefgrid/coordinator
+    tag: dev
+    # As image.digest: when set, the image is referenced by digest.
+    digest: ""
+    pullPolicy: Never
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
 # Raft snapshot profile (M4): demo (1024 / 512 / 30 s) or load (library defaults).
 profile: demo
 # Deadline on every Apply and read inside a storage node.
@@ -26,7 +43,8 @@ resources:
     cpu: "1"
     memory: 512Mi
 
-# Bearer token for /mgmt/bootstrap. Empty: generated on first install and kept.
+# Bearer token for the storage nodes' operator endpoints and the coordinator's
+# /admin. Empty: generated on first install and kept.
 operatorToken: ""
 
 bootstrap:

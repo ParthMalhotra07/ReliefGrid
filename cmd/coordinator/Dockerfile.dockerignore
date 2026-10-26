@@ -1,0 +1,8 @@
+# The build context is the repo root; send only what the coordinator build needs.
+*
+!go.mod
+!go.sum
+!cmd/coordinator/*.go
+!internal/
+**/*_test.go
+**/testdata

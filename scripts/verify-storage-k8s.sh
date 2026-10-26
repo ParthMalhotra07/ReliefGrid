@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Verify check for S1.5 (storage on Kubernetes). Run from the repo root:
+# Verify check for S1.5 (storage on Kubernetes) and S1.5b (the coordinator in the chart).
+# Run from the repo root:
 #   scripts/verify-storage-k8s.sh
 #   ELECTION_MAX_SECONDS=15 KEEP_CLUSTER=0 scripts/verify-storage-k8s.sh
 # It deletes and recreates the local "reliefgrid" kind cluster, builds and loads the
@@ -14,7 +15,11 @@
 # Interface under test:
 #   cmd/storagenode/Dockerfile   multi-stage; final stage distroless, pinned by digest,
 #                                non-root; builds ./cmd/storagenode as /storagenode and
-#                                ./cmd/storagectl as /storagectl (context: repo root)
+#                                ./cmd/storagectl as /storagectl (context: repo root); no /coordinator
+#   cmd/coordinator/Dockerfile   (S1.5b) multi-stage; every base pinned by digest, final stage
+#                                distroless, non-root; builds ./cmd/coordinator as /coordinator
+#   make coordinator-image       docker build of that Dockerfile as reliefgrid/coordinator:dev,
+#                                then kind load docker-image into the reliefgrid cluster
 #   make storage-image           docker build of that Dockerfile as reliefgrid/storagenode:dev,
 #                                then kind load docker-image into the reliefgrid cluster
 #   make storage-reset           asks for the namespace on stdin; only if it is typed exactly,
@@ -28,7 +33,18 @@
 #       startup and liveness probes GET /healthz and the readiness probe GET /readyz, all on
 #       the mgmt port (8081); no not-ready/unreachable tolerations of its own (§24 sets 30 s
 #       only on stateless pods), runAsNonRoot,
-#       OPERATOR_TOKEN from Secret storage-operator-token (key token)
+#       OPERATOR_TOKEN from Secret storage-operator-token (key token),
+#       COORDINATOR_URL http://storage-coordinator.<ns>.svc.cluster.local:8080 and
+#       HTTP_ADVERTISE $(POD_NAME).storage-shard-N.<ns>.svc.cluster.local:8080 (S1.5b)
+#     Deployment storage-coordinator (S1.5b): 1 replica, pod label
+#       app.kubernetes.io/component=coordinator, container "coordinator" running
+#       /coordinator from reliefgrid/coordinator:dev, nodeSelector role=infra and a toleration for
+#       role=infra:NoSchedule, ConfigMap storage-ring mounted so that RING_PATH is its
+#       ring.yaml, OPERATOR_TOKEN from Secret storage-operator-token (key token), readiness
+#       probe GET /healthz on 8080, runAsNonRoot
+#     Service storage-coordinator: ClusterIP, port 8080, selects the coordinator pod
+#   coordinator /admin/nodes, /admin/distribution, /admin/locate/{key} with the operator
+#     token, and the routed data routes (PUT/GET /internal/data/{key}) of contracts/internal.yaml
 #     Service storage-shard-N: headless, publishNotReadyAddresses, ports raft 7000,
 #       http 8080, mgmt 8081
 #     PodDisruptionBudget storage-shard-N: minAvailable 2
@@ -77,10 +93,13 @@ RELEASE=storage
 CHART=deploy/helm/storage
 DOCKERFILE=cmd/storagenode/Dockerfile
 IMAGE=reliefgrid/storagenode:dev
+COORD_DOCKERFILE=cmd/coordinator/Dockerfile
+COORD_IMAGE=reliefgrid/coordinator:dev
 SHARDS=(0 1 2)
 WRITE_SHARD="${WRITE_SHARD:-1}"
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-5m}"
 ELECTION_MAX_SECONDS="${ELECTION_MAX_SECONDS:-10}"
+COORD_FAILOVER_SECONDS="${COORD_FAILOVER_SECONDS:-20}" # delete leader -> coordinator names the new one (S1.5b)
 REJOIN_MAX_SECONDS="${REJOIN_MAX_SECONDS:-120}"
 NO_SELF_BOOTSTRAP_SECONDS="${NO_SELF_BOOTSTRAP_SECONDS:-20}"
 HOLD_SECONDS="${HOLD_SECONDS:-60}"
@@ -128,8 +147,12 @@ tmp="$(mktemp -d)"
 results="$tmp/results"
 : >"$results"
 pf_pid=""
+cpf_pid="" # the coordinator port-forward, kept apart from pf_pid
+cport=""   # its local port
+coord_failover="" # step 6a's measured timeline, for the evidence
 cleanup() {
 	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
+	[ -n "$cpf_pid" ] && kill "$cpf_pid" 2>/dev/null
 	rm -rf "$tmp"
 }
 trap cleanup EXIT
@@ -199,6 +222,47 @@ port_forward() { # port_forward <pod>: forward a free local port to the pod's 80
 	echo "$port"
 }
 
+COORD=storage-coordinator
+COORD_URL="http://$COORD.$NS.svc.cluster.local:8080"
+http_adv() { printf '%s.storage-shard-%s.%s.svc.cluster.local:8080' "$2" "$1" "$NS"; } # http_adv <shard> <pod>
+# coord_forward: forward a free local port to Service storage-coordinator:8080; sets cport
+coord_forward() {
+	[ -n "$cpf_pid" ] && kill "$cpf_pid" 2>/dev/null
+	cport="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+	kn port-forward "svc/$COORD" "$cport:8080" >"$tmp/cpf.out" 2>&1 &
+	cpf_pid=$!
+	for _ in $(seq 50); do (exec 3<>"/dev/tcp/127.0.0.1/$cport") 2>/dev/null && return 0; sleep 0.1; done
+	return 1
+}
+op_token() { kn get secret storage-operator-token -o jsonpath='{.data.token}' 2>/dev/null | base64 -d; }
+# cadmin <path>: GET a coordinator /admin path with the operator token; body to stdout, fails unless 200
+cadmin() {
+	local code
+	code="$(curl -s -m 5 -o "$tmp/cadmin.json" -w '%{http_code}' -H "Authorization: Bearer $optok" "http://127.0.0.1:$cport$1")"
+	cat "$tmp/cadmin.json"
+	[ "$code" = 200 ]
+}
+# leader_id <shard>: the serverId of the pod /mgmt/status reports as Leader (one only)
+leader_id() {
+	local l
+	l="$(leaders $(pod_names "$1"))"
+	[ "$(grep -c . <<<"$l")" = 1 ] && field "$(st "${l%% *}")" .serverId
+}
+# nodes_ok <nodes json>: every shard has 3 UP nodes at their advertised addresses, all naming
+# the leader /mgmt/status reports; prints the first mismatch
+nodes_ok() {
+	local j="$1" s p want n
+	[ "$(jq '.nodes | length' <<<"$j")" = 9 ] || { echo "$(jq '.nodes | length' <<<"$j") nodes"; return 1; }
+	for s in "${SHARDS[@]}"; do
+		want="$(leader_id "$s")"
+		[ -n "$want" ] || { echo "shard $s: no single leader in /mgmt/status"; return 1; }
+		for p in $(pod_names "$s"); do
+			n="$(jq -c --arg p "$p" '.nodes[] | select(.nodeId == $p)' <<<"$j")"
+			[ "$(q "$n" .shardId)" = "$s" ] && [ "$(q "$n" .state)" = UP ] && [ "$(q "$n" .address)" = "$(http_adv "$s" "$p")" ] &&
+				[ "$(q "$n" .leaderId)" = "$want" ] || { echo "$p: $n (want UP, shard $s, $(http_adv "$s" "$p"), leader $want)"; return 1; }
+		done
+	done
+}
 # write_key <shard> <tag>: PUT a fresh key the ring gives to <shard> through its leader;
 # prints "<key> <value>" on success (version 1 committed), nothing on failure.
 write_key() {
@@ -238,7 +302,7 @@ exec_dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --time
 # make it stale, so only these paths are fingerprinted.
 write_evidence() {
 	local code_paths code_tree code_dirty result s p
-	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl internal deploy/helm/storage scripts/verify-storage-k8s.sh)
+	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh)
 	code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin)"
 	code_dirty="$(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
 	if [ "$failures" -eq 0 ]; then result="PASSED ($passes/$passes checks)"; else result="FAILED ($failures of $((passes + failures)) checks failed)"; fi
@@ -263,6 +327,9 @@ write_evidence() {
 			kn get configmap "$(sts_name "$s")-manifest" -o jsonpath='{.data}' | jq -c .
 			echo
 		done
+		echo "## coordinator (S1.5b)"
+		echo "failover: ${coord_failover:-not run}"
+		echo
 		echo "## bootstrap Job logs (${j2:-$(job_name)})"
 		job_logs "${j2:-$(job_name)}"
 	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE"
@@ -324,6 +391,31 @@ else
 	fail "make storage-image: builds $IMAGE from $DOCKERFILE and kind-loads it" "recipe: $(tr '\n' '|' <<<"$recipe")"
 fi
 check "make storage-reset: target exists" make -n storage-reset
+grep -Eq 'go build .*\./cmd/coordinator([[:space:]]|$)' "$DOCKERFILE" && fail "image: $DOCKERFILE does not build ./cmd/coordinator (own image)" ||
+	pass "image: $DOCKERFILE does not build ./cmd/coordinator (own image)"
+if [ -f "$COORD_DOCKERFILE" ]; then
+	pass "coordinator image: $COORD_DOCKERFILE exists"
+	froms="$(grep -Ei '^FROM[[:space:]]' "$COORD_DOCKERFILE")"
+	[ "$(grep -c . <<<"$froms")" -ge 2 ] && pass "coordinator image: multi-stage build" || fail "coordinator image: multi-stage build" "$froms"
+	[ -z "$(grep -Ev '@sha256:[0-9a-f]{64}' <<<"$froms")" ] && pass "coordinator image: every base pinned by digest" ||
+		fail "coordinator image: every base pinned by digest" "$(grep -Ev '@sha256:[0-9a-f]{64}' <<<"$froms")"
+	grep -Eq 'gcr\.io/distroless/' <<<"$(tail -1 <<<"$froms")" && pass "coordinator image: final stage is distroless" ||
+		fail "coordinator image: final stage is distroless" "$(tail -1 <<<"$froms")"
+	if grep -Eq ':nonroot@' <<<"$(tail -1 <<<"$froms")" || grep -Eq '^USER[[:space:]]+(nonroot|65532)' "$COORD_DOCKERFILE"; then
+		pass "coordinator image: runs as non-root"
+	else
+		fail "coordinator image: runs as non-root"
+	fi
+	check "coordinator image: builds ./cmd/coordinator" grep -Eq 'go build .*\./cmd/coordinator([[:space:]]|$)' "$COORD_DOCKERFILE"
+else
+	fail "coordinator image: $COORD_DOCKERFILE exists"
+fi
+recipe="$(make -n coordinator-image 2>/dev/null)"
+if grep -Fq -- "-f $COORD_DOCKERFILE" <<<"$recipe" && grep -Fq "$COORD_IMAGE" <<<"$recipe" && grep -Eq "kind load docker-image .*($COORD_IMAGE|--name $CLUSTER)" <<<"$recipe"; then
+	pass "make coordinator-image: builds $COORD_IMAGE from $COORD_DOCKERFILE and kind-loads it"
+else
+	fail "make coordinator-image: builds $COORD_IMAGE from $COORD_DOCKERFILE and kind-loads it" "recipe: $(tr '\n' '|' <<<"$recipe")"
+fi
 
 # --- 2. Chart, rendered offline ----------------------------------------------------
 [ -f "$CHART/Chart.yaml" ] || abort "chart: $CHART/Chart.yaml exists"
@@ -378,6 +470,10 @@ for s in "${SHARDS[@]}"; do
 		pass "statefulset $n: RAFT_ADVERTISE is the stable FQDN" || fail "statefulset $n: RAFT_ADVERTISE is the stable FQDN" "got '$adv'"
 	[ "$(q "$c" -r '.env[] | select(.name == "OPERATOR_TOKEN") | .valueFrom.secretKeyRef | "\(.name)/\(.key)"')" = storage-operator-token/token ] &&
 		pass "statefulset $n: OPERATOR_TOKEN from the Secret" || fail "statefulset $n: OPERATOR_TOKEN from the Secret"
+	[ "$(envv COORDINATOR_URL)" = "$COORD_URL" ] && pass "statefulset $n: COORDINATOR_URL=$COORD_URL" ||
+		fail "statefulset $n: COORDINATOR_URL=$COORD_URL" "got '$(envv COORDINATOR_URL)'"
+	[ "$(envv HTTP_ADVERTISE)" = '$(POD_NAME)'".storage-shard-$s.$NS.svc.cluster.local:8080" ] &&
+		pass "statefulset $n: HTTP_ADVERTISE is the stable FQDN on 8080" || fail "statefulset $n: HTTP_ADVERTISE is the stable FQDN on 8080" "got '$(envv HTTP_ADVERTISE)'"
 	for pp in startupProbe:/healthz livenessProbe:/healthz readinessProbe:/readyz; do
 		probe="${pp%%:*}" path="${pp#*:}"
 		[ "$(q "$c" -r ".$probe.httpGet.path")" = "$path" ] && [[ "$(q "$c" -r ".$probe.httpGet.port")" =~ ^(8081|mgmt)$ ]] &&
@@ -450,6 +546,38 @@ else
 		fail "job: Role is exactly get/update on the three manifests by name, plus create" "got $rules"
 fi
 
+# Coordinator (S1.5b)
+dep="$(obj Deployment "$COORD")"
+if [ -z "$dep" ]; then
+	fail "coordinator: Deployment $COORD rendered"
+else
+	pass "coordinator: Deployment $COORD rendered"
+	[ "$(q "$dep" .spec.replicas)" = 1 ] && pass "coordinator: 1 replica" || fail "coordinator: 1 replica" "got '$(q "$dep" .spec.replicas)'"
+	cpod="$(q "$dep" -c .spec.template.spec)"
+	cc="$(q "$cpod" -c '.containers[] | select(.name == "coordinator")')"
+	cenv() { q "$cc" --arg k "$1" '.env[] | select(.name == $k) | .value // empty'; }
+	[ "$(q "$cc" -r '.image')" = "$COORD_IMAGE" ] && q "$cc" -c '(.command // []) + (.args // [])' | grep -q '"/coordinator"' &&
+		pass "coordinator: runs /coordinator from $COORD_IMAGE" || fail "coordinator: runs /coordinator from $COORD_IMAGE" "$(q "$cc" -c '{image, command, args}')"
+	[ "$(q "$cpod" '.nodeSelector.role')" = infra ] && pass "coordinator: nodeSelector role=infra" || fail "coordinator: nodeSelector role=infra"
+	[ -n "$(q "$cpod" -r '.tolerations[]? | select(.key == "role" and (.value == "infra" or .operator == "Exists") and .effect == "NoSchedule") | .key')" ] &&
+		pass "coordinator: tolerates role=infra:NoSchedule" || fail "coordinator: tolerates role=infra:NoSchedule" "$(q "$cpod" -c .tolerations)"
+	ring_path="$(cenv RING_PATH)"
+	ring_vol="$(q "$cc" -r --arg d "$(dirname "${ring_path:-/x/x}")" --arg f "${ring_path:-/x/x}" '.volumeMounts[]? | select(.mountPath == $d or .mountPath == $f) | .name')"
+	[ -n "$ring_vol" ] && [ "$(q "$cpod" -r --arg v "$ring_vol" '.volumes[] | select(.name == $v) | .configMap.name')" = storage-ring ] &&
+		pass "coordinator: ConfigMap storage-ring mounted at RING_PATH ($ring_path)" || fail "coordinator: ConfigMap storage-ring mounted at RING_PATH" "RING_PATH '$ring_path', volume '$ring_vol'"
+	[ "$(q "$cc" -r '.env[] | select(.name == "OPERATOR_TOKEN") | .valueFrom.secretKeyRef | "\(.name)/\(.key)"')" = storage-operator-token/token ] &&
+		pass "coordinator: OPERATOR_TOKEN from the Secret" || fail "coordinator: OPERATOR_TOKEN from the Secret"
+	[ "$(q "$cc" -r .readinessProbe.httpGet.path)" = /healthz ] && [[ "$(q "$cc" -r .readinessProbe.httpGet.port)" =~ ^(8080|http)$ ]] &&
+		pass "coordinator: readinessProbe GET /healthz on 8080" || fail "coordinator: readinessProbe GET /healthz on 8080" "$(q "$cc" -c .readinessProbe)"
+	[ "$(q "$cpod" .securityContext.runAsNonRoot)" = true ] || [ "$(q "$cc" .securityContext.runAsNonRoot)" = true ] &&
+		pass "coordinator: runAsNonRoot" || fail "coordinator: runAsNonRoot"
+	csvc="$(obj Service "$COORD")"
+	sel="$(q "$csvc" -c '.spec.selector // {}')"
+	[ -n "$csvc" ] && [ "$(q "$csvc" -c '[.spec.ports[].port]')" = '[8080]' ] && [ "$(q "$csvc" -r '.spec.clusterIP // ""')" != None ] &&
+		[ "$(q "$dep" -c --argjson sel "$sel" '.spec.template.metadata.labels | contains($sel) and ($sel | length > 0)')" = true ] &&
+		pass "coordinator: Service $COORD on 8080 selects the coordinator pod" || fail "coordinator: Service $COORD on 8080 selects the coordinator pod" "$csvc"
+fi
+
 # --- 3. Fresh cluster, image, install ------------------------------------------------
 make -s cluster-down >/dev/null 2>&1
 if make -s cluster-up >"$tmp/up.out" 2>&1; then pass "cluster: fresh reliefgrid cluster"; else abort "cluster: fresh reliefgrid cluster" "$(tail -3 "$tmp/up.out" | tr '\n' '|')"; fi
@@ -461,6 +589,16 @@ for b in /storagenode /storagectl; do
 		pass "image: contains $b" || fail "image: contains $b"
 	docker rm -f s15-probe >/dev/null 2>&1
 done
+docker create --name s15-probe "$IMAGE" >/dev/null 2>&1 && docker cp "s15-probe:/coordinator" "$tmp/bin" >/dev/null 2>&1 &&
+	fail "image: $IMAGE does not contain /coordinator" || pass "image: $IMAGE does not contain /coordinator"
+docker rm -f s15-probe >/dev/null 2>&1
+if make -s coordinator-image >"$tmp/cimage.out" 2>&1; then pass "make coordinator-image: succeeds"; else abort "make coordinator-image: succeeds" "$(tail -5 "$tmp/cimage.out" | tr '\n' '|')"; fi
+uid="$(docker image inspect "$COORD_IMAGE" --format '{{.Config.User}}' 2>/dev/null)"
+[[ -n "$uid" && "$uid" != 0 && "$uid" != root ]] && pass "coordinator image: $COORD_IMAGE runs as user '$uid'" ||
+	fail "coordinator image: $COORD_IMAGE runs as a non-root user" "Config.User '$uid'"
+docker create --name s15-probe "$COORD_IMAGE" >/dev/null 2>&1 && docker cp "s15-probe:/coordinator" "$tmp/bin" >/dev/null 2>&1 &&
+	pass "coordinator image: contains /coordinator" || fail "coordinator image: contains /coordinator"
+docker rm -f s15-probe >/dev/null 2>&1
 
 t0="$(now)"
 if helm --kube-context "$CTX" install "$RELEASE" "$CHART" -n "$NS" --create-namespace --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/install.out" 2>&1; then
@@ -504,6 +642,52 @@ for node in $data_nodes; do
 		-o jsonpath='{range .items[*]}{.metadata.labels.reliefgrid\.io/shard}{"\n"}{end}' 2>/dev/null | sort | tr '\n' ' ')"
 	[ "$got" = "0 1 2 " ] && pass "placement: $node runs one replica of every shard" || fail "placement: $node runs one replica of every shard" "shards on it: '$got'"
 done
+
+# --- 4b. Coordinator: placement, registration, leaders, routing (S1.5b) -------------------
+infra_node="$(k get nodes -l role=infra -o jsonpath='{.items[0].metadata.name}')"
+cnode="$(kn get pods -l app.kubernetes.io/component=coordinator -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null)"
+[ -n "$cnode" ] && [ "$cnode" = "$infra_node" ] && pass "coordinator: runs on the infra worker ($infra_node)" ||
+	fail "coordinator: runs on the infra worker ($infra_node)" "node '$cnode'"
+kn wait --for=condition=Available "deployment/$COORD" --timeout=60s >/dev/null 2>&1 && pass "coordinator: Deployment Available" ||
+	fail "coordinator: Deployment Available"
+optok="$(op_token)"
+if coord_forward; then
+	pass "coordinator: port-forward to Service $COORD"
+	code="$(curl -s -m 5 -o /dev/null -w '%{http_code}' "http://127.0.0.1:$cport/admin/nodes")"
+	[ "$code" = 401 ] && pass "coordinator: /admin/nodes without the token is 401" || fail "coordinator: /admin/nodes without the token is 401" "HTTP $code"
+	t0="$(now)" why=""
+	for _ in $(seq 30); do
+		nodes="$(cadmin /admin/nodes)" && why="$(nodes_ok "$nodes")" && break
+		why="${why:-$(head -c 300 <<<"$nodes")}"
+		sleep 1
+	done
+	[ -z "$why" ] && pass "coordinator: /admin/nodes shows all 9 nodes UP at their HTTP_ADVERTISE addresses, naming each shard's leader ($(since "$t0") s)" ||
+		fail "coordinator: /admin/nodes shows all 9 nodes UP, naming each shard's leader" "$why"
+	if dist="$(cadmin /admin/distribution)"; then
+		ok=1
+		[ "$(q "$dist" .ringVersion)" = "$ring_version" ] && [ "$(q "$dist" '.shards | length')" = 3 ] || ok=""
+		for s in "${SHARDS[@]}"; do
+			[ "$(q "$dist" --argjson s "$s" '.shards[] | select(.shard == $s) | "\(.replicas) \(.leaderId)"')" = "3 $(leader_id "$s")" ] || ok=""
+		done
+		[ -n "$ok" ] && pass "coordinator: /admin/distribution answers (ringVersion $ring_version, 3 shards, 3 replicas and the leader each)" ||
+			fail "coordinator: /admin/distribution answers with 3 shards, 3 replicas and the leader each" "$(head -c 400 <<<"$dist")"
+	else
+		fail "coordinator: /admin/distribution answers 200" "$(head -c 300 <<<"$dist")"
+	fi
+	ckey="cfg:s15b-coord-$(date +%s)" cval="{\"verify\":\"S1.5b-$(date +%s)\"}"
+	code="$(curl -s -m 6 -o "$tmp/cput.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$cport/internal/data/$ckey" \
+		-H 'Content-Type: application/json' -H 'If-None-Match: *' \
+		-d "{\"operationId\":\"op-s15b-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":$cval}")"
+	[ "$code" = 200 ] && [ "$(jq -r .result.version "$tmp/cput.json" 2>/dev/null)" = 1 ] &&
+		pass "coordinator: PUT $ckey through the coordinator committed (version 1)" ||
+		fail "coordinator: PUT $ckey through the coordinator committed" "HTTP $code: $(cat "$tmp/cput.json" 2>/dev/null)"
+	code="$(curl -s -m 6 -o "$tmp/cget.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/data/$ckey")"
+	[ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/cget.json" 2>/dev/null)" = "$(jq -c . <<<"$cval")" ] &&
+		pass "coordinator: GET $ckey through the coordinator returns the write" ||
+		fail "coordinator: GET $ckey through the coordinator returns the write" "HTTP $code: $(cat "$tmp/cget.json" 2>/dev/null)"
+else
+	fail "coordinator: port-forward to Service $COORD" "$(cat "$tmp/cpf.out" 2>/dev/null)"
+fi
 
 # --- 5. Management port is restricted ---------------------------------------------------
 target="$(fqdn 0 storage-shard-0-0)"
@@ -579,6 +763,41 @@ else
 		fail "failover shard-$WRITE_SHARD: $leader rejoins the same group (same ID) and is Ready" "${out:-not Ready}"
 	fi
 fi
+
+# --- 6a. The coordinator follows a leader change (S1.5b) -----------------------------------
+cs="$(cadmin "/admin/locate/${ckey:-none}" 2>/dev/null | jq -r '.shard // empty' 2>/dev/null)"
+if [ -n "${ckey:-}" ] && [ -n "$cs" ]; then
+	read -r cleader cterm < <(wait_leader 15 - 0 $(pod_names "$cs"))
+	t0="$(now)"
+	kn delete pod "${cleader:-none}" --wait=false >/dev/null 2>&1
+	# The strict election bound is step 6's (issue #19); here the coordinator gets
+	# COORD_FAILOVER_SECONDS from the delete to name the new leader, and the time is recorded.
+	read -r cnew cnewterm < <(wait_leader "$COORD_FAILOVER_SECONDS" "${cleader:-none}" $((${cterm:-0} + 1)) $(pod_names "$cs"))
+	t_elected="$(since "$t0")"
+	want="$( [ -n "${cnew:-}" ] && field "$(st "$cnew")" .serverId)" got=""
+	while [ -n "$want" ] && awk -v t="$(since "$t0")" -v m="$COORD_FAILOVER_SECONDS" 'BEGIN { exit !(t < m) }'; do
+		got="$(cadmin "/admin/locate/$ckey" 2>/dev/null | jq -r '.leaderId // empty' 2>/dev/null)"
+		[ "$got" = "$want" ] && break
+		sleep 0.5
+	done
+	if [ -n "$want" ] && [ "$got" = "$want" ]; then
+		coord_failover="shard-$cs: deleted $cleader (term $cterm); $cnew leads at term $cnewterm after $t_elected s; the coordinator names $want after $(since "$t0") s"
+		pass "coordinator failover shard-$cs: the coordinator names the new leader within ${COORD_FAILOVER_SECONDS}s ($(since "$t0") s; elected after $t_elected s)"
+	else
+		coord_failover="shard-$cs: deleted ${cleader:-?}; new leader '${cnew:-none}' after $t_elected s; the coordinator named '$got' at the ${COORD_FAILOVER_SECONDS}s deadline"
+		fail "coordinator failover shard-$cs: the coordinator names the new leader within ${COORD_FAILOVER_SECONDS}s" "$coord_failover"
+	fi
+	code="$(curl -s -m 6 -o "$tmp/cget.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/data/$ckey")"
+	[ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/cget.json" 2>/dev/null)" = "$(jq -c . <<<"$cval")" ] &&
+		pass "coordinator failover shard-$cs: $ckey still reads back through the coordinator" ||
+		fail "coordinator failover shard-$cs: $ckey still reads back through the coordinator" "HTTP $code: $(cat "$tmp/cget.json" 2>/dev/null)"
+	kn wait --for=condition=Ready "pod/${cleader:-none}" --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1 &&
+		pass "coordinator failover shard-$cs: ${cleader:-?} rejoins and is Ready" || fail "coordinator failover shard-$cs: ${cleader:-?} rejoins and is Ready"
+else
+	fail "coordinator failover: the coordinator locates the key written in 4b" "key '${ckey:-}', shard '$cs'"
+fi
+[ -n "$cpf_pid" ] && kill "$cpf_pid" 2>/dev/null
+cpf_pid=""
 
 # --- 6b. Full restart of every replica of one shard ----------------------------------------
 RS=2
