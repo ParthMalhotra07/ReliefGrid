@@ -25,6 +25,7 @@ import (
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/storagenode"
 )
 
 func main() {
@@ -124,14 +125,14 @@ func run(ctx context.Context, cfg config) error {
 	if cfg.OperatorToken == "" {
 		slog.Warn("OPERATOR_TOKEN is not set; /mgmt/bootstrap is disabled")
 	}
-	s := &server{
-		node: n, ring: rg, shard: cfg.Raft.Shard, podName: cfg.Raft.PodName, timeout: cfg.RequestTimeout,
-		leaderHTTP:    func(a raft.ServerAddress) string { return httpAddrFor(a, cfg.HTTPPort) },
-		operatorToken: cfg.OperatorToken,
-	}
+	s := storagenode.New(n, storagenode.Config{
+		Ring: rg, Shard: cfg.Raft.Shard, PodName: cfg.Raft.PodName, Timeout: cfg.RequestTimeout,
+		LeaderHTTP:    func(a raft.ServerAddress) string { return storagenode.HTTPAddrFor(a, cfg.HTTPPort) },
+		OperatorToken: cfg.OperatorToken,
+	})
 	servers := []*http.Server{
-		{Addr: cfg.HTTPAddr, Handler: s.dataRoutes(), ReadHeaderTimeout: 5 * time.Second},
-		{Addr: cfg.MgmtAddr, Handler: s.mgmtRoutes(), ReadHeaderTimeout: 5 * time.Second},
+		{Addr: cfg.HTTPAddr, Handler: s.DataRoutes(), ReadHeaderTimeout: 5 * time.Second},
+		{Addr: cfg.MgmtAddr, Handler: s.MgmtRoutes(), ReadHeaderTimeout: 5 * time.Second},
 	}
 	errc := make(chan error, len(servers))
 	for _, srv := range servers {

@@ -1,4 +1,4 @@
-package main
+package storagenode
 
 import (
 	"encoding/json"

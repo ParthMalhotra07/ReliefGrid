@@ -11,7 +11,7 @@ owner approves.
 
 | Owner | Paths |
 | --- | --- |
-| S | `internal/fsm`, `internal/raftstore`, `internal/ring`, `internal/obs`, `cmd/storagenode`, `cmd/coordinator`, `cmd/invcheck`, `chaos/`, `loadtest/`, `infra/gcp/`, `deploy/kind/`, `deploy/helm/reliefgrid/templates/storage/`, `spike/raft/`, `.github/` |
+| S | `internal/fsm`, `internal/raftstore`, `internal/ring`, `internal/obs`, `internal/storagenode`, `internal/coordinator`, `internal/coordclient`, `cmd/storagenode`, `cmd/coordinator`, `cmd/invcheck`, `chaos/`, `loadtest/`, `infra/gcp/`, `deploy/kind/`, `deploy/helm/reliefgrid/templates/storage/`, `spike/raft/`, `.github/` |
 | A | `cmd/api`, `cmd/matcher`, `internal/workflow`, `internal/geo`, `internal/mq`, `internal/outbox`, `internal/reconcile`, `internal/auth`, `ui/`, `deploy/helm/` (except storage templates), `spike/mq/`, `tests/workflow/` |
 | Both | `contracts/`, `docs/`, `internal/resilience`, `deploy/platform/`, `Makefile`, `tools.mk`, `scripts/`, other `tests/`, other `spike/`, root files |
 
@@ -23,7 +23,7 @@ regenerated code in the same PR.
 ```
 contracts/   public.yaml, internal.yaml, events/*.json
 cmd/         api, matcher, coordinator, storagenode, invcheck
-internal/    ring, raftstore, fsm, workflow, geo, mq, outbox, reconcile, obs, resilience, auth
+internal/    ring, raftstore, fsm, storagenode, coordinator, coordclient, store, workflow, geo, mq, outbox, reconcile, obs, resilience, auth
 deploy/      helm/reliefgrid, kind, platform
 chaos/  loadtest/  tests/  ui/  infra/gcp/
 docs/        architecture, adr, demos, evidence, operations

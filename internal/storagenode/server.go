@@ -1,4 +1,4 @@
-package main
+package storagenode
 
 import (
 	"context"
@@ -111,9 +111,9 @@ type bootstrapServer struct {
 	Address string `json:"address"`
 }
 
-// httpAddrFor replaces the port of a Raft address with the HTTP port: every
+// HTTPAddrFor replaces the port of a Raft address with the HTTP port: every
 // replica of a StatefulSet listens on the same ports.
-func httpAddrFor(raftAddr raft.ServerAddress, httpPort string) string {
+func HTTPAddrFor(raftAddr raft.ServerAddress, httpPort string) string {
 	host, _, err := net.SplitHostPort(string(raftAddr))
 	if err != nil {
 		return ""
