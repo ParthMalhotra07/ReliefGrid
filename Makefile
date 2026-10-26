@@ -20,10 +20,15 @@ else
 $(error PROFILE must be full or lean, got '$(PROFILE)')
 endif
 
+# Storage on kind (S1.5): the standalone chart deploy/helm/storage.
+STORAGE_IMAGE   ?= reliefgrid/storagenode:dev
+STORAGE_NS      ?= reliefgrid
+STORAGE_RELEASE ?= storage
+
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -74,3 +79,7 @@ doctor: ## Check tool versions, Docker, available RAM (PROFILE=full|lean) and ho
 
 print-%: ## Print a pin, e.g. make -s print-GOLANGCI_LINT_VERSION
 	@echo '$($*)'
+
+storage-image: ## Build the storage node image (storagenode + storagectl) and load it into kind
+	docker build -f cmd/storagenode/Dockerfile -t $(STORAGE_IMAGE) .
+	kind load docker-image --name $(CLUSTER) $(STORAGE_IMAGE)
