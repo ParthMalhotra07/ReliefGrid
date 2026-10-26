@@ -3,7 +3,9 @@ package coordinator
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"strconv"
 	"sync"
 
@@ -22,8 +24,17 @@ import (
 //
 // A shard whose page is full (it said hasMore, or returned exactly limit
 // records) has hasMore in its position; one that returned more than limit
-// records broke the contract and is a failed shard. The merged consistency
-// is the weakest any shard used.
+// records, or keys out of order, broke the contract and is a failed shard.
+// The merged consistency is the weakest any shard used.
+//
+// Paging (S1.6): a cursor is split per shard, and each shard it lists is
+// asked for keys after its own position; shards it does not list are
+// exhausted and not asked. nextCursor carries every shard whose page was
+// full (after its last key) and every shard that failed (at the position it
+// had), so a failed shard resumes where it stopped. A cursor from another
+// ring version is 409 RING_VERSION_MISMATCH; one that is malformed, names a
+// shard the ring does not have, or came from other filters or another limit
+// is 400 INVALID.
 func (c *Coordinator) scan(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	switch store.Kind(q.Get("kind")) {
@@ -43,29 +54,55 @@ func (c *Coordinator) scan(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, internalapi.INVALID, "consistency must be strong, linearizable or stale")
 		return
 	}
+	if q.Has("after") {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "after is for storage nodes; page with cursor")
+		return
+	}
 	if !c.checkRing(w, r, nil) {
 		return
+	}
+	sq := store.ScanQuery{Kind: store.Kind(q.Get("kind")), Type: store.ResourceType(q.Get("type")),
+		Statuses: q["statuses"], GeohashPrefixes: q["geohashPrefixes"], Limit: limit}
+	var after map[int]string // nil on a first page: every shard from its first key
+	asked := make([]int, c.ring.Shards())
+	for s := range asked {
+		asked[s] = s
+	}
+	if q.Has("cursor") {
+		cur, ok := c.scanCursor(w, q.Get("cursor"), sq)
+		if !ok {
+			return
+		}
+		after = cur.After
+		asked = slices.Sorted(maps.Keys(after))
 	}
 
 	answers := make([]shardAnswer, c.ring.Shards())
 	var wg sync.WaitGroup
-	for s := range answers {
-		wg.Go(func() { answers[s] = c.scanShard(r, s, limit) })
+	for _, s := range asked {
+		wg.Go(func() { answers[s] = c.scanShard(shardRequest(r, after, s), s, limit, after[s]) })
 	}
 	wg.Wait()
 
 	out := internalapi.ScanResponse{RingVersion: c.ring.Version(), Records: []store.Record{}, Positions: []store.ShardPosition{}}
 	var whys []string
 	var failedShards []int
-	for s, a := range answers {
+	next := map[int]string{}
+	for _, s := range asked {
+		a := answers[s]
 		if a.resp == nil {
 			failedShards = append(failedShards, s)
 			whys = append(whys, fmt.Sprintf("shard %d: %s", s, a.why))
+			next[s] = after[s] // resume where it was
 			continue
 		}
-		out.Records = append(out.Records, a.resp.Records...)
+		recs := a.resp.Records
+		out.Records = append(out.Records, recs...)
 		pos := a.resp.Positions[0]
-		pos.HasMore = pos.HasMore || len(a.resp.Records) >= limit
+		pos.HasMore = pos.HasMore || len(recs) >= limit
+		if pos.HasMore {
+			next[s] = recs[len(recs)-1].Key
+		}
 		out.Positions = append(out.Positions, pos)
 		if out.Consistency == "" || consistencyRank[a.resp.Consistency] < consistencyRank[out.Consistency] {
 			out.Consistency = a.resp.Consistency // the weakest read used
@@ -86,7 +123,53 @@ func (c *Coordinator) scan(w http.ResponseWriter, r *http.Request) {
 	if len(failedShards) > 0 {
 		out.Partial, out.FailedShards = true, &failedShards
 	}
+	if len(next) > 0 {
+		cur := store.EncodeScanCursor(store.ScanCursor{RingVersion: c.ring.Version(), Query: store.ScanQueryHash(sq), After: next})
+		out.NextCursor = &cur
+	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// scanCursor decodes and checks a caller's cursor for query q, writing the
+// refusal if it cannot continue this scan on this ring.
+func (c *Coordinator) scanCursor(w http.ResponseWriter, s string, q store.ScanQuery) (store.ScanCursor, bool) {
+	cur, err := store.DecodeScanCursor(s)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "cursor: "+err.Error())
+		return store.ScanCursor{}, false
+	}
+	if have := c.ring.Version(); cur.RingVersion != have {
+		writeJSON(w, http.StatusConflict, internalapi.Error{Code: internalapi.RINGVERSIONMISMATCH, Retryable: true, RingVersion: &have,
+			Message: fmt.Sprintf("cursor was made under ring version %d, the coordinator has %d: restart the scan without a cursor", cur.RingVersion, have)})
+		return store.ScanCursor{}, false
+	}
+	if cur.Query != store.ScanQueryHash(q) {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "cursor belongs to a scan with other filters or another limit")
+		return store.ScanCursor{}, false
+	}
+	for shard := range cur.After {
+		if shard >= c.ring.Shards() {
+			writeError(w, http.StatusBadRequest, internalapi.INVALID, fmt.Sprintf("cursor names shard %d; the ring has %d", shard, c.ring.Shards()))
+			return store.ScanCursor{}, false
+		}
+	}
+	return cur, true
+}
+
+// shardRequest is r as one shard should see it: unchanged on a first page;
+// on a cursor page the cursor is replaced by that shard's after.
+func shardRequest(r *http.Request, after map[int]string, shard int) *http.Request {
+	if after == nil {
+		return r
+	}
+	sr := r.Clone(r.Context())
+	q := sr.URL.Query()
+	q.Del("cursor")
+	if k := after[shard]; k != "" {
+		q.Set("after", k)
+	}
+	sr.URL.RawQuery = q.Encode()
+	return sr
 }
 
 // consistencyRank orders read modes from weakest: a local stale read, the
@@ -125,9 +208,9 @@ func agreedRejection(answers []shardAnswer) *answer {
 	return first
 }
 
-// scanShard asks one shard's leader; an answer without resp is a failure,
-// and why says what failed.
-func (c *Coordinator) scanShard(r *http.Request, shard, limit int) shardAnswer {
+// scanShard asks one shard's leader for keys after after; an answer without
+// resp is a failure, and why says what failed.
+func (c *Coordinator) scanShard(r *http.Request, shard, limit int, after string) shardAnswer {
 	ans, _, why := c.forward(r.Context(), shard, r, nil, false)
 	if ans == nil {
 		return shardAnswer{why: why}
@@ -153,6 +236,16 @@ func (c *Coordinator) scanShard(r *http.Request, shard, limit int) shardAnswer {
 	}
 	if len(resp.Records) > limit {
 		return shardAnswer{why: fmt.Sprintf("answer has %d records, over the limit %d", len(resp.Records), limit)}
+	}
+	if resp.Positions[0].HasMore && len(resp.Records) == 0 {
+		return shardAnswer{why: "answer says hasMore with no records, so it gives no position to resume from"}
+	}
+	prev := after
+	for _, rec := range resp.Records {
+		if rec.Key <= prev {
+			return shardAnswer{why: fmt.Sprintf("answer has %q after %q: not in key order past the cursor", rec.Key, prev)}
+		}
+		prev = rec.Key
 	}
 	return shardAnswer{resp: &resp}
 }

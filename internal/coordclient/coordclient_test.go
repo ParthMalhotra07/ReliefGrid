@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -583,5 +584,48 @@ func TestTimeoutCapsTheWholeCall(t *testing.T) {
 				t.Fatalf("call took %s with a 400ms timeout", d)
 			}
 		})
+	}
+}
+
+// S1.6: the cursor is sent as is and nextCursor returned. Shards the cursor
+// no longer lists are exhausted, not missing. A shard the answer drops
+// without saying so is partial and stays in NextCursor at the position it
+// had. A malformed cursor is never sent.
+func TestScanCursor(t *testing.T) {
+	f := newFake(t)
+	c := newClient(t, f)
+	q := store.ScanQuery{Kind: store.KindKV, Limit: 5}
+	in := store.EncodeScanCursor(store.ScanCursor{RingVersion: 1, Query: store.ScanQueryHash(q), After: map[int]string{1: "kv:b", 2: "kv:c"}})
+	out := store.EncodeScanCursor(store.ScanCursor{RingVersion: 1, Query: store.ScanQueryHash(q), After: map[int]string{1: "kv:f"}})
+	f.setAnswer(answerWith(http.StatusOK, internalapi.ScanResponse{RingVersion: 1, Consistency: internalapi.ScanResponseConsistencyStrong,
+		Records: []store.Record{{Key: "kv:f"}}, Positions: []store.ShardPosition{{Shard: 1, HasMore: true}}, NextCursor: &out}))
+	q.Cursor = in
+	got, err := c.Scan(testCtx(t), q)
+	if err != nil || !got.Partial || !reflect.DeepEqual(got.FailedShards, []int{2}) {
+		t.Fatalf("scan dropping shard 2 = %+v, %v; want partial [2] (shard 0 is exhausted, not missing)", got, err)
+	}
+	next, err := store.DecodeScanCursor(got.NextCursor)
+	if err != nil || !reflect.DeepEqual(next.After, map[int]string{1: "kv:f", 2: "kv:c"}) {
+		t.Fatalf("NextCursor = %+v, %v; want shard 1 after kv:f and shard 2 still after kv:c", next, err)
+	}
+	if r := f.requests()[0]; !strings.Contains(r.query, "cursor="+in) {
+		t.Fatalf("scan sent %s, want cursor=%s", r.query, in)
+	}
+
+	// Every listed shard answered and none has more: the walk is over.
+	f.setAnswer(answerWith(http.StatusOK, internalapi.ScanResponse{RingVersion: 1, Consistency: internalapi.ScanResponseConsistencyStrong,
+		Records: []store.Record{}, Positions: []store.ShardPosition{{Shard: 1}, {Shard: 2}}}))
+	if got, err := c.Scan(testCtx(t), q); err != nil || got.Partial || got.NextCursor != "" {
+		t.Fatalf("last page = %+v, %v; want complete with no NextCursor", got, err)
+	}
+
+	sent := len(f.requests())
+	q.Cursor = "garbage"
+	var ce *coordclient.Error
+	if _, err := c.Scan(testCtx(t), q); !errors.As(err, &ce) || ce.Code != internalapi.INVALID || ce.Retryable {
+		t.Fatalf("malformed cursor: err = %v, want a non-retryable INVALID", err)
+	}
+	if n := len(f.requests()); n != sent {
+		t.Fatal("a malformed cursor was sent")
 	}
 }
