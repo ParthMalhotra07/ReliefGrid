@@ -223,7 +223,15 @@ func TestCrashDuringRestoreRebuildsCleanly(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(cfg.FSMDir, "restore-2.db"), []byte("SQLite format 3\x00 truncated"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	stagedBefore, err := os.Stat(filepath.Join(cfg.FSMDir, "fsm-1.db"))
+	// Hold the staged file open across the restart: an unlinked inode stays
+	// allocated while open, so the filesystem cannot hand its number to the
+	// new fsm-1.db (ext4 reuses freed inode numbers at once; tmpfs never does).
+	stagedFile, err := os.Open(filepath.Join(cfg.FSMDir, "fsm-1.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = stagedFile.Close() }()
+	stagedBefore, err := stagedFile.Stat()
 	if err != nil {
 		t.Fatal(err)
 	}
