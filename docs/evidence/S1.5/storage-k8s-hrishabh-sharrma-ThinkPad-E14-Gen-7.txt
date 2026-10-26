@@ -1,0 +1,47 @@
+# S1.5 storage on Kubernetes
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-10-26T05:21:03Z
+code tree:  b9807b13a699 (git ls-tree -r HEAD -- go.mod go.sum cmd/storagenode cmd/storagectl internal deploy/helm/storage scripts/verify-storage-k8s.sh | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+
+## kubectl get pods -o wide
+NAME                        READY   STATUS      RESTARTS   AGE   IP            NODE                 NOMINATED NODE   READINESS GATES
+storage-bootstrap-2-8sg7l   0/1     Completed   0          10s   10.244.2.28   reliefgrid-worker2   <none>           <none>
+storage-shard-0-0           1/1     Running     0          41s   10.244.2.25   reliefgrid-worker2   <none>           <none>
+storage-shard-0-1           1/1     Running     0          41s   10.244.3.25   reliefgrid-worker    <none>           <none>
+storage-shard-0-2           1/1     Running     0          41s   10.244.4.28   reliefgrid-worker3   <none>           <none>
+storage-shard-1-0           1/1     Running     0          41s   10.244.4.22   reliefgrid-worker3   <none>           <none>
+storage-shard-1-1           1/1     Running     0          41s   10.244.2.27   reliefgrid-worker2   <none>           <none>
+storage-shard-1-2           1/1     Running     0          41s   10.244.3.22   reliefgrid-worker    <none>           <none>
+storage-shard-2-0           1/1     Running     0          41s   10.244.2.24   reliefgrid-worker2   <none>           <none>
+storage-shard-2-1           1/1     Running     0          41s   10.244.3.26   reliefgrid-worker    <none>           <none>
+storage-shard-2-2           1/1     Running     0          41s   10.244.4.26   reliefgrid-worker3   <none>           <none>
+
+## shard-0
+{"podName":"storage-shard-0-0","serverId":"storage-shard-0-0/468e7ddb-1411-42e3-a40a-0e4401038408","state":"Leader","term":2,"leaderId":"storage-shard-0-0/468e7ddb-1411-42e3-a40a-0e4401038408","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-0-1","serverId":"storage-shard-0-1/0795b573-a9f4-4f38-bcc2-1768aee818b6","state":"Follower","term":2,"leaderId":"storage-shard-0-0/468e7ddb-1411-42e3-a40a-0e4401038408","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-0-2","serverId":"storage-shard-0-2/04838712-5778-4ea0-8d17-067f3c29d8fd","state":"Follower","term":2,"leaderId":"storage-shard-0-0/468e7ddb-1411-42e3-a40a-0e4401038408","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"groupId":"shard-0","peerIds":"[\"storage-shard-0-0/468e7ddb-1411-42e3-a40a-0e4401038408\",\"storage-shard-0-1/0795b573-a9f4-4f38-bcc2-1768aee818b6\",\"storage-shard-0-2/04838712-5778-4ea0-8d17-067f3c29d8fd\"]","peers":"[{\"podName\":\"storage-shard-0-0\",\"address\":\"storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-1\",\"address\":\"storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-2\",\"address\":\"storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"0"}
+
+## shard-1
+{"podName":"storage-shard-1-0","serverId":"storage-shard-1-0/8c533fcd-3535-4be4-9a28-b6ecc9393a13","state":"Leader","term":2,"leaderId":"storage-shard-1-0/8c533fcd-3535-4be4-9a28-b6ecc9393a13","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-1-1","serverId":"storage-shard-1-1/56ad4f37-1452-400e-a9fe-c8a216b7683d","state":"Follower","term":2,"leaderId":"storage-shard-1-0/8c533fcd-3535-4be4-9a28-b6ecc9393a13","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-1-2","serverId":"storage-shard-1-2/d343c1e8-d4da-4477-80f5-4caba5fb9d3b","state":"Follower","term":2,"leaderId":"storage-shard-1-0/8c533fcd-3535-4be4-9a28-b6ecc9393a13","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"groupId":"shard-1","peerIds":"[\"storage-shard-1-0/8c533fcd-3535-4be4-9a28-b6ecc9393a13\",\"storage-shard-1-1/56ad4f37-1452-400e-a9fe-c8a216b7683d\",\"storage-shard-1-2/d343c1e8-d4da-4477-80f5-4caba5fb9d3b\"]","peers":"[{\"podName\":\"storage-shard-1-0\",\"address\":\"storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-1\",\"address\":\"storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-2\",\"address\":\"storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"1"}
+
+## shard-2
+{"podName":"storage-shard-2-0","serverId":"storage-shard-2-0/50da7e08-ad46-4619-99d7-7c6e662c718f","state":"Leader","term":2,"leaderId":"storage-shard-2-0/50da7e08-ad46-4619-99d7-7c6e662c718f","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-2-1","serverId":"storage-shard-2-1/70665c6d-532a-4778-9040-b4fdd2aff62c","state":"Follower","term":2,"leaderId":"storage-shard-2-0/50da7e08-ad46-4619-99d7-7c6e662c718f","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-2-2","serverId":"storage-shard-2-2/7d587abf-a94b-4a31-bfef-8573f4a20ffb","state":"Follower","term":2,"leaderId":"storage-shard-2-0/50da7e08-ad46-4619-99d7-7c6e662c718f","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"groupId":"shard-2","peerIds":"[\"storage-shard-2-0/50da7e08-ad46-4619-99d7-7c6e662c718f\",\"storage-shard-2-1/70665c6d-532a-4778-9040-b4fdd2aff62c\",\"storage-shard-2-2/7d587abf-a94b-4a31-bfef-8573f4a20ffb\"]","peers":"[{\"podName\":\"storage-shard-2-0\",\"address\":\"storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-1\",\"address\":\"storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-2\",\"address\":\"storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"2"}
+
+## bootstrap Job logs (storage-bootstrap-2)
+time=2026-10-26T05:20:55.616Z level=INFO msg="shard-0: group already initialized; verified" phase=BOOTSTRAPPED fence="leader storage-shard-0-0/468e7ddb-1411-42e3-a40a-0e4401038408, 3 of 3 caught up, commit index 2"
+time=2026-10-26T05:20:55.636Z level=INFO msg="shard-1: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-1-0/8c533fcd-3535-4be4-9a28-b6ecc9393a13 storage-shard-1-1/56ad4f37-1452-400e-a9fe-c8a216b7683d storage-shard-1-2/d343c1e8-d4da-4477-80f5-4caba5fb9d3b]"
+time=2026-10-26T05:20:55.642Z level=INFO msg="shard-1: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-1-0 voters=3
+time=2026-10-26T05:20:55.646Z level=INFO msg="shard-1: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-10-26T05:20:56.661Z level=INFO msg="shard-1: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-1-0/8c533fcd-3535-4be4-9a28-b6ecc9393a13, 3 of 3 caught up, commit index 2"
+time=2026-10-26T05:20:56.678Z level=INFO msg="shard-2: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-2-0/50da7e08-ad46-4619-99d7-7c6e662c718f storage-shard-2-1/70665c6d-532a-4778-9040-b4fdd2aff62c storage-shard-2-2/7d587abf-a94b-4a31-bfef-8573f4a20ffb]"
+time=2026-10-26T05:20:56.685Z level=INFO msg="shard-2: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-2-0 voters=3
+time=2026-10-26T05:20:56.691Z level=INFO msg="shard-2: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-10-26T05:20:57.710Z level=INFO msg="shard-2: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-2-0/50da7e08-ad46-4619-99d7-7c6e662c718f, 3 of 3 caught up, commit index 2"
