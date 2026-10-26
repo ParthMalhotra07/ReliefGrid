@@ -11,6 +11,7 @@ import (
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest"
 )
 
 const t0 = int64(1_792_000_000_000)
@@ -128,7 +129,7 @@ func TestScanWithFailedShardIsPartial(t *testing.T) {
 			t.Fatalf("create %s: %v", id, err)
 		}
 	}
-	q := store.ScanQuery{Kind: store.KindResource, Type: store.TypeWater}
+	q := store.ScanQuery{Kind: store.KindResource, Type: store.TypeWater, Limit: 100}
 	full, err := base.Scan(ctx, q)
 	if err != nil || full.Partial || len(full.Records) != 6 || len(full.Positions) != base.Shards() {
 		t.Fatalf("full scan = partial=%v records=%d positions=%d, %v", full.Partial, len(full.Records), len(full.Positions), err)
@@ -150,4 +151,10 @@ func TestScanWithFailedShardIsPartial(t *testing.T) {
 	if len(part.Records) >= len(full.Records) {
 		t.Fatalf("partial scan returned %d of %d records; shard 1 rows should be missing", len(part.Records), len(full.Records))
 	}
+}
+
+// The store.Store contract suite: coordclient runs the same one.
+func TestStoreContract(t *testing.T) {
+	s := newStore(t)
+	storetest.Run(t, func(*testing.T) store.Store { return s })
 }

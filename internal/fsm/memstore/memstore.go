@@ -183,6 +183,9 @@ func (s *Store) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult, 
 // scan reads every shard except those in failed, which are reported as
 // failed so the result is partial rather than silently smaller.
 func (s *Store) scan(ctx context.Context, q store.ScanQuery, failed []int) (store.ScanResult, error) {
+	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
+		return store.ScanResult{}, fmt.Errorf("memstore: scan limit %d: must be 1 to %d records per shard", q.Limit, store.MaxScanLimit)
+	}
 	down := make(map[int]bool, len(failed))
 	for _, i := range failed {
 		down[i] = true
@@ -201,7 +204,7 @@ func (s *Store) scan(ctx context.Context, q store.ScanQuery, failed []int) (stor
 			continue
 		}
 		out.Records = append(out.Records, recs...)
-		out.Positions = append(out.Positions, store.ShardPosition{Shard: i, AppliedIndex: sh.f.AppliedIndex()})
+		out.Positions = append(out.Positions, store.ShardPosition{Shard: i, AppliedIndex: sh.f.AppliedIndex(), HasMore: len(recs) == q.Limit})
 	}
 	if err := ctx.Err(); err != nil {
 		return store.ScanResult{}, err

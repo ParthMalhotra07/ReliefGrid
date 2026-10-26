@@ -31,8 +31,8 @@ import (
 
 const (
 	maxBodyBytes  = 1 << 20
-	maxScanLimit  = 1000 // records per shard per scan
-	maxOutboxWait = 1    // seconds a pending-outbox read may long-poll
+	maxScanLimit  = store.MaxScanLimit // records per shard per scan
+	maxOutboxWait = 1                  // seconds a pending-outbox read may long-poll
 )
 
 func (s *server) putData(w http.ResponseWriter, r *http.Request) {
@@ -323,7 +323,7 @@ func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 	})
 	if ok {
 		writeJSON(w, http.StatusOK, internalapi.ScanResponse{
-			Records: nonNil(recs), Positions: []store.ShardPosition{{Shard: s.shard, AppliedIndex: info.AppliedIndex}},
+			Records: nonNil(recs), Positions: []store.ShardPosition{{Shard: s.shard, AppliedIndex: info.AppliedIndex, HasMore: len(recs) == sq.Limit}},
 			RingVersion: s.ring.Version(), Consistency: internalapi.ScanResponseConsistency(info.Consistency),
 		})
 	}

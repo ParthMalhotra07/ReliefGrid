@@ -526,6 +526,22 @@ func TestScanLimitAndRingVersion(t *testing.T) {
 	}
 }
 
+// hasMore marks a shard page that came back full (exactly limit records):
+// more may match than were returned.
+func TestScanHasMoreWhenThePageIsFull(t *testing.T) {
+	n := newFakeNode(t)
+	for i, k := range []string{"kv:a", "kv:b"} {
+		n.seed(t, store.CreateEntity{Meta: meta(fmt.Sprintf("op-%d", i)), Key: k, Value: json.RawMessage(`1`)})
+	}
+	for limit, want := range map[int]bool{1: true, 2: true, 3: false} {
+		rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: fmt.Sprintf("/internal/scan?kind=kv&limit=%d", limit)})
+		resp := decodeJSON[internalapi.ScanResponse](t, rec)
+		if rec.Code != http.StatusOK || len(resp.Positions) != 1 || resp.Positions[0].HasMore != want || len(resp.Records) != min(limit, 2) {
+			t.Fatalf("limit %d: %d %+v, want hasMore=%v", limit, rec.Code, resp, want)
+		}
+	}
+}
+
 // GET /internal/outbox: consistency (strong default), the read block, and
 // wait (0 to 1 s) long-polling outside the read.
 func TestOutboxConsistencyAndLongPoll(t *testing.T) {

@@ -41,7 +41,8 @@ type Store interface {
 	// CLOSED result) permits retargeting away from that attempt.
 	ReadClosure(ctx context.Context, resourceKey, attemptID string) (Closure, error)
 	// Scan reads every shard. A failed shard sets Partial; it is never
-	// reported as an empty result.
+	// reported as an empty result. q.Limit outside 1..MaxScanLimit is an
+	// error and nothing is read.
 	Scan(ctx context.Context, q ScanQuery) (ScanResult, error)
 	// PendingOutbox pages unpublished events of one shard in commit order.
 	PendingOutbox(ctx context.Context, shard, limit int) ([]OutboxEvent, error)
@@ -349,6 +350,9 @@ type Result struct {
 	AppliedIndex uint64  `json:"appliedIndex"`
 }
 
+// MaxScanLimit is the largest ScanQuery.Limit: records per shard per page.
+const MaxScanLimit = 1000
+
 // ScanQuery selects records of one Kind. Empty filters match everything.
 // Statuses holds RequestStatus or ResourceStatus values for that Kind. Each
 // geohash prefix is the key range [p, p+"\xff"), so a matcher's geohash cover
@@ -359,7 +363,10 @@ type ScanQuery struct {
 	Type            ResourceType `json:"type,omitempty"`
 	Statuses        []string     `json:"statuses,omitempty"`
 	GeohashPrefixes []string     `json:"geohashPrefixes,omitempty"`
-	Limit           int          `json:"limit,omitempty"` // per shard; 0 means no limit
+	// Limit caps the records returned per shard, 1 to MaxScanLimit; 0 is
+	// invalid, never "no limit". A shard that returns exactly Limit records
+	// reports HasMore in its position. Cursor paging is a later goal.
+	Limit int `json:"limit,omitempty"`
 }
 
 type ScanResult struct {
@@ -369,7 +376,11 @@ type ScanResult struct {
 	Positions    []ShardPosition `json:"positions"`
 }
 
+// ShardPosition is one answering shard's applied index. HasMore is set when
+// the shard returned exactly Limit records, so more may match than were
+// returned; the page is truncated, not complete.
 type ShardPosition struct {
 	Shard        int    `json:"shard"`
 	AppliedIndex uint64 `json:"appliedIndex"`
+	HasMore      bool   `json:"hasMore,omitempty"`
 }
