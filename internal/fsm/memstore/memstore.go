@@ -18,9 +18,10 @@ import (
 
 // Store implements store.Store with one internal/fsm FSM per shard.
 type Store struct {
-	mu     sync.Mutex // serialises Apply across all shards
-	shards []*shard
-	route  func(key string) int
+	mu          sync.Mutex // serialises Apply across all shards
+	shards      []*shard
+	route       func(key string) int
+	ringVersion uint64
 }
 
 type shard struct {
@@ -33,8 +34,9 @@ var _ store.Store = (*Store)(nil)
 type Option func(*config)
 
 type config struct {
-	shards int
-	route  func(key string) int
+	shards      int
+	route       func(key string) int
+	ringVersion uint64
 }
 
 // WithShards sets the shard count (default 3).
@@ -44,10 +46,13 @@ func WithShards(n int) Option { return func(c *config) { c.shards = n } }
 // internal/ring lands).
 func WithRouter(route func(key string) int) Option { return func(c *config) { c.route = route } }
 
+// WithRingVersion sets the ring version scan cursors are bound to (default 1).
+func WithRingVersion(v uint64) Option { return func(c *config) { c.ringVersion = v } }
+
 var storeSeq atomic.Int64
 
 func New(ctx context.Context, opts ...Option) (*Store, error) {
-	cfg := config{shards: 3}
+	cfg := config{shards: 3, ringVersion: 1}
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -62,7 +67,7 @@ func New(ctx context.Context, opts ...Option) (*Store, error) {
 			return int(h.Sum32() % n)
 		}
 	}
-	s := &Store{route: cfg.route}
+	s := &Store{route: cfg.route, ringVersion: cfg.ringVersion}
 	id := storeSeq.Add(1)
 	for i := range cfg.shards {
 		f, err := fsm.Open(ctx, fmt.Sprintf("file:memstore-%d-shard%d?mode=memory", id, i))
@@ -180,36 +185,76 @@ func (s *Store) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult, 
 	return s.scan(ctx, q, nil)
 }
 
-// scan reads every shard except those in failed, which are reported as
-// failed so the result is partial rather than silently smaller.
+// scan reads every shard q.Cursor lists (every shard on a first page)
+// except those in failed, which are reported as failed so the result is
+// partial rather than silently smaller, and kept in NextCursor.
 func (s *Store) scan(ctx context.Context, q store.ScanQuery, failed []int) (store.ScanResult, error) {
 	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
 		return store.ScanResult{}, fmt.Errorf("memstore: scan limit %d: must be 1 to %d records per shard", q.Limit, store.MaxScanLimit)
+	}
+	var after map[int]string // nil on a first page
+	if q.Cursor != "" {
+		cur, err := s.scanCursor(q)
+		if err != nil {
+			return store.ScanResult{}, err
+		}
+		after = cur.After
 	}
 	down := make(map[int]bool, len(failed))
 	for _, i := range failed {
 		down[i] = true
 	}
 	var out store.ScanResult
+	next := map[int]string{}
 	for i, sh := range s.shards {
-		if down[i] {
-			out.Partial = true
-			out.FailedShards = append(out.FailedShards, i)
-			continue
+		if _, listed := after[i]; after != nil && !listed {
+			continue // exhausted
 		}
-		recs, err := sh.f.Scan(ctx, q)
+		var recs []store.Record
+		err := errShardDown
+		if !down[i] {
+			recs, err = sh.f.Scan(ctx, q, after[i])
+		}
 		if err != nil {
 			out.Partial = true
 			out.FailedShards = append(out.FailedShards, i)
+			next[i] = after[i]
 			continue
 		}
 		out.Records = append(out.Records, recs...)
-		out.Positions = append(out.Positions, store.ShardPosition{Shard: i, AppliedIndex: sh.f.AppliedIndex(), HasMore: len(recs) == q.Limit})
+		hasMore := len(recs) == q.Limit
+		if hasMore {
+			next[i] = recs[len(recs)-1].Key
+		}
+		out.Positions = append(out.Positions, store.ShardPosition{Shard: i, AppliedIndex: sh.f.AppliedIndex(), HasMore: hasMore})
 	}
 	if err := ctx.Err(); err != nil {
 		return store.ScanResult{}, err
 	}
+	out.NextCursor = store.EncodeScanCursor(store.ScanCursor{RingVersion: s.ringVersion, Query: store.ScanQueryHash(q), After: next})
 	return out, nil
+}
+
+var errShardDown = errors.New("memstore: shard failed by fault hook")
+
+// scanCursor decodes q.Cursor and checks it belongs to q on this ring.
+func (s *Store) scanCursor(q store.ScanQuery) (store.ScanCursor, error) {
+	cur, err := store.DecodeScanCursor(q.Cursor)
+	if err != nil {
+		return store.ScanCursor{}, fmt.Errorf("memstore: %w", err)
+	}
+	if cur.RingVersion != s.ringVersion {
+		return store.ScanCursor{}, fmt.Errorf("memstore: cursor from ring version %d, store has %d: %w", cur.RingVersion, s.ringVersion, store.ErrRingVersionMismatch)
+	}
+	if cur.Query != store.ScanQueryHash(q) {
+		return store.ScanCursor{}, errors.New("memstore: cursor belongs to a scan with other filters or another limit")
+	}
+	for i := range cur.After {
+		if i >= len(s.shards) {
+			return store.ScanCursor{}, fmt.Errorf("memstore: cursor names shard %d of %d", i, len(s.shards))
+		}
+	}
+	return cur, nil
 }
 
 func (s *Store) PendingOutbox(ctx context.Context, shard, limit int) ([]store.OutboxEvent, error) {

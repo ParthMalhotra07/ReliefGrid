@@ -287,7 +287,9 @@ func (s *server) pendingOutbox(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: s.shard, Events: nonNil(events), RingVersion: s.ring.Version(), Read: info})
 }
 
-// scan reads this shard only; the coordinator merges shards (S1.4).
+// scan reads this shard only, keys after the after parameter; the
+// coordinator merges shards (S1.4) and splits cursors into after (S1.6). A
+// cursor reaching a node is refused rather than read from the first key.
 func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 	mode, ok := s.readMode(w, r)
 	if !ok {
@@ -308,6 +310,11 @@ func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sq.Limit = n
+	if q.Has("cursor") {
+		writeError(w, http.StatusBadRequest, internalapi.INVALID, "a storage node takes after, not cursor; send cursors to the coordinator")
+		return
+	}
+	after := q.Get("after")
 	if v := q.Get("ringVersion"); v != "" {
 		rv, err := strconv.ParseUint(v, 10, 64)
 		if err != nil {
@@ -320,7 +327,7 @@ func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 	}
 	var recs []store.Record
 	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
-		recs, err = rd.Scan(ctx, sq)
+		recs, err = rd.Scan(ctx, sq, after)
 		return err
 	})
 	if ok {

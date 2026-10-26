@@ -312,9 +312,22 @@ paths:
 
         A scan is bounded: limit (1 to 1000) caps the records returned per
         shard, so a page never exceeds limit × shards records. A shard that
-        returned exactly limit records sets hasMore in its position. Cursor
-        paging follows later (§14). When ringVersion is given and differs from the
-        server's, the scan is refused with 409 RING_VERSION_MISMATCH.
+        returned exactly limit records sets hasMore in its position. When
+        ringVersion is given and differs from the server's, the scan is
+        refused with 409 RING_VERSION_MISMATCH.
+
+        Paging (§14): pass the previous page's nextCursor as cursor, with the
+        same kind and filters. Per shard the cursor means "keys after K" and
+        it is bound to the ring version it was made under; a cursor from
+        another ring version is 409 RING_VERSION_MISMATCH (restart the walk)
+        and a malformed one is 400 INVALID. Only shards the cursor still
+        lists are read, so positions covers those. nextCursor lists every
+        shard that still has rows or failed on this page; it is absent only
+        when every shard is exhausted, so a partial page always has one. Keys
+        present for the whole walk are returned exactly once.
+
+        The coordinator splits cursor and sends each storage node after=K;
+        a storage node takes after, never cursor.
       x-store-method: Scan
       parameters:
         - {name: kind, in: query, required: true, schema: {$ref: "#/components/schemas/Kind"}}
@@ -336,6 +349,14 @@ paths:
           required: true
           description: Records per shard, 1 to 1000
           schema: {type: integer, minimum: 1, maximum: 1000}
+        - name: cursor
+          in: query
+          description: Opaque nextCursor of the previous page (coordinator only)
+          schema: {type: string}
+        - name: after
+          in: query
+          description: Return keys strictly after this one (storage node only; set by the coordinator)
+          schema: {type: string}
         - $ref: "#/components/parameters/RingVersionOptional"
         - $ref: "#/components/parameters/Consistency"
       responses:
@@ -1440,6 +1461,9 @@ components:
           items: {$ref: "#/components/schemas/ShardPosition"}
         ringVersion: {type: integer, format: uint64}
         consistency: {type: string, enum: [strong, linearizable, stale]}
+        nextCursor:
+          type: string
+          description: Continues the walk; absent only when every shard is exhausted
     OutboxPage:
       type: object
       required: [shard, events, ringVersion, read]

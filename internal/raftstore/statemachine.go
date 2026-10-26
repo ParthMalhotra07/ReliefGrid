@@ -27,7 +27,7 @@ import (
 type Reader interface {
 	ReadRecord(ctx context.Context, key string) (store.Record, error)
 	ReadClosure(ctx context.Context, resourceKey, attemptID string) (store.Closure, error)
-	Scan(ctx context.Context, q store.ScanQuery) ([]store.Record, error)
+	Scan(ctx context.Context, q store.ScanQuery, after string) ([]store.Record, error)
 	PendingOutbox(ctx context.Context, limit int) ([]store.OutboxEvent, error)
 	Operation(ctx context.Context, operationID string) (store.Result, error)
 	Dump(ctx context.Context) (map[string][]string, error)

@@ -746,6 +746,9 @@ type ScanResponse struct {
 	Consistency  ScanResponseConsistency `json:"consistency"`
 	FailedShards *[]int                  `json:"failedShards,omitempty"`
 
+	// NextCursor Continues the walk; absent only when every shard is exhausted
+	NextCursor *string `json:"nextCursor,omitempty"`
+
 	// Partial True if any shard failed; never an empty result
 	Partial bool `json:"partial"`
 
@@ -1008,6 +1011,12 @@ type ScanParams struct {
 
 	// Limit Records per shard, 1 to 1000
 	Limit int `form:"limit" json:"limit"`
+
+	// Cursor Opaque nextCursor of the previous page (coordinator only)
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// After Return keys strictly after this one (storage node only; set by the coordinator)
+	After *string `form:"after,omitempty" json:"after,omitempty"`
 
 	// RingVersion The caller's ringVersion, if it has one; a mismatch is 409 RING_VERSION_MISMATCH
 	RingVersion *RingVersionOptional `form:"ringVersion,omitempty" json:"ringVersion,omitempty"`
