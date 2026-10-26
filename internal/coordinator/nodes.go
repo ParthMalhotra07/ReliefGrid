@@ -122,7 +122,9 @@ func (c *Coordinator) register(w http.ResponseWriter, r *http.Request) {
 // must register again.
 func (c *Coordinator) heartbeat(w http.ResponseWriter, r *http.Request) {
 	var hb internalapi.Heartbeat
-	if err := json.NewDecoder(io.LimitReader(r.Body, maxBody)).Decode(&hb); err != nil {
+	dec := json.NewDecoder(io.LimitReader(r.Body, maxBody))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&hb); err != nil {
 		writeError(w, http.StatusBadRequest, internalapi.INVALID, "heartbeat: "+err.Error())
 		return
 	}
@@ -130,15 +132,27 @@ func (c *Coordinator) heartbeat(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, internalapi.INVALID, err.Error())
 		return
 	}
+	resp, ok := c.recordHeartbeat(&hb)
+	if !ok {
+		writeError(w, http.StatusNotFound, internalapi.NOTFOUND, hb.NodeId+" is not registered with this incarnation")
+		return
+	}
+	// Written after unlocking: a node that stops reading its answer never
+	// holds up routing.
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// recordHeartbeat stores hb and builds the answer under c.mu; ok=false if
+// hb's node is not registered with this incarnation.
+func (c *Coordinator) recordHeartbeat(hb *internalapi.Heartbeat) (resp internalapi.HeartbeatResponse, ok bool) {
 	now := c.cfg.Now()
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	m := c.nodes[hb.NodeId]
 	if m == nil || m.reg.Incarnation != hb.Incarnation || m.reg.ShardId != hb.ShardId {
-		writeError(w, http.StatusNotFound, internalapi.NOTFOUND, hb.NodeId+" is not registered with this incarnation")
-		return
+		return resp, false
 	}
-	m.hb, m.lastSeen = &hb, now
+	m.hb, m.lastSeen = hb, now
 	if hb.LeaderId != nil {
 		pod, _, _ := strings.Cut(*hb.LeaderId, "/")
 		c.learn(hb.ShardId, hb.Term, leader{pod: pod, serverID: *hb.LeaderId})
@@ -146,13 +160,13 @@ func (c *Coordinator) heartbeat(w http.ResponseWriter, r *http.Request) {
 		c.learn(hb.ShardId, hb.Term, leader{})
 	}
 
-	resp := internalapi.HeartbeatResponse{RingVersion: c.ring.Version(), Checksum: c.ring.Checksum(), Leaders: []internalapi.ShardLeader{}}
+	resp = internalapi.HeartbeatResponse{RingVersion: c.ring.Version(), Checksum: c.ring.Checksum(), Leaders: []internalapi.ShardLeader{}}
 	for s := range c.leaders {
 		if id, addr, ok := c.resolve(s); ok && id != "" {
 			resp.Leaders = append(resp.Leaders, internalapi.ShardLeader{Shard: s, LeaderId: id, Address: addr, Term: c.leaders[s].term})
 		}
 	}
-	writeJSON(w, http.StatusOK, resp)
+	return resp, true
 }
 
 // learn records l as shard's leader at term. A lower term never replaces a

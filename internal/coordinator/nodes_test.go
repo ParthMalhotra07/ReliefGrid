@@ -1,7 +1,12 @@
 package coordinator_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -175,5 +180,70 @@ func TestHeartbeatResponseCarriesLeaderHints(t *testing.T) {
 		if l.Shard == 2 {
 			t.Fatalf("unregistered leader became a hint: %+v", l)
 		}
+	}
+}
+
+// A heartbeat with a field the contract does not have is refused, as a
+// registration is.
+func TestHeartbeatRejectsUnknownFields(t *testing.T) {
+	h := newHarness(t, nil)
+	h.registerAll()
+	n := h.nodes[0][0]
+	raw, err := json.Marshal(n.heartbeat(nil, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := strings.Replace(string(raw), "{", `{"leaderHint":"storage-0-1",`, 1)
+	expectError(t, h.do(call{method: http.MethodPost, path: "/internal/nodes/heartbeat", body: body}), http.StatusBadRequest, internalapi.INVALID)
+}
+
+// blockingWriter is a ResponseWriter whose Write blocks until release is
+// closed, like a peer that stops reading.
+type blockingWriter struct {
+	header  http.Header
+	writing chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (b *blockingWriter) Header() http.Header { return b.header }
+func (b *blockingWriter) WriteHeader(int)     {}
+func (b *blockingWriter) Write(p []byte) (int, error) {
+	b.once.Do(func() { close(b.writing) })
+	<-b.release
+	return len(p), nil
+}
+
+// The heartbeat answer is written after the node table is unlocked: a node
+// that stops reading its answer never stalls routing or /admin.
+func TestHeartbeatAnswerIsWrittenOutsideTheLock(t *testing.T) {
+	h := newHarness(t, nil)
+	h.ready()
+	n := h.nodes[0][0]
+	raw, err := json.Marshal(n.heartbeat(n, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bw := &blockingWriter{header: http.Header{}, writing: make(chan struct{}), release: make(chan struct{})}
+	hbDone := make(chan struct{})
+	go func() {
+		defer close(hbDone)
+		h.h.ServeHTTP(bw, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/internal/nodes/heartbeat", bytes.NewReader(raw)))
+	}()
+	t.Cleanup(func() { close(bw.release); <-hbDone })
+	select {
+	case <-bw.writing:
+	case <-time.After(2 * time.Second):
+		t.Fatal("heartbeat never wrote its answer")
+	}
+
+	admin := h.doAsync(call{method: http.MethodGet, path: "/admin/nodes", header: operatorAuth})
+	select {
+	case rec := <-admin:
+		if rec.Code != http.StatusOK {
+			t.Fatalf("/admin/nodes: %d %s", rec.Code, rec.Body.String())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("/admin/nodes blocked while a heartbeat answer was being written")
 	}
 }
