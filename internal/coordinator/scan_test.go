@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,7 +73,7 @@ func TestScanGathersEveryShard(t *testing.T) {
 	}
 }
 
-// Verify (S1.4), invariant 7: a failed or unreachable shard makes the scan
+// Verify (S1.4), CONTRIBUTING.md, Invariants, 7: a failed or unreachable shard makes the scan
 // partial with failedShards, never an empty or complete result; the other
 // shards' records and positions are still returned.
 func TestScanWithAShardDownIsPartial(t *testing.T) {
@@ -270,5 +271,98 @@ func TestShardAllDownFailsFast(t *testing.T) {
 	}
 	if len(h2.nodes[1][2].requests()) == 0 {
 		t.Fatal("the SUSPECT member was never tried")
+	}
+}
+
+// A 4xx that every shard returns is the caller's mistake, not an outage: it
+// passes through unchanged instead of becoming a retryable 503. If the
+// shards disagree, or any shard answers, the failures stay per-shard.
+func TestScanPassesThroughA4xxEveryShardAgreesOn(t *testing.T) {
+	h := newHarness(t, nil)
+	h.ready()
+	for s := range h.nodes {
+		for _, n := range h.nodes[s] {
+			n.setHandler(func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+				writeJSON(w, http.StatusBadRequest, internalapi.Error{Code: internalapi.INVALID, Message: "statuses: BOGUS is not a resource status"})
+			})
+		}
+	}
+	e := expectError(t, h.do(call{method: http.MethodGet, path: scanPath}), http.StatusBadRequest, internalapi.INVALID)
+	if e.Retryable || e.Message != "statuses: BOGUS is not a resource status" {
+		t.Fatalf("passed-through error = %+v", e)
+	}
+
+	// Shard 1 answers: the others' 400 is a per-shard failure, partial.
+	scanAnswer(h, 1)
+	rec := h.do(call{method: http.MethodGet, path: scanPath})
+	resp := decodeJSON[internalapi.ScanResponse](t, rec)
+	if rec.Code != http.StatusOK || !resp.Partial || resp.FailedShards == nil || !slices.Equal(*resp.FailedShards, []int{0, 2}) {
+		t.Fatalf("one shard answering = %d %+v, want partial [0 2]", rec.Code, resp)
+	}
+
+	// No shard answers, but the failures differ: 503, retryable.
+	for _, n := range h.nodes[1] {
+		n.setHandler(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false))
+	}
+	expectError(t, h.do(call{method: http.MethodGet, path: scanPath}), http.StatusServiceUnavailable, internalapi.NOLEADER)
+}
+
+// A shard that returns more records than limit broke the contract; its page
+// is a failure, never merged.
+func TestScanRejectsAShardOverTheLimit(t *testing.T) {
+	h := newHarness(t, nil)
+	h.ready()
+	scanAnswer(h, 0)
+	scanAnswer(h, 2)
+	for _, n := range h.nodes[1] {
+		n.setHandler(func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+			writeJSON(w, http.StatusOK, internalapi.ScanResponse{RingVersion: 1, Consistency: internalapi.ScanResponseConsistencyStale,
+				Records:   []store.Record{{Key: "res:s1-a"}, {Key: "res:s1-b"}, {Key: "res:s1-c"}},
+				Positions: []store.ShardPosition{{Shard: 1, AppliedIndex: 101}}})
+		})
+	}
+	path := strings.Replace(scanPath, "limit=50", "limit=2", 1)
+	rec := h.do(call{method: http.MethodGet, path: path})
+	resp := decodeJSON[internalapi.ScanResponse](t, rec)
+	if rec.Code != http.StatusOK || !resp.Partial || resp.FailedShards == nil || !slices.Equal(*resp.FailedShards, []int{1}) {
+		t.Fatalf("shard 1 over the limit = %d %+v, want partial [1]", rec.Code, resp)
+	}
+	if slices.Contains(scanKeys(resp), "res:s1-a") {
+		t.Fatalf("records of the over-limit shard were merged: %v", scanKeys(resp))
+	}
+}
+
+// The merged consistency is the weakest any shard used: stale, then
+// linearizable (the §13 fence), then strong (through the log).
+func TestScanReportsTheWeakestConsistency(t *testing.T) {
+	const (
+		strong = internalapi.ScanResponseConsistencyStrong
+		lin    = internalapi.ScanResponseConsistencyLinearizable
+		stale  = internalapi.ScanResponseConsistencyStale
+	)
+	for _, tc := range []struct {
+		modes [3]internalapi.ScanResponseConsistency
+		want  internalapi.ScanResponseConsistency
+	}{
+		{[3]internalapi.ScanResponseConsistency{strong, strong, strong}, strong},
+		{[3]internalapi.ScanResponseConsistency{lin, strong, strong}, lin},
+		{[3]internalapi.ScanResponseConsistency{strong, lin, strong}, lin},
+		{[3]internalapi.ScanResponseConsistency{strong, lin, stale}, stale},
+		{[3]internalapi.ScanResponseConsistency{stale, strong, lin}, stale},
+	} {
+		h := newHarness(t, nil)
+		h.ready()
+		for s, mode := range tc.modes {
+			for _, n := range h.nodes[s] {
+				n.setHandler(func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+					writeJSON(w, http.StatusOK, internalapi.ScanResponse{RingVersion: 1, Consistency: mode, Records: []store.Record{},
+						Positions: []store.ShardPosition{{Shard: s, AppliedIndex: 1}}})
+				})
+			}
+		}
+		resp := decodeJSON[internalapi.ScanResponse](t, h.do(call{method: http.MethodGet, path: scanPath}))
+		if resp.Consistency != tc.want {
+			t.Errorf("shard modes %v: consistency = %s, want %s", tc.modes, resp.Consistency, tc.want)
+		}
 	}
 }
