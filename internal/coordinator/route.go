@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptrace"
 	"strconv"
@@ -18,10 +19,16 @@ import (
 )
 
 // Backoff between rounds of attempts, once every candidate has been tried.
+// Each wait is jittered over [backoff/2, backoff].
 const (
 	minBackoff = 20 * time.Millisecond
 	maxBackoff = 200 * time.Millisecond
 )
+
+// jitter returns a random duration in [d/2, d], so concurrent calls to one
+// shard do not retry in lockstep. The coordinator is outside the FSM, so
+// randomness here does not touch determinism.
+func jitter(d time.Duration) time.Duration { return d/2 + rand.N(d/2+1) }
 
 // keyFunc extracts the routing key of a request; ok=false means it has none.
 type keyFunc func(r *http.Request) (key string, ok bool)
@@ -137,7 +144,8 @@ type answer struct {
 // With no answer it returns unknown=true if r is a mutation and any attempt
 // may have been proposed: headers were written and then the connection
 // failed, timed out, or the node answered OUTCOME_UNKNOWN or another 5xx.
-// That stays true whatever later attempts say (invariant 5). A read is
+// That stays true whatever later attempts say (CONTRIBUTING.md,
+// Invariants, 5). A read is
 // never unknown.
 //
 // A shard whose every registered member is DOWN by heartbeat age fails at
@@ -164,7 +172,7 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 			clear(tried)
 			select {
 			case <-ctx.Done():
-			case <-time.After(backoff):
+			case <-time.After(jitter(backoff)):
 			}
 			backoff = min(2*backoff, maxBackoff)
 			if c.allDown(shard) {
@@ -264,7 +272,11 @@ func (c *Coordinator) pick(shard int, tried map[string]bool) string {
 }
 
 // hint learns a NOT_LEADER hint and returns the address to try next: the
-// hinted pod's registered address, else the hint's own.
+// hinted pod's registered address, else the hint's own. A hint may name a
+// pod that has not registered yet (it just became leader of a restarted
+// coordinator's table), so its address is followed unverified. That is
+// acceptable only because the coordinator and storage nodes talk inside the
+// cluster network; the internal API is never exposed through the ingress.
 func (c *Coordinator) hint(shard int, h internalapi.LeaderHint) string {
 	c.mu.Lock()
 	defer c.mu.Unlock()

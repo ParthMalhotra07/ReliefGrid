@@ -45,6 +45,20 @@ func TestLoadConfig(t *testing.T) {
 			t.Errorf("%s=%q accepted", k, v)
 		}
 	}
+	// Plan §14: one attempt fits in the budget, which stays under 5 s HTTP.
+	for name, m := range map[string]map[string]string{
+		"budget at 5s":               {"BUDGET_MS": "5000"},
+		"attempt longer than budget": {"BUDGET_MS": "3000", "ATTEMPT_TIMEOUT_MS": "3500"},
+	} {
+		if _, err := loadConfig(env(m)); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+	// A short budget without ATTEMPT_TIMEOUT_MS caps the attempt at it.
+	cfg, err = loadConfig(env(map[string]string{"BUDGET_MS": "2000"}))
+	if err != nil || cfg.Coordinator.AttemptTimeout != 2*time.Second {
+		t.Fatalf("BUDGET_MS=2000 alone: attempt %s, %v; want 2s", cfg.Coordinator.AttemptTimeout, err)
+	}
 	// SUSPECT must come before DOWN.
 	if _, err := loadConfig(env(map[string]string{"SUSPECT_AFTER_MS": "5000", "DOWN_AFTER_MS": "3000"})); err == nil {
 		t.Error("SUSPECT_AFTER_MS >= DOWN_AFTER_MS accepted")

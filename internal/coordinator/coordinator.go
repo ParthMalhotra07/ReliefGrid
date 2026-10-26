@@ -13,7 +13,7 @@
 // unknown outcome with the same bytes. A shard whose members are all DOWN
 // fails at once rather than after the budget. If any attempt may have been
 // proposed and none returned a committed outcome, the answer is 503
-// OUTCOME_UNKNOWN, never NO_LEADER (invariant 5).
+// OUTCOME_UNKNOWN, never NO_LEADER (CONTRIBUTING.md, Invariants, 5).
 package coordinator
 
 import (
@@ -33,7 +33,22 @@ const (
 	DefaultDownAfter      = 5 * time.Second
 	DefaultBudget         = 4 * time.Second // coordinator share of the 5 s HTTP budget
 	DefaultAttemptTimeout = 3500 * time.Millisecond
+	// HTTPBudget is the caller's budget for one call; the routing budget
+	// must leave it room to answer.
+	HTTPBudget = 5 * time.Second
 )
+
+// ValidateBudgets checks plan §14's ordering: one attempt fits in the
+// routing budget, which stays under the caller's HTTP budget.
+func ValidateBudgets(budget, attempt time.Duration) error {
+	if budget >= HTTPBudget {
+		return fmt.Errorf("coordinator: budget %s must be below the %s HTTP budget", budget, HTTPBudget)
+	}
+	if attempt > budget {
+		return fmt.Errorf("coordinator: attempt timeout %s must not exceed the budget %s", attempt, budget)
+	}
+	return nil
+}
 
 // Config configures a Coordinator. Zero durations take the defaults.
 type Config struct {
@@ -44,7 +59,8 @@ type Config struct {
 	// Budget bounds one routed request, all retries included.
 	Budget time.Duration
 	// AttemptTimeout bounds one forward to a storage node; the storage node
-	// bounds its own wait at 3 s.
+	// bounds its own wait at 3 s. Zero takes DefaultAttemptTimeout, capped
+	// at Budget.
 	AttemptTimeout time.Duration
 	// OperatorToken guards /admin; empty disables it (403).
 	OperatorToken string
@@ -86,7 +102,10 @@ func New(cfg Config) (*Coordinator, error) {
 		cfg.Budget = DefaultBudget
 	}
 	if cfg.AttemptTimeout <= 0 {
-		cfg.AttemptTimeout = DefaultAttemptTimeout
+		cfg.AttemptTimeout = min(DefaultAttemptTimeout, cfg.Budget)
+	}
+	if err := ValidateBudgets(cfg.Budget, cfg.AttemptTimeout); err != nil {
+		return nil, err
 	}
 	if cfg.Client == nil {
 		cfg.Client = &http.Client{}

@@ -245,7 +245,7 @@ func TestDiscoveryProbesMembersWithoutAHint(t *testing.T) {
 	}
 }
 
-// Invariant 5: once any attempt may have been proposed (OUTCOME_UNKNOWN, a
+// CONTRIBUTING.md, Invariants, 5: once any attempt may have been proposed (OUTCOME_UNKNOWN, a
 // dropped connection, a timeout after sending), exhausting the budget gives
 // 503 OUTCOME_UNKNOWN, even if every later attempt was refused unproposed.
 // Every attempt carries the same bytes.

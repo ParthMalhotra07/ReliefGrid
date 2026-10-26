@@ -199,6 +199,9 @@ func newHarness(t *testing.T, mod func(*coordinator.Config)) *harness {
 	if mod != nil {
 		mod(&cfg)
 	}
+	// A test that shortens Budget below the default attempt keeps one
+	// attempt within the budget, as New requires.
+	cfg.AttemptTimeout = min(cfg.AttemptTimeout, cfg.Budget)
 	c, err := coordinator.New(cfg)
 	if err != nil {
 		t.Fatalf("New: %v", err)

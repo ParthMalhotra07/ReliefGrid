@@ -9,7 +9,10 @@
 //	SUSPECT_AFTER_MS    (3000)
 //	DOWN_AFTER_MS       (5000)
 //	BUDGET_MS           (4000)  one routed request, retries included
-//	ATTEMPT_TIMEOUT_MS  (3500)  one forward to a storage node
+//	ATTEMPT_TIMEOUT_MS  (3500, capped at BUDGET_MS)  one forward to a storage node
+//
+// BUDGET_MS must be below the 5 s HTTP budget and ATTEMPT_TIMEOUT_MS must
+// not exceed it (plan §14).
 //
 // GET /healthz answers 200 while the process serves (not in the contract).
 package main
@@ -80,11 +83,17 @@ func loadConfig(getenv func(string) string) (config, error) {
 		{"SUSPECT_AFTER_MS", 3000, &c.SuspectAfter},
 		{"DOWN_AFTER_MS", 5000, &c.DownAfter},
 		{"BUDGET_MS", 4000, &c.Budget},
-		{"ATTEMPT_TIMEOUT_MS", 3500, &c.AttemptTimeout},
 	} {
 		if *d.to, err = ms(d.key, d.def); err != nil {
 			return config{}, err
 		}
+	}
+	defAttempt := min(coordinator.DefaultAttemptTimeout, c.Budget)
+	if c.AttemptTimeout, err = ms("ATTEMPT_TIMEOUT_MS", int(defAttempt.Milliseconds())); err != nil {
+		return config{}, err
+	}
+	if err := coordinator.ValidateBudgets(c.Budget, c.AttemptTimeout); err != nil {
+		return config{}, err
 	}
 	if c.SuspectAfter >= c.DownAfter {
 		return config{}, fmt.Errorf("SUSPECT_AFTER_MS (%s) must be below DOWN_AFTER_MS (%s)", c.SuspectAfter, c.DownAfter)
