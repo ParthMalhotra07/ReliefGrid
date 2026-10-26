@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -83,6 +85,9 @@ type Status struct {
 	RaftAppliedIndex uint64
 	// AppliedIndex is the last command the SQLite FSM has committed.
 	AppliedIndex uint64
+	// RestoredIndex is the applied index of the last snapshot the FSM
+	// restored since Open (at start, or by InstallSnapshot); 0 if none.
+	RestoredIndex uint64
 
 	HasState bool // any term, log or snapshot on disk
 	CaughtUp bool // the FSM has completed every command up to CommitIndex
@@ -151,7 +156,12 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 	if n.logs, err = raftboltdb.New(raftboltdb.Options{Path: filepath.Join(raftDir, "raft.db")}); err != nil {
 		return nil, fmt.Errorf("raftstore: open log store: %w", err)
 	}
-	// NewFileSnapshotStore keeps its files in DataDir/snapshots.
+	// NewFileSnapshotStore keeps its files in DataDir/snapshots. Raft never
+	// lists or restores an incomplete "<id>.tmp" snapshot, but never removes
+	// one either: a crash mid-Persist would leave it on the PVC for good.
+	if err := removeIncompleteSnapshots(filepath.Join(cfg.DataDir, "snapshots")); err != nil {
+		return nil, err
+	}
 	if n.snaps, err = raft.NewFileSnapshotStoreWithLogger(cfg.DataDir, retainSnapshots, logger.Named("snapshots")); err != nil {
 		return nil, fmt.Errorf("raftstore: open snapshot store: %w", err)
 	}
@@ -348,6 +358,7 @@ func (n *Node) Status() Status {
 		LastLogIndex:     num("last_log_index"),
 		RaftAppliedIndex: n.raft.AppliedIndex(),
 		AppliedIndex:     n.sm.appliedIndex(),
+		RestoredIndex:    n.sm.restoredIndex(),
 		HasState:         has,
 	}
 	if has && leaderID != "" {
@@ -459,12 +470,58 @@ func (n *Node) compactedTarget(i uint64) (uint64, error) {
 	return h.AppliedIndex, nil
 }
 
-// Snapshot asks Raft to take a snapshot now and waits for it. Nothing new
-// to snapshot is not an error.
-func (n *Node) Snapshot(ctx context.Context) error {
-	err := wait(ctx, n.raft.Snapshot())
-	if err != nil && !errors.Is(err, raft.ErrNothingNewToSnapshot) {
-		return fmt.Errorf("raftstore: snapshot: %w", err)
+// SnapshotInfo describes a snapshot in this node's store.
+type SnapshotInfo struct {
+	ID           string
+	RaftIndex    uint64 // Raft's last included index (may be a barrier or no-op)
+	AppliedIndex uint64 // last command included in the image
+}
+
+// Snapshot asks Raft to take a snapshot now, waits for it and reports it.
+// raft v1.8.0 takes a new one on every call once any command has applied,
+// even at an unchanged index; before that it is an error.
+func (n *Node) Snapshot(ctx context.Context) (SnapshotInfo, error) {
+	f := n.raft.Snapshot()
+	if err := wait(ctx, f); err != nil {
+		return SnapshotInfo{}, fmt.Errorf("raftstore: snapshot: %w", err)
+	}
+	meta, rc, err := f.Open()
+	if err != nil {
+		return SnapshotInfo{}, fmt.Errorf("raftstore: open new snapshot: %w", err)
+	}
+	defer func() { _ = rc.Close() }()
+	h, err := readSnapshotHeader(bufio.NewReaderSize(rc, maxHeaderBytes))
+	if err != nil {
+		return SnapshotInfo{}, err
+	}
+	return SnapshotInfo{ID: meta.ID, RaftIndex: meta.Index, AppliedIndex: h.AppliedIndex}, nil
+}
+
+// raftTmpSnapshot matches the directory FileSnapshotStore.Create writes a
+// snapshot into before Close renames it: <term>-<index>-<unix ms>.tmp.
+var raftTmpSnapshot = regexp.MustCompile(`^[0-9]+-[0-9]+-[0-9]+\.tmp$`)
+
+// removeIncompleteSnapshots deletes the incomplete snapshots a crash left
+// in dir, and only those: Raft-named ".tmp" directories. Open runs it before
+// Raft starts, so no snapshot is being written; only this process uses the
+// PVC.
+func removeIncompleteSnapshots(dir string) error {
+	ents, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("raftstore: read snapshot dir: %w", err)
+	}
+	for _, e := range ents {
+		if !e.IsDir() || !raftTmpSnapshot.MatchString(e.Name()) {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("raftstore: remove incomplete snapshot %s: %w", path, err)
+		}
+		slog.Warn("raftstore: removed incomplete snapshot left by a crash", "dir", path)
 	}
 	return nil
 }
