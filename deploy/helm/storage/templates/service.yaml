@@ -1,0 +1,27 @@
+{{- $ring := include "storage.ring" . | fromJson }}
+{{- range $s := until (int $ring.shards) }}
+---
+# Headless; publishes unready pods so peers resolve each other before
+# readiness (readiness needs a leader, which needs the peers).
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-shard-{{ $s }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "storage.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: storagenode
+    reliefgrid.io/shard: {{ $s | quote }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "storage.shardSelector" (dict "shard" $s) | nindent 4 }}
+  ports:
+    - name: raft
+      port: 7000
+    - name: http
+      port: 8080
+    - name: mgmt
+      port: 8081
+{{- end }}

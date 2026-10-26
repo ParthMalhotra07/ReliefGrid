@@ -1,0 +1,38 @@
+# Storage node image, built and kind-loaded by `make storage-image`.
+image:
+  repository: reliefgrid/storagenode
+  tag: dev
+  # sha256:... from the registry; when set, the image is referenced by digest
+  # and the tag is ignored. Empty on kind, where the image is only kind-loaded.
+  digest: ""
+  pullPolicy: Never
+
+# Raft snapshot profile (M4): demo (1024 / 512 / 30 s) or load (library defaults).
+profile: demo
+# Deadline on every Apply and read inside a storage node.
+requestTimeoutMs: 3000
+
+# Raft log, stable store and snapshots only (M3); the SQLite FSM is an emptyDir.
+persistence:
+  storageClassName: standard
+  size: 1Gi
+
+# v3.1 §23: storage x9.
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# Bearer token for /mgmt/bootstrap. Empty: generated on first install and kept.
+operatorToken: ""
+
+bootstrap:
+  # The Job gives up (and Helm --wait-for-jobs fails) after this long.
+  timeoutSeconds: 600
+  backoffLimit: 6
+  # Verify only: sleep after bootstrapping the first group, before recording
+  # BOOTSTRAPPED, so the Job can be killed mid-run at a known point.
+  debugHoldSeconds: 0

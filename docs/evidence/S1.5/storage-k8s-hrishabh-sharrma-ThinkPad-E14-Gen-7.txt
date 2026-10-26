@@ -1,0 +1,229 @@
+# S1.5 storage on Kubernetes
+result:     PASSED (179/179 checks)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-10-26T06:56:45Z
+code tree:  ec2880b0695d (git ls-tree -r HEAD -- go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl internal deploy/helm/storage scripts/verify-storage-k8s.sh | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+
+## checks
+PASS  image: cmd/storagenode/Dockerfile exists
+PASS  image: multi-stage build
+PASS  image: final stage is distroless, pinned by digest
+PASS  image: runs as non-root
+PASS  image: builds ./cmd/storagenode
+PASS  image: builds ./cmd/storagectl
+PASS  make storage-image: builds reliefgrid/storagenode:dev from cmd/storagenode/Dockerfile and kind-loads it
+PASS  make storage-reset: target exists
+PASS  chart: deploy/helm/storage/Chart.yaml exists
+PASS  chart: helm lint passes
+PASS  secret: storage-operator-token has a token
+PASS  statefulset storage-shard-0: rendered
+PASS  statefulset storage-shard-0: 3 replicas
+PASS  statefulset storage-shard-0: podManagementPolicy Parallel
+PASS  statefulset storage-shard-0: serviceName storage-shard-0
+PASS  statefulset storage-shard-0: pods labelled reliefgrid.io/shard=0
+PASS  statefulset storage-shard-0: nodeSelector role=data
+PASS  statefulset storage-shard-0: required anti-affinity on hostname for shard 0
+PASS  statefulset storage-shard-0: one PVC, mounted at DATA_DIR (/data)
+PASS  statefulset storage-shard-0: FSM_DIR (/fsm) is an emptyDir (M3)
+PASS  statefulset storage-shard-0: PROFILE=demo (M4)
+PASS  statefulset storage-shard-0: SHARD=0
+PASS  statefulset storage-shard-0: RAFT_ADVERTISE is the stable FQDN
+PASS  statefulset storage-shard-0: OPERATOR_TOKEN from the Secret
+PASS  statefulset storage-shard-0: startupProbe GET /healthz on the mgmt port
+PASS  statefulset storage-shard-0: livenessProbe GET /healthz on the mgmt port
+PASS  statefulset storage-shard-0: readinessProbe GET /readyz on the mgmt port
+PASS  statefulset storage-shard-0: no not-ready/unreachable tolerations of its own (§24)
+PASS  statefulset storage-shard-0: runAsNonRoot
+PASS  service storage-shard-0: headless, publishNotReadyAddresses
+PASS  service storage-shard-0: selects shard 0
+PASS  service storage-shard-0: ports 7000, 8080, 8081
+PASS  pdb storage-shard-0: minAvailable 2 for shard 0
+PASS  networkpolicy storage-shard-0: selects shard 0
+PASS  networkpolicy storage-shard-0: 8081 only from reliefgrid.io/storage-operator=true
+PASS  manifest storage-shard-0-manifest: not rendered by the chart (storagectl owns it)
+PASS  statefulset storage-shard-1: rendered
+PASS  statefulset storage-shard-1: 3 replicas
+PASS  statefulset storage-shard-1: podManagementPolicy Parallel
+PASS  statefulset storage-shard-1: serviceName storage-shard-1
+PASS  statefulset storage-shard-1: pods labelled reliefgrid.io/shard=1
+PASS  statefulset storage-shard-1: nodeSelector role=data
+PASS  statefulset storage-shard-1: required anti-affinity on hostname for shard 1
+PASS  statefulset storage-shard-1: one PVC, mounted at DATA_DIR (/data)
+PASS  statefulset storage-shard-1: FSM_DIR (/fsm) is an emptyDir (M3)
+PASS  statefulset storage-shard-1: PROFILE=demo (M4)
+PASS  statefulset storage-shard-1: SHARD=1
+PASS  statefulset storage-shard-1: RAFT_ADVERTISE is the stable FQDN
+PASS  statefulset storage-shard-1: OPERATOR_TOKEN from the Secret
+PASS  statefulset storage-shard-1: startupProbe GET /healthz on the mgmt port
+PASS  statefulset storage-shard-1: livenessProbe GET /healthz on the mgmt port
+PASS  statefulset storage-shard-1: readinessProbe GET /readyz on the mgmt port
+PASS  statefulset storage-shard-1: no not-ready/unreachable tolerations of its own (§24)
+PASS  statefulset storage-shard-1: runAsNonRoot
+PASS  service storage-shard-1: headless, publishNotReadyAddresses
+PASS  service storage-shard-1: selects shard 1
+PASS  service storage-shard-1: ports 7000, 8080, 8081
+PASS  pdb storage-shard-1: minAvailable 2 for shard 1
+PASS  networkpolicy storage-shard-1: selects shard 1
+PASS  networkpolicy storage-shard-1: 8081 only from reliefgrid.io/storage-operator=true
+PASS  manifest storage-shard-1-manifest: not rendered by the chart (storagectl owns it)
+PASS  statefulset storage-shard-2: rendered
+PASS  statefulset storage-shard-2: 3 replicas
+PASS  statefulset storage-shard-2: podManagementPolicy Parallel
+PASS  statefulset storage-shard-2: serviceName storage-shard-2
+PASS  statefulset storage-shard-2: pods labelled reliefgrid.io/shard=2
+PASS  statefulset storage-shard-2: nodeSelector role=data
+PASS  statefulset storage-shard-2: required anti-affinity on hostname for shard 2
+PASS  statefulset storage-shard-2: one PVC, mounted at DATA_DIR (/data)
+PASS  statefulset storage-shard-2: FSM_DIR (/fsm) is an emptyDir (M3)
+PASS  statefulset storage-shard-2: PROFILE=demo (M4)
+PASS  statefulset storage-shard-2: SHARD=2
+PASS  statefulset storage-shard-2: RAFT_ADVERTISE is the stable FQDN
+PASS  statefulset storage-shard-2: OPERATOR_TOKEN from the Secret
+PASS  statefulset storage-shard-2: startupProbe GET /healthz on the mgmt port
+PASS  statefulset storage-shard-2: livenessProbe GET /healthz on the mgmt port
+PASS  statefulset storage-shard-2: readinessProbe GET /readyz on the mgmt port
+PASS  statefulset storage-shard-2: no not-ready/unreachable tolerations of its own (§24)
+PASS  statefulset storage-shard-2: runAsNonRoot
+PASS  service storage-shard-2: headless, publishNotReadyAddresses
+PASS  service storage-shard-2: selects shard 2
+PASS  service storage-shard-2: ports 7000, 8080, 8081
+PASS  pdb storage-shard-2: minAvailable 2 for shard 2
+PASS  networkpolicy storage-shard-2: selects shard 2
+PASS  networkpolicy storage-shard-2: 8081 only from reliefgrid.io/storage-operator=true
+PASS  manifest storage-shard-2-manifest: not rendered by the chart (storagectl owns it)
+PASS  chart: renders no manifest ConfigMap at all
+PASS  job: named storage-bootstrap-<revision>
+PASS  job: ordinary Job, not a Helm hook (C2)
+PASS  job: pods labelled reliefgrid.io/storage-operator=true
+PASS  job: runs storagectl bootstrap
+PASS  job: exit code 2 (refused) fails the Job at once
+PASS  job: MANIFESTS spec for shard 0 (name, groupId, ringVersion 1, three stable FQDNs)
+PASS  job: MANIFESTS spec for shard 1 (name, groupId, ringVersion 1, three stable FQDNs)
+PASS  job: MANIFESTS spec for shard 2 (name, groupId, ringVersion 1, three stable FQDNs)
+PASS  job: one RoleBinding (storage-bootstrap), no ClusterRoleBinding
+PASS  job: Role is exactly get/update on the three manifests by name, plus create
+PASS  cluster: fresh reliefgrid cluster
+PASS  make storage-image: succeeds
+PASS  image: reliefgrid/storagenode:dev runs as user '65532:65532'
+PASS  image: contains /storagenode
+PASS  image: contains /storagectl
+PASS  install: helm install --wait --wait-for-jobs succeeds (24.7 s)
+PASS  group shard-0: one leader, all three replicas in it, IDs match the manifest
+PASS  manifest shard-0: phase BOOTSTRAPPED
+PASS  storage shard-0: 3 PVCs Bound
+PASS  group shard-1: one leader, all three replicas in it, IDs match the manifest
+PASS  manifest shard-1: phase BOOTSTRAPPED
+PASS  storage shard-1: 3 PVCs Bound
+PASS  group shard-2: one leader, all three replicas in it, IDs match the manifest
+PASS  manifest shard-2: phase BOOTSTRAPPED
+PASS  storage shard-2: 3 PVCs Bound
+PASS  install: Job storage-bootstrap-1 created the three manifests
+PASS  manifest shard-0: groupId, shard, ringVersion 1, the three stable FQDNs
+PASS  manifest shard-0: managed by storagectl, no Helm ownership
+PASS  manifest shard-1: groupId, shard, ringVersion 1, the three stable FQDNs
+PASS  manifest shard-1: managed by storagectl, no Helm ownership
+PASS  manifest shard-2: groupId, shard, ringVersion 1, the three stable FQDNs
+PASS  manifest shard-2: managed by storagectl, no Helm ownership
+PASS  placement: reliefgrid-worker runs one replica of every shard
+PASS  placement: reliefgrid-worker2 runs one replica of every shard
+PASS  placement: reliefgrid-worker3 runs one replica of every shard
+PASS  networkpolicy: an operator-labelled pod reaches storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:8081
+PASS  networkpolicy: an unlabelled pod cannot reach storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:8081
+PASS  networkpolicy: storage-shard-0-1 reaches storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000 (same shard)
+PASS  networkpolicy: storage-shard-1-0 reaches storage-shard-0-0:8080 (data, control)
+PASS  networkpolicy: storage-shard-1-0 cannot reach storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000 (other shard)
+PASS  write shard-1: PUT cfg:s15-verify-3 through leader storage-shard-1-0 committed (version 1)
+PASS  failover shard-1: storage-shard-1-1 leads at term 3, 3.8 s after deleting storage-shard-1-0
+PASS  failover shard-1: strong read of cfg:s15-verify-3 on storage-shard-1-1 returns the write
+PASS  failover shard-1: storage-shard-1-0 rejoins the same group (same ID) and is Ready
+PASS  restart shard-2: sentinel cfg:s15-restart-5 written before the restart
+PASS  restart shard-2: all three pods deleted at once come back as one group (14.8 s)
+PASS  restart shard-2: serverIds unchanged
+PASS  restart shard-2: the sentinel reads back
+PASS  upgrade: helm upgrade --wait --wait-for-jobs on healthy groups succeeds
+PASS  upgrade: Job storage-bootstrap-2 verified shard-0
+PASS  upgrade: manifest shard-0 untouched (resourceVersion 1226, BOOTSTRAPPED)
+PASS  upgrade: Job storage-bootstrap-2 verified shard-1
+PASS  upgrade: manifest shard-1 untouched (resourceVersion 1258, BOOTSTRAPPED)
+PASS  upgrade: Job storage-bootstrap-2 verified shard-2
+PASS  upgrade: manifest shard-2 untouched (resourceVersion 1270, BOOTSTRAPPED)
+PASS  upgrade: the Job created or bootstrapped nothing
+PASS  rollback: helm rollback storage 1 succeeds
+PASS  rollback: a new bootstrap Job ran (storage-bootstrap-1, uid 96a6c0aa-8fc6-4ff8-a75b-93728a3bd702)
+PASS  rollback: the Job created or bootstrapped nothing
+PASS  rollback: Job storage-bootstrap-1 verified shard-0
+PASS  rollback: manifest shard-0 untouched (resourceVersion, BOOTSTRAPPED, peerIds)
+PASS  rollback: Job storage-bootstrap-1 verified shard-1
+PASS  rollback: manifest shard-1 untouched (resourceVersion, BOOTSTRAPPED, peerIds)
+PASS  rollback: Job storage-bootstrap-1 verified shard-2
+PASS  rollback: manifest shard-2 untouched (resourceVersion, BOOTSTRAPPED, peerIds)
+PASS  uninstall: the three manifests survive, phase BOOTSTRAPPED
+PASS  guard: the bootstrap Job fails over wiped disks with a BOOTSTRAPPED manifest
+PASS  guard: failed by podFailurePolicy after one pod exited 2
+PASS  guard: the Job refused because no reachable peer has Raft state
+PASS  guard shard-0: no replica has Raft state or a leader
+PASS  guard shard-1: no replica has Raft state or a leader
+PASS  guard shard-2: no replica has Raft state or a leader
+PASS  storage-reset: a wrong answer exits non-zero
+PASS  storage-reset: a wrong answer deletes nothing (3 9 manifests/PVCs)
+PASS  storage-reset: typing 'reliefgrid' succeeds
+PASS  storage-reset: manifests and PVCs deleted
+PASS  storage-reset: release uninstalled
+PASS  rerun: Job storage-bootstrap-1 bootstrapped shard 0 and is holding
+PASS  rerun: sentinel cfg:s15-rerun-0 written to shard-0 during the hold
+PASS  rerun: Job storage-bootstrap-1 and its pod deleted mid-run
+PASS  rerun: killed with shard-0 BOOTSTRAPPING, shards 1 and 2 PENDING
+PASS  rerun: helm upgrade --wait --wait-for-jobs re-runs the Job and succeeds (9.1 s)
+PASS  rerun: a new Job ran (storage-bootstrap-2)
+PASS  rerun: the new Job found shard-0 already initialized
+PASS  rerun shard-0: one group, one leader, IDs match the manifest (no second cluster)
+PASS  rerun shard-0: phase BOOTSTRAPPED
+PASS  rerun shard-1: one group, one leader, IDs match the manifest (no second cluster)
+PASS  rerun shard-1: phase BOOTSTRAPPED
+PASS  rerun shard-2: one group, one leader, IDs match the manifest (no second cluster)
+PASS  rerun shard-2: phase BOOTSTRAPPED
+PASS  rerun shard-0: the sentinel written before the kill reads back (same group)
+PASS  rerun shard-0: serverIds unchanged (storage-shard-0-0/973931cf-5eed-40b6-a680-82f05801fa3a storage-shard-0-1/939a5df5-5cf0-40a0-8d1a-c31ae24774d8 storage-shard-0-2/7e7d91fc-07ed-46c7-a26b-e9f0c2f04d9c )
+
+## kubectl get pods -o wide
+NAME                        READY   STATUS      RESTARTS   AGE   IP            NODE                 NOMINATED NODE   READINESS GATES
+storage-bootstrap-2-9tg2j   0/1     Completed   0          12s   10.244.2.30   reliefgrid-worker    <none>           <none>
+storage-shard-0-0           1/1     Running     0          46s   10.244.4.24   reliefgrid-worker3   <none>           <none>
+storage-shard-0-1           1/1     Running     0          46s   10.244.2.28   reliefgrid-worker    <none>           <none>
+storage-shard-0-2           1/1     Running     0          46s   10.244.3.28   reliefgrid-worker2   <none>           <none>
+storage-shard-1-0           1/1     Running     0          46s   10.244.3.24   reliefgrid-worker2   <none>           <none>
+storage-shard-1-1           1/1     Running     0          46s   10.244.2.27   reliefgrid-worker    <none>           <none>
+storage-shard-1-2           1/1     Running     0          46s   10.244.4.28   reliefgrid-worker3   <none>           <none>
+storage-shard-2-0           1/1     Running     0          46s   10.244.4.26   reliefgrid-worker3   <none>           <none>
+storage-shard-2-1           1/1     Running     0          46s   10.244.2.29   reliefgrid-worker    <none>           <none>
+storage-shard-2-2           1/1     Running     0          46s   10.244.3.26   reliefgrid-worker2   <none>           <none>
+
+## shard-0
+{"podName":"storage-shard-0-0","serverId":"storage-shard-0-0/973931cf-5eed-40b6-a680-82f05801fa3a","state":"Leader","term":2,"leaderId":"storage-shard-0-0/973931cf-5eed-40b6-a680-82f05801fa3a","commitIndex":4,"appliedIndex":3,"caughtUp":true}
+{"podName":"storage-shard-0-1","serverId":"storage-shard-0-1/939a5df5-5cf0-40a0-8d1a-c31ae24774d8","state":"Follower","term":2,"leaderId":"storage-shard-0-0/973931cf-5eed-40b6-a680-82f05801fa3a","commitIndex":4,"appliedIndex":3,"caughtUp":true}
+{"podName":"storage-shard-0-2","serverId":"storage-shard-0-2/7e7d91fc-07ed-46c7-a26b-e9f0c2f04d9c","state":"Follower","term":2,"leaderId":"storage-shard-0-0/973931cf-5eed-40b6-a680-82f05801fa3a","commitIndex":4,"appliedIndex":3,"caughtUp":true}
+{"groupId":"shard-0","peerIds":"[\"storage-shard-0-0/973931cf-5eed-40b6-a680-82f05801fa3a\",\"storage-shard-0-1/939a5df5-5cf0-40a0-8d1a-c31ae24774d8\",\"storage-shard-0-2/7e7d91fc-07ed-46c7-a26b-e9f0c2f04d9c\"]","peers":"[{\"podName\":\"storage-shard-0-0\",\"address\":\"storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-1\",\"address\":\"storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-2\",\"address\":\"storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"0"}
+
+## shard-1
+{"podName":"storage-shard-1-0","serverId":"storage-shard-1-0/cefe4737-0e25-4fdd-bdb1-ac87e50890fd","state":"Leader","term":2,"leaderId":"storage-shard-1-0/cefe4737-0e25-4fdd-bdb1-ac87e50890fd","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-1-1","serverId":"storage-shard-1-1/2ab13706-b124-45e6-a72a-e9d8f2dfb79c","state":"Follower","term":2,"leaderId":"storage-shard-1-0/cefe4737-0e25-4fdd-bdb1-ac87e50890fd","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-1-2","serverId":"storage-shard-1-2/a9f6874e-80a8-48f8-901c-765b57e075bf","state":"Follower","term":2,"leaderId":"storage-shard-1-0/cefe4737-0e25-4fdd-bdb1-ac87e50890fd","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"groupId":"shard-1","peerIds":"[\"storage-shard-1-0/cefe4737-0e25-4fdd-bdb1-ac87e50890fd\",\"storage-shard-1-1/2ab13706-b124-45e6-a72a-e9d8f2dfb79c\",\"storage-shard-1-2/a9f6874e-80a8-48f8-901c-765b57e075bf\"]","peers":"[{\"podName\":\"storage-shard-1-0\",\"address\":\"storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-1\",\"address\":\"storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-2\",\"address\":\"storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"1"}
+
+## shard-2
+{"podName":"storage-shard-2-0","serverId":"storage-shard-2-0/60235b21-4854-4967-bf5b-20f863385077","state":"Leader","term":2,"leaderId":"storage-shard-2-0/60235b21-4854-4967-bf5b-20f863385077","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-2-1","serverId":"storage-shard-2-1/3876b57e-c79a-427d-a763-9680453775a5","state":"Follower","term":2,"leaderId":"storage-shard-2-0/60235b21-4854-4967-bf5b-20f863385077","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-2-2","serverId":"storage-shard-2-2/a7b2b28c-e998-460a-83ab-f880ae4dd05d","state":"Follower","term":2,"leaderId":"storage-shard-2-0/60235b21-4854-4967-bf5b-20f863385077","commitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"groupId":"shard-2","peerIds":"[\"storage-shard-2-0/60235b21-4854-4967-bf5b-20f863385077\",\"storage-shard-2-1/3876b57e-c79a-427d-a763-9680453775a5\",\"storage-shard-2-2/a7b2b28c-e998-460a-83ab-f880ae4dd05d\"]","peers":"[{\"podName\":\"storage-shard-2-0\",\"address\":\"storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-1\",\"address\":\"storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-2\",\"address\":\"storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"2"}
+
+## bootstrap Job logs (storage-bootstrap-2)
+time=2026-10-26T06:56:34.596Z level=INFO msg="shard-0: group already initialized; verified" phase=BOOTSTRAPPED fence="leader storage-shard-0-0/973931cf-5eed-40b6-a680-82f05801fa3a, 3 of 3 caught up, commit index 3"
+time=2026-10-26T06:56:34.615Z level=INFO msg="shard-1: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-1-0/cefe4737-0e25-4fdd-bdb1-ac87e50890fd storage-shard-1-1/2ab13706-b124-45e6-a72a-e9d8f2dfb79c storage-shard-1-2/a9f6874e-80a8-48f8-901c-765b57e075bf]"
+time=2026-10-26T06:56:34.623Z level=INFO msg="shard-1: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-1-0 voters=3
+time=2026-10-26T06:56:34.629Z level=INFO msg="shard-1: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-10-26T06:56:36.655Z level=INFO msg="shard-1: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-1-0/cefe4737-0e25-4fdd-bdb1-ac87e50890fd, 3 of 3 caught up, commit index 2"
+time=2026-10-26T06:56:36.677Z level=INFO msg="shard-2: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-2-0/60235b21-4854-4967-bf5b-20f863385077 storage-shard-2-1/3876b57e-c79a-427d-a763-9680453775a5 storage-shard-2-2/a7b2b28c-e998-460a-83ab-f880ae4dd05d]"
+time=2026-10-26T06:56:36.686Z level=INFO msg="shard-2: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-2-0 voters=3
+time=2026-10-26T06:56:36.693Z level=INFO msg="shard-2: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-10-26T06:56:37.713Z level=INFO msg="shard-2: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-2-0/60235b21-4854-4967-bf5b-20f863385077, 3 of 3 caught up, commit index 2"

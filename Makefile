@@ -20,10 +20,15 @@ else
 $(error PROFILE must be full or lean, got '$(PROFILE)')
 endif
 
+# Storage on kind (S1.5): the standalone chart deploy/helm/storage.
+STORAGE_IMAGE   ?= reliefgrid/storagenode:dev
+STORAGE_NS      ?= reliefgrid
+STORAGE_RELEASE ?= storage
+
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image storage-reset
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -74,3 +79,18 @@ doctor: ## Check tool versions, Docker, available RAM (PROFILE=full|lean) and ho
 
 print-%: ## Print a pin, e.g. make -s print-GOLANGCI_LINT_VERSION
 	@echo '$($*)'
+
+storage-image: ## Build the storage node image (storagenode + storagectl) and load it into kind
+	docker build -f cmd/storagenode/Dockerfile -t $(STORAGE_IMAGE) .
+	kind load docker-image --name $(CLUSTER) $(STORAGE_IMAGE)
+
+# The bootstrap manifests belong to storagectl, not Helm, so helm uninstall
+# leaves them and wiped disks never re-bootstrap by accident (v3.1 §10);
+# deleting them is this deliberate step.
+storage-reset: ## Uninstall storage and delete its PVCs and bootstrap manifests (type the namespace to confirm)
+	@echo "storage-reset: this deletes every storage PVC and bootstrap manifest in namespace '$(STORAGE_NS)' (context kind-$(CLUSTER))."
+	@read -r -p "Type the namespace to confirm: " ans || true; \
+		if [ "$${ans:-}" != '$(STORAGE_NS)' ]; then echo "storage-reset: not confirmed; nothing deleted" >&2; exit 1; fi
+	helm --kube-context kind-$(CLUSTER) uninstall $(STORAGE_RELEASE) -n $(STORAGE_NS) --ignore-not-found --wait
+	kubectl --context kind-$(CLUSTER) -n $(STORAGE_NS) delete pvc -l app.kubernetes.io/name=storage,app.kubernetes.io/component=storagenode --ignore-not-found --wait
+	kubectl --context kind-$(CLUSTER) -n $(STORAGE_NS) delete configmap -l app.kubernetes.io/name=storage,app.kubernetes.io/component=storage-manifest --ignore-not-found
