@@ -79,6 +79,12 @@ spec:
               value: {{ $.Values.requestTimeoutMs | quote }}
             - name: OPERATOR_TOKEN
               valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
+            # Register and heartbeat to the coordinator, advertising the
+            # stable DNS name of the data port.
+            - name: COORDINATOR_URL
+              value: {{ include "storage.coordinatorURL" $ }}
+            - name: HTTP_ADVERTISE
+              value: $(POD_NAME).storage-shard-{{ $s }}.{{ $.Release.Namespace }}.svc.cluster.local:8080
             - name: TMPDIR
               value: /tmp
           ports:

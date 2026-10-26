@@ -64,6 +64,21 @@ spec and never resets an existing one; the chart renders no manifest itself.
 {{- end -}}
 {{- end }}
 
+{{- define "storage.coordinatorImage" -}}
+{{- with .Values.coordinator.image -}}
+{{- if .digest -}}
+{{ .repository }}@{{ .digest }}
+{{- else -}}
+{{ .repository }}:{{ .tag }}
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/* The coordinator's in-cluster URL (COORDINATOR_URL on storage pods). */}}
+{{- define "storage.coordinatorURL" -}}
+http://storage-coordinator.{{ .Release.Namespace }}.svc.cluster.local:8080
+{{- end }}
+
 {{- define "storage.podSecurityContext" -}}
 runAsNonRoot: true
 runAsUser: 65532

@@ -1,0 +1,88 @@
+# The coordinator (v3.1 §9): stateless routing to shard leaders, heartbeats
+# and /admin. One replica on the infra worker; its node table is rebuilt from
+# heartbeats after a restart.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-coordinator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: coordinator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: storage
+      app.kubernetes.io/component: coordinator
+  template:
+    metadata:
+      labels:
+        {{- include "storage.labels" . | nindent 8 }}
+        app.kubernetes.io/component: coordinator
+      annotations:
+        checksum/ring: {{ .Files.Get "files/ring.yaml" | sha256sum }}
+    spec:
+      nodeSelector:
+        role: infra
+      tolerations:
+        - key: role
+          operator: Equal
+          value: infra
+          effect: NoSchedule
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        {{- include "storage.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: coordinator
+          image: {{ include "storage.coordinatorImage" . }}
+          imagePullPolicy: {{ .Values.coordinator.image.pullPolicy }}
+          command: ["/coordinator"]
+          securityContext:
+            {{- include "storage.containerSecurityContext" . | nindent 12 }}
+          env:
+            - name: HTTP_ADDR
+              value: ":8080"
+            - name: RING_PATH
+              value: /etc/reliefgrid/ring.yaml
+            - name: OPERATOR_TOKEN
+              valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.coordinator.resources | nindent 12 }}
+          volumeMounts:
+            - name: ring
+              mountPath: /etc/reliefgrid
+              readOnly: true
+      volumes:
+        - name: ring
+          configMap:
+            name: storage-ring
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-coordinator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: coordinator
+spec:
+  selector:
+    app.kubernetes.io/name: storage
+    app.kubernetes.io/component: coordinator
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
