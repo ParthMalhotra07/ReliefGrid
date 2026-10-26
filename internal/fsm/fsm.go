@@ -312,14 +312,20 @@ func (f *FSM) ReadClosure(ctx context.Context, resourceKey, attemptID string) (s
 	return c, nil
 }
 
-// Scan returns at most q.Limit live records matching q in key order. A
-// limit outside 1..store.MaxScanLimit is an error, never "no limit".
-func (f *FSM) Scan(ctx context.Context, q store.ScanQuery) ([]store.Record, error) {
+// Scan returns at most q.Limit live records matching q with key > after, in
+// key order; after "" starts at the first key. q.Cursor is ignored: the
+// caller splits it per shard. A limit outside 1..store.MaxScanLimit is an
+// error, never "no limit".
+func (f *FSM) Scan(ctx context.Context, q store.ScanQuery, after string) ([]store.Record, error) {
 	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
 		return nil, fmt.Errorf("fsm: scan limit %d: must be 1 to %d", q.Limit, store.MaxScanLimit)
 	}
 	where := []string{"kind = ?", "deleted = 0"}
 	args := []any{string(q.Kind)}
+	if after != "" {
+		where = append(where, "key > ?")
+		args = append(args, after)
+	}
 	if q.Type != "" {
 		where = append(where, "type = ?")
 		args = append(args, string(q.Type))
