@@ -241,7 +241,7 @@ func TestCommittedOutcomeMapping(t *testing.T) {
 }
 
 // Failures that are not committed outcomes: not leader, no leader, unknown
-// outcome (invariant 5), unavailable reads.
+// outcome (CONTRIBUTING.md, Invariants, 5), unavailable reads.
 func TestFailureMapping(t *testing.T) {
 	rg := loadRing(t)
 	kvKey, _ := keyOn(t, rg, testShard, "", "kv:cfg")

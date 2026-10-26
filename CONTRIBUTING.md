@@ -95,3 +95,21 @@ are free or already held by the `reliefgrid` cluster.
   remote call. Wrap errors with `%w`; check them with `errors.Is` / `errors.As`.
 - Never invent a library API: check the pinned version's documentation or source.
 - When a PR says tests pass, paste the real command output.
+
+## Invariants
+
+Code and tests cite these by number (for example "CONTRIBUTING.md, Invariants, 5"). Never weaken one.
+
+1. All preconditions (CAS version, claim rules, operationId dedupe) are checked inside the committed
+   FSM apply, in one SQLite transaction.
+2. FSM apply is deterministic: no wall clock, randomness, map-iteration-order effects or
+   floating-point decisions. Proposers supply IDs and integer timestamps.
+3. No resource has two active claims; no request has two live claims; MATCHED/IN_PROGRESS requests
+   have a reciprocal claim; terminal requests hold no live claim.
+4. A historical operation result is never proof of current ownership.
+5. Unknown outcome is not rejection: keep the intent; retry the same operationId or close via
+   RETRYING.
+6. Never ack a RabbitMQ delivery before the durable handoff it depends on has committed.
+7. A failed or partial shard scan is never an empty result.
+8. Pods never self-bootstrap Raft; an empty disk stays unadmitted until `storagectl replace` admits
+   it (M7).

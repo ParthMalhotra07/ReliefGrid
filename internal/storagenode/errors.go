@@ -80,7 +80,7 @@ func (s *server) writeResult(w http.ResponseWriter, res store.Result, genericCAS
 }
 
 // writeFailure writes an Apply error that is not a committed outcome. Any
-// error not known to be "never proposed" is an unknown outcome (invariant 5).
+// error not known to be "never proposed" is an unknown outcome (CONTRIBUTING.md, Invariants, 5).
 func (s *server) writeFailure(w http.ResponseWriter, err error) {
 	if s.writeNotProposed(w, err) {
 		return

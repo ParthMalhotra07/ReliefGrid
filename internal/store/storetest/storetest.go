@@ -262,7 +262,7 @@ func testClaimAndCloseLifecycle(t *testing.T, s store.Store, n ns) {
 	}
 	expect(t, "claim a after close", store.ClaimClosed)(s.TryClaim(ctx, claim("claim-a-2", "q1", a)))
 
-	// Invariant 4: the historical SUCCESS is still returned by Operation,
+	// CONTRIBUTING.md, Invariants, 4: the historical SUCCESS is still returned by Operation,
 	// and is not ownership.
 	if old, err := s.Operation(ctx, rkey, n.op("claim-a").OperationID); err != nil || old.Outcome != store.ClaimSuccess {
 		t.Fatalf("historical claim = %+v, %v; want SUCCESS", old, err)

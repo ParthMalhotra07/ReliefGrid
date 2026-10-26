@@ -119,7 +119,7 @@ func TestDropResponseThenRetryReturnsCommittedResult(t *testing.T) {
 	}
 }
 
-// Invariant 7: a failed shard makes the scan partial, never empty-and-complete.
+// CONTRIBUTING.md, Invariants, 7: a failed shard makes the scan partial, never empty-and-complete.
 func TestScanWithFailedShardIsPartial(t *testing.T) {
 	ctx := testCtx(t)
 	base := newStore(t)
