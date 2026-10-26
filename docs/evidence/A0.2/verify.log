@@ -1,0 +1,29 @@
+=== A0.2 Verify: Workflow fixtures ===
+
+ok        go vet ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
+ok        go fixtures match schedules.md
+ok        tests/workflow/fixtures.go exists
+ok        tests/workflow/schedules.md exists
+
+--- §27 schedule coverage (fixtures.go) ---
+ok        SCH01_BothCASQueuedBeforeEitherApplies: found exactly once
+ok        SCH02_DroppedResponseAfterCommit: found exactly once
+ok        SCH03_CrashBeforeMatchingStep: found exactly once
+ok        SCH04_CrashAfterMatchingStep: found exactly once
+ok        SCH05_CancelBeforeTryClaim: found exactly once
+ok        SCH06_CancelAfterTryClaim: found exactly once
+ok        SCH07_StaleTryClaimAfterCloseAttempt: found exactly once
+ok        SCH08_ConfirmationRacingWithRetarget: found exactly once
+ok        SCH09_StaleOperationResultReplayAfterClose: found exactly once
+ok        SCH10_DuplicateTerminalEvents: found exactly once
+ok        SCH11_RepeatedCancelFulfillCalls: found exactly once
+ok        SCH12_RestartDuringSnapshotCreation: found exactly once
+ok        SCH13_RestartDuringSnapshotRestore: found exactly once
+ok        SCH14_CoordinatorRestartWithShardUnavailable: found exactly once
+ok        SCH15_BrokerOutageDuringRetryScheduling: found exactly once
+ok        SCH16_PoisonMessages: found exactly once
+ok        SCH17_PartialCandidateScan: found exactly once
+
+=== Results: 21 passed, 0 failed ===
+A0.2 VERIFY: ALL PASS

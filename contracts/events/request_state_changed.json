@@ -4,12 +4,21 @@
   "title": "RequestStateChanged",
   "description": "Emitted on every committed state transition of an emergency request.",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "required": [
+    "schemaVersion",
+    "eventId",
+    "entityId",
+    "entityVersion",
+    "eventType",
+    "occurredAt",
+    "traceparent",
+    "payload"
+  ],
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {
-      "type": "string",
-      "const": "1",
+      "type": "integer",
+      "const": 1,
       "description": "Schema version; increment on breaking changes."
     },
     "eventId": {
@@ -45,7 +54,11 @@
     "payload": {
       "type": "object",
       "description": "Previous and new state plus the triggering operation.",
-      "required": ["requestId", "previousStatus", "newStatus"],
+      "required": [
+        "requestId",
+        "previousStatus",
+        "newStatus"
+      ],
       "additionalProperties": false,
       "properties": {
         "requestId": {
@@ -54,12 +67,34 @@
         },
         "previousStatus": {
           "type": "string",
-          "enum": ["PENDING", "WAITING", "MATCHING", "MATCHED", "IN_PROGRESS", "RETRYING", "CANCELLING", "FULFILLING", "CANCELLED", "FULFILLED"],
+          "enum": [
+            "PENDING",
+            "WAITING",
+            "MATCHING",
+            "MATCHED",
+            "IN_PROGRESS",
+            "RETRYING",
+            "CANCELLING",
+            "FULFILLING",
+            "CANCELLED",
+            "FULFILLED"
+          ],
           "description": "RequestStatus before the transition."
         },
         "newStatus": {
           "type": "string",
-          "enum": ["PENDING", "WAITING", "MATCHING", "MATCHED", "IN_PROGRESS", "RETRYING", "CANCELLING", "FULFILLING", "CANCELLED", "FULFILLED"],
+          "enum": [
+            "PENDING",
+            "WAITING",
+            "MATCHING",
+            "MATCHED",
+            "IN_PROGRESS",
+            "RETRYING",
+            "CANCELLING",
+            "FULFILLING",
+            "CANCELLED",
+            "FULFILLED"
+          ],
           "description": "RequestStatus after the transition."
         },
         "operationId": {
@@ -77,7 +112,7 @@
   },
   "examples": [
     {
-      "schemaVersion": "1",
+      "schemaVersion": 1,
       "eventId": "d4e5f6a7-b8c9-0123-defa-234567890123",
       "entityId": "550e8400-e29b-41d4-a716-446655440000",
       "entityVersion": 3,
@@ -85,11 +120,11 @@
       "occurredAt": "2026-10-21T13:57:00Z",
       "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
       "payload": {
-        "requestId":      "550e8400-e29b-41d4-a716-446655440000",
+        "requestId": "550e8400-e29b-41d4-a716-446655440000",
         "previousStatus": "MATCHING",
-        "newStatus":      "MATCHED",
-        "operationId":    "880e8400-e29b-41d4-a716-446655440003",
-        "attemptId":      "770e8400-e29b-41d4-a716-446655440002"
+        "newStatus": "MATCHED",
+        "operationId": "880e8400-e29b-41d4-a716-446655440003",
+        "attemptId": "770e8400-e29b-41d4-a716-446655440002"
       }
     }
   ]

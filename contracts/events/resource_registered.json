@@ -4,12 +4,21 @@
   "title": "ResourceRegistered",
   "description": "Emitted when a new emergency resource is committed to the FSM.",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "required": [
+    "schemaVersion",
+    "eventId",
+    "entityId",
+    "entityVersion",
+    "eventType",
+    "occurredAt",
+    "traceparent",
+    "payload"
+  ],
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {
-      "type": "string",
-      "const": "1",
+      "type": "integer",
+      "const": 1,
       "description": "Schema version; increment on breaking changes."
     },
     "eventId": {
@@ -45,35 +54,76 @@
     "payload": {
       "type": "object",
       "description": "Snapshot of the resource at registration time.",
-      "required": ["resourceId", "resourceType", "name", "status", "location", "disposition", "windowStart", "windowEnd"],
+      "required": [
+        "resourceId",
+        "resourceType",
+        "name",
+        "status",
+        "location",
+        "windowStart",
+        "windowEnd",
+        "reusable"
+      ],
       "additionalProperties": false,
       "properties": {
-        "resourceId":   { "type": "string", "format": "uuid" },
+        "resourceId": {
+          "type": "string",
+          "format": "uuid"
+        },
         "resourceType": {
           "type": "string",
-          "enum": ["WATER", "FOOD", "MEDICINE", "TRANSPORTATION", "SHELTER"]
+          "enum": [
+            "WATER",
+            "FOOD",
+            "MEDICINE",
+            "TRANSPORTATION",
+            "SHELTER"
+          ]
         },
-        "name":         { "type": "string" },
-        "status":       { "type": "string", "const": "AVAILABLE" },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "const": "AVAILABLE"
+        },
         "location": {
           "type": "object",
-          "required": ["lat", "lng"],
+          "required": [
+            "lat",
+            "lng"
+          ],
           "additionalProperties": false,
           "properties": {
-            "lat": { "type": "number", "minimum": -90,  "maximum": 90  },
-            "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lng": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            }
           }
         },
-        "disposition":  { "type": "string", "enum": ["REUSABLE", "CONSUMABLE"] },
-        "operatorId":   { "type": "string" },
-        "windowStart":  { "type": "string", "format": "date-time" },
-        "windowEnd":    { "type": "string", "format": "date-time" }
+        "windowStart": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "windowEnd": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reusable": {
+          "type": "boolean"
+        }
       }
     }
   },
   "examples": [
     {
-      "schemaVersion": "1",
+      "schemaVersion": 1,
       "eventId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
       "entityId": "660e8400-e29b-41d4-a716-446655440001",
       "entityVersion": 1,
@@ -81,15 +131,17 @@
       "occurredAt": "2026-10-21T05:50:00Z",
       "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
       "payload": {
-        "resourceId": "660e8400-e29b-41d4-a716-446655440001",
         "resourceType": "MEDICINE",
-        "name": "Ambulance Unit 7",
-        "status": "AVAILABLE",
-        "location": { "lat": 28.6200, "lng": 77.2100 },
-        "disposition": "REUSABLE",
-        "operatorId": "operator-xyz789",
+        "name": "Medical supply unit 7",
+        "location": {
+          "lat": 28.62,
+          "lng": 77.21
+        },
+        "reusable": true,
         "windowStart": "2026-10-21T06:00:00Z",
-        "windowEnd": "2026-10-22T06:00:00Z"
+        "windowEnd": "2026-10-22T06:00:00Z",
+        "resourceId": "660e8400-e29b-41d4-a716-446655440001",
+        "status": "AVAILABLE"
       }
     }
   ]

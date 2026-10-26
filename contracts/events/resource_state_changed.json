@@ -4,12 +4,21 @@
   "title": "ResourceStateChanged",
   "description": "Emitted on every committed status change of an emergency resource.",
   "type": "object",
-  "required": ["schemaVersion", "eventId", "entityId", "entityVersion", "eventType", "occurredAt", "traceparent", "payload"],
+  "required": [
+    "schemaVersion",
+    "eventId",
+    "entityId",
+    "entityVersion",
+    "eventType",
+    "occurredAt",
+    "traceparent",
+    "payload"
+  ],
   "additionalProperties": false,
   "properties": {
     "schemaVersion": {
-      "type": "string",
-      "const": "1",
+      "type": "integer",
+      "const": 1,
       "description": "Schema version; increment on breaking changes."
     },
     "eventId": {
@@ -45,7 +54,11 @@
     "payload": {
       "type": "object",
       "description": "Previous and new status plus the claim that triggered the change.",
-      "required": ["resourceId", "previousStatus", "newStatus"],
+      "required": [
+        "resourceId",
+        "previousStatus",
+        "newStatus"
+      ],
       "additionalProperties": false,
       "properties": {
         "resourceId": {
@@ -54,30 +67,51 @@
         },
         "previousStatus": {
           "type": "string",
-          "enum": ["AVAILABLE", "ASSIGNED", "OFFLINE", "CONSUMED"],
+          "enum": [
+            "AVAILABLE",
+            "ASSIGNED",
+            "OFFLINE",
+            "CONSUMED"
+          ],
           "description": "ResourceStatus before the transition."
         },
         "newStatus": {
           "type": "string",
-          "enum": ["AVAILABLE", "ASSIGNED", "OFFLINE", "CONSUMED"],
+          "enum": [
+            "AVAILABLE",
+            "ASSIGNED",
+            "OFFLINE",
+            "CONSUMED"
+          ],
           "description": "ResourceStatus after the transition."
-        },
-        "claimId": {
-          "type": "string",
-          "format": "uuid",
-          "description": "Present when the transition is claim-driven (AVAILABLE to ASSIGNED or reverse)."
         },
         "operationId": {
           "type": "string",
           "format": "uuid",
           "description": "Idempotent operationId that triggered this transition."
+        },
+        "requestId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "attemptId": {
+          "type": "string",
+          "format": "uuid"
         }
+      },
+      "dependentRequired": {
+        "requestId": [
+          "attemptId"
+        ],
+        "attemptId": [
+          "requestId"
+        ]
       }
     }
   },
   "examples": [
     {
-      "schemaVersion": "1",
+      "schemaVersion": 1,
       "eventId": "e5f6a7b8-c9d0-1234-efab-345678901234",
       "entityId": "660e8400-e29b-41d4-a716-446655440001",
       "entityVersion": 2,
@@ -85,11 +119,12 @@
       "occurredAt": "2026-10-21T13:57:00Z",
       "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
       "payload": {
-        "resourceId":      "660e8400-e29b-41d4-a716-446655440001",
-        "previousStatus":  "AVAILABLE",
-        "newStatus":       "ASSIGNED",
-        "claimId":         "990e8400-e29b-41d4-a716-446655440004",
-        "operationId":     "880e8400-e29b-41d4-a716-446655440003"
+        "resourceId": "660e8400-e29b-41d4-a716-446655440001",
+        "previousStatus": "AVAILABLE",
+        "newStatus": "ASSIGNED",
+        "operationId": "880e8400-e29b-41d4-a716-446655440003",
+        "requestId": "550e8400-e29b-41d4-a716-446655440000",
+        "attemptId": "770e8400-e29b-41d4-a716-446655440002"
       }
     }
   ]

@@ -1,0 +1,46 @@
+# The bootstrap Job may create the manifests and read and compare-and-swap
+# them, nothing else. Kubernetes RBAC can't scope create by resourceNames (the
+# name is not part of the request it authorizes), so create is a separate rule
+# on configmaps; get and update stay limited to the manifests.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: storage-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-bootstrap
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: storage-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-bootstrap
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: {{ splitList "," (include "storage.manifests" .) | toJson }}
+    verbs: [get, update]
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [create]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: storage-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: storage-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: storage-bootstrap
+    namespace: {{ .Release.Namespace }}

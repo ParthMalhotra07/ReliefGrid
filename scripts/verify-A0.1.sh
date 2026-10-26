@@ -116,7 +116,7 @@ gen_out=$(make gen 2>&1)
 gen_rc=$?
 echo "$gen_out"
 if [ $gen_rc -eq 0 ]; then
-  dirty=$(git status --short -- internal/api/gen/ contracts/)
+  dirty=$(git status --short -- internal/api/gen/ internal/internalapi/ contracts/)
   if [ -z "$dirty" ]; then
     ok "make gen: git status clean after gen"
   else
@@ -140,6 +140,17 @@ if [ -d "internal/api/gen" ] && ls internal/api/gen/*.go >/dev/null 2>&1; then
   fi
 else
   fail "internal/api/gen/*.go not generated"
+fi
+
+# The reviewed public/store boundary and adversarial payload cases must remain
+# covered even when the structural spec and schema-example checks are green.
+public_out=$("$GO" test ./contracts -run TestPublic -count=1 2>&1)
+public_rc=$?
+echo "$public_out"
+if [ $public_rc -eq 0 ]; then
+  ok "public contract boundary and invalid-input regressions"
+else
+  fail "public contract boundary and invalid-input regressions"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────────────

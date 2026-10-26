@@ -1,0 +1,59 @@
+# One-time bootstrap (v3.1 §10). An ordinary Job, not a Helm hook (C2): Helm
+# --wait would wait for Ready storage pods before running a post-install
+# hook, and pods are only Ready once a group exists. Named per revision, so
+# every helm upgrade re-runs it; on an existing group it only verifies.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: storage-bootstrap-{{ .Release.Revision }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-bootstrap
+spec:
+  backoffLimit: {{ .Values.bootstrap.backoffLimit }}
+  activeDeadlineSeconds: {{ add .Values.bootstrap.timeoutSeconds .Values.bootstrap.debugHoldSeconds 60 }}
+  # Exit 2 is a refusal (for example wiped disks under a BOOTSTRAPPED
+  # manifest): retrying cannot change it.
+  podFailurePolicy:
+    rules:
+      - action: FailJob
+        onExitCodes:
+          containerName: storagectl
+          operator: In
+          values: [2]
+  template:
+    metadata:
+      labels:
+        {{- include "storage.labels" . | nindent 8 }}
+        app.kubernetes.io/component: storage-bootstrap
+        reliefgrid.io/storage-operator: "true"
+    spec:
+      restartPolicy: Never
+      serviceAccountName: storage-bootstrap
+      enableServiceLinks: false
+      securityContext:
+        {{- include "storage.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: storagectl
+          image: {{ include "storage.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/storagectl, bootstrap]
+          securityContext:
+            {{- include "storage.containerSecurityContext" . | nindent 12 }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
+            - name: MANIFESTS # specs; storagectl creates and owns the manifests
+              value: {{ include "storage.manifestSpecs" . | quote }}
+            - name: OPERATOR_TOKEN
+              valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
+            - name: MGMT_PORT
+              value: "8081"
+            - name: BOOTSTRAP_TIMEOUT_SECONDS
+              value: {{ add .Values.bootstrap.timeoutSeconds .Values.bootstrap.debugHoldSeconds | quote }}
+            - name: HOLD_SECONDS
+              value: {{ .Values.bootstrap.debugHoldSeconds | quote }}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 64Mi}

@@ -9,18 +9,51 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// Defines values for Disposition.
+// Defines values for ErrorEnvelopeCode.
 const (
-	CONSUMABLE Disposition = "CONSUMABLE"
-	REUSABLE   Disposition = "REUSABLE"
+	CONFLICTIDEMPOTENCYKEY ErrorEnvelopeCode = "CONFLICT_IDEMPOTENCY_KEY"
+	DOMAINCONFLICT         ErrorEnvelopeCode = "DOMAIN_CONFLICT"
+	FORBIDDEN              ErrorEnvelopeCode = "FORBIDDEN"
+	INVALID                ErrorEnvelopeCode = "INVALID"
+	NOLEADER               ErrorEnvelopeCode = "NO_LEADER"
+	NOTFOUND               ErrorEnvelopeCode = "NOT_FOUND"
+	NOTLEADER              ErrorEnvelopeCode = "NOT_LEADER"
+	OPERATIONIDREUSED      ErrorEnvelopeCode = "OPERATION_ID_REUSED"
+	OUTCOMEUNKNOWN         ErrorEnvelopeCode = "OUTCOME_UNKNOWN"
+	RINGVERSIONMISMATCH    ErrorEnvelopeCode = "RING_VERSION_MISMATCH"
+	STORAGEUNAVAILABLE     ErrorEnvelopeCode = "STORAGE_UNAVAILABLE"
+	UNAUTHORIZED           ErrorEnvelopeCode = "UNAUTHORIZED"
+	VERSIONCONFLICT        ErrorEnvelopeCode = "VERSION_CONFLICT"
 )
 
-// Valid indicates whether the value is a known member of the Disposition enum.
-func (e Disposition) Valid() bool {
+// Valid indicates whether the value is a known member of the ErrorEnvelopeCode enum.
+func (e ErrorEnvelopeCode) Valid() bool {
 	switch e {
-	case CONSUMABLE:
+	case CONFLICTIDEMPOTENCYKEY:
 		return true
-	case REUSABLE:
+	case DOMAINCONFLICT:
+		return true
+	case FORBIDDEN:
+		return true
+	case INVALID:
+		return true
+	case NOLEADER:
+		return true
+	case NOTFOUND:
+		return true
+	case NOTLEADER:
+		return true
+	case OPERATIONIDREUSED:
+		return true
+	case OUTCOMEUNKNOWN:
+		return true
+	case RINGVERSIONMISMATCH:
+		return true
+	case STORAGEUNAVAILABLE:
+		return true
+	case UNAUTHORIZED:
+		return true
+	case VERSIONCONFLICT:
 		return true
 	default:
 		return false
@@ -42,6 +75,27 @@ func (e MatchResponseOutcome) Valid() bool {
 	case MatchResponseOutcomeMATCHED:
 		return true
 	case MatchResponseOutcomeNOCANDIDATE:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for RequestListResponseConsistency.
+const (
+	RequestListResponseConsistencyLinearizable RequestListResponseConsistency = "linearizable"
+	RequestListResponseConsistencyStale        RequestListResponseConsistency = "stale"
+	RequestListResponseConsistencyStrong       RequestListResponseConsistency = "strong"
+)
+
+// Valid indicates whether the value is a known member of the RequestListResponseConsistency enum.
+func (e RequestListResponseConsistency) Valid() bool {
+	switch e {
+	case RequestListResponseConsistencyLinearizable:
+		return true
+	case RequestListResponseConsistencyStale:
+		return true
+	case RequestListResponseConsistencyStrong:
 		return true
 	default:
 		return false
@@ -90,27 +144,21 @@ func (e RequestStatus) Valid() bool {
 	}
 }
 
-// Defines values for RequestType.
+// Defines values for ResourceListResponseConsistency.
 const (
-	RequestTypeFOOD           RequestType = "FOOD"
-	RequestTypeMEDICINE       RequestType = "MEDICINE"
-	RequestTypeSHELTER        RequestType = "SHELTER"
-	RequestTypeTRANSPORTATION RequestType = "TRANSPORTATION"
-	RequestTypeWATER          RequestType = "WATER"
+	ResourceListResponseConsistencyLinearizable ResourceListResponseConsistency = "linearizable"
+	ResourceListResponseConsistencyStale        ResourceListResponseConsistency = "stale"
+	ResourceListResponseConsistencyStrong       ResourceListResponseConsistency = "strong"
 )
 
-// Valid indicates whether the value is a known member of the RequestType enum.
-func (e RequestType) Valid() bool {
+// Valid indicates whether the value is a known member of the ResourceListResponseConsistency enum.
+func (e ResourceListResponseConsistency) Valid() bool {
 	switch e {
-	case RequestTypeFOOD:
+	case ResourceListResponseConsistencyLinearizable:
 		return true
-	case RequestTypeMEDICINE:
+	case ResourceListResponseConsistencyStale:
 		return true
-	case RequestTypeSHELTER:
-		return true
-	case RequestTypeTRANSPORTATION:
-		return true
-	case RequestTypeWATER:
+	case ResourceListResponseConsistencyStrong:
 		return true
 	default:
 		return false
@@ -143,25 +191,25 @@ func (e ResourceStatus) Valid() bool {
 
 // Defines values for ResourceType.
 const (
-	ResourceTypeFOOD           ResourceType = "FOOD"
-	ResourceTypeMEDICINE       ResourceType = "MEDICINE"
-	ResourceTypeSHELTER        ResourceType = "SHELTER"
-	ResourceTypeTRANSPORTATION ResourceType = "TRANSPORTATION"
-	ResourceTypeWATER          ResourceType = "WATER"
+	FOOD           ResourceType = "FOOD"
+	MEDICINE       ResourceType = "MEDICINE"
+	SHELTER        ResourceType = "SHELTER"
+	TRANSPORTATION ResourceType = "TRANSPORTATION"
+	WATER          ResourceType = "WATER"
 )
 
 // Valid indicates whether the value is a known member of the ResourceType enum.
 func (e ResourceType) Valid() bool {
 	switch e {
-	case ResourceTypeFOOD:
+	case FOOD:
 		return true
-	case ResourceTypeMEDICINE:
+	case MEDICINE:
 		return true
-	case ResourceTypeSHELTER:
+	case SHELTER:
 		return true
-	case ResourceTypeTRANSPORTATION:
+	case TRANSPORTATION:
 		return true
-	case ResourceTypeWATER:
+	case WATER:
 		return true
 	default:
 		return false
@@ -207,58 +255,58 @@ func (e UpdateResourceStatusBodyStatus) Valid() bool {
 	}
 }
 
-// CreateRequestBody windowStart and windowEnd must be UTC timestamps with windowStart < windowEnd.
+// Defines values for Urgency.
+const (
+	CRITICAL Urgency = "CRITICAL"
+	HIGH     Urgency = "HIGH"
+	NORMAL   Urgency = "NORMAL"
+)
+
+// Valid indicates whether the value is a known member of the Urgency enum.
+func (e Urgency) Valid() bool {
+	switch e {
+	case CRITICAL:
+		return true
+	case HIGH:
+		return true
+	case NORMAL:
+		return true
+	default:
+		return false
+	}
+}
+
+// CreateRequestBody Request data follows the stored request model. Requests have no availability window or automatic expiry cancellation.
 //
-// Example: {"description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestType":"MEDICINE","requestorId":"user-abc123","title":"Cardiac arrest at market","windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
+// Example: {"details":"Medical supplies requested at the north entrance.","location":{"lat":28.6139,"lng":77.209},"peopleAffected":4,"requestType":"MEDICINE","urgency":"HIGH"}
 type CreateRequestBody struct {
-	// Description Optional additional details about the emergency.
+	// Details Synthetic emergency details, persisted without separate title or requestor fields.
 	//
-	// Example: Elderly male, unconscious, at the north entrance.
-	Description *string `json:"description,omitempty"`
+	// Example: Medical supplies requested at the north entrance.
+	Details string `json:"details"`
 
 	// Location WGS-84 geographic coordinates.
 	//
 	// Example: {"lat":28.6139,"lng":77.209}
 	Location Location `json:"location"`
 
-	// RequestType Category of emergency request (§8). Shares the same five values as
-	// ResourceType; a request's type must match the resource type it is
-	// matched to. Values match the FSM store exactly.
+	// PeopleAffected Number of people needing assistance.
+	//
+	// Example: 4
+	PeopleAffected *int32 `json:"peopleAffected,omitempty"`
+
+	// RequestType Category of emergency resource (§8). Shared between requests (what is
+	// needed) and resources (what is offered). Values match the FSM store exactly.
 	//
 	//
 	// Example: MEDICINE
 	RequestType RequestType `json:"requestType"`
 
-	// RequestorId ID of the user or system submitting this request.
+	// Urgency Application urgency: NORMAL=1, HIGH=2, CRITICAL=3 in stored requests and explicit AMQP priorities.
 	//
-	// Example: user-abc123
-	RequestorId string `json:"requestorId"`
-
-	// Title Short human-readable title for the emergency.
-	//
-	// Example: Cardiac arrest at market
-	Title string `json:"title"`
-
-	// WindowEnd Latest time the request is active (UTC ISO 8601).
-	// Requests whose windowEnd has passed and are not yet matched
-	// transition to CANCELLED.
-	//
-	//
-	// Example: 2026-10-21T16:00:00Z
-	WindowEnd time.Time `json:"windowEnd"`
-
-	// WindowStart Earliest time the request is active (UTC ISO 8601).
-	//
-	// Example: 2026-10-21T14:00:00Z
-	WindowStart time.Time `json:"windowStart"`
+	// Example: NORMAL
+	Urgency *Urgency `json:"urgency,omitempty"`
 }
-
-// Disposition Whether a resource is consumed by fulfilling a request (CONSUMABLE —
-// e.g., a medical supply kit) or can be reassigned after completion
-// (REUSABLE — e.g., an ambulance).
-//
-// Example: REUSABLE
-type Disposition string
 
 // ErrorDetail Field-level validation error.
 //
@@ -275,18 +323,14 @@ type ErrorDetail struct {
 	Message string `json:"message"`
 }
 
-// ErrorEnvelope Standard error response for all 4xx and 5xx responses.
-// `retryable` and `outcomeUnknown` are distinct:
-//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
-//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
-//     NOT discard their intent and SHOULD retry the same operationId.
+// ErrorEnvelope Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
 //
-// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
 type ErrorEnvelope struct {
 	// Code Machine-readable error code.
 	//
 	// Example: CONFLICT_IDEMPOTENCY_KEY
-	Code string `json:"code"`
+	Code ErrorEnvelopeCode `json:"code"`
 
 	// CorrelationId Server-generated UUID for tracing this specific request.
 	//
@@ -314,6 +358,11 @@ type ErrorEnvelope struct {
 	Retryable bool `json:"retryable"`
 }
 
+// ErrorEnvelopeCode Machine-readable error code.
+//
+// Example: CONFLICT_IDEMPOTENCY_KEY
+type ErrorEnvelopeCode string
+
 // Location WGS-84 geographic coordinates.
 //
 // Example: {"lat":28.6139,"lng":77.209}
@@ -329,11 +378,13 @@ type Location struct {
 	Lng float64 `json:"lng"`
 }
 
-// MatchResponse Example: {"outcome":"MATCHED","request":{"createdAt":"2026-10-21T13:55:00Z","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","requestorId":"user-abc123","status":"MATCHED","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:57:00Z","version":3,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}}
+// MatchResponse Example: {"outcome":"MATCHED","request":{"assignedResourceId":"660e8400-e29b-41d4-a716-446655440001","createdAt":"2026-10-21T13:55:00Z","details":"Medical supplies requested at the north entrance.","lastError":"","location":{"lat":28.6139,"lng":77.209},"nextAttemptAt":null,"peopleAffected":4,"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","retryCount":0,"status":"MATCHED","updatedAt":"2026-10-21T13:57:00Z","urgency":"HIGH","version":"v3"}}
 type MatchResponse struct {
 	Outcome MatchResponseOutcome `json:"outcome"`
 
-	// Request Example: {"createdAt":"2026-10-21T13:55:00Z","description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","requestorId":"user-abc123","status":"PENDING","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:55:00Z","version":1,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
+	// Request Request data follows the stored request model. Requests have no availability window or automatic expiry cancellation.
+	//
+	// Example: {"assignedResourceId":null,"createdAt":"2026-10-21T13:55:00Z","details":"Medical supplies requested at the north entrance.","lastError":"","location":{"lat":28.6139,"lng":77.209},"nextAttemptAt":null,"peopleAffected":4,"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","retryCount":0,"status":"PENDING","updatedAt":"2026-10-21T13:55:00Z","urgency":"HIGH","version":"v1"}
 	Request RequestResponse `json:"request"`
 }
 
@@ -342,16 +393,8 @@ type MatchResponseOutcome string
 
 // RegisterResourceBody windowStart and windowEnd must be UTC timestamps with windowStart < windowEnd.
 //
-// Example: {"disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceType":"MEDICINE","windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
+// Example: {"location":{"lat":28.62,"lng":77.21},"name":"Medical supply unit 7","resourceType":"MEDICINE","reusable":true,"windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
 type RegisterResourceBody struct {
-	// Disposition Whether a resource is consumed by fulfilling a request (CONSUMABLE —
-	// e.g., a medical supply kit) or can be reassigned after completion
-	// (REUSABLE — e.g., an ambulance).
-	//
-	//
-	// Example: REUSABLE
-	Disposition Disposition `json:"disposition"`
-
 	// Location WGS-84 geographic coordinates.
 	//
 	// Example: {"lat":28.6139,"lng":77.209}
@@ -362,17 +405,15 @@ type RegisterResourceBody struct {
 	// Example: Ambulance Unit 7
 	Name string `json:"name"`
 
-	// OperatorId ID of the operator registering this resource.
-	//
-	// Example: operator-xyz789
-	OperatorId string `json:"operatorId"`
-
 	// ResourceType Category of emergency resource (§8). Shared between requests (what is
 	// needed) and resources (what is offered). Values match the FSM store exactly.
 	//
 	//
 	// Example: MEDICINE
 	ResourceType ResourceType `json:"resourceType"`
+
+	// Reusable Whether fulfillment can return the resource to AVAILABLE; an expired window yields OFFLINE.
+	Reusable bool `json:"reusable"`
 
 	// WindowEnd End of the availability window (UTC ISO 8601).
 	//
@@ -387,120 +428,133 @@ type RegisterResourceBody struct {
 
 // RequestListResponse defines model for RequestListResponse.
 type RequestListResponse struct {
-	Items []RequestResponse `json:"items"`
+	// Consistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+	Consistency  RequestListResponseConsistency `json:"consistency"`
+	FailedShards []int                          `json:"failedShards"`
+	Items        []RequestResponse              `json:"items"`
 
 	// Partial Always false on a successful authoritative list; failed shard scans return 503.
 	Partial bool `json:"partial"`
+
+	// Positions Applied positions for the answering shards; not a global snapshot.
+	Positions []ShardPosition `json:"positions"`
 }
 
-// RequestResponse Example: {"createdAt":"2026-10-21T13:55:00Z","description":"Elderly male, unconscious, at the north entrance.","location":{"lat":28.6139,"lng":77.209},"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","requestorId":"user-abc123","status":"PENDING","title":"Cardiac arrest at market","updatedAt":"2026-10-21T13:55:00Z","version":1,"windowEnd":"2026-10-21T16:00:00Z","windowStart":"2026-10-21T14:00:00Z"}
+// RequestListResponseConsistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+type RequestListResponseConsistency string
+
+// RequestResponse Request data follows the stored request model. Requests have no availability window or automatic expiry cancellation.
+//
+// Example: {"assignedResourceId":null,"createdAt":"2026-10-21T13:55:00Z","details":"Medical supplies requested at the north entrance.","lastError":"","location":{"lat":28.6139,"lng":77.209},"nextAttemptAt":null,"peopleAffected":4,"requestId":"550e8400-e29b-41d4-a716-446655440000","requestType":"MEDICINE","retryCount":0,"status":"PENDING","updatedAt":"2026-10-21T13:55:00Z","urgency":"HIGH","version":"v1"}
 type RequestResponse struct {
+	// AssignedResourceId Current assignment, or null when unassigned.
+	AssignedResourceId *openapi_types.UUID `json:"assignedResourceId,omitempty"`
+
 	// CreatedAt Example: 2026-10-21T13:55:00Z
 	CreatedAt time.Time `json:"createdAt"`
 
-	// Description Example: Elderly male, unconscious, at the north entrance.
-	Description *string `json:"description,omitempty"`
+	// Details Synthetic emergency details, persisted without separate title or requestor fields.
+	//
+	// Example: Medical supplies requested at the north entrance.
+	Details string `json:"details"`
+
+	// LastError Last workflow error; empty when none.
+	LastError *string `json:"lastError,omitempty"`
 
 	// Location WGS-84 geographic coordinates.
 	//
 	// Example: {"lat":28.6139,"lng":77.209}
 	Location Location `json:"location"`
+
+	// NextAttemptAt UTC retry due time, or null when none is scheduled.
+	NextAttemptAt *time.Time `json:"nextAttemptAt,omitempty"`
+
+	// PeopleAffected Number of people needing assistance.
+	//
+	// Example: 4
+	PeopleAffected int32 `json:"peopleAffected"`
 
 	// RequestId Server-assigned unique identifier.
 	//
 	// Example: 550e8400-e29b-41d4-a716-446655440000
 	RequestId openapi_types.UUID `json:"requestId"`
 
-	// RequestType Category of emergency request (§8). Shares the same five values as
-	// ResourceType; a request's type must match the resource type it is
-	// matched to. Values match the FSM store exactly.
+	// RequestType Category of emergency resource (§8). Shared between requests (what is
+	// needed) and resources (what is offered). Values match the FSM store exactly.
 	//
 	//
 	// Example: MEDICINE
 	RequestType RequestType `json:"requestType"`
+	RetryCount  *int        `json:"retryCount,omitempty"`
 
-	// RequestorId Example: user-abc123
-	RequestorId string `json:"requestorId"`
-
-	// Status Lifecycle state of an emergency request (§8).
-	// Terminal states: CANCELLED, FULFILLED.
-	// WAITING: no candidate found yet; scheduled for retry.
-	// CANCELLING and FULFILLING are closure states held until the matching
-	// claim commits. RETRYING fences confirmation — no new attempt is started
-	// until the previous attempt's closure commits.
-	//
+	// Status Request lifecycle. CANCELLING and FULFILLING retain cleanup information until attempt closure commits. RETRYING fences confirmation; a new attempt is not started until the previous attempt is durably closed. CANCELLED/FULFILLED are terminal; WAITING has no live attempt.
 	//
 	// Example: PENDING
 	Status RequestStatus `json:"status"`
 
-	// Title Example: Cardiac arrest at market
-	Title string `json:"title"`
-
 	// UpdatedAt Example: 2026-10-21T13:55:00Z
 	UpdatedAt time.Time `json:"updatedAt"`
 
-	// Version Monotonically increasing FSM version. Use for optimistic concurrency
-	// (CAS) checks. Incremented on every committed state transition.
+	// Urgency Application urgency: NORMAL=1, HIGH=2, CRITICAL=3 in stored requests and explicit AMQP priorities.
 	//
+	// Example: NORMAL
+	Urgency Urgency `json:"urgency"`
+
+	// Version Opaque version token. Compare for equality only; never parse, increment or order it.
 	//
-	// Example: 1
-	Version int `json:"version"`
-
-	// WindowEnd Example: 2026-10-21T16:00:00Z
-	WindowEnd time.Time `json:"windowEnd"`
-
-	// WindowStart Example: 2026-10-21T14:00:00Z
-	WindowStart time.Time `json:"windowStart"`
+	// Example: v1
+	Version Version `json:"version"`
 }
 
-// RequestStatus Lifecycle state of an emergency request (§8).
-// Terminal states: CANCELLED, FULFILLED.
-// WAITING: no candidate found yet; scheduled for retry.
-// CANCELLING and FULFILLING are closure states held until the matching
-// claim commits. RETRYING fences confirmation — no new attempt is started
-// until the previous attempt's closure commits.
+// RequestStatus Request lifecycle. CANCELLING and FULFILLING retain cleanup information until attempt closure commits. RETRYING fences confirmation; a new attempt is not started until the previous attempt is durably closed. CANCELLED/FULFILLED are terminal; WAITING has no live attempt.
 //
 // Example: PENDING
 type RequestStatus string
 
-// RequestType Category of emergency request (§8). Shares the same five values as
-// ResourceType; a request's type must match the resource type it is
-// matched to. Values match the FSM store exactly.
+// RequestType Category of emergency resource (§8). Shared between requests (what is
+// needed) and resources (what is offered). Values match the FSM store exactly.
 //
 // Example: MEDICINE
-type RequestType string
+type RequestType = ResourceType
 
 // ResourceListResponse defines model for ResourceListResponse.
 type ResourceListResponse struct {
-	Items []ResourceResponse `json:"items"`
+	// Consistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+	Consistency  ResourceListResponseConsistency `json:"consistency"`
+	FailedShards []int                           `json:"failedShards"`
+	Items        []ResourceResponse              `json:"items"`
 
 	// Partial True only for explicitly diagnostic partial data; authoritative list failures return 503.
 	Partial bool `json:"partial"`
+
+	// Positions Applied positions for the answering shards; not a global snapshot.
+	Positions []ShardPosition `json:"positions"`
 }
 
-// ResourceResponse Example: {"createdAt":"2026-10-21T05:50:00Z","disposition":"REUSABLE","location":{"lat":28.62,"lng":77.21},"name":"Ambulance Unit 7","operatorId":"operator-xyz789","resourceId":"660e8400-e29b-41d4-a716-446655440001","resourceType":"MEDICINE","status":"AVAILABLE","updatedAt":"2026-10-21T05:50:00Z","version":1,"windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
+// ResourceListResponseConsistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+type ResourceListResponseConsistency string
+
+// ResourceResponse Example: {"activeClaim":null,"createdAt":"2026-10-21T13:55:00Z","location":{"lat":28.62,"lng":77.21},"locationRevision":0,"name":"Medical supply unit 7","resourceId":"660e8400-e29b-41d4-a716-446655440001","resourceType":"MEDICINE","reusable":true,"status":"AVAILABLE","updatedAt":"2026-10-21T13:55:00Z","version":"v1","windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}
 type ResourceResponse struct {
+	// ActiveClaim Read-only claim identity, or null when unclaimed; clients cannot mutate it.
+	ActiveClaim *struct {
+		AttemptId openapi_types.UUID `json:"attemptId"`
+		RequestId openapi_types.UUID `json:"requestId"`
+	} `json:"activeClaim,omitempty"`
+
 	// CreatedAt Example: 2026-10-21T05:50:00Z
 	CreatedAt time.Time `json:"createdAt"`
-
-	// Disposition Whether a resource is consumed by fulfilling a request (CONSUMABLE —
-	// e.g., a medical supply kit) or can be reassigned after completion
-	// (REUSABLE — e.g., an ambulance).
-	//
-	//
-	// Example: REUSABLE
-	Disposition Disposition `json:"disposition"`
 
 	// Location WGS-84 geographic coordinates.
 	//
 	// Example: {"lat":28.6139,"lng":77.209}
 	Location Location `json:"location"`
 
+	// LocationRevision Stored location revision. Core resource type and location are immutable.
+	LocationRevision *uint64 `json:"locationRevision,omitempty"`
+
 	// Name Example: Ambulance Unit 7
 	Name string `json:"name"`
-
-	// OperatorId Example: operator-xyz789
-	OperatorId string `json:"operatorId"`
 
 	// ResourceId Server-assigned unique identifier.
 	//
@@ -513,6 +567,9 @@ type ResourceResponse struct {
 	//
 	// Example: MEDICINE
 	ResourceType ResourceType `json:"resourceType"`
+
+	// Reusable Whether fulfillment can return the resource to AVAILABLE; an expired window yields OFFLINE.
+	Reusable bool `json:"reusable"`
 
 	// Status Operational status of a resource (§8).
 	// AVAILABLE: ready to be claimed.
@@ -527,11 +584,10 @@ type ResourceResponse struct {
 	// UpdatedAt Example: 2026-10-21T05:50:00Z
 	UpdatedAt time.Time `json:"updatedAt"`
 
-	// Version Monotonically increasing FSM version for optimistic concurrency.
+	// Version Opaque version token. Compare for equality only; never parse, increment or order it.
 	//
-	//
-	// Example: 1
-	Version int `json:"version"`
+	// Example: v1
+	Version Version `json:"version"`
 
 	// WindowEnd Example: 2026-10-22T06:00:00Z
 	WindowEnd time.Time `json:"windowEnd"`
@@ -554,6 +610,15 @@ type ResourceStatus string
 //
 // Example: MEDICINE
 type ResourceType string
+
+// ShardPosition defines model for ShardPosition.
+type ShardPosition struct {
+	AppliedIndex uint64 `json:"appliedIndex"`
+
+	// HasMore True means the bounded shard page may be truncated.
+	HasMore *bool `json:"hasMore,omitempty"`
+	Shard   int   `json:"shard"`
+}
 
 // UpdateRequestStatusBody Example: {"status":"CANCELLED"}
 type UpdateRequestStatusBody struct {
@@ -587,6 +652,16 @@ type UpdateResourceStatusBody struct {
 // UpdateResourceStatusBodyStatus defines model for UpdateResourceStatusBody.Status.
 type UpdateResourceStatusBodyStatus string
 
+// Urgency Application urgency: NORMAL=1, HIGH=2, CRITICAL=3 in stored requests and explicit AMQP priorities.
+//
+// Example: NORMAL
+type Urgency string
+
+// Version Opaque version token. Compare for equality only; never parse, increment or order it.
+//
+// Example: v1
+type Version = string
+
 // IdempotencyKey Example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 type IdempotencyKey = openapi_types.UUID
 
@@ -599,41 +674,35 @@ type RequestId = openapi_types.UUID
 // ResourceId Example: 660e8400-e29b-41d4-a716-446655440001
 type ResourceId = openapi_types.UUID
 
-// BadRequest Standard error response for all 4xx and 5xx responses.
-// `retryable` and `outcomeUnknown` are distinct:
-//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
-//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
-//     NOT discard their intent and SHOULD retry the same operationId.
+// BadRequest Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
 //
-// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
 type BadRequest = ErrorEnvelope
 
-// Conflict Standard error response for all 4xx and 5xx responses.
-// `retryable` and `outcomeUnknown` are distinct:
-//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
-//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
-//     NOT discard their intent and SHOULD retry the same operationId.
+// Conflict Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
 //
-// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
 type Conflict = ErrorEnvelope
 
-// NotFound Standard error response for all 4xx and 5xx responses.
-// `retryable` and `outcomeUnknown` are distinct:
-//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
-//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
-//     NOT discard their intent and SHOULD retry the same operationId.
+// Forbidden Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
 //
-// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+type Forbidden = ErrorEnvelope
+
+// NotFound Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
+//
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
 type NotFound = ErrorEnvelope
 
-// ServiceUnavailable Standard error response for all 4xx and 5xx responses.
-// `retryable` and `outcomeUnknown` are distinct:
-//   - retryable=true, outcomeUnknown=false → operation failed; safe to retry.
-//   - outcomeUnknown=true → server cannot confirm outcome; the caller MUST
-//     NOT discard their intent and SHOULD retry the same operationId.
+// ServiceUnavailable Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
 //
-// Example: {"code":"VALIDATION_FAILED","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
 type ServiceUnavailable = ErrorEnvelope
+
+// Unauthorized Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
+//
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+type Unauthorized = ErrorEnvelope
 
 // StreamEventsParams defines parameters for StreamEvents.
 type StreamEventsParams struct {
@@ -649,10 +718,8 @@ type ListRequestsParams struct {
 
 // CreateRequestParams defines parameters for CreateRequest.
 type CreateRequestParams struct {
-	// IdempotencyKey Client-generated UUID (v4) making the request idempotent.
-	// Same key + same canonical payload → original response (200).
-	// Same key + different payload → 409 Conflict.
-	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+	// IdempotencyKey Optional caller key, scoped to caller and operation. Same key and canonical payload replays the original 201 and Location; changed payload returns 409. No-key retries may create duplicates. Retained for the dataset lifetime.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // ListResourcesParams defines parameters for ListResources.
@@ -667,10 +734,8 @@ type ListResourcesParams struct {
 
 // RegisterResourceParams defines parameters for RegisterResource.
 type RegisterResourceParams struct {
-	// IdempotencyKey Client-generated UUID (v4) making the request idempotent.
-	// Same key + same canonical payload → original response (200).
-	// Same key + different payload → 409 Conflict.
-	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+	// IdempotencyKey Optional caller key, scoped to caller and operation. Same key and canonical payload replays the original 201 and Location; changed payload returns 409. No-key retries may create duplicates. Retained for the dataset lifetime.
+	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
 }
 
 // CreateRequestJSONRequestBody defines body for CreateRequest for application/json ContentType.

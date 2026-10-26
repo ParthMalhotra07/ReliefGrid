@@ -1,0 +1,12 @@
+# The fixed ring (contracts/ring.yaml), mounted at RING_PATH in every replica.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-ring
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ring
+data:
+  ring.yaml: |
+    {{- .Files.Get "files/ring.yaml" | nindent 4 }}

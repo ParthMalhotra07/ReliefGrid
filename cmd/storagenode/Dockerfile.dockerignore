@@ -1,0 +1,9 @@
+# The build context is the repo root; send only what the storage build needs.
+*
+!go.mod
+!go.sum
+!cmd/storagenode/*.go
+!cmd/storagectl/*.go
+!internal/
+**/*_test.go
+**/testdata

@@ -40,8 +40,7 @@ ENUMS = {
     },
     "ResourceStatus": {"AVAILABLE", "ASSIGNED", "OFFLINE", "CONSUMED"},
     "ResourceType": {"WATER", "FOOD", "MEDICINE", "TRANSPORTATION", "SHELTER"},
-    "RequestType": {"WATER", "FOOD", "MEDICINE", "TRANSPORTATION", "SHELTER"},
-    "Disposition": {"REUSABLE", "CONSUMABLE"},
+    "Urgency": {"NORMAL", "HIGH", "CRITICAL"},
 }
 
 EVENT_REQUIRED = {
@@ -77,6 +76,13 @@ def main() -> int:
         if actual != expected:
             fail(errors, f"enum {name}: got {sorted(actual)}, want {sorted(expected)}")
 
+    if schemas.get("RequestType", {}).get("$ref") != "#/components/schemas/ResourceType":
+        fail(errors, "RequestType must reuse ResourceType")
+    for name in ("RegisterResourceBody", "ResourceResponse"):
+        properties = schemas.get(name, {}).get("properties", {})
+        if properties.get("reusable", {}).get("type") != "boolean" or "disposition" in properties:
+            fail(errors, f"{name}: reusability must be boolean, not a cleanup disposition")
+
     envelope = schemas.get("ErrorEnvelope", {})
     required_error_fields = {
         "code",
@@ -92,7 +98,11 @@ def main() -> int:
     for operation in (paths.get("/requests", {}).get("post", {}), paths.get("/resources", {}).get("post", {})):
         refs = [item.get("$ref") for item in operation.get("parameters", [])]
         if "#/components/parameters/IdempotencyKey" not in refs:
-            fail(errors, f"{operation.get('operationId', '<unknown>')}: Idempotency-Key is not required")
+            fail(errors, f"{operation.get('operationId', '<unknown>')}: Idempotency-Key is not documented")
+        if "200" in operation.get("responses", {}):
+            fail(errors, "create replays must preserve the original 201")
+    if spec["components"]["parameters"]["IdempotencyKey"].get("required", False):
+        fail(errors, "Idempotency-Key must be optional")
 
     if not any("503" in operation.get("responses", {}) for item in paths.values() for operation in item.values() if isinstance(operation, dict)):
         fail(errors, "public contract: no operation documents a 503 outcome")
@@ -102,6 +112,8 @@ def main() -> int:
         fail(errors, "no event schemas found")
     for path in event_paths:
         schema = json.loads(path.read_text(encoding="utf-8"))
+        if schema.get("properties", {}).get("schemaVersion", {}).get("type") != "integer":
+            fail(errors, f"{path.name}: schemaVersion must match the integer outbox field")
         try:
             jsonschema.Draft202012Validator.check_schema(schema)
         except jsonschema.SchemaError as exc:
