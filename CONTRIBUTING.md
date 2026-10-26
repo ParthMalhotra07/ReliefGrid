@@ -11,7 +11,7 @@ owner approves.
 
 | Owner | Paths |
 | --- | --- |
-| S | `internal/fsm`, `internal/raftstore`, `internal/ring`, `internal/obs`, `cmd/storagenode`, `cmd/coordinator`, `cmd/invcheck`, `chaos/`, `loadtest/`, `infra/gcp/`, `deploy/kind/`, `deploy/helm/reliefgrid/templates/storage/`, `spike/raft/`, `.github/` |
+| S | `internal/fsm`, `internal/raftstore`, `internal/ring`, `internal/obs`, `internal/storagenode`, `internal/coordinator`, `internal/coordclient`, `cmd/storagenode`, `cmd/coordinator`, `cmd/invcheck`, `chaos/`, `loadtest/`, `infra/gcp/`, `deploy/kind/`, `deploy/helm/reliefgrid/templates/storage/`, `spike/raft/`, `.github/` |
 | A | `cmd/api`, `cmd/matcher`, `internal/workflow`, `internal/geo`, `internal/mq`, `internal/outbox`, `internal/reconcile`, `internal/auth`, `ui/`, `deploy/helm/` (except storage templates), `spike/mq/`, `tests/workflow/` |
 | Both | `contracts/`, `docs/`, `internal/resilience`, `deploy/platform/`, `Makefile`, `tools.mk`, `scripts/`, other `tests/`, other `spike/`, root files |
 
@@ -23,7 +23,7 @@ regenerated code in the same PR.
 ```
 contracts/   public.yaml, internal.yaml, events/*.json
 cmd/         api, matcher, coordinator, storagenode, invcheck
-internal/    ring, raftstore, fsm, workflow, geo, mq, outbox, reconcile, obs, resilience, auth
+internal/    ring, raftstore, fsm, storagenode, coordinator, coordclient, store, workflow, geo, mq, outbox, reconcile, obs, resilience, auth
 deploy/      helm/reliefgrid, kind, platform
 chaos/  loadtest/  tests/  ui/  infra/gcp/
 docs/        architecture, adr, demos, evidence, operations
@@ -95,3 +95,21 @@ are free or already held by the `reliefgrid` cluster.
   remote call. Wrap errors with `%w`; check them with `errors.Is` / `errors.As`.
 - Never invent a library API: check the pinned version's documentation or source.
 - When a PR says tests pass, paste the real command output.
+
+## Invariants
+
+Code and tests cite these by number (for example "CONTRIBUTING.md, Invariants, 5"). Never weaken one.
+
+1. All preconditions (CAS version, claim rules, operationId dedupe) are checked inside the committed
+   FSM apply, in one SQLite transaction.
+2. FSM apply is deterministic: no wall clock, randomness, map-iteration-order effects or
+   floating-point decisions. Proposers supply IDs and integer timestamps.
+3. No resource has two active claims; no request has two live claims; MATCHED/IN_PROGRESS requests
+   have a reciprocal claim; terminal requests hold no live claim.
+4. A historical operation result is never proof of current ownership.
+5. Unknown outcome is not rejection: keep the intent; retry the same operationId or close via
+   RETRYING.
+6. Never ack a RabbitMQ delivery before the durable handoff it depends on has committed.
+7. A failed or partial shard scan is never an empty result.
+8. Pods never self-bootstrap Raft; an empty disk stays unadmitted until `storagectl replace` admits
+   it (M7).

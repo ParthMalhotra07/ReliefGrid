@@ -312,8 +312,12 @@ func (f *FSM) ReadClosure(ctx context.Context, resourceKey, attemptID string) (s
 	return c, nil
 }
 
-// Scan returns live records matching q in key order.
+// Scan returns at most q.Limit live records matching q in key order. A
+// limit outside 1..store.MaxScanLimit is an error, never "no limit".
 func (f *FSM) Scan(ctx context.Context, q store.ScanQuery) ([]store.Record, error) {
+	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
+		return nil, fmt.Errorf("fsm: scan limit %d: must be 1 to %d", q.Limit, store.MaxScanLimit)
+	}
 	where := []string{"kind = ?", "deleted = 0"}
 	args := []any{string(q.Kind)}
 	if q.Type != "" {
@@ -334,11 +338,8 @@ func (f *FSM) Scan(ctx context.Context, q store.ScanQuery) ([]store.Record, erro
 		}
 		where = append(where, "("+strings.Join(ranges, " OR ")+")")
 	}
-	query := `SELECT body FROM records WHERE ` + strings.Join(where, " AND ") + ` ORDER BY key`
-	if q.Limit > 0 {
-		query += ` LIMIT ?`
-		args = append(args, q.Limit)
-	}
+	query := `SELECT body FROM records WHERE ` + strings.Join(where, " AND ") + ` ORDER BY key LIMIT ?`
+	args = append(args, q.Limit)
 	rows, err := f.rdb.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("fsm: scan: %w", err)
@@ -508,4 +509,43 @@ func readOperation(ctx context.Context, q querier, operationID string) (store.Re
 		return store.Result{}, "", false, fmt.Errorf("fsm: decode operation %q: %w", operationID, err)
 	}
 	return res, hash, true, nil
+}
+
+// Counts are the FSM's record rows: live rows by kind, and tombstones.
+type Counts struct {
+	Request, Resource, KV, Tombstones int
+}
+
+// Counts counts the records table in one read (S1.4: heartbeat recordCounts).
+func (f *FSM) Counts(ctx context.Context) (Counts, error) {
+	rows, err := f.rdb.QueryContext(ctx, `SELECT kind, deleted, count(*) FROM records GROUP BY kind, deleted`)
+	if err != nil {
+		return Counts{}, fmt.Errorf("fsm: counts: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var c Counts
+	for rows.Next() {
+		var (
+			kind    string
+			deleted bool
+			n       int
+		)
+		if err := rows.Scan(&kind, &deleted, &n); err != nil {
+			return Counts{}, fmt.Errorf("fsm: counts: %w", err)
+		}
+		switch {
+		case deleted:
+			c.Tombstones += n
+		case kind == string(store.KindRequest):
+			c.Request = n
+		case kind == string(store.KindResource):
+			c.Resource = n
+		case kind == string(store.KindKV):
+			c.KV = n
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return Counts{}, fmt.Errorf("fsm: counts: %w", err)
+	}
+	return c, nil
 }

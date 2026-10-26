@@ -19,6 +19,9 @@
 /internal/raftstore/                        @coDEmaVEriCK06
 /internal/ring/                             @coDEmaVEriCK06
 /internal/obs/                              @coDEmaVEriCK06
+/internal/storagenode/                      @coDEmaVEriCK06
+/internal/coordinator/                      @coDEmaVEriCK06
+/internal/coordclient/                      @coDEmaVEriCK06
 /cmd/storagenode/                           @coDEmaVEriCK06
 /cmd/coordinator/                           @coDEmaVEriCK06
 /cmd/invcheck/                              @coDEmaVEriCK06

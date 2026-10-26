@@ -81,6 +81,27 @@ func (e Health) Valid() bool {
 	}
 }
 
+// Defines values for NodeState.
+const (
+	DOWN    NodeState = "DOWN"
+	SUSPECT NodeState = "SUSPECT"
+	UP      NodeState = "UP"
+)
+
+// Valid indicates whether the value is a known member of the NodeState enum.
+func (e NodeState) Valid() bool {
+	switch e {
+	case DOWN:
+		return true
+	case SUSPECT:
+		return true
+	case UP:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReadInfoConsistency.
 const (
 	ReadInfoConsistencyLinearizable ReadInfoConsistency = "linearizable"
@@ -354,7 +375,23 @@ type Disposition = store.ResourceStatus
 type Distribution struct {
 	RingVersion uint64 `json:"ringVersion"`
 	Shards      []struct {
-		// Records Logical records, counted once
+		// Counts This replica's local FSM row counts at appliedIndex (a local read,
+		// not fenced). Live records by kind; tombstones counted separately.
+		// The coordinator reports the current leader's counts as the shard's
+		// logical record count in /admin/distribution.
+		Counts *RecordCounts `json:"counts,omitempty"`
+
+		// CountsKnown False when no current leader heartbeat has reported counts;
+		// records is then 0 and must not be read as an empty shard.
+		CountsKnown bool `json:"countsKnown"`
+
+		// HeartbeatAgeMs Age of that heartbeat; shows how stale the counts are
+		HeartbeatAgeMs *int64 `json:"heartbeatAgeMs,omitempty"`
+
+		// LeaderId The leader whose heartbeat supplied the counts
+		LeaderId *ServerID `json:"leaderId,omitempty"`
+
+		// Records Logical live records (request + resource + kv), counted once
 		Records int `json:"records"`
 
 		// Replicas Replica copies of each record
@@ -391,7 +428,7 @@ type Error struct {
 // ErrorCode defines model for Error.Code.
 type ErrorCode string
 
-// Health defines model for Health.
+// Health The node's own report
 type Health string
 
 // Heartbeat defines model for Heartbeat.
@@ -401,7 +438,9 @@ type Heartbeat struct {
 
 	// GroupId Raft group, e.g. shard-1
 	GroupId string `json:"groupId"`
-	Health  Health `json:"health"`
+
+	// Health The node's own report
+	Health Health `json:"health"`
 
 	// Incarnation Disk incarnation UUID, created once on a new PVC and kept across
 	// ordinary restarts (v3.1 §10). A wiped disk gets a new one.
@@ -411,9 +450,15 @@ type Heartbeat struct {
 	LeaderId *ServerID `json:"leaderId,omitempty"`
 
 	// NodeId The pod name; the Raft ServerID is nodeId/incarnation
-	NodeId  PodName `json:"nodeId"`
-	ShardId int     `json:"shardId"`
-	Term    uint64  `json:"term"`
+	NodeId PodName `json:"nodeId"`
+
+	// RecordCounts This replica's local FSM row counts at appliedIndex (a local read,
+	// not fenced). Live records by kind; tombstones counted separately.
+	// The coordinator reports the current leader's counts as the shard's
+	// logical record count in /admin/distribution.
+	RecordCounts *RecordCounts `json:"recordCounts,omitempty"`
+	ShardId      int           `json:"shardId"`
+	Term         uint64        `json:"term"`
 }
 
 // HeartbeatResponse Routing and config hints; never overrides Raft authority
@@ -480,6 +525,11 @@ type NodeRegistration struct {
 	ShardId         int     `json:"shardId"`
 }
 
+// NodeState The coordinator's observation from heartbeat age: UP, SUSPECT after
+// 3 s and DOWN after 5 s without a heartbeat (configurable). A routing
+// observation only; it never promotes a leader or changes ownership.
+type NodeState string
+
 // NodeStatus defines model for NodeStatus.
 type NodeStatus struct {
 	Address string `json:"address"`
@@ -491,7 +541,9 @@ type NodeStatus struct {
 
 	// GroupId Raft group, e.g. shard-1
 	GroupId string `json:"groupId"`
-	Health  Health `json:"health"`
+
+	// Health The node's own report
+	Health Health `json:"health"`
 
 	// Incarnation Disk incarnation UUID, created once on a new PVC and kept across
 	// ordinary restarts (v3.1 §10). A wiped disk gets a new one.
@@ -504,7 +556,12 @@ type NodeStatus struct {
 	// NodeId The pod name; the Raft ServerID is nodeId/incarnation
 	NodeId  PodName `json:"nodeId"`
 	ShardId int     `json:"shardId"`
-	Term    uint64  `json:"term"`
+
+	// State The coordinator's observation from heartbeat age: UP, SUSPECT after
+	// 3 s and DOWN after 5 s without a heartbeat (configurable). A routing
+	// observation only; it never promotes a leader or changes ownership.
+	State NodeState `json:"state"`
+	Term  uint64    `json:"term"`
 }
 
 // OperationResponse defines model for OperationResponse.
@@ -598,6 +655,17 @@ type ReadInfoConsistency string
 
 // Record One committed row; exactly one of request, resource or value is set, by kind
 type Record = store.Record
+
+// RecordCounts This replica's local FSM row counts at appliedIndex (a local read,
+// not fenced). Live records by kind; tombstones counted separately.
+// The coordinator reports the current leader's counts as the shard's
+// logical record count in /admin/distribution.
+type RecordCounts struct {
+	Kv         int `json:"kv"`
+	Request    int `json:"request"`
+	Resource   int `json:"resource"`
+	Tombstones int `json:"tombstones"`
+}
 
 // RecordResponse defines model for RecordResponse.
 type RecordResponse struct {

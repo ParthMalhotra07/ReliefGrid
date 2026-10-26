@@ -483,6 +483,39 @@ func (n *Node) Close() error {
 	return errors.Join(err, n.trans.Close(), n.logs.Close(), n.sm.close())
 }
 
+// StepDown transfers this node's leadership to another voter and returns
+// once this node is no longer leader, or ctx ends. It changes only who
+// leads, through Raft; ownership and membership are untouched. A node that
+// is not leader returns ErrNotLeader.
+func (n *Node) StepDown(ctx context.Context) error {
+	if n.raft.State() != raft.Leader {
+		return ErrNotLeader
+	}
+	// raft v1.8.0 can report a timeout for a transfer that did happen, so
+	// the result is judged by state, not by the future's error.
+	var err error
+	for range stepDownAttempts {
+		err = wait(ctx, n.raft.LeadershipTransfer())
+		deadline := time.Now().Add(stepDownWait)
+		for n.raft.State() == raft.Leader && time.Now().Before(deadline) {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(leadershipPoll):
+			}
+		}
+		if n.raft.State() != raft.Leader {
+			return nil
+		}
+	}
+	return fmt.Errorf("raftstore: still leader after %d leadership transfers: %w", stepDownAttempts, err)
+}
+
+const (
+	stepDownAttempts = 5
+	stepDownWait     = time.Second
+)
+
 // wait waits for a Raft future or ctx, whichever comes first.
 func wait(ctx context.Context, f raft.Future) error {
 	done := make(chan error, 1)

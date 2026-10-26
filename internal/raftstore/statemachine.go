@@ -31,6 +31,7 @@ type Reader interface {
 	PendingOutbox(ctx context.Context, limit int) ([]store.OutboxEvent, error)
 	Operation(ctx context.Context, operationID string) (store.Result, error)
 	Dump(ctx context.Context) (map[string][]string, error)
+	Counts(ctx context.Context) (fsm.Counts, error)
 }
 
 var _ Reader = (*fsm.FSM)(nil)

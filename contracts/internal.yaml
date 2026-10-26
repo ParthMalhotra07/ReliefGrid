@@ -109,6 +109,7 @@ paths:
               term: 7
               appliedIndex: 4182
               commitIndex: 4182
+              recordCounts: {request: 120, resource: 178, kv: 0, tombstones: 2}
       responses:
         "200":
           description: Heartbeat recorded
@@ -307,10 +308,12 @@ paths:
         shard. A shard that fails sets partial=true and is listed in
         failedShards. A partial scan is never an empty result and never
         justifies NO_CANDIDATE. positions has one entry per shard that answered.
+        If no shard answers, the scan is 503 NO_LEADER, not a 200.
 
         A scan is bounded: limit (1 to 1000) caps the records returned per
-        shard, so a page never exceeds limit × shards records. Cursor paging
-        follows later (§14). When ringVersion is given and differs from the
+        shard, so a page never exceeds limit × shards records. A shard that
+        returned exactly limit records sets hasMore in its position. Cursor
+        paging follows later (§14). When ringVersion is given and differs from the
         server's, the scan is refused with 409 RING_VERSION_MISMATCH.
       x-store-method: Scan
       parameters:
@@ -760,6 +763,7 @@ paths:
                     address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080
                     admitted: true
                     health: ok
+                    state: UP
                     leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
                     term: 7
                     appliedIndex: 4182
@@ -807,9 +811,15 @@ paths:
               example:
                 ringVersion: 1
                 shards:
-                  - {shard: 0, records: 312, replicas: 3}
-                  - {shard: 1, records: 298, replicas: 3}
-                  - {shard: 2, records: 305, replicas: 3}
+                  - {shard: 0, records: 312, replicas: 3, countsKnown: true, heartbeatAgeMs: 640}
+                  - shard: 1
+                    records: 298
+                    replicas: 3
+                    countsKnown: true
+                    counts: {request: 120, resource: 178, kv: 0, tombstones: 2}
+                    leaderId: storage-1-0/a81d4e2c-6f3b-4a9e-8c57-1d0e9b3f7c24
+                    heartbeatAgeMs: 410
+                  - {shard: 2, records: 0, replicas: 3, countsKnown: false}
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
 
@@ -1273,6 +1283,11 @@ components:
       properties:
         shard: {type: integer}
         appliedIndex: {type: integer, format: uint64}
+        hasMore:
+          type: boolean
+          description: >-
+            The shard returned exactly limit records, so more may match: the
+            page is truncated, not complete. Absent means false.
       x-go-type: store.ShardPosition
       x-go-type-import: *storeImport
 
@@ -1519,7 +1534,15 @@ components:
           items: {$ref: "#/components/schemas/Peer"}
     Health:
       type: string
+      description: The node's own report
       enum: [ok, degraded, unavailable]
+    NodeState:
+      type: string
+      description: |
+        The coordinator's observation from heartbeat age: UP, SUSPECT after
+        3 s and DOWN after 5 s without a heartbeat (configurable). A routing
+        observation only; it never promotes a leader or changes ownership.
+      enum: [UP, SUSPECT, DOWN]
     Heartbeat:
       type: object
       required: [nodeId, groupId, shardId, incarnation, health, term, appliedIndex, commitIndex]
@@ -1535,6 +1558,20 @@ components:
         term: {type: integer, format: uint64}
         appliedIndex: {type: integer, format: uint64}
         commitIndex: {type: integer, format: uint64}
+        recordCounts: {$ref: "#/components/schemas/RecordCounts"}
+    RecordCounts:
+      type: object
+      description: |
+        This replica's local FSM row counts at appliedIndex (a local read,
+        not fenced). Live records by kind; tombstones counted separately.
+        The coordinator reports the current leader's counts as the shard's
+        logical record count in /admin/distribution.
+      required: [request, resource, kv, tombstones]
+      properties:
+        request: {type: integer, minimum: 0}
+        resource: {type: integer, minimum: 0}
+        kv: {type: integer, minimum: 0}
+        tombstones: {type: integer, minimum: 0}
     ShardLeader:
       type: object
       required: [shard, leaderId, address, term]
@@ -1565,7 +1602,7 @@ components:
           items: {type: integer}
     NodeStatus:
       type: object
-      required: [nodeId, groupId, shardId, incarnation, address, admitted, health, term, appliedIndex, commitIndex, lastHeartbeatAt]
+      required: [nodeId, groupId, shardId, incarnation, address, admitted, health, state, term, appliedIndex, commitIndex, lastHeartbeatAt]
       properties:
         nodeId: *nodeIdProp
         groupId: *groupIdProp
@@ -1574,6 +1611,7 @@ components:
         address: {type: string}
         admitted: {type: boolean, description: "This incarnation is admitted (M7: admitted[nodeId] = incarnation)"}
         health: {$ref: "#/components/schemas/Health"}
+        state: {$ref: "#/components/schemas/NodeState"}
         leaderId: *leaderIdProp
         term: {type: integer, format: uint64}
         appliedIndex: {type: integer, format: uint64}
@@ -1611,8 +1649,18 @@ components:
           type: array
           items:
             type: object
-            required: [shard, records, replicas]
+            required: [shard, records, replicas, countsKnown]
             properties:
               shard: {type: integer}
-              records: {type: integer, description: "Logical records, counted once"}
+              records: {type: integer, description: "Logical live records (request + resource + kv), counted once"}
               replicas: {type: integer, description: Replica copies of each record}
+              countsKnown:
+                type: boolean
+                description: |
+                  False when no current leader heartbeat has reported counts;
+                  records is then 0 and must not be read as an empty shard.
+              counts: {$ref: "#/components/schemas/RecordCounts"}
+              leaderId:
+                allOf: [{$ref: "#/components/schemas/ServerID"}]
+                description: The leader whose heartbeat supplied the counts
+              heartbeatAgeMs: {type: integer, format: int64, minimum: 0, description: Age of that heartbeat; shows how stale the counts are}

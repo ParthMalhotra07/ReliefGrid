@@ -408,7 +408,7 @@ func TestTryClaimAfterCloseAttemptReturnsClosed(t *testing.T) {
 	})
 }
 
-// Invariant 4: replaying an old SUCCESS after the attempt was closed returns
+// CONTRIBUTING.md, Invariants, 4: replaying an old SUCCESS after the attempt was closed returns
 // the historical result but does not recreate the claim.
 func TestHistoricalClaimSuccessIsNotOwnership(t *testing.T) {
 	h := newHarness(t)
@@ -637,6 +637,7 @@ func TestScanFilters(t *testing.T) {
 		Kind: store.KindResource, Type: store.TypeWater,
 		Statuses:        []string{string(store.ResourceAvailable)},
 		GeohashPrefixes: []string{"ttn", "tsq4"},
+		Limit:           100,
 	})
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
@@ -650,9 +651,27 @@ func TestScanFilters(t *testing.T) {
 		t.Fatalf("scan keys = %v, want %v", keys, want)
 	}
 
-	all, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindRequest})
+	all, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindRequest, Limit: 100})
 	if err != nil || len(all) != 1 || all[0].Key != "req:q1" {
 		t.Fatalf("request scan = %+v, %v; want only req:q1", all, err)
+	}
+}
+
+// A scan limit outside 1..store.MaxScanLimit is an error, never "no limit"
+// (store.ScanQuery), and Limit caps the page.
+func TestScanLimit(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness(t)
+	for _, id := range []string{"r1", "r2", "r3"} {
+		createResource(h, resource(id, store.TypeWater, store.ResourceAvailable))
+	}
+	for _, limit := range []int{0, -1, store.MaxScanLimit + 1} {
+		if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: limit}); err == nil {
+			t.Errorf("Scan with limit %d = %d records, want an error", limit, len(recs))
+		}
+	}
+	if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: 2}); err != nil || len(recs) != 2 {
+		t.Fatalf("Scan limit 2 = %d records, %v", len(recs), err)
 	}
 }
 
