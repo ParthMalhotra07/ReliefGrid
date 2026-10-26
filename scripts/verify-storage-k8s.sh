@@ -7,7 +7,8 @@
 # bootstrap guard and failover. It leaves the cluster running (KEEP_CLUSTER=0 deletes
 # it). Writes evidence to docs/evidence/S1.5/storage-k8s-<host>.txt, identified by a
 # fingerprint of the code under test and a dirty flag, every PASS/FAIL line and the
-# result, once the result is known (a failed run is written, marked FAILED). Exits non-zero
+# result, once the result is known (a failed run is written, marked FAILED); the S2.1 checks
+# (step 6b2) also go to docs/evidence/S2.1/snapshot-restore-<host>.txt. Exits non-zero
 # if any check fails; prints one PASS/FAIL line per check.
 #
 # Interface under test:
@@ -56,6 +57,17 @@
 #                                non-zero exit if unreachable
 #   /storagectl dial --addr host:port [--timeout d]
 #                                exit 0 if a TCP connection opens
+#   /storagectl snapshot [--addr host:port] [--timeout d]   (S2.1)
+#                                POST /mgmt/snapshot with the pod's OPERATOR_TOKEN: Raft takes a
+#                                snapshot now; JSON {podName, snapshotId, raftIndex, appliedIndex}
+#                                on stdout
+#   /storagectl dump [--addr host:port] [--timeout d]       (S2.1)
+#                                GET /mgmt/dump with OPERATOR_TOKEN: the local FSM's rows read in one
+#                                transaction; JSON {podName, appliedIndex, sha256, rows{table: n}}
+#   GET /mgmt/status             also restoredIndex: the applied index of the last snapshot the FSM
+#                                restored since the process started (0: none)
+#   storagenode log              one line per snapshot restore containing "restored snapshot" and
+#                                appliedIndex=<n>
 set -uo pipefail
 
 CLUSTER=reliefgrid
@@ -74,18 +86,20 @@ NO_SELF_BOOTSTRAP_SECONDS="${NO_SELF_BOOTSTRAP_SECONDS:-20}"
 HOLD_SECONDS="${HOLD_SECONDS:-60}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-1}"
 EVIDENCE="docs/evidence/S1.5/storage-k8s-$(hostname -s).txt"
+EVIDENCE_S21="docs/evidence/S2.1/snapshot-restore-$(hostname -s).txt"
 
 failures=0 passes=0
 results="" # every PASS/FAIL line, for the evidence; set to a file once $tmp exists
+s21_results="" # step 6b2's PASS/FAIL lines too, while it runs
 pass() {
-	printf 'PASS  %s\n' "$1" | tee -a "${results:-/dev/null}"
+	printf 'PASS  %s\n' "$1" | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}"
 	passes=$((passes + 1))
 }
 fail() {
 	{
 		printf 'FAIL  %s\n' "$1"
 		[ -n "${2:-}" ] && printf '      %s\n' "$2"
-	} | tee -a "${results:-/dev/null}"
+	} | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}"
 	failures=$((failures + 1))
 }
 check() { # check <description> <command...>
@@ -253,6 +267,30 @@ write_evidence() {
 		job_logs "${j2:-$(job_name)}"
 	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE"
 	echo "evidence: $EVIDENCE ($result)"
+	[ -s "${tmp:-}/s21" ] && write_evidence_s21 "$code_tree" "$code_dirty"
+}
+# write_evidence_s21 <code tree> <code dirty>: step 6b2's checks and the snapshot shard's state
+# as 6b2 left it (s21_state), not at exit: later steps restart and reinstall the shards.
+write_evidence_s21() {
+	local result n_fail n_all p
+	n_fail="$(grep -c '^FAIL' "$tmp/s21")" n_all="$(grep -Ec '^(PASS|FAIL)' "$tmp/s21")"
+	if [ "$n_fail" -eq 0 ]; then result="PASSED ($n_all/$n_all checks)"; else result="FAILED ($n_fail of $n_all checks failed)"; fi
+	mkdir -p "$(dirname "$EVIDENCE_S21")"
+	{
+		echo "# S2.1 snapshot and restore under failure (verify-storage-k8s.sh step 6b2)"
+		echo "result:     $result"
+		echo "host:       $(hostname -s)"
+		echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+		echo "code tree:  ${1:0:12} (same fingerprint as the S1.5 evidence)"
+		echo "code dirty: $2"
+		echo "writes:     $SNAP_WRITES before the snapshot, $TAIL_WRITES in the tail"
+		echo
+		echo "## checks"
+		cat "$tmp/s21"
+		echo
+		cat "$tmp/s21-state" 2>/dev/null
+	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE_S21"
+	echo "evidence: $EVIDENCE_S21 ($result)"
 }
 
 for tool in kind kubectl helm docker jq python3 curl; do
@@ -567,6 +605,142 @@ if kv="$(write_key "$RS" restart)"; then
 else
 	fail "restart shard-$RS: sentinel written before the restart"
 fi
+
+# --- 6b2. Full restart restores every replica from a snapshot (S2.1) ------------------------
+# Past the demo SnapshotThreshold, force a snapshot on all three replicas, write a tail,
+# delete the whole shard: every replica must restore its snapshot, then replay the tail.
+s21_results="$tmp/s21"
+SS=0
+SNAP_WRITES="${SNAP_WRITES:-1100}" # demo profile SnapshotThreshold is 1024
+TAIL_WRITES=20
+snap_status() { field "$(st "$1")" "$2"; } # snap_status <pod> <jq path>
+dump_of() { kn exec "$1" -c storagenode -- /storagectl dump 2>/dev/null; }
+# cas_updates <port> <key> <from-version> <n>: n CAS updates of <key>; prints the last version
+cas_updates() {
+	local port="$1" key="$2" v="$3" n="$4" i code
+	for ((i = 0; i < n; i++)); do
+		code="$(curl -s -o "$tmp/cas.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/$key" \
+			-H 'Content-Type: application/json' -H "If-Match: \"$v\"" \
+			-d "{\"operationId\":\"op-s21-$key-$v-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":{\"n\":$v}}")"
+		[ "$code" = 200 ] && [ "$(jq -r .result.version "$tmp/cas.json")" = $((v + 1)) ] || { echo "$v"; return 1; }
+		v=$((v + 1))
+	done
+	echo "$v"
+}
+# all_caught_up <shard>: every replica reports the same applied index as the leader, and caughtUp
+all_caught_up() {
+	local deadline=$((SECONDS + 60)) p a want ok
+	while [ "$SECONDS" -lt "$deadline" ]; do
+		ok=1 want=""
+		for p in $(pod_names "$1"); do
+			a="$(snap_status "$p" .appliedIndex)"
+			[ "$(snap_status "$p" .caughtUp)" = true ] && [ -n "$a" ] || { ok=""; break; }
+			[ -z "$want" ] && want="$a"
+			[ "$a" = "$want" ] || { ok=""; break; }
+		done
+		[ -n "$ok" ] && return 0
+		sleep 0.5
+	done
+	return 1
+}
+# same_dumps <shard>: prints "<appliedIndex> <sha256>" if all three replicas' dumps agree
+same_dumps() {
+	local p d first="" cur
+	for p in $(pod_names "$1"); do
+		d="$(dump_of "$p")" || return 1
+		cur="$(jq -r '"\(.appliedIndex) \(.sha256)"' <<<"$d")"
+		[ -z "$first" ] && first="$cur"
+		[ "$cur" = "$first" ] || return 1
+	done
+	echo "$first"
+}
+declare -A snap_applied
+if kvA="$(write_key "$SS" snapA)" && kvK="$(write_key "$SS" snapK)"; then
+	pass "snapshot shard-$SS: sentinel ${kvA%% *} written before the snapshot"
+	read -r sleader _ < <(wait_leader 15 - 0 $(pod_names "$SS"))
+	port="$(port_forward "$sleader")"
+	t0="$(now)"
+	if kv_version="$(cas_updates "$port" "${kvK%% *}" 1 "$SNAP_WRITES")"; then
+		pass "snapshot shard-$SS: $SNAP_WRITES writes through $sleader, past the demo threshold of 1024 ($(since "$t0") s)"
+	else
+		fail "snapshot shard-$SS: $SNAP_WRITES writes through $sleader" "stopped at version $kv_version: $(cat "$tmp/cas.json" 2>/dev/null)"
+	fi
+	kill "$pf_pid" 2>/dev/null
+	pf_pid=""
+	all_caught_up "$SS" || fail "snapshot shard-$SS: replicas caught up before the snapshot"
+	for p in $(pod_names "$SS"); do
+		out="$(kn exec "$p" -c storagenode -- /storagectl snapshot --timeout 60s 2>&1)"
+		a="$(jq -r '.appliedIndex // empty' <<<"$out" 2>/dev/null)"
+		snap_applied[$p]="$a"
+		[ -n "$a" ] && [ "$a" -ge "$SNAP_WRITES" ] && pass "snapshot shard-$SS: $p took a snapshot at applied index $a ($(jq -r .snapshotId <<<"$out"))" ||
+			fail "snapshot shard-$SS: $p took a snapshot past the threshold" "$out"
+	done
+	kvB="$(write_key "$SS" snapB)" && pass "snapshot shard-$SS: sentinel ${kvB%% *} written after the snapshot (in the tail)" ||
+		fail "snapshot shard-$SS: sentinel written after the snapshot"
+	read -r sleader _ < <(wait_leader 15 - 0 $(pod_names "$SS"))
+	port="$(port_forward "$sleader")"
+	cas_updates "$port" "${kvK%% *}" "$kv_version" "$TAIL_WRITES" >/dev/null && pass "snapshot shard-$SS: $TAIL_WRITES more writes in the tail" ||
+		fail "snapshot shard-$SS: $TAIL_WRITES more writes in the tail" "$(cat "$tmp/cas.json" 2>/dev/null)"
+	kill "$pf_pid" 2>/dev/null
+	pf_pid=""
+	if all_caught_up "$SS" && before="$(same_dumps "$SS")"; then
+		pass "snapshot shard-$SS: the three dumps agree before the restart (applied index ${before%% *})"
+	else
+		fail "snapshot shard-$SS: the three dumps agree before the restart"
+	fi
+
+	suids() { kn get pods $(pod_names "$SS") -o jsonpath='{.items[*].metadata.uid}' 2>/dev/null; }
+	suids_before="$(suids)"
+	t0="$(now)"
+	kn delete pod $(pod_names "$SS") --wait=false >/dev/null 2>&1
+	for _ in $(seq "$REJOIN_MAX_SECONDS"); do
+		u="$(suids)"
+		[ "$(wc -w <<<"$u")" = 3 ] && [ -z "$(comm -12 <(tr ' ' '\n' <<<"$suids_before" | sort) <(tr ' ' '\n' <<<"$u" | sort))" ] && break
+		sleep 1
+	done
+	if kn wait --for=condition=Ready $(for p in $(pod_names "$SS"); do echo "pod/$p"; done) --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1 &&
+		out="$(one_group "$SS")"; then
+		pass "snapshot shard-$SS: all three pods deleted at once come back as one group ($(since "$t0") s)"
+	else
+		fail "snapshot shard-$SS: all three pods deleted at once come back as one group" "${out:-not Ready}"
+	fi
+	all_caught_up "$SS" || fail "snapshot shard-$SS: replicas caught up after the restart"
+	for p in $(pod_names "$SS"); do
+		k="${snap_applied[$p]:-none}"
+		r="$(snap_status "$p" .restoredIndex)"
+		[ "$r" = "$k" ] && pass "snapshot shard-$SS: $p restored its snapshot at applied index $k" ||
+			fail "snapshot shard-$SS: $p restored its snapshot at applied index $k" "restoredIndex '$r'"
+		kn logs "$p" -c storagenode 2>/dev/null | grep 'restored snapshot' | grep -q "appliedIndex=$k\b" &&
+			pass "snapshot shard-$SS: $p logged the restore at applied index $k" ||
+			fail "snapshot shard-$SS: $p logged the restore at applied index $k" "$(kn logs "$p" -c storagenode 2>/dev/null | grep 'restored snapshot' | tail -2 | tr '\n' '|')"
+		a="$(snap_status "$p" .appliedIndex)"
+		[ -n "$a" ] && [ "$k" != none ] && [ "$a" -gt "$k" ] && pass "snapshot shard-$SS: $p then replayed the tail to applied index $a" ||
+			fail "snapshot shard-$SS: $p then replayed the tail past $k" "applied index '$a'"
+	done
+	read_key "$SS" "${kvA%% *}" "${kvA#* }" && pass "snapshot shard-$SS: the sentinel from before the snapshot reads back" ||
+		fail "snapshot shard-$SS: the sentinel from before the snapshot reads back" "$(cat "$tmp/get.json" 2>/dev/null)"
+	[ -n "${kvB:-}" ] && read_key "$SS" "${kvB%% *}" "${kvB#* }" && pass "snapshot shard-$SS: the sentinel from the tail reads back" ||
+		fail "snapshot shard-$SS: the sentinel from the tail reads back" "$(cat "$tmp/get.json" 2>/dev/null)"
+	if after="$(same_dumps "$SS")" && [ "$after" = "${before:-}" ]; then
+		pass "snapshot shard-$SS: the three dumps agree after the restart and equal the dump before it (${after%% *})"
+	else
+		fail "snapshot shard-$SS: the three dumps agree after the restart and equal the dump before it" "before '${before:-}', after '${after:-disagree}'"
+	fi
+else
+	fail "snapshot shard-$SS: sentinels written before the snapshot"
+fi
+# s21_state: shard $SS as 6b2 left it, for the S2.1 evidence
+{
+	echo "## shard-$SS after the restart"
+	for p in $(pod_names "$SS"); do st "$p" | jq -c '{podName, state, term, commitIndex, appliedIndex, restoredIndex, caughtUp}'; done
+	echo
+	echo "## dumps"
+	for p in $(pod_names "$SS"); do dump_of "$p" | jq -c .; done
+	echo
+	echo "## restore log lines"
+	for p in $(pod_names "$SS"); do kn logs "$p" -c storagenode 2>/dev/null | grep 'restored snapshot' | tail -1; done
+} >"$tmp/s21-state" 2>&1
+s21_results=""
 
 # --- 6c. helm upgrade on healthy groups only verifies ---------------------------------------
 declare -A rv_before ids_all
