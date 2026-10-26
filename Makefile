@@ -29,7 +29,7 @@ STORAGE_RELEASE ?= storage
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image coordinator-image storage-reset
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image coordinator-image storage-reset placement-check
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -88,6 +88,9 @@ storage-image: ## Build the storage node image (storagenode + storagectl) and lo
 coordinator-image: ## Build the coordinator image and load it into kind
 	docker build -f cmd/coordinator/Dockerfile -t $(COORDINATOR_IMAGE) .
 	kind load docker-image --name $(CLUSTER) $(COORDINATOR_IMAGE)
+
+placement-check: ## Fail if two replicas of a storage shard share a worker (or one is off the data workers)
+	KUBE_CONTEXT=kind-$(CLUSTER) NAMESPACE=$(STORAGE_NS) scripts/placement-check.sh
 
 # The bootstrap manifests belong to storagectl, not Helm, so helm uninstall
 # leaves them and wiped disks never re-bootstrap by accident (v3.1 §10);
