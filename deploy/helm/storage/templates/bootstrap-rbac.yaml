@@ -1,4 +1,7 @@
-# The bootstrap Job may read and compare-and-swap the manifests, nothing else.
+# The bootstrap Job may create the manifests and read and compare-and-swap
+# them, nothing else. Kubernetes RBAC can't scope create by resourceNames (the
+# name is not part of the request it authorizes), so create is a separate rule
+# on configmaps; get and update stay limited to the manifests.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -21,6 +24,9 @@ rules:
     resources: [configmaps]
     resourceNames: {{ splitList "," (include "storage.manifests" .) | toJson }}
     verbs: [get, update]
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [create]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

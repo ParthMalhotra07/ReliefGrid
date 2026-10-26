@@ -29,11 +29,33 @@ type bootstrapper struct {
 	log  *slog.Logger
 }
 
-func (b *bootstrapper) run(ctx context.Context, manifests []string) error {
-	for _, name := range manifests {
-		if err := b.shard(ctx, name); err != nil {
+// run takes the chart's manifest specs, in shard order. Every manifest
+// exists before any group is bootstrapped.
+func (b *bootstrapper) run(ctx context.Context, specs []manifest) error {
+	for _, spec := range specs {
+		if err := b.ensure(ctx, spec); err != nil {
 			return err
 		}
+	}
+	for _, spec := range specs {
+		if err := b.shard(ctx, spec.Name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ensure creates spec's manifest as PENDING if there is none. An existing
+// manifest is the record and is used as it is: a spec never resets it, so
+// nothing the chart renders (or a helm rollback replays) can undo a phase.
+func (b *bootstrapper) ensure(ctx context.Context, spec manifest) error {
+	spec.Phase, spec.PeerIDs = phasePending, nil
+	switch err := b.store.Create(ctx, spec); {
+	case err == nil:
+		b.log.Info(spec.GroupID+": created manifest", "manifest", spec.Name)
+	case errors.Is(err, errExists):
+	default:
+		return err
 	}
 	return nil
 }
@@ -99,6 +121,8 @@ func (b *bootstrapper) shard(ctx context.Context, name string) error {
 			case errors.Is(err, errHasState):
 				logf("bootstrap target already has state", "err", err)
 				continue
+			case errors.Is(err, errRejected):
+				return fmt.Errorf("%s: %w", m.GroupID, err)
 			default:
 				// The call may still have taken effect; the next status
 				// round shows it as state on the target.

@@ -31,20 +31,28 @@
 #       http 8080, mgmt 8081
 #     PodDisruptionBudget storage-shard-N: minAvailable 2
 #     NetworkPolicy storage-shard-N: ingress to 8081 only from pods labelled
-#       reliefgrid.io/storage-operator=true
-#     ConfigMap storage-shard-N-manifest (v3.1 §10, kept on uninstall): groupId shard-N,
-#       shard, ringVersion (= contracts/ring.yaml), peers (JSON [{podName,address}] with the
-#       stable FQDNs), phase PENDING -> BOOTSTRAPPING -> BOOTSTRAPPED, peerIds (JSON list of
-#       podName/incarnation, written by the Job)
+#       reliefgrid.io/storage-operator=true, to 7000 only from shard N's own pods
+#     no manifest ConfigMap: the chart renders none (Helm must never own or replay it)
 #     Job storage-bootstrap-<revision>: an ordinary Job (no helm.sh/hook), labelled
-#       reliefgrid.io/storage-operator=true, runs /storagectl bootstrap; exit code 2 means
-#       "refused" and fails the Job at once (podFailurePolicy); logs "refused" when it refuses
-#       and "already initialized" when it finds a group it did not create in this run
+#       reliefgrid.io/storage-operator=true, runs /storagectl bootstrap with MANIFESTS (JSON
+#       specs {name, groupId, shard, ringVersion, peers}); exit code 2 means "refused" and
+#       fails the Job at once (podFailurePolicy); logs "refused:" when it refuses,
+#       "created manifest" when it creates one, "already initialized" when it finds a group
+#       it did not create in this run, and "verified" for a BOOTSTRAPPED group
+#     Role storage-bootstrap: get/update on the three manifests by name, and create on
+#       configmaps (RBAC can't scope create by name); nothing else
+#   ConfigMap storage-shard-N-manifest (v3.1 §10), created by the Job, never by Helm:
+#     labels app.kubernetes.io/{name=storage,component=storage-manifest,managed-by=storagectl},
+#     no Helm ownership; groupId shard-N, shard, ringVersion (= contracts/ring.yaml), peers
+#     (JSON [{podName,address}] with the stable FQDNs), phase PENDING -> BOOTSTRAPPING ->
+#     BOOTSTRAPPED, peerIds (JSON list of podName/incarnation)
 #     value bootstrap.debugHoldSeconds: the Job sleeps that long after bootstrapping shard 0
 #       and before recording BOOTSTRAPPED, logging "holding" (gives the kill a fixed window)
 #   /storagectl status [--addr host:port] [--timeout d]
 #                                GET /mgmt/status (default localhost:8081), JSON on stdout,
 #                                non-zero exit if unreachable
+#   /storagectl dial --addr host:port [--timeout d]
+#                                exit 0 if a TCP connection opens
 set -uo pipefail
 
 CLUSTER=reliefgrid
@@ -148,6 +156,9 @@ job_name() { # newest bootstrap Job
 		-o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null | tail -1
 }
 job_logs() { kn logs "job/$1" --tail=-1 2>/dev/null; }
+server_ids() { local p; for p in $(pod_names "$1"); do field "$(st "$p")" .serverId; done | sort | tr '\n' ' '; } # server_ids <shard>
+manifest_rv() { kn get configmap "$(sts_name "$1")-manifest" -o jsonpath='{.metadata.resourceVersion}' 2>/dev/null; }
+peer_ids() { kn get configmap "$(sts_name "$1")-manifest" -o jsonpath='{.data.peerIds}' 2>/dev/null; }
 port_forward() { # port_forward <pod>: forward a free local port to the pod's 8080; print the port
 	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
 	local port
@@ -157,6 +168,41 @@ port_forward() { # port_forward <pod>: forward a free local port to the pod's 80
 	for _ in $(seq 50); do (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null && break; sleep 0.1; done
 	echo "$port"
 }
+
+# write_key <shard> <tag>: PUT a fresh key the ring gives to <shard> through its leader;
+# prints "<key> <value>" on success (version 1 committed), nothing on failure.
+write_key() {
+	local shard="$1" tag="$2" leader term port key="" value code i
+	read -r leader term < <(wait_leader 15 - 0 $(pod_names "$shard"))
+	[ -n "${leader:-}" ] || return 1
+	port="$(port_forward "$leader")"
+	value="{\"verify\":\"S1.5-$tag-$(date +%s)\"}"
+	for i in $(seq 0 200); do # a foreign key is 400 and never proposed
+		code="$(curl -s -o "$tmp/put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s15-$tag-$i" \
+			-H 'Content-Type: application/json' -H 'If-None-Match: *' \
+			-d "{\"operationId\":\"op-s15-$tag-$i-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":$value}")"
+		[ "$code" = 400 ] && grep -q 'owned by shard' "$tmp/put.json" && continue
+		key="cfg:s15-$tag-$i"
+		break
+	done
+	kill "$pf_pid" 2>/dev/null
+	pf_pid=""
+	[ "$code" = 200 ] && [ "$(jq -r .result.version "$tmp/put.json")" = 1 ] || return 1
+	echo "$key $value"
+}
+# read_key <shard> <key> <value>: a strong read through the shard's leader returns <value> at version 1
+read_key() {
+	local shard="$1" key="$2" value="$3" leader term port code
+	read -r leader term < <(wait_leader 15 - 0 $(pod_names "$shard"))
+	[ -n "${leader:-}" ] || return 1
+	port="$(port_forward "$leader")"
+	code="$(curl -s -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
+	kill "$pf_pid" 2>/dev/null
+	pf_pid=""
+	[ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/get.json")" = "$(jq -c . <<<"$value")" ] && [ "$(jq -r .record.version "$tmp/get.json")" = 1 ]
+}
+# exec_dial <from-pod> <host:port>: storagectl dial from inside a storage pod
+exec_dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --timeout 3s >/dev/null 2>&1; }
 
 for tool in kind kubectl helm docker jq python3 curl; do
 	command -v "$tool" >/dev/null || abort "tools: $tool is installed"
@@ -276,22 +322,11 @@ for s in "${SHARDS[@]}"; do
 			pass "networkpolicy $n: 8081 only from reliefgrid.io/storage-operator=true" || fail "networkpolicy $n: 8081 only from reliefgrid.io/storage-operator=true" "$np"
 	fi
 
-	cm="$(obj ConfigMap "$n-manifest")"
-	if [ -z "$cm" ]; then
-		fail "manifest $n-manifest: rendered"
-	else
-		[ "$(q "$cm" .data.groupId)" = "shard-$s" ] && [ "$(q "$cm" .data.shard)" = "$s" ] &&
-			pass "manifest $n-manifest: groupId shard-$s, shard $s" || fail "manifest $n-manifest: groupId shard-$s, shard $s"
-		[ "$(q "$cm" .data.ringVersion)" = "$ring_version" ] &&
-			pass "manifest $n-manifest: ringVersion $ring_version (contracts/ring.yaml)" || fail "manifest $n-manifest: ringVersion $ring_version" "got '$(q "$cm" .data.ringVersion)'"
-		want_peers="$(for p in $(pod_names "$s"); do printf '%s %s\n' "$p" "$(fqdn "$s" "$p")"; done)"
-		[ "$(q "$cm" -r '.data.peers | fromjson | .[] | "\(.podName) \(.address)"')" = "$want_peers" ] &&
-			pass "manifest $n-manifest: peers are the three stable FQDNs" || fail "manifest $n-manifest: peers are the three stable FQDNs" "got $(q "$cm" .data.peers)"
-		[ "$(q "$cm" .data.phase)" = PENDING ] && pass "manifest $n-manifest: phase PENDING on a fresh install" || fail "manifest $n-manifest: phase PENDING on a fresh install"
-		[ "$(q "$cm" '.metadata.annotations["helm.sh/resource-policy"]')" = keep ] &&
-			pass "manifest $n-manifest: kept on helm uninstall" || fail "manifest $n-manifest: kept on helm uninstall"
-	fi
+	[ -z "$(obj ConfigMap "$n-manifest")" ] && pass "manifest $n-manifest: not rendered by the chart (storagectl owns it)" ||
+		fail "manifest $n-manifest: not rendered by the chart (storagectl owns it)"
 done
+[ "$(jq '[.[] | select(.kind == "ConfigMap" and (.metadata.name | endswith("-manifest")))] | length' "$tmp/render.json")" = 0 ] &&
+	pass "chart: renders no manifest ConfigMap at all" || fail "chart: renders no manifest ConfigMap at all"
 
 job="$(jq -c '.[] | select(.kind == "Job")' "$tmp/render.json")"
 if [ "$(jq -s length <<<"$job")" != 1 ]; then
@@ -307,10 +342,23 @@ else
 		pass "job: runs storagectl bootstrap" || fail "job: runs storagectl bootstrap"
 	[ "$(q "$job" -c '.spec.podFailurePolicy.rules[]? | select(.action == "FailJob") | .onExitCodes.values' | grep -c '\b2\b')" -ge 1 ] &&
 		pass "job: exit code 2 (refused) fails the Job at once" || fail "job: exit code 2 (refused) fails the Job at once"
+	specs="$(q "$jt" -r '.spec.containers[0].env[] | select(.name == "MANIFESTS") | .value')"
+	for s in "${SHARDS[@]}"; do
+		sp="$(jq -c --argjson s "$s" '.[] | select(.shard == $s)' <<<"$specs" 2>/dev/null)"
+		want_peers="$(for p in $(pod_names "$s"); do printf '%s %s\n' "$p" "$(fqdn "$s" "$p")"; done)"
+		[ "$(q "$sp" .name)" = "$(sts_name "$s")-manifest" ] && [ "$(q "$sp" .groupId)" = "shard-$s" ] &&
+			[ "$(q "$sp" .ringVersion)" = "$ring_version" ] && [ "$(q "$sp" -r '.peers[] | "\(.podName) \(.address)"')" = "$want_peers" ] &&
+			pass "job: MANIFESTS spec for shard $s (name, groupId, ringVersion $ring_version, three stable FQDNs)" ||
+			fail "job: MANIFESTS spec for shard $s" "got '$sp'"
+	done
 	sa="$(q "$jt" .spec.serviceAccountName)"
-	role="$(jq -c --arg sa "$sa" '[.[] | select(.kind == "RoleBinding" and any(.subjects[]; .name == $sa))][0].roleRef.name' "$tmp/render.json" 2>/dev/null)"
-	verbs="$(jq -r --arg r "${role//\"/}" '.[] | select(.kind == "Role" and .metadata.name == $r) | .rules[] | select(.resources | index("configmaps")) | .verbs[]' "$tmp/render.json" | sort -u | tr '\n' ' ')"
-	[[ "$verbs" == *get* && "$verbs" == *update* ]] && pass "job: service account may get and update the manifests" || fail "job: service account may get and update the manifests" "verbs '$verbs'"
+	role="$(jq -r --arg sa "$sa" '[.[] | select(.kind == "RoleBinding" and any(.subjects[]; .kind == "ServiceAccount" and .name == $sa))] | if length == 1 then .[0].roleRef.name else empty end' "$tmp/render.json")"
+	[ "$(jq '[.[] | select(.kind == "ClusterRoleBinding")] | length' "$tmp/render.json")" = 0 ] && [ -n "$role" ] &&
+		pass "job: one RoleBinding ($role), no ClusterRoleBinding" || fail "job: one RoleBinding, no ClusterRoleBinding" "role '$role'"
+	rules="$(jq -c --arg r "$role" '.[] | select(.kind == "Role" and .metadata.name == $r) | [.rules[] | {apiGroups, resources, resourceNames: (.resourceNames // null), verbs: (.verbs | sort)}] | sort_by(.verbs)' "$tmp/render.json")"
+	want_rules='[{"apiGroups":[""],"resources":["configmaps"],"resourceNames":null,"verbs":["create"]},{"apiGroups":[""],"resources":["configmaps"],"resourceNames":["storage-shard-0-manifest","storage-shard-1-manifest","storage-shard-2-manifest"],"verbs":["get","update"]}]'
+	[ "$rules" = "$want_rules" ] && pass "job: Role is exactly get/update on the three manifests by name, plus create" ||
+		fail "job: Role is exactly get/update on the three manifests by name, plus create" "got $rules"
 fi
 
 # --- 3. Fresh cluster, image, install ------------------------------------------------
@@ -348,6 +396,19 @@ for s in "${SHARDS[@]}"; do
 	[ "$(kn get pvc -l "reliefgrid.io/shard=$s" --no-headers 2>/dev/null | grep -c Bound)" = 3 ] &&
 		pass "storage shard-$s: 3 PVCs Bound" || fail "storage shard-$s: 3 PVCs Bound"
 done
+j1="$(job_name)"
+[ "$(job_logs "$j1" | grep -c 'created manifest')" = 3 ] && pass "install: Job $j1 created the three manifests" ||
+	fail "install: Job $j1 created the three manifests" "$(job_logs "$j1" | grep -c 'created manifest') created"
+for s in "${SHARDS[@]}"; do
+	cmj="$(kn get configmap "$(sts_name "$s")-manifest" -o json 2>/dev/null)"
+	want_peers="$(for p in $(pod_names "$s"); do printf '%s %s\n' "$p" "$(fqdn "$s" "$p")"; done)"
+	[ "$(q "$cmj" .data.groupId)" = "shard-$s" ] && [ "$(q "$cmj" .data.shard)" = "$s" ] && [ "$(q "$cmj" .data.ringVersion)" = "$ring_version" ] &&
+		[ "$(q "$cmj" -r '.data.peers | fromjson | .[] | "\(.podName) \(.address)"')" = "$want_peers" ] &&
+		pass "manifest shard-$s: groupId, shard, ringVersion $ring_version, the three stable FQDNs" || fail "manifest shard-$s: contents" "$(q "$cmj" -c .data)"
+	[ "$(q "$cmj" '.metadata.labels["app.kubernetes.io/managed-by"]')" = storagectl ] &&
+		[ -z "$(q "$cmj" '(.metadata.annotations // {}) | keys[] | select(startswith("meta.helm.sh/") or startswith("helm.sh/"))')" ] &&
+		pass "manifest shard-$s: managed by storagectl, no Helm ownership" || fail "manifest shard-$s: managed by storagectl, no Helm ownership" "$(q "$cmj" -c .metadata)"
+done
 data_nodes="$(k get nodes -l role=data -o jsonpath='{.items[*].metadata.name}')"
 for node in $data_nodes; do
 	got="$(kn get pods -l app.kubernetes.io/component=storagenode --field-selector "spec.nodeName=$node" \
@@ -375,6 +436,13 @@ np_run np-operator true && pass "networkpolicy: an operator-labelled pod reaches
 np_run np-other false
 rc=$?
 [ "$rc" = 1 ] && pass "networkpolicy: an unlabelled pod cannot reach $target" || fail "networkpolicy: an unlabelled pod cannot reach $target" "exit $rc"
+raft0="$(fqdn 0 storage-shard-0-0)"
+exec_dial storage-shard-0-1 "$raft0" && pass "networkpolicy: storage-shard-0-1 reaches $raft0 (same shard)" ||
+	fail "networkpolicy: storage-shard-0-1 reaches $raft0 (same shard)"
+exec_dial storage-shard-1-0 "${raft0%:7000}:8080" && pass "networkpolicy: storage-shard-1-0 reaches storage-shard-0-0:8080 (data, control)" ||
+	fail "networkpolicy: storage-shard-1-0 reaches storage-shard-0-0:8080 (data, control)"
+exec_dial storage-shard-1-0 "$raft0" && fail "networkpolicy: storage-shard-1-0 cannot reach $raft0 (other shard)" ||
+	pass "networkpolicy: storage-shard-1-0 cannot reach $raft0 (other shard)"
 
 # --- 6. A write through the leader survives deleting that leader -------------------------
 wpods=($(pod_names "$WRITE_SHARD"))
@@ -423,9 +491,67 @@ else
 	fi
 fi
 
-# --- 7. Wiped disks with a kept manifest: no second cluster -------------------------------
+# --- 6b. Full restart of every replica of one shard ----------------------------------------
+RS=2
+ids_before="$(server_ids "$RS")"
+if kv="$(write_key "$RS" restart)"; then
+	pass "restart shard-$RS: sentinel ${kv%% *} written before the restart"
+	uids() { kn get pods $(pod_names "$RS") -o jsonpath='{.items[*].metadata.uid}' 2>/dev/null; }
+	uids_before="$(uids)"
+	t0="$(now)"
+	kn delete pod $(pod_names "$RS") --wait=false >/dev/null 2>&1
+	for _ in $(seq "$REJOIN_MAX_SECONDS"); do # all three replaced, so the Ready wait sees the new pods
+		u="$(uids)"
+		[ "$(wc -w <<<"$u")" = 3 ] && [ -z "$(comm -12 <(tr ' ' '\n' <<<"$uids_before" | sort) <(tr ' ' '\n' <<<"$u" | sort))" ] && break
+		sleep 1
+	done
+	if kn wait --for=condition=Ready $(for p in $(pod_names "$RS"); do echo "pod/$p"; done) --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1 &&
+		out="$(one_group "$RS")"; then
+		pass "restart shard-$RS: all three pods deleted at once come back as one group ($(since "$t0") s)"
+	else
+		fail "restart shard-$RS: all three pods deleted at once come back as one group" "${out:-not Ready}"
+	fi
+	[ "$(server_ids "$RS")" = "$ids_before" ] && pass "restart shard-$RS: serverIds unchanged" || fail "restart shard-$RS: serverIds unchanged" "before '$ids_before', after '$(server_ids "$RS")'"
+	read_key "$RS" "${kv%% *}" "${kv#* }" && pass "restart shard-$RS: the sentinel reads back" || fail "restart shard-$RS: the sentinel reads back" "$(cat "$tmp/get.json" 2>/dev/null)"
+else
+	fail "restart shard-$RS: sentinel written before the restart"
+fi
+
+# --- 6c. helm upgrade on healthy groups only verifies ---------------------------------------
+declare -A rv_before ids_all
+for s in "${SHARDS[@]}"; do rv_before[$s]="$(manifest_rv "$s")"; ids_all[$s]="$(server_ids "$s")"; done
+if helm --kube-context "$CTX" upgrade "$RELEASE" "$CHART" -n "$NS" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/upgrade1.out" 2>&1; then
+	pass "upgrade: helm upgrade --wait --wait-for-jobs on healthy groups succeeds"
+else
+	fail "upgrade: helm upgrade --wait --wait-for-jobs on healthy groups succeeds" "$(tail -3 "$tmp/upgrade1.out" | tr '\n' '|')"
+fi
+ju="$(job_name)"
+for s in "${SHARDS[@]}"; do
+	job_logs "$ju" | grep -q "shard-$s: verified" && pass "upgrade: Job $ju verified shard-$s" || fail "upgrade: Job $ju verified shard-$s" "$(job_logs "$ju" | tail -3 | tr '\n' '|')"
+	[ "$(manifest_rv "$s")" = "${rv_before[$s]}" ] && [ "$(phase "$s")" = BOOTSTRAPPED ] &&
+		pass "upgrade: manifest shard-$s untouched (resourceVersion ${rv_before[$s]}, BOOTSTRAPPED)" || fail "upgrade: manifest shard-$s untouched" "rv ${rv_before[$s]} -> $(manifest_rv "$s"), phase $(phase "$s")"
+	[ "$(server_ids "$s")" = "${ids_all[$s]}" ] || fail "upgrade: shard-$s serverIds unchanged" "${ids_all[$s]} -> $(server_ids "$s")"
+done
+job_logs "$ju" | grep -Eq 'created manifest|msg="?[^ ]*: bootstrapped' && fail "upgrade: the Job created or bootstrapped nothing" "$(job_logs "$ju" | tr '\n' '|')" ||
+	pass "upgrade: the Job created or bootstrapped nothing"
+
+# --- 6d. helm rollback to revision 1 cannot touch the manifests ----------------------------
+declare -A pids_before
+for s in "${SHARDS[@]}"; do pids_before[$s]="$(peer_ids "$s")"; done
+if helm --kube-context "$CTX" rollback "$RELEASE" 1 -n "$NS" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/rollback.out" 2>&1; then
+	pass "rollback: helm rollback $RELEASE 1 succeeds"
+else
+	fail "rollback: helm rollback $RELEASE 1 succeeds" "$(tail -3 "$tmp/rollback.out" | tr '\n' '|')"
+fi
+for s in "${SHARDS[@]}"; do
+	[ "$(manifest_rv "$s")" = "${rv_before[$s]}" ] && [ "$(phase "$s")" = BOOTSTRAPPED ] && [ "$(peer_ids "$s")" = "${pids_before[$s]}" ] &&
+		pass "rollback: manifest shard-$s untouched (resourceVersion, BOOTSTRAPPED, peerIds)" ||
+		fail "rollback: manifest shard-$s untouched" "rv ${rv_before[$s]} -> $(manifest_rv "$s"), phase $(phase "$s"), peerIds $(peer_ids "$s")"
+done
+
+# --- 7. Wiped disks after upgrade + rollback: no second cluster ----------------------------
 helm --kube-context "$CTX" uninstall "$RELEASE" -n "$NS" --wait >/dev/null 2>&1
-kn delete pvc -l app.kubernetes.io/component=storagenode --wait=true >/dev/null 2>&1
+kn delete pvc -l app.kubernetes.io/name=storage,app.kubernetes.io/component=storagenode --wait=true >/dev/null 2>&1
 kept=0
 for s in "${SHARDS[@]}"; do [ "$(phase "$s")" = BOOTSTRAPPED ] && kept=$((kept + 1)); done
 [ "$kept" = 3 ] && pass "uninstall: the three manifests survive, phase BOOTSTRAPPED" || fail "uninstall: the three manifests survive, phase BOOTSTRAPPED" "$kept kept"
@@ -437,7 +563,11 @@ if kn wait --for=condition=Failed "job/$j" --timeout=180s >/dev/null 2>&1; then
 else
 	fail "guard: the bootstrap Job fails over wiped disks with a BOOTSTRAPPED manifest" "$(job_logs "$j" | tail -3 | tr '\n' '|')"
 fi
-job_logs "$j" | grep -q refused && pass "guard: the Job logs 'refused'" || fail "guard: the Job logs 'refused'"
+reason="$(kn get job "$j" -o jsonpath='{.status.conditions[?(@.type=="Failed")].reason}' 2>/dev/null)"
+codes="$(kn get pods -l "job-name=$j" -o jsonpath='{range .items[*]}{.status.containerStatuses[0].state.terminated.exitCode}{" "}{end}' 2>/dev/null)"
+[ "$reason" = PodFailurePolicy ] && [ "$codes" = "2 " ] && pass "guard: failed by podFailurePolicy after one pod exited 2" ||
+	fail "guard: failed by podFailurePolicy after one pod exited 2" "reason '$reason', exit codes '$codes'"
+job_logs "$j" | grep -q 'storagectl: refused:' && pass "guard: the Job logs 'refused:'" || fail "guard: the Job logs 'refused:'"
 echo "waiting ${NO_SELF_BOOTSTRAP_SECONDS}s to confirm no pod bootstraps itself..."
 sleep "$NO_SELF_BOOTSTRAP_SECONDS"
 for s in "${SHARDS[@]}"; do
@@ -483,13 +613,13 @@ for _ in $(seq 180); do
 done
 if [ -n "$held" ]; then
 	pass "rerun: Job $j bootstrapped shard 0 and is holding"
+	ids0="$(server_ids 0)"
+	kv0="$(write_key 0 rerun)" && pass "rerun: sentinel ${kv0%% *} written to shard-0 during the hold" || fail "rerun: sentinel written to shard-0 during the hold"
 	echo "phases at the kill: shard-0 $(phase 0), shard-1 $(phase 1), shard-2 $(phase 2)"
 	kn delete job "$j" --cascade=foreground --wait=true >/dev/null 2>&1
 	[ -z "$(kn get pods -l "job-name=$j" -o name 2>/dev/null)" ] && pass "rerun: Job $j and its pod deleted mid-run" || fail "rerun: Job $j and its pod deleted mid-run"
 	[ "$(phase 0)" = BOOTSTRAPPING ] && [ "$(phase 1)" = PENDING ] && [ "$(phase 2)" = PENDING ] &&
 		pass "rerun: killed with shard-0 BOOTSTRAPPING, shards 1 and 2 PENDING" || fail "rerun: killed with shard-0 BOOTSTRAPPING, shards 1 and 2 PENDING" "$(phase 0) $(phase 1) $(phase 2)"
-	read -r l0 t0term < <(wait_leader 15 - 0 $(pod_names 0))
-	[ -n "${l0:-}" ] && pass "rerun: shard-0 already has a leader ($l0, term $t0term) before the re-run" || fail "rerun: shard-0 already has a leader before the re-run"
 else
 	fail "rerun: Job $j bootstrapped shard 0 and is holding" "$(job_logs "$j" | tail -3 | tr '\n' '|')"
 fi
@@ -511,16 +641,16 @@ for s in "${SHARDS[@]}"; do
 	fi
 	[ "$(phase "$s")" = BOOTSTRAPPED ] && pass "rerun shard-$s: phase BOOTSTRAPPED" || fail "rerun shard-$s: phase BOOTSTRAPPED" "got '$(phase "$s")'"
 done
-if [ -n "${t0term:-}" ]; then
-	now0="$(leaders $(pod_names 0))"
-	[ "$(grep -c . <<<"$now0")" = 1 ] && [ "${now0##* }" -ge "$t0term" ] &&
-		pass "rerun shard-0: same group as before the re-run (term ${now0##* } >= $t0term)" || fail "rerun shard-0: same group as before the re-run" "leaders now: $now0"
+if [ -n "${kv0:-}" ]; then
+	read_key 0 "${kv0%% *}" "${kv0#* }" && pass "rerun shard-0: the sentinel written before the kill reads back (same group)" ||
+		fail "rerun shard-0: the sentinel written before the kill reads back (same group)" "$(cat "$tmp/get.json" 2>/dev/null)"
+	[ "$(server_ids 0)" = "$ids0" ] && pass "rerun shard-0: serverIds unchanged ($ids0)" || fail "rerun shard-0: serverIds unchanged" "before '$ids0', after '$(server_ids 0)'"
 fi
 
 # --- 10. Evidence ---------------------------------------------------------------------------
 # Identify the code under test, not the commit: committing the evidence (or any
 # docs change) must not make it stale, so only these paths are fingerprinted.
-code_paths=(go.mod go.sum cmd/storagenode cmd/storagectl internal deploy/helm/storage scripts/verify-storage-k8s.sh)
+code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl internal deploy/helm/storage scripts/verify-storage-k8s.sh)
 code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin)"
 code_dirty="$(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
 mkdir -p "$(dirname "$EVIDENCE")"

@@ -16,9 +16,10 @@ import (
 
 // fakeStore is a ConfigMap store with resourceVersion compare-and-swap.
 type fakeStore struct {
-	mu   sync.Mutex
-	data map[string]map[string]string
-	rv   map[string]int
+	mu      sync.Mutex
+	data    map[string]map[string]string
+	rv      map[string]int
+	created int
 }
 
 func newFakeStore(ms ...manifest) *fakeStore {
@@ -37,6 +38,17 @@ func (s *fakeStore) Get(_ context.Context, name string) (manifest, error) {
 		return manifest{}, fmt.Errorf("configmap %s not found", name)
 	}
 	return parseManifest(name, strconv.Itoa(s.rv[name]), d)
+}
+
+func (s *fakeStore) Create(_ context.Context, m manifest) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.data[m.Name]; ok {
+		return errExists
+	}
+	s.data[m.Name], s.rv[m.Name] = m.data(), 1
+	s.created++
+	return nil
 }
 
 func (s *fakeStore) Update(_ context.Context, m manifest) (string, error) {
@@ -64,6 +76,7 @@ type fakeCluster struct {
 	nodes      map[string]*nodeStatus
 	bootstraps map[string]int // by target address
 	failNext   error          // returned (once) by the next Bootstrap, after it took effect
+	reject     error          // returned by every Bootstrap, which takes no effect
 }
 
 func newFakeCluster(ms ...manifest) *fakeCluster {
@@ -93,6 +106,9 @@ func (c *fakeCluster) Status(_ context.Context, addr string) (nodeStatus, error)
 func (c *fakeCluster) Bootstrap(_ context.Context, addr string, voters []peerVoter) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	if c.reject != nil {
+		return c.reject
+	}
 	target := c.nodes[addr]
 	if target.HasState {
 		return errHasState
@@ -124,6 +140,19 @@ func (c *fakeCluster) wipe(m manifest) {
 	}
 }
 
+// leaders is the distinct leader IDs the shard's nodes name: one group has
+// exactly one.
+func (c *fakeCluster) leaders(m manifest) map[string]bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	ids := map[string]bool{}
+	for _, p := range m.Peers {
+		addr, _ := mgmtAddr(p.Address, "8081")
+		ids[c.nodes[addr].LeaderID] = true
+	}
+	return ids
+}
+
 func (c *fakeCluster) totalBootstraps() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -152,13 +181,16 @@ func newTestBootstrapper(store manifestStore, peers peerClient, logs io.Writer) 
 
 func TestBootstrapFreshInstall(t *testing.T) {
 	ms := []manifest{shardManifest(0), shardManifest(1), shardManifest(2)}
-	store, cluster := newFakeStore(ms...), newFakeCluster(ms...)
+	store, cluster := newFakeStore(), newFakeCluster(ms...) // no manifests yet: the Job creates them
 	var logs bytes.Buffer
-	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), names(ms)); err != nil {
+	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), ms); err != nil {
 		t.Fatalf("run: %v\n%s", err, logs.String())
 	}
 	if got := cluster.totalBootstraps(); got != 3 {
 		t.Fatalf("%d bootstraps, want one per shard", got)
+	}
+	if store.created != 3 {
+		t.Fatalf("%d manifests created, want 3", store.created)
 	}
 	for _, m := range ms {
 		got, _ := store.Get(t.Context(), m.Name)
@@ -169,26 +201,26 @@ func TestBootstrapFreshInstall(t *testing.T) {
 
 	// A re-run (every helm upgrade) only verifies.
 	logs.Reset()
-	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), names(ms)); err != nil {
+	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), ms); err != nil {
 		t.Fatalf("re-run: %v", err)
 	}
 	if got := cluster.totalBootstraps(); got != 3 {
 		t.Fatalf("re-run bootstrapped again: %d", got)
 	}
-	if strings.Count(logs.String(), "verified") != 3 {
-		t.Fatalf("re-run logs:\n%s", logs.String())
+	if strings.Count(logs.String(), "verified") != 3 || store.created != 3 {
+		t.Fatalf("re-run created %d manifests; logs:\n%s", store.created, logs.String())
 	}
 }
 
 func TestBootstrapKilledDuringHoldResumes(t *testing.T) {
 	ms := []manifest{shardManifest(0), shardManifest(1)}
-	store, cluster := newFakeStore(ms...), newFakeCluster(ms...)
+	store, cluster := newFakeStore(), newFakeCluster(ms...)
 	var logs syncBuffer
 	b := newTestBootstrapper(store, cluster, &logs)
 	b.hold = time.Hour
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- b.run(ctx, names(ms)) }()
+	go func() { done <- b.run(ctx, ms) }()
 	for !strings.Contains(logs.String(), "holding") {
 		time.Sleep(time.Millisecond)
 	}
@@ -201,7 +233,7 @@ func TestBootstrapKilledDuringHoldResumes(t *testing.T) {
 	}
 
 	var logs2 bytes.Buffer
-	if err := newTestBootstrapper(store, cluster, &logs2).run(t.Context(), names(ms)); err != nil {
+	if err := newTestBootstrapper(store, cluster, &logs2).run(t.Context(), ms); err != nil {
 		t.Fatalf("re-run: %v\n%s", err, logs2.String())
 	}
 	if got := cluster.totalBootstraps(); got != 2 {
@@ -221,11 +253,11 @@ func TestBootstrapRefusesWipedGroup(t *testing.T) {
 	m := shardManifest(0)
 	store, cluster := newFakeStore(m), newFakeCluster(m)
 	var logs bytes.Buffer
-	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []string{m.Name}); err != nil {
+	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []manifest{m}); err != nil {
 		t.Fatal(err)
 	}
 	cluster.wipe(m) // every PVC deleted; the manifest survives
-	err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []string{m.Name})
+	err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []manifest{m})
 	if !errors.Is(err, errRefused) {
 		t.Fatalf("run over wiped disks: %v, want refused", err)
 	}
@@ -239,7 +271,7 @@ func TestBootstrapUnknownOutcomeIsNotRetriedBlindly(t *testing.T) {
 	store, cluster := newFakeStore(m), newFakeCluster(m)
 	cluster.failNext = errors.New("context deadline exceeded") // took effect, response lost
 	var logs bytes.Buffer
-	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []string{m.Name}); err != nil {
+	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []manifest{m}); err != nil {
 		t.Fatalf("run: %v\n%s", err, logs.String())
 	}
 	if got := cluster.totalBootstraps(); got != 1 {
@@ -248,14 +280,6 @@ func TestBootstrapUnknownOutcomeIsNotRetriedBlindly(t *testing.T) {
 	if store.phase(m.Name) != phaseBootstrapped {
 		t.Fatal("not BOOTSTRAPPED")
 	}
-}
-
-func names(ms []manifest) []string {
-	var n []string
-	for _, m := range ms {
-		n = append(n, m.Name)
-	}
-	return n
 }
 
 // syncBuffer is a log sink read while another goroutine writes it.
@@ -274,4 +298,85 @@ func (s *syncBuffer) String() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.b.String()
+}
+
+// The spec the chart passes is only used to create a missing manifest: an
+// existing one (here BOOTSTRAPPED, then every disk wiped) is never reset to
+// PENDING, whatever the Job's spec says (helm rollback can't regress it).
+func TestBootstrapExistingManifestWinsOverSpec(t *testing.T) {
+	m := shardManifest(0)
+	store, cluster := newFakeStore(), newFakeCluster(m)
+	var logs bytes.Buffer
+	if err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []manifest{m}); err != nil {
+		t.Fatal(err)
+	}
+	cluster.wipe(m)
+	err := newTestBootstrapper(store, cluster, &logs).run(t.Context(), []manifest{shardManifest(0)})
+	if !errors.Is(err, errRefused) {
+		t.Fatalf("run over wiped disks with a PENDING spec: %v, want refused", err)
+	}
+	if got := store.phase(m.Name); got != phaseBootstrapped {
+		t.Fatalf("manifest phase %s, want BOOTSTRAPPED", got)
+	}
+	if got := cluster.totalBootstraps(); got != 1 {
+		t.Fatalf("%d bootstraps, want 1", got)
+	}
+}
+
+// A 400/401/403 from /mgmt/bootstrap is a definite answer: exit at once
+// (code 1, not a refusal) instead of re-reading until the deadline.
+func TestBootstrapRejectedRequestFailsAtOnce(t *testing.T) {
+	m := shardManifest(0)
+	store, cluster := newFakeStore(), newFakeCluster(m)
+	cluster.reject = fmt.Errorf("%w: HTTP 401: operator bearer token required", errRejected)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	var logs bytes.Buffer
+	err := newTestBootstrapper(store, cluster, &logs).run(ctx, []manifest{m})
+	if !errors.Is(err, errRejected) || errors.Is(err, errRefused) || ctx.Err() != nil {
+		t.Fatalf("run: %v (ctx %v), want errRejected at once\n%s", err, ctx.Err(), logs.String())
+	}
+	if got := cluster.totalBootstraps(); got != 0 {
+		t.Fatalf("%d bootstraps took effect", got)
+	}
+}
+
+// Two Jobs (an upgrade while the previous revision's Job still runs) race on
+// one store from nothing: the manifests' create and compare-and-swap leave
+// exactly one group per shard.
+func TestConcurrentBootstrappersFormOneGroup(t *testing.T) {
+	for i := range 50 {
+		ms := []manifest{shardManifest(0), shardManifest(1)}
+		store, cluster := newFakeStore(), newFakeCluster(ms...)
+		var wg sync.WaitGroup
+		errs := make([]error, 2)
+		start := make(chan struct{})
+		for j := range errs {
+			wg.Go(func() {
+				<-start
+				errs[j] = newTestBootstrapper(store, cluster, io.Discard).run(t.Context(), ms)
+			})
+		}
+		close(start)
+		wg.Wait()
+		for j, err := range errs {
+			if err != nil {
+				t.Fatalf("round %d, bootstrapper %d: %v", i, j, err)
+			}
+		}
+		if got := cluster.totalBootstraps(); got != len(ms) {
+			t.Fatalf("round %d: %d bootstraps took effect, want one per shard", i, got)
+		}
+		if store.created != len(ms) {
+			t.Fatalf("round %d: %d manifests created, want %d", i, store.created, len(ms))
+		}
+		for _, m := range ms {
+			if l := cluster.leaders(m); len(l) != 1 || l[""] {
+				t.Fatalf("round %d, %s: leaders %v, want one group", i, m.GroupID, l)
+			}
+			if p := store.phase(m.Name); p != phaseBootstrapped {
+				t.Fatalf("round %d, %s: %s", i, m.Name, p)
+			}
+		}
+	}
 }

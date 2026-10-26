@@ -108,11 +108,12 @@ func mismatch(m manifest, p peer, s nodeStatus) string {
 // fenced reports whether the group has applied a quorum-backed
 // initialization fence: a majority of the recorded voters answer with Raft
 // state, name the same leader (one of the recorded voters), and have caught
-// up; and the leader's commit index is past the bootstrap configuration
-// entry (index 1), which needs a majority to acknowledge its first entry.
+// up; and that leader's own commit index is past the bootstrap configuration
+// entry (index 1), which needs a majority to acknowledge its first entry. A
+// different (stale) self-proclaimed leader's commit index never counts.
 func fenced(m manifest, sts map[string]nodeStatus) (bool, string) {
 	leaders := map[string]int{}
-	var leaderCommit uint64
+	commits := map[string]uint64{} // self-reported leaders' commit index, by ID
 	for _, p := range m.Peers {
 		s, ok := sts[p.PodName]
 		if !ok || !s.HasState || !s.CaughtUp || s.LeaderID == "" {
@@ -120,7 +121,7 @@ func fenced(m manifest, sts map[string]nodeStatus) (bool, string) {
 		}
 		leaders[s.LeaderID]++
 		if s.State == "Leader" && s.ServerID == s.LeaderID {
-			leaderCommit = s.CommitIndex
+			commits[s.ServerID] = s.CommitIndex
 		}
 	}
 	for id, n := range leaders {
@@ -129,6 +130,10 @@ func fenced(m manifest, sts map[string]nodeStatus) (bool, string) {
 		}
 		if !slices.Contains(m.PeerIDs, id) {
 			return false, fmt.Sprintf("leader %s is not a recorded voter", id)
+		}
+		leaderCommit, ok := commits[id]
+		if !ok {
+			return false, fmt.Sprintf("leader %s did not answer as leader", id)
 		}
 		if leaderCommit < 2 {
 			return false, fmt.Sprintf("leader %s has commit index %d", id, leaderCommit)

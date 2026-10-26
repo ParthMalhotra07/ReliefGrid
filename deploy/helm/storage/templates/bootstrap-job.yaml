@@ -44,8 +44,8 @@ spec:
           env:
             - name: POD_NAMESPACE
               valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
-            - name: MANIFESTS
-              value: {{ include "storage.manifests" . | quote }}
+            - name: MANIFESTS # specs; storagectl creates and owns the manifests
+              value: {{ include "storage.manifestSpecs" . | quote }}
             - name: OPERATOR_TOKEN
               valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
             - name: MGMT_PORT

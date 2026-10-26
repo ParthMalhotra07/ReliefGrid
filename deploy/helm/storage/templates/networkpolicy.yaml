@@ -3,6 +3,9 @@
 ---
 # Ingress to shard {{ $s }}: Raft only from its own group, data from the
 # namespace, management (bootstrap, status) only from operator pods (v3.1 §11).
+# The kubelet's probes also use the mgmt port (8081). They come from the node,
+# not a pod, and the CNIs we use (kindnet, Calico, Cilium) let a node reach its
+# own pods regardless of policy; a CNI that doesn't would fail every probe.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

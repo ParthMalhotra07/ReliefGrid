@@ -131,6 +131,17 @@ func TestFenced(t *testing.T) {
 		})
 	}
 
+	// A stale leader's commit index must not stand in for the leader the
+	// majority names: peers 0 and 1 follow peer 0 (commit 1, its no-op not
+	// yet committed); peer 2 still claims leadership with commit 5.
+	stale := joined(true, 1, 0, 1)
+	p2 := statuses(m, true, 2)[m.Peers[2].PodName]
+	p2.State, p2.LeaderID, p2.CaughtUp, p2.CommitIndex = "Leader", p2.ServerID, true, 5
+	stale[m.Peers[2].PodName] = p2
+	if ok, why := fenced(m, stale); ok {
+		t.Fatalf("fenced on a stale leader's commit index: %s", why)
+	}
+
 	stranger := joined(true, 5, 0, 1, 2)
 	for pod, s := range stranger {
 		s.LeaderID = "storage-shard-1-0/other"

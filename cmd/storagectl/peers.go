@@ -16,6 +16,11 @@ import (
 // state (HTTP 409 from /mgmt/bootstrap).
 var errHasState = errors.New("storagectl: node already has raft state")
 
+// errRejected: the node answered the bootstrap with 400, 401 or 403. That is
+// a definite answer (nothing was applied), not a lost response, so the Job
+// fails at once instead of re-reading until its deadline.
+var errRejected = errors.New("storagectl: bootstrap request rejected")
+
 // peerClient calls storage nodes' management endpoints.
 type peerClient interface {
 	Status(ctx context.Context, mgmtAddr string) (nodeStatus, error)
@@ -101,7 +106,20 @@ func (h *httpPeers) Bootstrap(ctx context.Context, addr string, voters []peerVot
 		return nil
 	case http.StatusConflict:
 		return fmt.Errorf("%w: %s: %s", errHasState, addr, bytes.TrimSpace(b))
+	case http.StatusBadRequest, http.StatusUnauthorized, http.StatusForbidden:
+		return fmt.Errorf("%w: %s: HTTP %d: %s", errRejected, addr, resp.StatusCode, bytes.TrimSpace(b))
 	default:
 		return fmt.Errorf("storagectl: bootstrap %s: HTTP %d: %s", addr, resp.StatusCode, bytes.TrimSpace(b))
 	}
+}
+
+// dial opens and closes a TCP connection to addr (storagectl dial): a
+// reachability check from inside a distroless pod, which has no shell.
+func dial(ctx context.Context, addr string) error {
+	var d net.Dialer
+	c, err := d.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return fmt.Errorf("storagectl: dial %s: %w", addr, err)
+	}
+	return c.Close()
 }

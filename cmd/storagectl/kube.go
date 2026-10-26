@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -20,9 +22,16 @@ import (
 // and decide again.
 var errConflict = errors.New("storagectl: manifest changed concurrently")
 
-// manifestStore reads and compare-and-swaps manifest ConfigMaps.
+// errExists: the manifest ConfigMap is already there (HTTP 409
+// AlreadyExists on create); read it and use it.
+var errExists = errors.New("storagectl: manifest already exists")
+
+// manifestStore creates, reads and compare-and-swaps manifest ConfigMaps.
 type manifestStore interface {
 	Get(ctx context.Context, name string) (manifest, error)
+	// Create writes m.data() as a new ConfigMap; errExists if one exists,
+	// which it never changes.
+	Create(ctx context.Context, m manifest) error
 	// Update writes m.data() if the ConfigMap is still at m.ResourceVersion
 	// and returns the new resourceVersion; errConflict otherwise.
 	Update(ctx context.Context, m manifest) (string, error)
@@ -76,7 +85,11 @@ func (k *kubeStore) do(ctx context.Context, method, name string, body []byte) (*
 	if err != nil {
 		return nil, fmt.Errorf("storagectl: read service account token: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, k.base+url.PathEscape(name), bytes.NewReader(body))
+	target := k.base + url.PathEscape(name)
+	if name == "" { // the collection, for create
+		target = strings.TrimSuffix(k.base, "/")
+	}
+	req, err := http.NewRequestWithContext(ctx, method, target, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +139,44 @@ func (k *kubeStore) Get(ctx context.Context, name string) (manifest, error) {
 	return parseManifest(name, cm.version, cm.data)
 }
 
+// manifestLabels select manifests for make storage-reset. There are no Helm
+// ownership labels or annotations: the manifest is storagectl's, so helm
+// upgrade, rollback and uninstall never write or delete it.
+func manifestLabels(m manifest) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":       "storage",
+		"app.kubernetes.io/component":  "storage-manifest",
+		"app.kubernetes.io/managed-by": "storagectl",
+		"reliefgrid.io/shard":          strconv.Itoa(m.Shard),
+	}
+}
+
+func (k *kubeStore) Create(ctx context.Context, m manifest) error {
+	body, err := json.Marshal(map[string]any{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata":   map[string]any{"name": m.Name, "labels": manifestLabels(m)},
+		"data":       m.data(),
+	})
+	if err != nil {
+		return err
+	}
+	resp, err := k.do(ctx, http.MethodPost, "", body)
+	if err != nil {
+		return fmt.Errorf("storagectl: create configmap %s: %w", m.Name, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	switch resp.StatusCode {
+	case http.StatusCreated:
+		return nil
+	case http.StatusConflict:
+		return fmt.Errorf("%w: %s", errExists, m.Name)
+	default:
+		return fmt.Errorf("storagectl: create configmap %s: HTTP %d: %s", m.Name, resp.StatusCode, bytes.TrimSpace(b))
+	}
+}
+
 func (k *kubeStore) Update(ctx context.Context, m manifest) (string, error) {
 	cm, err := k.getRaw(ctx, m.Name)
 	if err != nil {
@@ -138,7 +189,18 @@ func (k *kubeStore) Update(ctx context.Context, m manifest) (string, error) {
 		return "", fmt.Errorf("storagectl: configmap %s has no metadata", m.Name)
 	}
 	meta["resourceVersion"] = m.ResourceVersion
-	cm.raw["data"] = m.data()
+	// Merge: keys the struct doesn't model (M7's admissions) are kept.
+	data, _ := cm.raw["data"].(map[string]any)
+	if data == nil {
+		data = map[string]any{}
+	}
+	for key, v := range m.data() {
+		data[key] = v
+	}
+	if len(m.PeerIDs) == 0 {
+		delete(data, "peerIds")
+	}
+	cm.raw["data"] = data
 	body, err := json.Marshal(cm.raw)
 	if err != nil {
 		return "", err

@@ -36,8 +36,32 @@ reliefgrid.io/shard: {{ .shard | quote }}
 {{- join "," $names -}}
 {{- end }}
 
+{{/*
+Manifest specs for the bootstrap Job (MANIFESTS), in shard order: what the
+chart knows about each group. storagectl creates a missing manifest from its
+spec and never resets an existing one; the chart renders no manifest itself.
+*/}}
+{{- define "storage.manifestSpecs" -}}
+{{- $ring := include "storage.ring" . | fromJson -}}
+{{- $specs := list -}}
+{{- range $s := until (int $ring.shards) -}}
+{{- $peers := list -}}
+{{- range $i := until 3 -}}
+{{- $pod := printf "storage-shard-%d-%d" $s $i -}}
+{{- $peers = append $peers (dict "podName" $pod "address" (printf "%s.storage-shard-%d.%s.svc.cluster.local:7000" $pod $s $.Release.Namespace)) -}}
+{{- end -}}
+{{- $specs = append $specs (dict "name" (printf "storage-shard-%d-manifest" $s) "groupId" (printf "shard-%d" $s) "shard" $s "ringVersion" ($ring.ringVersion | int64) "peers" $peers) -}}
+{{- end -}}
+{{- toJson $specs -}}
+{{- end }}
+
+{{/* By digest when image.digest is set (pinned deployments); by tag on kind. */}}
 {{- define "storage.image" -}}
+{{- if .Values.image.digest -}}
+{{ .Values.image.repository }}@{{ .Values.image.digest }}
+{{- else -}}
 {{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{- end -}}
 {{- end }}
 
 {{- define "storage.podSecurityContext" -}}

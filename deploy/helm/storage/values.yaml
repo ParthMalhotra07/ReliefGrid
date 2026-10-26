@@ -2,6 +2,9 @@
 image:
   repository: reliefgrid/storagenode
   tag: dev
+  # sha256:... from the registry; when set, the image is referenced by digest
+  # and the tag is ignored. Empty on kind, where the image is only kind-loaded.
+  digest: ""
   pullPolicy: Never
 
 # Raft snapshot profile (M4): demo (1024 / 512 / 30 s) or load (library defaults).
@@ -14,12 +17,14 @@ persistence:
   storageClassName: standard
   size: 1Gi
 
+# v3.1 §23: storage x9.
 resources:
   requests:
-    cpu: 50m
-    memory: 64Mi
+    cpu: 100m
+    memory: 128Mi
   limits:
-    memory: 256Mi
+    cpu: "1"
+    memory: 512Mi
 
 # Bearer token for /mgmt/bootstrap. Empty: generated on first install and kept.
 operatorToken: ""
