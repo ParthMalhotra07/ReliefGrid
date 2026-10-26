@@ -1,8 +1,8 @@
 # S1.5 storage on Kubernetes
-result:     PASSED (239/239 checks)
+result:     PASSED (283/283 checks)
 host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
-date:       2026-10-26T12:06:50Z
-code tree:  eb4ec3510db5 (git ls-tree -r HEAD -- go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh | git hash-object --stdin)
+date:       2026-10-26T18:24:08Z
+code tree:  9e8cb268e7ed (git ls-tree -r HEAD -- go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh scripts/placement-check.sh | git hash-object --stdin)
 code dirty: no (uncommitted changes under those paths)
 
 ## checks
@@ -136,7 +136,7 @@ PASS  image: reliefgrid/storagenode:dev does not contain /coordinator
 PASS  make coordinator-image: succeeds
 PASS  coordinator image: reliefgrid/coordinator:dev runs as user '65532:65532'
 PASS  coordinator image: contains /coordinator
-PASS  install: helm install --wait --wait-for-jobs succeeds (24.5 s)
+PASS  install: helm install --wait --wait-for-jobs succeeds (24.7 s)
 PASS  group shard-0: one leader, all three replicas in it, IDs match the manifest
 PASS  manifest shard-0: phase BOOTSTRAPPED
 PASS  storage shard-0: 3 PVCs Bound
@@ -160,35 +160,35 @@ PASS  coordinator: runs on the infra worker (reliefgrid-worker4)
 PASS  coordinator: Deployment Available
 PASS  coordinator: port-forward to Service storage-coordinator
 PASS  coordinator: /admin/nodes without the token is 401
-PASS  coordinator: /admin/nodes shows all 9 nodes UP at their HTTP_ADVERTISE addresses, naming each shard's leader (1.4 s)
+PASS  coordinator: /admin/nodes shows all 9 nodes UP at their HTTP_ADVERTISE addresses, naming each shard's leader (3.0 s)
 PASS  coordinator: /admin/distribution answers (ringVersion 1, 3 shards, 3 replicas and the leader each)
-PASS  coordinator: PUT cfg:s15b-coord-1793016240 through the coordinator committed (version 1)
-PASS  coordinator: GET cfg:s15b-coord-1793016240 through the coordinator returns the write
+PASS  coordinator: PUT cfg:s15b-coord-1793038688 through the coordinator committed (version 1)
+PASS  coordinator: GET cfg:s15b-coord-1793038688 through the coordinator returns the write
 PASS  networkpolicy: an operator-labelled pod reaches storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:8081
 PASS  networkpolicy: an unlabelled pod cannot reach storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:8081
 PASS  networkpolicy: storage-shard-0-1 reaches storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000 (same shard)
 PASS  networkpolicy: storage-shard-1-0 reaches storage-shard-0-0:8080 (data, control)
 PASS  networkpolicy: storage-shard-1-0 cannot reach storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000 (other shard)
 PASS  write shard-1: PUT cfg:s15-verify-3 through leader storage-shard-1-0 committed (version 1)
-PASS  failover shard-1: storage-shard-1-1 leads at term 3, 3.6 s after deleting storage-shard-1-0
-PASS  failover shard-1: strong read of cfg:s15-verify-3 on storage-shard-1-1 returns the write
+PASS  failover shard-1: storage-shard-1-2 leads at term 3, 3.1 s after deleting storage-shard-1-0
+PASS  failover shard-1: strong read of cfg:s15-verify-3 on storage-shard-1-2 returns the write
 PASS  failover shard-1: storage-shard-1-0 rejoins the same group (same ID) and is Ready
-PASS  coordinator failover shard-1: the coordinator names the new leader within 20s (2.7 s; elected after 2.6 s)
-PASS  coordinator failover shard-1: cfg:s15b-coord-1793016240 still reads back through the coordinator
-PASS  coordinator failover shard-1: storage-shard-1-1 rejoins and is Ready
+PASS  coordinator failover shard-1: the coordinator names the new leader within 20s (2.1 s; elected after 1.8 s)
+PASS  coordinator failover shard-1: cfg:s15b-coord-1793038688 still reads back through the coordinator
+PASS  coordinator failover shard-1: storage-shard-1-2 rejoins and is Ready
 PASS  restart shard-2: sentinel cfg:s15-restart-5 written before the restart
-PASS  restart shard-2: all three pods deleted at once come back as one group (14.8 s)
+PASS  restart shard-2: all three pods deleted at once come back as one group (23.3 s)
 PASS  restart shard-2: serverIds unchanged
 PASS  restart shard-2: the sentinel reads back
 PASS  snapshot shard-0: sentinel cfg:s15-snapA-0 written before the snapshot
-PASS  snapshot shard-0: 1100 writes through storage-shard-0-0, past the demo threshold of 1024 (27.7 s)
-PASS  snapshot shard-0: storage-shard-0-0 took a snapshot at applied index 1104 (2-1104-1793016309037)
-PASS  snapshot shard-0: storage-shard-0-1 took a snapshot at applied index 1104 (2-1104-1793016309144)
-PASS  snapshot shard-0: storage-shard-0-2 took a snapshot at applied index 1104 (2-1104-1793016309263)
+PASS  snapshot shard-0: 1100 writes through storage-shard-0-0, past the demo threshold of 1024 (26.7 s)
+PASS  snapshot shard-0: storage-shard-0-0 took a snapshot at applied index 1104 (2-1104-1793038768880)
+PASS  snapshot shard-0: storage-shard-0-1 took a snapshot at applied index 1104 (2-1104-1793038769025)
+PASS  snapshot shard-0: storage-shard-0-2 took a snapshot at applied index 1104 (2-1104-1793038769184)
 PASS  snapshot shard-0: sentinel cfg:s15-snapB-3 written after the snapshot (in the tail)
 PASS  snapshot shard-0: 20 more writes in the tail
 PASS  snapshot shard-0: the three dumps agree before the restart (applied index 1125)
-PASS  snapshot shard-0: all three pods deleted at once come back as one group (3.9 s)
+PASS  snapshot shard-0: all three pods deleted at once come back as one group (4.4 s)
 PASS  snapshot shard-0: storage-shard-0-0 restored its snapshot at applied index 1104
 PASS  snapshot shard-0: storage-shard-0-0 logged the restore at applied index 1104
 PASS  snapshot shard-0: storage-shard-0-0 then replayed the tail to applied index 1125
@@ -203,14 +203,14 @@ PASS  snapshot shard-0: the sentinel from the tail reads back
 PASS  snapshot shard-0: the three dumps agree after the restart and equal the dump before it (1125)
 PASS  upgrade: helm upgrade --wait --wait-for-jobs on healthy groups succeeds
 PASS  upgrade: Job storage-bootstrap-2 verified shard-0
-PASS  upgrade: manifest shard-0 untouched (resourceVersion 1203, BOOTSTRAPPED)
+PASS  upgrade: manifest shard-0 untouched (resourceVersion 1271, BOOTSTRAPPED)
 PASS  upgrade: Job storage-bootstrap-2 verified shard-1
-PASS  upgrade: manifest shard-1 untouched (resourceVersion 1231, BOOTSTRAPPED)
+PASS  upgrade: manifest shard-1 untouched (resourceVersion 1291, BOOTSTRAPPED)
 PASS  upgrade: Job storage-bootstrap-2 verified shard-2
-PASS  upgrade: manifest shard-2 untouched (resourceVersion 1260, BOOTSTRAPPED)
+PASS  upgrade: manifest shard-2 untouched (resourceVersion 1309, BOOTSTRAPPED)
 PASS  upgrade: the Job created or bootstrapped nothing
 PASS  rollback: helm rollback storage 1 succeeds
-PASS  rollback: a new bootstrap Job ran (storage-bootstrap-1, uid 3a008558-4177-4208-a98e-12a3a05371ff)
+PASS  rollback: a new bootstrap Job ran (storage-bootstrap-1, uid 29440704-8fb2-4a52-9e3c-d3b272adc392)
 PASS  rollback: the Job created or bootstrapped nothing
 PASS  rollback: Job storage-bootstrap-1 verified shard-0
 PASS  rollback: manifest shard-0 untouched (resourceVersion, BOOTSTRAPPED, peerIds)
@@ -218,6 +218,50 @@ PASS  rollback: Job storage-bootstrap-1 verified shard-1
 PASS  rollback: manifest shard-1 untouched (resourceVersion, BOOTSTRAPPED, peerIds)
 PASS  rollback: Job storage-bootstrap-1 verified shard-2
 PASS  rollback: manifest shard-2 untouched (resourceVersion, BOOTSTRAPPED, peerIds)
+PASS  make placement-check: target exists
+PASS  placement-check: the live placement passes
+PASS  placement-check: fails when storage-shard-1-0 and storage-shard-1-2 share a worker, naming shard 1 and reliefgrid-worker3
+PASS  placement-check: fails when storage-shard-2-1 is on the infra worker, naming shard 2 and reliefgrid-worker4
+PASS  placement-check: fails when storage-shard-0-2 is not scheduled, naming shard 0 and storage-shard-0-2
+PASS  placement-check: fails when storage-shard-0-1 is missing, naming shard 0 and storage-shard-0-1
+PASS  transfer-leader: on follower storage-shard-1-0 exits non-zero with NOT_LEADER; storage-shard-1-1 still leads at term 4
+PASS  transfer-leader 1/3: storage-shard-1-1 -> storage-shard-1-0 (term 4 -> 5) in 0.8 s; storage-shard-1-1 follows storage-shard-1-0
+PASS  transfer-leader 2/3: storage-shard-1-0 -> storage-shard-1-1 (term 5 -> 6) in 0.8 s; storage-shard-1-0 follows storage-shard-1-1
+PASS  transfer-leader 3/3: storage-shard-1-1 -> storage-shard-1-0 (term 6 -> 7) in 0.8 s; storage-shard-1-1 follows storage-shard-1-0
+PASS  transfer-leader: shard-1 is one group afterwards
+PASS  transfer-leader: the key written before the transfers reads back
+PASS  transfer-leader: a write through the new leader commits
+PASS  transfer-leader: the coordinator names storage-shard-1-0 (term 7) for shard-1 (0.0 s)
+PASS  leader hint: a write to follower storage-shard-1-1 is 503 NOT_LEADER naming storage-shard-1-0 at its HTTP_ADVERTISE storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:8080
+PASS  readiness shard-0: every replica reports the leader's commitIndex (1128) as leaderCommitIndex and is caughtUp
+PASS  readiness shard-1: every replica reports the leader's commitIndex (15) as leaderCommitIndex and is caughtUp
+PASS  readiness shard-2: every replica reports the leader's commitIndex (5) as leaderCommitIndex and is caughtUp
+PASS  readiness lag: storage-shard-1-1 is held Pending while reliefgrid-worker2 is cordoned
+PASS  readiness lag: 300 writes committed through storage-shard-1-0 while storage-shard-1-1 was down (17.2 s; leader appliedIndex 315)
+PASS  readiness lag: storage-shard-1-1 catches up to appliedIndex >= 315 and is caughtUp and Ready
+PASS  readiness lag: in 37 samples (28 behind the leader), storage-shard-1-1 never reported caughtUp below the leader's appliedIndex 315
+PASS  failover 1/20: storage-shard-1-1 leads at term 8, 3.1 s after deleting storage-shard-1-0
+PASS  failover 2/20: storage-shard-1-2 leads at term 9, 1.9 s after deleting storage-shard-1-1
+PASS  failover 3/20: storage-shard-1-0 leads at term 10, 3.0 s after deleting storage-shard-1-2
+PASS  failover 4/20: storage-shard-1-0 leads at term 11, 3.1 s after deleting storage-shard-1-0 (the recreated pod won)
+PASS  failover 5/20: storage-shard-1-1 leads at term 12, 3.2 s after deleting storage-shard-1-0
+PASS  failover 6/20: storage-shard-1-0 leads at term 13, 3.1 s after deleting storage-shard-1-1
+PASS  failover 7/20: storage-shard-1-1 leads at term 14, 3.4 s after deleting storage-shard-1-0
+PASS  failover 8/20: storage-shard-1-2 leads at term 15, 3.2 s after deleting storage-shard-1-1
+PASS  failover 9/20: storage-shard-1-1 leads at term 16, 3.3 s after deleting storage-shard-1-2
+PASS  failover 10/20: storage-shard-1-2 leads at term 17, 3.2 s after deleting storage-shard-1-1
+PASS  failover 11/20: storage-shard-1-1 leads at term 18, 2.0 s after deleting storage-shard-1-2
+PASS  failover 12/20: storage-shard-1-2 leads at term 19, 2.0 s after deleting storage-shard-1-1
+PASS  failover 13/20: storage-shard-1-2 leads at term 20, 3.3 s after deleting storage-shard-1-2 (the recreated pod won)
+PASS  failover 14/20: storage-shard-1-1 leads at term 21, 3.2 s after deleting storage-shard-1-2
+PASS  failover 15/20: storage-shard-1-2 leads at term 22, 3.2 s after deleting storage-shard-1-1
+PASS  failover 16/20: storage-shard-1-1 leads at term 23, 3.2 s after deleting storage-shard-1-2
+PASS  failover 17/20: storage-shard-1-2 leads at term 24, 3.0 s after deleting storage-shard-1-1
+PASS  failover 18/20: storage-shard-1-1 leads at term 25, 3.3 s after deleting storage-shard-1-2
+PASS  failover 19/20: storage-shard-1-0 leads at term 26, 3.2 s after deleting storage-shard-1-1
+PASS  failover 20/20: storage-shard-1-1 leads at term 27, 3.4 s after deleting storage-shard-1-0
+PASS  failover: 20 consecutive leader deletes, each with a new leader within 10s (min 1.9, median 3.2, max 3.4 s; the recreated pod won 2)
+PASS  failover: the key written before the 20 deletes reads back
 PASS  uninstall: the three manifests survive, phase BOOTSTRAPPED
 PASS  guard: the bootstrap Job fails over wiped disks with a BOOTSTRAPPED manifest
 PASS  guard: failed by podFailurePolicy after one pod exited 2
@@ -234,7 +278,7 @@ PASS  rerun: Job storage-bootstrap-1 bootstrapped shard 0 and is holding
 PASS  rerun: sentinel cfg:s15-rerun-0 written to shard-0 during the hold
 PASS  rerun: Job storage-bootstrap-1 and its pod deleted mid-run
 PASS  rerun: killed with shard-0 BOOTSTRAPPING, shards 1 and 2 PENDING
-PASS  rerun: helm upgrade --wait --wait-for-jobs re-runs the Job and succeeds (6.9 s)
+PASS  rerun: helm upgrade --wait --wait-for-jobs re-runs the Job and succeeds (9.2 s)
 PASS  rerun: a new Job ran (storage-bootstrap-2)
 PASS  rerun: the new Job found shard-0 already initialized
 PASS  rerun shard-0: one group, one leader, IDs match the manifest (no second cluster)
@@ -244,50 +288,50 @@ PASS  rerun shard-1: phase BOOTSTRAPPED
 PASS  rerun shard-2: one group, one leader, IDs match the manifest (no second cluster)
 PASS  rerun shard-2: phase BOOTSTRAPPED
 PASS  rerun shard-0: the sentinel written before the kill reads back (same group)
-PASS  rerun shard-0: serverIds unchanged (storage-shard-0-0/cca06d3c-3b45-4077-be7b-373197906f45 storage-shard-0-1/f51983e8-e3ab-482d-aa92-de05c45f5b78 storage-shard-0-2/8ce4c00b-0d9c-41ed-8ac6-4392f8748a13 )
+PASS  rerun shard-0: serverIds unchanged (storage-shard-0-0/4e8b100a-d717-4e95-8537-74aec922cde3 storage-shard-0-1/a30c40a3-c9a6-4a42-93b9-444a03bd60bc storage-shard-0-2/e7eb8462-fb09-45b8-a483-9843b8a08dc8 )
 
 ## kubectl get pods -o wide
 NAME                                   READY   STATUS      RESTARTS   AGE   IP            NODE                 NOMINATED NODE   READINESS GATES
-storage-bootstrap-2-58wvr              0/1     Completed   0          8s    10.244.4.36   reliefgrid-worker2   <none>           <none>
-storage-coordinator-76f478cbcf-ct8l6   1/1     Running     0          38s   10.244.2.4    reliefgrid-worker4   <none>           <none>
-storage-shard-0-0                      1/1     Running     0          38s   10.244.4.33   reliefgrid-worker2   <none>           <none>
-storage-shard-0-1                      1/1     Running     0          38s   10.244.3.27   reliefgrid-worker3   <none>           <none>
-storage-shard-0-2                      1/1     Running     0          38s   10.244.1.27   reliefgrid-worker    <none>           <none>
-storage-shard-1-0                      1/1     Running     0          38s   10.244.4.32   reliefgrid-worker2   <none>           <none>
-storage-shard-1-1                      1/1     Running     0          38s   10.244.3.23   reliefgrid-worker3   <none>           <none>
-storage-shard-1-2                      1/1     Running     0          38s   10.244.1.26   reliefgrid-worker    <none>           <none>
-storage-shard-2-0                      1/1     Running     0          38s   10.244.4.30   reliefgrid-worker2   <none>           <none>
-storage-shard-2-1                      1/1     Running     0          38s   10.244.1.24   reliefgrid-worker    <none>           <none>
-storage-shard-2-2                      1/1     Running     0          38s   10.244.3.28   reliefgrid-worker3   <none>           <none>
+storage-bootstrap-2-qp8r7              0/1     Completed   0          12s   10.244.4.43   reliefgrid-worker    <none>           <none>
+storage-coordinator-76f478cbcf-hsclp   1/1     Running     0          41s   10.244.2.4    reliefgrid-worker4   <none>           <none>
+storage-shard-0-0                      1/1     Running     0          41s   10.244.4.36   reliefgrid-worker    <none>           <none>
+storage-shard-0-1                      1/1     Running     0          41s   10.244.3.33   reliefgrid-worker3   <none>           <none>
+storage-shard-0-2                      1/1     Running     0          41s   10.244.1.34   reliefgrid-worker2   <none>           <none>
+storage-shard-1-0                      1/1     Running     0          41s   10.244.3.30   reliefgrid-worker3   <none>           <none>
+storage-shard-1-1                      1/1     Running     0          41s   10.244.4.42   reliefgrid-worker    <none>           <none>
+storage-shard-1-2                      1/1     Running     0          41s   10.244.1.36   reliefgrid-worker2   <none>           <none>
+storage-shard-2-0                      1/1     Running     0          41s   10.244.4.39   reliefgrid-worker    <none>           <none>
+storage-shard-2-1                      1/1     Running     0          41s   10.244.3.32   reliefgrid-worker3   <none>           <none>
+storage-shard-2-2                      1/1     Running     0          41s   10.244.1.35   reliefgrid-worker2   <none>           <none>
 
 ## shard-0
-{"podName":"storage-shard-0-0","serverId":"storage-shard-0-0/cca06d3c-3b45-4077-be7b-373197906f45","state":"Leader","term":2,"leaderId":"storage-shard-0-0/cca06d3c-3b45-4077-be7b-373197906f45","commitIndex":4,"appliedIndex":3,"caughtUp":true}
-{"podName":"storage-shard-0-1","serverId":"storage-shard-0-1/f51983e8-e3ab-482d-aa92-de05c45f5b78","state":"Follower","term":2,"leaderId":"storage-shard-0-0/cca06d3c-3b45-4077-be7b-373197906f45","commitIndex":4,"appliedIndex":3,"caughtUp":true}
-{"podName":"storage-shard-0-2","serverId":"storage-shard-0-2/8ce4c00b-0d9c-41ed-8ac6-4392f8748a13","state":"Follower","term":2,"leaderId":"storage-shard-0-0/cca06d3c-3b45-4077-be7b-373197906f45","commitIndex":4,"appliedIndex":3,"caughtUp":true}
-{"groupId":"shard-0","peerIds":"[\"storage-shard-0-0/cca06d3c-3b45-4077-be7b-373197906f45\",\"storage-shard-0-1/f51983e8-e3ab-482d-aa92-de05c45f5b78\",\"storage-shard-0-2/8ce4c00b-0d9c-41ed-8ac6-4392f8748a13\"]","peers":"[{\"podName\":\"storage-shard-0-0\",\"address\":\"storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-1\",\"address\":\"storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-2\",\"address\":\"storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"0"}
+{"podName":"storage-shard-0-0","serverId":"storage-shard-0-0/4e8b100a-d717-4e95-8537-74aec922cde3","state":"Leader","term":2,"leaderId":"storage-shard-0-0/4e8b100a-d717-4e95-8537-74aec922cde3","commitIndex":4,"leaderCommitIndex":4,"appliedIndex":3,"caughtUp":true}
+{"podName":"storage-shard-0-1","serverId":"storage-shard-0-1/a30c40a3-c9a6-4a42-93b9-444a03bd60bc","state":"Follower","term":2,"leaderId":"storage-shard-0-0/4e8b100a-d717-4e95-8537-74aec922cde3","commitIndex":4,"leaderCommitIndex":4,"appliedIndex":3,"caughtUp":true}
+{"podName":"storage-shard-0-2","serverId":"storage-shard-0-2/e7eb8462-fb09-45b8-a483-9843b8a08dc8","state":"Follower","term":2,"leaderId":"storage-shard-0-0/4e8b100a-d717-4e95-8537-74aec922cde3","commitIndex":4,"leaderCommitIndex":4,"appliedIndex":3,"caughtUp":true}
+{"groupId":"shard-0","peerIds":"[\"storage-shard-0-0/4e8b100a-d717-4e95-8537-74aec922cde3\",\"storage-shard-0-1/a30c40a3-c9a6-4a42-93b9-444a03bd60bc\",\"storage-shard-0-2/e7eb8462-fb09-45b8-a483-9843b8a08dc8\"]","peers":"[{\"podName\":\"storage-shard-0-0\",\"address\":\"storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-1\",\"address\":\"storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-0-2\",\"address\":\"storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"0"}
 
 ## shard-1
-{"podName":"storage-shard-1-0","serverId":"storage-shard-1-0/181b52fd-4605-4beb-bb47-2e995e037c0d","state":"Leader","term":2,"leaderId":"storage-shard-1-0/181b52fd-4605-4beb-bb47-2e995e037c0d","commitIndex":2,"appliedIndex":0,"caughtUp":true}
-{"podName":"storage-shard-1-1","serverId":"storage-shard-1-1/5efb15f6-927a-45bf-9718-b7df45cfb2e0","state":"Follower","term":2,"leaderId":"storage-shard-1-0/181b52fd-4605-4beb-bb47-2e995e037c0d","commitIndex":2,"appliedIndex":0,"caughtUp":true}
-{"podName":"storage-shard-1-2","serverId":"storage-shard-1-2/f35874a3-b7ab-4557-ab68-a3ff5eff6957","state":"Follower","term":2,"leaderId":"storage-shard-1-0/181b52fd-4605-4beb-bb47-2e995e037c0d","commitIndex":2,"appliedIndex":0,"caughtUp":true}
-{"groupId":"shard-1","peerIds":"[\"storage-shard-1-0/181b52fd-4605-4beb-bb47-2e995e037c0d\",\"storage-shard-1-1/5efb15f6-927a-45bf-9718-b7df45cfb2e0\",\"storage-shard-1-2/f35874a3-b7ab-4557-ab68-a3ff5eff6957\"]","peers":"[{\"podName\":\"storage-shard-1-0\",\"address\":\"storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-1\",\"address\":\"storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-2\",\"address\":\"storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"1"}
+{"podName":"storage-shard-1-0","serverId":"storage-shard-1-0/55472f26-e7f2-4873-a293-a8185583b1dd","state":"Leader","term":2,"leaderId":"storage-shard-1-0/55472f26-e7f2-4873-a293-a8185583b1dd","commitIndex":2,"leaderCommitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-1-1","serverId":"storage-shard-1-1/8e98f49a-e9a6-416e-9019-1450fb0002a6","state":"Follower","term":2,"leaderId":"storage-shard-1-0/55472f26-e7f2-4873-a293-a8185583b1dd","commitIndex":2,"leaderCommitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-1-2","serverId":"storage-shard-1-2/c6529565-7158-4dde-8df3-e91d49fd7c6a","state":"Follower","term":2,"leaderId":"storage-shard-1-0/55472f26-e7f2-4873-a293-a8185583b1dd","commitIndex":2,"leaderCommitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"groupId":"shard-1","peerIds":"[\"storage-shard-1-0/55472f26-e7f2-4873-a293-a8185583b1dd\",\"storage-shard-1-1/8e98f49a-e9a6-416e-9019-1450fb0002a6\",\"storage-shard-1-2/c6529565-7158-4dde-8df3-e91d49fd7c6a\"]","peers":"[{\"podName\":\"storage-shard-1-0\",\"address\":\"storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-1\",\"address\":\"storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-2\",\"address\":\"storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"1"}
 
 ## shard-2
-{"podName":"storage-shard-2-0","serverId":"storage-shard-2-0/2d2e09a5-6f70-4a26-b832-dc1a90ed6d5b","state":"Leader","term":2,"leaderId":"storage-shard-2-0/2d2e09a5-6f70-4a26-b832-dc1a90ed6d5b","commitIndex":2,"appliedIndex":0,"caughtUp":true}
-{"podName":"storage-shard-2-1","serverId":"storage-shard-2-1/d3c3cb47-29b8-4375-8b5f-2e416cebac11","state":"Follower","term":2,"leaderId":"storage-shard-2-0/2d2e09a5-6f70-4a26-b832-dc1a90ed6d5b","commitIndex":2,"appliedIndex":0,"caughtUp":true}
-{"podName":"storage-shard-2-2","serverId":"storage-shard-2-2/a99f84e9-e492-4386-b0d2-1bfb3a4c7ce2","state":"Follower","term":2,"leaderId":"storage-shard-2-0/2d2e09a5-6f70-4a26-b832-dc1a90ed6d5b","commitIndex":2,"appliedIndex":0,"caughtUp":true}
-{"groupId":"shard-2","peerIds":"[\"storage-shard-2-0/2d2e09a5-6f70-4a26-b832-dc1a90ed6d5b\",\"storage-shard-2-1/d3c3cb47-29b8-4375-8b5f-2e416cebac11\",\"storage-shard-2-2/a99f84e9-e492-4386-b0d2-1bfb3a4c7ce2\"]","peers":"[{\"podName\":\"storage-shard-2-0\",\"address\":\"storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-1\",\"address\":\"storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-2\",\"address\":\"storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"2"}
+{"podName":"storage-shard-2-0","serverId":"storage-shard-2-0/d97206c7-129c-4e14-a46f-7c3233924883","state":"Leader","term":2,"leaderId":"storage-shard-2-0/d97206c7-129c-4e14-a46f-7c3233924883","commitIndex":2,"leaderCommitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-2-1","serverId":"storage-shard-2-1/25978af6-6eed-4b9f-9d17-85eaa07a765e","state":"Follower","term":2,"leaderId":"storage-shard-2-0/d97206c7-129c-4e14-a46f-7c3233924883","commitIndex":2,"leaderCommitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"podName":"storage-shard-2-2","serverId":"storage-shard-2-2/2b2c75ef-0956-4f05-ae57-b69036a5a675","state":"Follower","term":2,"leaderId":"storage-shard-2-0/d97206c7-129c-4e14-a46f-7c3233924883","commitIndex":2,"leaderCommitIndex":2,"appliedIndex":0,"caughtUp":true}
+{"groupId":"shard-2","peerIds":"[\"storage-shard-2-0/d97206c7-129c-4e14-a46f-7c3233924883\",\"storage-shard-2-1/25978af6-6eed-4b9f-9d17-85eaa07a765e\",\"storage-shard-2-2/2b2c75ef-0956-4f05-ae57-b69036a5a675\"]","peers":"[{\"podName\":\"storage-shard-2-0\",\"address\":\"storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-1\",\"address\":\"storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-2-2\",\"address\":\"storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000\"}]","phase":"BOOTSTRAPPED","ringVersion":"1","shard":"2"}
 
 ## coordinator (S1.5b)
-failover: shard-1: deleted storage-shard-1-1 (term 3); storage-shard-1-0 leads at term 4 after 2.6 s; the coordinator names storage-shard-1-0/b37c5b8f-f0cb-4232-b01a-5eb097547937 after 2.7 s
+failover: shard-1: deleted storage-shard-1-2 (term 3); storage-shard-1-1 leads at term 4 after 1.8 s; the coordinator names storage-shard-1-1/9f11b881-3869-4824-8942-b6fdfaa71740 after 2.0 s
 
 ## bootstrap Job logs (storage-bootstrap-2)
-time=2026-10-26T12:06:42.860Z level=INFO msg="shard-0: group already initialized; verified" phase=BOOTSTRAPPED fence="leader storage-shard-0-0/cca06d3c-3b45-4077-be7b-373197906f45, 3 of 3 caught up, commit index 3"
-time=2026-10-26T12:06:42.871Z level=INFO msg="shard-1: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-1-0/181b52fd-4605-4beb-bb47-2e995e037c0d storage-shard-1-1/5efb15f6-927a-45bf-9718-b7df45cfb2e0 storage-shard-1-2/f35874a3-b7ab-4557-ab68-a3ff5eff6957]"
-time=2026-10-26T12:06:42.879Z level=INFO msg="shard-1: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-1-0 voters=3
-time=2026-10-26T12:06:42.885Z level=INFO msg="shard-1: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
-time=2026-10-26T12:06:43.904Z level=INFO msg="shard-1: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-1-0/181b52fd-4605-4beb-bb47-2e995e037c0d, 3 of 3 caught up, commit index 2"
-time=2026-10-26T12:06:43.923Z level=INFO msg="shard-2: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-2-0/2d2e09a5-6f70-4a26-b832-dc1a90ed6d5b storage-shard-2-1/d3c3cb47-29b8-4375-8b5f-2e416cebac11 storage-shard-2-2/a99f84e9-e492-4386-b0d2-1bfb3a4c7ce2]"
-time=2026-10-26T12:06:43.931Z level=INFO msg="shard-2: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-2-0 voters=3
-time=2026-10-26T12:06:43.938Z level=INFO msg="shard-2: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
-time=2026-10-26T12:06:44.958Z level=INFO msg="shard-2: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-2-0/2d2e09a5-6f70-4a26-b832-dc1a90ed6d5b, 3 of 3 caught up, commit index 2"
+time=2026-10-26T18:23:56.701Z level=INFO msg="shard-0: group already initialized; verified" phase=BOOTSTRAPPED fence="leader storage-shard-0-0/4e8b100a-d717-4e95-8537-74aec922cde3, 3 of 3 caught up, commit index 3"
+time=2026-10-26T18:23:56.719Z level=INFO msg="shard-1: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-1-0/55472f26-e7f2-4873-a293-a8185583b1dd storage-shard-1-1/8e98f49a-e9a6-416e-9019-1450fb0002a6 storage-shard-1-2/c6529565-7158-4dde-8df3-e91d49fd7c6a]"
+time=2026-10-26T18:23:56.729Z level=INFO msg="shard-1: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-1-0 voters=3
+time=2026-10-26T18:23:56.735Z level=INFO msg="shard-1: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-10-26T18:23:58.759Z level=INFO msg="shard-1: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-1-0/55472f26-e7f2-4873-a293-a8185583b1dd, 3 of 3 caught up, commit index 2"
+time=2026-10-26T18:23:58.780Z level=INFO msg="shard-2: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-2-0/d97206c7-129c-4e14-a46f-7c3233924883 storage-shard-2-1/25978af6-6eed-4b9f-9d17-85eaa07a765e storage-shard-2-2/2b2c75ef-0956-4f05-ae57-b69036a5a675]"
+time=2026-10-26T18:23:58.790Z level=INFO msg="shard-2: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-2-0 voters=3
+time=2026-10-26T18:23:58.795Z level=INFO msg="shard-2: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-10-26T18:23:59.816Z level=INFO msg="shard-2: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-2-0/d97206c7-129c-4e14-a46f-7c3233924883, 3 of 3 caught up, commit index 2"
