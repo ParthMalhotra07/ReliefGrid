@@ -78,6 +78,15 @@ func (b *bootstrapper) shard(ctx context.Context, name string) error {
 		}
 		switch act {
 		case actRefuse:
+			// The statuses were read after the manifest. If another Job
+			// moved the manifest on in between (PENDING -> BOOTSTRAPPING,
+			// then bootstrapped), the refusal rests on a stale phase:
+			// decide again. Only a refusal over an unchanged manifest is final.
+			if cur, err := b.store.Get(ctx, name); err != nil {
+				return err
+			} else if cur.ResourceVersion != m.ResourceVersion {
+				continue
+			}
 			return fmt.Errorf("%w: %s (%s): %s", errRefused, m.GroupID, m.Name, why)
 
 		case actWait:
