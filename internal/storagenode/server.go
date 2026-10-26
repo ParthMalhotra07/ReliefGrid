@@ -22,6 +22,7 @@ type node interface {
 	Status() raftstore.Status
 	Term() uint64
 	Bootstrap(ctx context.Context, servers []raft.Server) error
+	Snapshot(ctx context.Context) (raftstore.SnapshotInfo, error)
 }
 
 var _ node = (*raftstore.Node)(nil)
@@ -69,12 +70,20 @@ func (s *server) dataRoutes() http.Handler {
 //	                      (401 UNAUTHORIZED without it, 403 FORBIDDEN if none
 //	                      is configured); 400 if the servers omit this node or
 //	                      give it another address; 409 if Raft state exists
+//	POST /mgmt/snapshot   operator token: take a Raft snapshot now; {podName,
+//	                      snapshotId, raftIndex, appliedIndex}
+//	GET  /mgmt/dump       operator token: the local FSM's rows (a stale read,
+//	                      one transaction) as {podName, appliedIndex, sha256,
+//	                      rows{table: count}}; compare replicas only at equal
+//	                      appliedIndex
 //	GET  /healthz         200 while the process serves
 //	GET  /readyz          200 only when the FSM has caught up (Status.CaughtUp)
 func (s *server) mgmtRoutes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /mgmt/status", s.status)
 	mux.HandleFunc("POST /mgmt/bootstrap", s.bootstrap)
+	mux.HandleFunc("POST /mgmt/snapshot", s.snapshot)
+	mux.HandleFunc("GET /mgmt/dump", s.dump)
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /readyz", s.readyz)
 	return mux
@@ -96,9 +105,26 @@ type statusResponse struct {
 	LastLogIndex     uint64 `json:"lastLogIndex"`
 	RaftAppliedIndex uint64 `json:"raftAppliedIndex"` // diagnostic only
 	AppliedIndex     uint64 `json:"appliedIndex"`     // FSM's completed index
+	RestoredIndex    uint64 `json:"restoredIndex"`    // last snapshot restored since start; 0 if none
 	HasState         bool   `json:"hasState"`
 	CaughtUp         bool   `json:"caughtUp"`
 	RingVersion      uint64 `json:"ringVersion"`
+}
+
+// snapshotResponse is the /mgmt/snapshot body.
+type snapshotResponse struct {
+	PodName      string `json:"podName"`
+	SnapshotID   string `json:"snapshotId"`
+	RaftIndex    uint64 `json:"raftIndex"`
+	AppliedIndex uint64 `json:"appliedIndex"`
+}
+
+// dumpResponse is the /mgmt/dump body: a digest of the rows, not the rows.
+type dumpResponse struct {
+	PodName      string         `json:"podName"`
+	AppliedIndex uint64         `json:"appliedIndex"` // the dump's own meta applied_index
+	SHA256       string         `json:"sha256"`       // over the canonical rows of every table
+	Rows         map[string]int `json:"rows"`
 }
 
 // bootstrapRequest is the /mgmt/bootstrap body.

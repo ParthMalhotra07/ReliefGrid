@@ -74,6 +74,9 @@ type fakeNode struct {
 	term     uint64
 	bootErr  error
 	booted   []raft.Server
+	snapInfo raftstore.SnapshotInfo
+	snapErr  error
+	snaps    int // Snapshot calls
 
 	reading      bool          // a Read is running
 	waits        []uint64      // WaitApplyAfter indexes
@@ -167,6 +170,13 @@ func (n *fakeNode) Term() uint64 { return n.term }
 func (n *fakeNode) Bootstrap(ctx context.Context, servers []raft.Server) error {
 	n.booted = servers
 	return n.bootErr
+}
+
+func (n *fakeNode) Snapshot(ctx context.Context) (raftstore.SnapshotInfo, error) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.snaps++
+	return n.snapInfo, n.snapErr
 }
 
 func (n *fakeNode) appliedCmds() []any {
