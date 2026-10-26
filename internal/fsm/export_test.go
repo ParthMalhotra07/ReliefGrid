@@ -22,3 +22,10 @@ func (f *FSM) ExecOnReadPool(ctx context.Context, stmt string) error {
 	_, err := f.reads().ExecContext(ctx, stmt)
 	return err
 }
+
+// SetAfterDumpTable makes Dump call fn after it reads each table, until the
+// test ends.
+func SetAfterDumpTable(t interface{ Cleanup(func()) }, fn func(table string)) {
+	afterDumpTable = fn
+	t.Cleanup(func() { afterDumpTable = nil })
+}

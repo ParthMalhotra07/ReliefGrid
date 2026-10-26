@@ -409,11 +409,18 @@ func (f *FSM) Operation(ctx context.Context, operationID string) (store.Result, 
 
 // Dump returns every row of every FSM table in a canonical, sorted text form,
 // so two replicas (or a replica and its replay) can be compared logically
-// rather than byte-for-byte.
+// rather than byte-for-byte. All tables are read in one read transaction,
+// so the dump is one committed state (its meta applied_index included) even
+// while commands keep applying; compare dumps only at equal applied indexes.
 func (f *FSM) Dump(ctx context.Context) (map[string][]string, error) {
+	tx, err := f.rdb.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("fsm: dump: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }() // read only: nothing to commit
 	out := make(map[string][]string, len(dumpOrder))
 	for _, d := range dumpOrder {
-		rows, err := f.rdb.QueryContext(ctx, `SELECT * FROM `+d.table+` ORDER BY `+d.orderBy)
+		rows, err := tx.QueryContext(ctx, `SELECT * FROM `+d.table+` ORDER BY `+d.orderBy)
 		if err != nil {
 			return nil, fmt.Errorf("fsm: dump %s: %w", d.table, err)
 		}
@@ -423,9 +430,15 @@ func (f *FSM) Dump(ctx context.Context) (map[string][]string, error) {
 			return nil, fmt.Errorf("fsm: dump %s: %w", d.table, err)
 		}
 		out[d.table] = lines
+		if afterDumpTable != nil {
+			afterDumpTable(d.table)
+		}
 	}
 	return out, nil
 }
+
+// afterDumpTable, tests only, runs after Dump reads each table.
+var afterDumpTable func(table string)
 
 func dumpRows(rows *sql.Rows) ([]string, error) {
 	cols, err := rows.Columns()
