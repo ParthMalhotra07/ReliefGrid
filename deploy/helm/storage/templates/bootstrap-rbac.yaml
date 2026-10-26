@@ -1,0 +1,40 @@
+# The bootstrap Job may read and compare-and-swap the manifests, nothing else.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: storage-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-bootstrap
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: storage-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-bootstrap
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: {{ splitList "," (include "storage.manifests" .) | toJson }}
+    verbs: [get, update]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: storage-bootstrap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage-bootstrap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: storage-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: storage-bootstrap
+    namespace: {{ .Release.Namespace }}
