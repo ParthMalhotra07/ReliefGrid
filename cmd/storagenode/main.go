@@ -144,7 +144,7 @@ func run(ctx context.Context, cfg config) error {
 		return err
 	}
 	if cfg.OperatorToken == "" {
-		slog.Warn("OPERATOR_TOKEN is not set; /mgmt/bootstrap is disabled")
+		slog.Warn("OPERATOR_TOKEN is not set; operator endpoints (/mgmt/bootstrap, /mgmt/snapshot, /mgmt/dump) are disabled")
 	}
 	s := storagenode.New(n, storagenode.Config{
 		Ring: rg, Shard: cfg.Raft.Shard, PodName: cfg.Raft.PodName, Timeout: cfg.RequestTimeout,

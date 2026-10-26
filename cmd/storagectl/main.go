@@ -12,6 +12,13 @@
 //	                       GET /mgmt/status (default localhost:8081) as JSON.
 //	storagectl dial --addr host:port [--timeout d]
 //	                       exit 0 if a TCP connection opens (NetworkPolicy checks).
+//	storagectl snapshot [--addr host:port] [--timeout d]
+//	                       POST /mgmt/snapshot with OPERATOR_TOKEN: Raft takes a
+//	                       snapshot now; prints {podName, snapshotId, raftIndex,
+//	                       appliedIndex}.
+//	storagectl dump [--addr host:port] [--timeout d]
+//	                       GET /mgmt/dump with OPERATOR_TOKEN: prints {podName,
+//	                       appliedIndex, sha256, rows} of the local FSM.
 package main
 
 import (
@@ -45,6 +52,10 @@ func main() {
 		err = runStatus(ctx, os.Args[2:])
 	case "dial":
 		err = runDial(ctx, os.Args[2:])
+	case "snapshot":
+		err = runSnapshot(ctx, os.Args[2:], os.Getenv, os.Stdout)
+	case "dump":
+		err = runDump(ctx, os.Args[2:], os.Getenv, os.Stdout)
 	default:
 		usage()
 	}
@@ -58,7 +69,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d]")
+	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump [--addr host:port] [--timeout d]")
 	os.Exit(64)
 }
 

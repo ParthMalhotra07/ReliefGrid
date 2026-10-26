@@ -2,7 +2,9 @@ package storagenode
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -420,7 +422,7 @@ func (s *server) status(w http.ResponseWriter, r *http.Request) {
 		ServerID: string(st.ServerID), Address: string(st.Address), State: st.State, Term: st.Term,
 		LeaderID: string(st.LeaderID), LeaderAddr: string(st.LeaderAddr), CommitIndex: st.CommitIndex,
 		LastLogIndex: st.LastLogIndex, RaftAppliedIndex: st.RaftAppliedIndex, AppliedIndex: st.AppliedIndex,
-		HasState: st.HasState, CaughtUp: st.CaughtUp, RingVersion: s.ring.Version(),
+		RestoredIndex: st.RestoredIndex, HasState: st.HasState, CaughtUp: st.CaughtUp, RingVersion: s.ring.Version(),
 	})
 }
 
@@ -463,9 +465,78 @@ func (s *server) bootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// snapshot is operator-only: it makes Raft snapshot now (S2.1 Verify, and
+// before planned maintenance).
+func (s *server) snapshot(w http.ResponseWriter, r *http.Request) {
+	if !s.operatorOnly(w, r) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), snapshotTimeout)
+	defer cancel()
+	info, err := s.node.Snapshot(ctx)
+	if err != nil {
+		writeMgmtError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, snapshotResponse{PodName: s.podName, SnapshotID: info.ID, RaftIndex: info.RaftIndex, AppliedIndex: info.AppliedIndex})
+}
+
+// snapshotTimeout bounds a forced snapshot: VACUUM INTO and Persist of the
+// whole database, longer than an ordinary request.
+const snapshotTimeout = 60 * time.Second
+
+// dump is operator-only (it covers every row of the shard): this replica's
+// own FSM, read locally in one transaction, as a digest. Replicas are
+// compared only at equal appliedIndex.
+func (s *server) dump(w http.ResponseWriter, r *http.Request) {
+	if !s.operatorOnly(w, r) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
+	defer cancel()
+	var rows map[string][]string
+	_, err := s.node.Read(ctx, raftstore.ReadStale, func(ctx context.Context, rd raftstore.Reader) error {
+		var err error
+		rows, err = rd.Dump(ctx)
+		return err
+	})
+	if err != nil {
+		writeMgmtError(w, http.StatusInternalServerError, "dump: "+err.Error())
+		return
+	}
+	applied, err := dumpAppliedIndex(rows)
+	if err != nil {
+		writeMgmtError(w, http.StatusInternalServerError, "dump: "+err.Error())
+		return
+	}
+	canonical, err := json.Marshal(rows) // map keys are sorted; rows are in key order
+	if err != nil {
+		writeMgmtError(w, http.StatusInternalServerError, "dump: "+err.Error())
+		return
+	}
+	sum := sha256.Sum256(canonical)
+	counts := make(map[string]int, len(rows))
+	for table, lines := range rows {
+		counts[table] = len(lines)
+	}
+	writeJSON(w, http.StatusOK, dumpResponse{PodName: s.podName, AppliedIndex: applied, SHA256: hex.EncodeToString(sum[:]), Rows: counts})
+}
+
+// dumpAppliedIndex is the applied_index row of the dump's meta table: the
+// index the dump's transaction saw, not one read separately.
+func dumpAppliedIndex(rows map[string][]string) (uint64, error) {
+	const prefix = "k=applied_index | v="
+	for _, line := range rows["meta"] {
+		if v, ok := strings.CutPrefix(line, prefix); ok {
+			return strconv.ParseUint(v, 10, 64)
+		}
+	}
+	return 0, errors.New("no applied_index in meta")
+}
+
 func (s *server) operatorOnly(w http.ResponseWriter, r *http.Request) bool {
 	if s.operatorToken == "" {
-		writeError(w, http.StatusForbidden, internalapi.FORBIDDEN, "bootstrap is disabled: no operator token is configured")
+		writeError(w, http.StatusForbidden, internalapi.FORBIDDEN, "operator endpoints are disabled: no operator token is configured")
 		return false
 	}
 	scheme, token, ok := strings.Cut(r.Header.Get("Authorization"), " ")

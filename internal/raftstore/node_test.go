@@ -524,7 +524,7 @@ func TestRestartRebuildsFSMFromSnapshotAndLog(t *testing.T) {
 		if err := n.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
 			t.Fatalf("node %d: %v", i, err)
 		}
-		if err := n.Snapshot(testCtx(t)); err != nil {
+		if _, err := n.Snapshot(testCtx(t)); err != nil {
 			t.Fatalf("node %d Snapshot: %v", i, err)
 		}
 	}
@@ -626,7 +626,7 @@ func TestWaitAppliedOnCompactedRange(t *testing.T) {
 	if barrierIndex <= last.AppliedIndex {
 		t.Fatalf("last log index %d is not after the last command %d", barrierIndex, last.AppliedIndex)
 	}
-	if err := l.Snapshot(testCtx(t)); err != nil {
+	if _, err := l.Snapshot(testCtx(t)); err != nil {
 		t.Fatal(err)
 	}
 	logFirst, err := l.logs.FirstIndex()
@@ -742,7 +742,7 @@ func TestLaggingFollowerInstallsSnapshotOverNetwork(t *testing.T) {
 	for i := range 5 * int(testProfile.TrailingLogs) {
 		last = mustApply(t, l, cas(fmt.Sprintf("op-b%d", i), fmt.Sprintf("kv:%d", i), 0, i))
 	}
-	if err := l.Snapshot(testCtx(t)); err != nil {
+	if _, err := l.Snapshot(testCtx(t)); err != nil {
 		t.Fatal(err)
 	}
 	if first, err := l.logs.FirstIndex(); err != nil || first <= followerLast+1 {

@@ -74,6 +74,7 @@ type stateMachine struct {
 	gen uint64 // generation of the open database file in dir
 
 	applied   atomic.Uint64 // copy of f.AppliedIndex() readable without mu
+	restored  atomic.Uint64 // applied index of the last snapshot restored (0: none)
 	appliedMu sync.Mutex
 	appliedCh chan struct{} // closed and replaced whenever the applied index moves
 
@@ -254,7 +255,9 @@ func (s *stateMachine) Restore(rc io.ReadCloser) error {
 	old, oldGen := s.f, s.gen
 	s.f, s.gen = next, gen
 	s.mu.Unlock()
+	s.restored.Store(h.AppliedIndex)
 	s.setApplied(next.AppliedIndex())
+	slog.Info("raftstore: restored snapshot", "group", s.group, "shard", s.shard, "appliedIndex", h.AppliedIndex, "gen", gen)
 
 	// The new database is live; failing Restore now would make Raft treat
 	// the install as failed while reads already see it.
@@ -306,6 +309,10 @@ func removeDB(path string) {
 		_ = os.Remove(p)
 	}
 }
+
+// restoredIndex is the applied index of the last snapshot restored since the
+// state machine was created; 0 if none.
+func (s *stateMachine) restoredIndex() uint64 { return s.restored.Load() }
 
 // appliedIndex is the index of the last command SQLite has committed.
 func (s *stateMachine) appliedIndex() uint64 { return s.applied.Load() }
