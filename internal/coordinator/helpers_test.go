@@ -264,6 +264,30 @@ type call struct {
 
 func (h *harness) do(c call) *httptest.ResponseRecorder {
 	h.t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	rec := httptest.NewRecorder()
+	h.h.ServeHTTP(rec, h.request(ctx, c))
+	return rec
+}
+
+// doAsync serves c in another goroutine; the answer arrives on the channel.
+func (h *harness) doAsync(c call) <-chan *httptest.ResponseRecorder {
+	h.t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	req := h.request(ctx, c)
+	done := make(chan *httptest.ResponseRecorder, 1)
+	go func() {
+		defer cancel()
+		rec := httptest.NewRecorder()
+		h.h.ServeHTTP(rec, req)
+		done <- rec
+	}()
+	return done
+}
+
+func (h *harness) request(ctx context.Context, c call) *http.Request {
+	h.t.Helper()
 	var body io.Reader
 	switch b := c.body.(type) {
 	case nil:
@@ -278,15 +302,11 @@ func (h *harness) do(c call) *httptest.ResponseRecorder {
 		}
 		body = bytes.NewReader(raw)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	req := httptest.NewRequestWithContext(ctx, c.method, c.path, body)
 	for k, v := range c.header {
 		req.Header.Set(k, v)
 	}
-	rec := httptest.NewRecorder()
-	h.h.ServeHTTP(rec, req)
-	return rec
+	return req
 }
 
 func decodeJSON[T any](t *testing.T, rec *httptest.ResponseRecorder) T {

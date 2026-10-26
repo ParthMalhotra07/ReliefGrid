@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -438,5 +439,76 @@ func TestGetRing(t *testing.T) {
 	r := decodeJSON[internalapi.Ring](t, rec)
 	if r.RingVersion != 1 || r.Hash != internalapi.Xxhash64 || r.Shards != 3 || r.VnodesPerShard != 128 || r.Checksum != h.rg.Checksum() {
 		t.Fatalf("ring = %+v", r)
+	}
+}
+
+// A shard with no registered member (a restarted coordinator) is not "every
+// member DOWN": the call keeps its budget, and members that register while
+// it waits serve it.
+func TestUnregisteredShardKeepsTheBudget(t *testing.T) {
+	h := newHarness(t, func(c *coordinator.Config) { c.Budget = 2 * time.Second })
+	register := func(s int) {
+		for _, n := range h.nodes[s] {
+			if rec := h.do(call{method: http.MethodPost, path: "/internal/nodes/register", body: n.registration()}); rec.Code != http.StatusOK {
+				t.Fatalf("register %s: %d %s", n.pod, rec.Code, rec.Body.String())
+			}
+		}
+		h.elect(s, 0, 1)
+	}
+	register(0)
+	register(2)
+
+	done := h.doAsync(routedCalls(t, h, 1)[0].call)
+	time.Sleep(150 * time.Millisecond)
+	select {
+	case rec := <-done:
+		t.Fatalf("shard 1 (no member registered) answered %d %s at once; want it to wait within the budget", rec.Code, rec.Body.String())
+	default:
+	}
+	register(1)
+	rec := <-done
+	if rec.Code != http.StatusOK {
+		t.Fatalf("after shard 1 registered: %d %s, want 200", rec.Code, rec.Body.String())
+	}
+	if len(h.nodes[1][0].requests()) != 1 {
+		t.Fatalf("shard 1 leader got %d requests, want 1", len(h.nodes[1][0].requests()))
+	}
+}
+
+// Members that go DOWN while a call is retrying end it at the next round
+// instead of after the budget, and an unknown outcome seen before that
+// stays unknown.
+func TestMembersGoingDownMidRequestFailFast(t *testing.T) {
+	for name, tc := range map[string]struct {
+		first func(http.ResponseWriter, *http.Request, []byte)
+		want  internalapi.ErrorCode
+	}{
+		"never proposed":        {failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false), internalapi.NOLEADER},
+		"unknown stays unknown": {failWith(http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN, true), internalapi.OUTCOMEUNKNOWN},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t, func(c *coordinator.Config) { c.Budget = 2 * time.Second })
+			h.ready()
+			var once sync.Once
+			for i, n := range h.nodes[1] {
+				n.setHandler(func(w http.ResponseWriter, r *http.Request, b []byte) {
+					once.Do(func() { h.clock.advance(6 * time.Second) }) // heartbeats stop: every member DOWN
+					if i == 0 {
+						tc.first(w, r, b)
+						return
+					}
+					failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false)(w, r, b)
+				})
+			}
+			start := time.Now()
+			e := expectError(t, h.do(routedCalls(t, h, 1)[4].call), http.StatusServiceUnavailable, tc.want)
+			if d := time.Since(start); d > 500*time.Millisecond {
+				t.Fatalf("answered after %s; members went DOWN mid-request, want < 500ms of a 2s budget", d)
+			}
+			if !strings.Contains(e.Message, "DOWN") || e.OutcomeUnknown != (tc.want == internalapi.OUTCOMEUNKNOWN) {
+				t.Fatalf("error = %+v", e)
+			}
+		})
 	}
 }
