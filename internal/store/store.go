@@ -40,9 +40,12 @@ type Store interface {
 	// or ErrNotFound. Only a closure (or a CONFLICT_CLOSED, REJECTED_CLOSED or
 	// CLOSED result) permits retargeting away from that attempt.
 	ReadClosure(ctx context.Context, resourceKey, attemptID string) (Closure, error)
-	// Scan reads every shard. A failed shard sets Partial; it is never
-	// reported as an empty result. q.Limit outside 1..MaxScanLimit is an
-	// error and nothing is read.
+	// Scan reads one page from every shard q.Cursor still lists (every
+	// shard when it is empty). A failed shard sets Partial; it is never
+	// reported as an empty result, and NextCursor resumes it. q.Limit
+	// outside 1..MaxScanLimit or a malformed cursor is an error and nothing
+	// is read; a cursor from another ring version is ErrRingVersionMismatch.
+	// Walk until NextCursor is empty.
 	Scan(ctx context.Context, q ScanQuery) (ScanResult, error)
 	// PendingOutbox pages unpublished events of one shard in commit order.
 	PendingOutbox(ctx context.Context, shard, limit int) ([]OutboxEvent, error)
@@ -59,6 +62,10 @@ var (
 	ErrUnknownOutcome = errors.New("store: outcome unknown")
 	// ErrNotFound: a read found no committed record, closure or operation.
 	ErrNotFound = errors.New("store: not found")
+	// ErrRingVersionMismatch: a scan cursor was made under another ring
+	// version, so its per-shard positions mean nothing now. Restart the walk
+	// with an empty cursor.
+	ErrRingVersionMismatch = errors.New("store: ring version mismatch")
 )
 
 // Key prefixes route domain records; any other key is a generic KV record.
@@ -365,8 +372,14 @@ type ScanQuery struct {
 	GeohashPrefixes []string     `json:"geohashPrefixes,omitempty"`
 	// Limit caps the records returned per shard, 1 to MaxScanLimit; 0 is
 	// invalid, never "no limit". A shard that returns exactly Limit records
-	// reports HasMore in its position. Cursor paging is a later goal.
+	// reports HasMore in its position.
 	Limit int `json:"limit,omitempty"`
+	// Cursor is the previous page's NextCursor; empty starts the walk. It is
+	// opaque to callers: per shard it means "keys after K", so it is only
+	// meaningful with the same Kind and filters. Keys present for the whole
+	// walk are returned exactly once; keys inserted or deleted during it may
+	// or may not be.
+	Cursor string `json:"cursor,omitempty"`
 }
 
 type ScanResult struct {
@@ -374,6 +387,10 @@ type ScanResult struct {
 	Partial      bool            `json:"partial"`
 	FailedShards []int           `json:"failedShards,omitempty"`
 	Positions    []ShardPosition `json:"positions"`
+	// NextCursor continues the walk: it lists every shard that still has
+	// rows or failed on this page. It is empty only when every shard is
+	// exhausted, so a partial page always has one.
+	NextCursor string `json:"nextCursor,omitempty"`
 }
 
 // ShardPosition is one answering shard's applied index. HasMore is set when
