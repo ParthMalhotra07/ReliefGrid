@@ -91,6 +91,16 @@ pvc_phase="$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get pvc \
 	-l "app.kubernetes.io/instance=${RELEASE},app.kubernetes.io/component=rabbitmq" \
 	-o jsonpath='{.items[0].status.phase}')"
 [ "$pvc_phase" = "Bound" ] || fail "RabbitMQ PVC is not Bound (phase=$pvc_phase)"
+pvc_uid_before="$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get pvc \
+	-l "app.kubernetes.io/instance=${RELEASE},app.kubernetes.io/component=rabbitmq" \
+	-o jsonpath='{.items[0].metadata.uid}')"
+[ -n "$pvc_uid_before" ] || fail "RabbitMQ PVC has no UID"
+
+traefik_image="$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get deployment \
+	"${RELEASE}-traefik" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+[[ "$traefik_image" =~ ^([^/]+/)?(library/)?traefik@sha256:[0-9a-f]{64}$ ]] || \
+	fail "Traefik image is not pinned by digest: $traefik_image"
+printf 'traefik_image=%s\n' "$traefik_image"
 
 traefik_ready="$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get deployment \
 	"${RELEASE}-traefik" -o jsonpath='{.status.readyReplicas}')"
@@ -112,6 +122,11 @@ for _ in $(seq 1 60); do
 done
 kubectl --context "$CONTEXT" -n "$NAMESPACE" wait --for=condition=Ready \
 	"pod/$pod" --timeout=5m
+pvc_uid_after="$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get pvc \
+	-l "app.kubernetes.io/instance=${RELEASE},app.kubernetes.io/component=rabbitmq" \
+	-o jsonpath='{.items[0].metadata.uid}')"
+[ "$pvc_uid_before" = "$pvc_uid_after" ] || fail "RabbitMQ PVC changed across restart"
+printf 'pvc_same_uid=%s\n' "$pvc_uid_after"
 start_port_forward "$tmp/port-forward-after.log"
 
 consume_output="$(cd "$ROOT" && go run ./spike/mq -mode consume -url "$AMQP_URL" -count "$COUNT")"
@@ -122,6 +137,8 @@ priority_output="$(cd "$ROOT" && go run ./spike/mq -mode priority -url "$AMQP_UR
 printf '%s\n' "$priority_output"
 grep -Fxq 'priority=strict:[31 15 7 2 1]' <<<"$priority_output" || \
 	fail "explicit nonzero priorities were not delivered in strict descending order"
+grep -Fxq 'priority=urgency:[3 2 1]' <<<"$priority_output" || \
+	fail "application urgencies were not delivered CRITICAL=3, HIGH=2, NORMAL=1"
 grep -Fxq 'priority=omitted-default-4:[7 0 1]' <<<"$priority_output" || \
 	fail "omitted priority did not behave as effective priority 4"
 

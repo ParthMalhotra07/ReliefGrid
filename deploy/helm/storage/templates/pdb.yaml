@@ -1,0 +1,19 @@
+{{- $ring := include "storage.ring" . | fromJson }}
+{{- range $s := until (int $ring.shards) }}
+---
+# A voluntary drain may take at most one replica of a shard: two keep quorum.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: storage-shard-{{ $s }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "storage.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: storagenode
+    reliefgrid.io/shard: {{ $s | quote }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      {{- include "storage.shardSelector" (dict "shard" $s) | nindent 6 }}
+{{- end }}

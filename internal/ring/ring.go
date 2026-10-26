@@ -173,6 +173,9 @@ func (r *Ring) Version() uint64  { return r.cfg.RingVersion }
 func (r *Ring) Shards() int      { return r.cfg.Shards }
 func (r *Ring) Checksum() string { return r.cfg.Checksum }
 
+// VNodesPerShard is the number of tokens each shard owns.
+func (r *Ring) VNodesPerShard() int { return r.cfg.VNodesPerShard }
+
 // Tokens returns a copy of the sorted token map.
 func (r *Ring) Tokens() []Token { return slices.Clone(r.tokens) }
 

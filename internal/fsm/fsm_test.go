@@ -2,12 +2,15 @@ package fsm_test
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -405,7 +408,7 @@ func TestTryClaimAfterCloseAttemptReturnsClosed(t *testing.T) {
 	})
 }
 
-// Invariant 4: replaying an old SUCCESS after the attempt was closed returns
+// CONTRIBUTING.md, Invariants, 4: replaying an old SUCCESS after the attempt was closed returns
 // the historical result but does not recreate the claim.
 func TestHistoricalClaimSuccessIsNotOwnership(t *testing.T) {
 	h := newHarness(t)
@@ -634,6 +637,7 @@ func TestScanFilters(t *testing.T) {
 		Kind: store.KindResource, Type: store.TypeWater,
 		Statuses:        []string{string(store.ResourceAvailable)},
 		GeohashPrefixes: []string{"ttn", "tsq4"},
+		Limit:           100,
 	})
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
@@ -647,9 +651,27 @@ func TestScanFilters(t *testing.T) {
 		t.Fatalf("scan keys = %v, want %v", keys, want)
 	}
 
-	all, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindRequest})
+	all, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindRequest, Limit: 100})
 	if err != nil || len(all) != 1 || all[0].Key != "req:q1" {
 		t.Fatalf("request scan = %+v, %v; want only req:q1", all, err)
+	}
+}
+
+// A scan limit outside 1..store.MaxScanLimit is an error, never "no limit"
+// (store.ScanQuery), and Limit caps the page.
+func TestScanLimit(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness(t)
+	for _, id := range []string{"r1", "r2", "r3"} {
+		createResource(h, resource(id, store.TypeWater, store.ResourceAvailable))
+	}
+	for _, limit := range []int{0, -1, store.MaxScanLimit + 1} {
+		if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: limit}); err == nil {
+			t.Errorf("Scan with limit %d = %d records, want an error", limit, len(recs))
+		}
+	}
+	if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: 2}); err != nil || len(recs) != 2 {
+		t.Fatalf("Scan limit 2 = %d records, %v", len(recs), err)
 	}
 }
 
@@ -685,5 +707,149 @@ func TestForgedEntryFieldIsRejected(t *testing.T) {
 	expectOutcome(t, "forged", h.applyEntry(forged), store.OutcomeInvalid)
 	if r := h.read(store.ResourceKey("r1")).Resource; r.Status != store.ResourceAvailable || r.ActiveClaim != nil {
 		t.Fatalf("forged entry changed the resource: %s %+v", r.Status, r.ActiveClaim)
+	}
+}
+
+// A VacuumInto image reopened with OpenImage has the same rows and applied
+// index, and keeps applying from the next index.
+func TestVacuumIntoOpenImageRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	h := newHarness(t)
+	h.apply(store.CompareAndSet{Meta: meta("kv-1"), Key: "kv:a", Value: json.RawMessage(`1`)})
+	h.apply(store.CreateEntity{Meta: meta("c-r1"), Key: store.ResourceKey("r1"), Resource: resource("r1", store.TypeWater, store.ResourceAvailable)})
+	h.apply(closeAttempt("close-a1", "r1", "q1", attempt("a1", "r1")))
+
+	path := filepath.Join(t.TempDir(), "image.db")
+	if err := h.f.VacuumInto(ctx, path); err != nil {
+		t.Fatalf("VacuumInto: %v", err)
+	}
+	if err := h.f.VacuumInto(ctx, path); err == nil {
+		t.Fatal("VacuumInto over an existing file succeeded")
+	}
+	img, err := fsm.OpenImage(ctx, path)
+	if err != nil {
+		t.Fatalf("OpenImage: %v", err)
+	}
+	t.Cleanup(func() { _ = img.Close() })
+
+	want, err := h.f.Dump(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := img.Dump(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(want, got) {
+		t.Fatalf("image rows differ:\n got %v\nwant %v", got, want)
+	}
+	if img.AppliedIndex() != h.f.AppliedIndex() {
+		t.Fatalf("image applied index = %d, want %d", img.AppliedIndex(), h.f.AppliedIndex())
+	}
+	if _, err := img.Apply(h.f.AppliedIndex(), mustEncode(t, store.CompareAndSet{Meta: meta("kv-dup"), Key: "kv:b"})); err == nil {
+		t.Fatal("image accepted an entry at its own applied index")
+	}
+	entry := mustEncode(t, store.CompareAndSet{Meta: meta("kv-2"), Key: "kv:a", ExpectedVersion: 1, Value: json.RawMessage(`2`)})
+	res, err := img.Apply(h.f.AppliedIndex()+1, entry)
+	if err != nil {
+		t.Fatalf("Apply after image: %v", err)
+	}
+	expectOutcome(t, "CAS after image", res, store.OutcomeOK)
+}
+
+func TestOpenImageRejectsForeignDatabase(t *testing.T) {
+	ctx := context.Background()
+	path := filepath.Join(t.TempDir(), "foreign.db")
+	db, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `CREATE TABLE kv (key TEXT PRIMARY KEY, value TEXT)`); err != nil {
+		t.Fatal(err)
+	}
+	_ = db.Close()
+	if f, err := fsm.OpenImage(ctx, path); err == nil {
+		_ = f.Close()
+		t.Fatal("OpenImage accepted a database without the FSM schema")
+	}
+	if f, err := fsm.OpenImage(ctx, filepath.Join(t.TempDir(), "missing.db")); err == nil {
+		_ = f.Close()
+		t.Fatal("OpenImage accepted a missing file")
+	}
+}
+
+func mustEncode(t *testing.T, body any) []byte {
+	t.Helper()
+	b, err := fsm.Encode(body)
+	if err != nil {
+		t.Fatalf("Encode(%T): %v", body, err)
+	}
+	return b
+}
+
+// openFileFSM opens an FSM on a database file, as the storage node does,
+// and returns a second FSM opened from its image.
+func openFileFSM(t *testing.T) (*fsm.FSM, *fsm.FSM) {
+	t.Helper()
+	ctx := context.Background()
+	dir := t.TempDir()
+	f, err := fsm.Open(ctx, "file:"+filepath.Join(dir, "fsm-0.db"))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	if _, err := f.Apply(1, mustEncode(t, store.CompareAndSet{Meta: meta("kv-1"), Key: "kv:a", Value: json.RawMessage(`1`)})); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "image.db")
+	if err := f.VacuumInto(ctx, path); err != nil {
+		t.Fatal(err)
+	}
+	img, err := fsm.OpenImage(ctx, path)
+	if err != nil {
+		t.Fatalf("OpenImage: %v", err)
+	}
+	t.Cleanup(func() { _ = img.Close() })
+	return f, img
+}
+
+// On a database file, reads use their own read-only pool: a long read never
+// holds the connection Apply needs, and the read pool cannot write.
+func TestFileReadsDoNotBlockApply(t *testing.T) {
+	ctx := context.Background()
+	f, img := openFileFSM(t)
+	for name, db := range map[string]*fsm.FSM{"Open": f, "OpenImage": img} {
+		release, err := db.HoldRead(ctx)
+		if err != nil {
+			t.Fatalf("%s: HoldRead: %v", name, err)
+		}
+		done := make(chan error, 1)
+		go func() {
+			res, err := db.Apply(db.AppliedIndex()+1, mustEncode(t, store.CompareAndSet{Meta: meta("kv-2-" + name), Key: "kv:b", Value: json.RawMessage(`2`)}))
+			if err == nil && res.Outcome != store.OutcomeOK {
+				err = fmt.Errorf("outcome %s", res.Outcome)
+			}
+			done <- err
+		}()
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Errorf("%s: Apply during a read: %v", name, err)
+			}
+		case <-time.After(2 * time.Second):
+			t.Errorf("%s: Apply blocked behind an open read", name)
+			release()
+			if err := <-done; err != nil {
+				t.Errorf("%s: Apply after the read ended: %v", name, err)
+			}
+			continue
+		}
+		release()
+		if _, err := db.ReadRecord(ctx, "kv:b"); err != nil {
+			t.Errorf("%s: read after apply: %v", name, err)
+		}
+		if err := db.ExecOnReadPool(ctx, `DELETE FROM records`); err == nil {
+			t.Errorf("%s: the read pool accepted a write", name)
+		}
 	}
 }

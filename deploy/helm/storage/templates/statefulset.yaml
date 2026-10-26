@@ -1,0 +1,143 @@
+{{- $ring := include "storage.ring" . | fromJson }}
+{{- range $s := until (int $ring.shards) }}
+---
+# One Raft group (shard-{{ $s }}). Replicas are fixed at 3: membership changes
+# go through storagectl, never kubectl scale.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: storage-shard-{{ $s }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "storage.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: storagenode
+    reliefgrid.io/shard: {{ $s | quote }}
+spec:
+  serviceName: storage-shard-{{ $s }}
+  replicas: 3
+  # Parallel: all three must be up before the Job can bootstrap; with
+  # OrderedReady, pod 1 would wait for pod 0 to be Ready, which needs a leader.
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "storage.shardSelector" (dict "shard" $s) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "storage.labels" $ | nindent 8 }}
+        {{- include "storage.shardSelector" (dict "shard" $s) | nindent 8 }}
+      annotations:
+        checksum/ring: {{ $.Files.Get "files/ring.yaml" | sha256sum }}
+    spec:
+      nodeSelector:
+        role: data
+      # One replica of this shard per data worker. No not-ready/unreachable
+      # tolerations of our own: a pod on node-local storage cannot move, so an
+      # early eviction gains nothing (v3.1 §24 sets 30 s on stateless pods only).
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  {{- include "storage.shardSelector" (dict "shard" $s) | nindent 18 }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        {{- include "storage.podSecurityContext" $ | nindent 8 }}
+      containers:
+        - name: storagenode
+          image: {{ include "storage.image" $ }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          securityContext:
+            {{- include "storage.containerSecurityContext" $ | nindent 12 }}
+          env:
+            - name: POD_NAME
+              valueFrom: {fieldRef: {fieldPath: metadata.name}}
+            - name: SHARD
+              value: {{ $s | quote }}
+            - name: GROUP_ID
+              value: shard-{{ $s }}
+            - name: DATA_DIR # PVC: identity, Raft log, stable store, snapshots
+              value: /data
+            - name: FSM_DIR # emptyDir: derived SQLite FSM, rebuilt on start (M3)
+              value: /fsm
+            - name: RAFT_BIND
+              value: ":7000"
+            - name: RAFT_ADVERTISE # stable DNS, never a pod IP (M2)
+              value: $(POD_NAME).storage-shard-{{ $s }}.{{ $.Release.Namespace }}.svc.cluster.local:7000
+            - name: HTTP_ADDR
+              value: ":8080"
+            - name: MGMT_ADDR
+              value: ":8081"
+            - name: PROFILE
+              value: {{ $.Values.profile | quote }}
+            - name: RING_PATH
+              value: /etc/reliefgrid/ring.yaml
+            - name: REQUEST_TIMEOUT_MS
+              value: {{ $.Values.requestTimeoutMs | quote }}
+            - name: OPERATOR_TOKEN
+              valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
+            # Register and heartbeat to the coordinator, advertising the
+            # stable DNS name of the data port.
+            - name: COORDINATOR_URL
+              value: {{ include "storage.coordinatorURL" $ }}
+            - name: HTTP_ADVERTISE
+              value: $(POD_NAME).storage-shard-{{ $s }}.{{ $.Release.Namespace }}.svc.cluster.local:8080
+            - name: TMPDIR
+              value: /tmp
+          ports:
+            - name: raft
+              containerPort: 7000
+            - name: http
+              containerPort: 8080
+            - name: mgmt
+              containerPort: 8081
+          # Process health and data readiness are separate (v3.1 §10): a
+          # replica with no leader yet (before bootstrap, or without quorum)
+          # is alive but not ready, and must not be restarted for it.
+          startupProbe:
+            httpGet: {path: /healthz, port: mgmt}
+            periodSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            httpGet: {path: /healthz, port: mgmt}
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /readyz, port: mgmt}
+            periodSeconds: 2
+            failureThreshold: 2
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: fsm
+              mountPath: /fsm
+            - name: tmp
+              mountPath: /tmp
+            - name: ring
+              mountPath: /etc/reliefgrid
+              readOnly: true
+      volumes:
+        - name: fsm
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: ring
+          configMap:
+            name: storage-ring
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          {{- include "storage.shardSelector" (dict "shard" $s) | nindent 10 }}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: {{ $.Values.persistence.storageClassName }}
+        resources:
+          requests:
+            storage: {{ $.Values.persistence.size }}
+{{- end }}

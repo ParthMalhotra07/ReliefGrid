@@ -136,6 +136,7 @@ func publish(ctx context.Context, url string, count int) error {
 			false,
 			amqp.Publishing{
 				DeliveryMode: amqp.Persistent,
+				Priority:     1, // NORMAL; zero omits the property and acts as 4 on this broker
 				ContentType:  "text/plain",
 				MessageId:    fmt.Sprintf("a0.3-%03d", i),
 				Body:         []byte(fmt.Sprintf("reliefgrid-message-%03d", i)),
@@ -197,6 +198,9 @@ func consume(ctx context.Context, url string, count int) error {
 			if delivery.DeliveryMode != amqp.Persistent {
 				return fmt.Errorf("message %q is not persistent", delivery.MessageId)
 			}
+			if delivery.Priority != 1 {
+				return fmt.Errorf("message %q priority %d, want explicit NORMAL=1", delivery.MessageId, delivery.Priority)
+			}
 			if _, duplicate := seen[delivery.MessageId]; duplicate {
 				return fmt.Errorf("duplicate message %q", delivery.MessageId)
 			}
@@ -220,6 +224,7 @@ func probePriority(ctx context.Context, url string) error {
 		want      []uint8
 	}{
 		{name: "strict", published: []uint8{1, 7, 31, 15, 2}, want: []uint8{31, 15, 7, 2, 1}},
+		{name: "urgency", published: []uint8{1, 3, 2}, want: []uint8{3, 2, 1}},
 		{name: "omitted-default-4", published: []uint8{1, 0, 7}, want: []uint8{7, 0, 1}},
 	} {
 		if err := probePriorityCase(ctx, url, probe.name, probe.published, probe.want); err != nil {

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: storage
+description: ReliefGrid storage shards (three Raft groups) and their one-time bootstrap Job
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

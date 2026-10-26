@@ -1,0 +1,43 @@
+{{- $ring := include "storage.ring" . | fromJson }}
+{{- range $s := until (int $ring.shards) }}
+---
+# Ingress to shard {{ $s }}: Raft only from its own group, data from the
+# namespace, management (bootstrap, status) only from operator pods (v3.1 §11).
+# The kubelet's probes also use the mgmt port (8081). They come from the node,
+# not a pod, and the CNIs we use (kindnet, Calico, Cilium) let a node reach its
+# own pods regardless of policy; a CNI that doesn't would fail every probe.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: storage-shard-{{ $s }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "storage.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: storagenode
+    reliefgrid.io/shard: {{ $s | quote }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "storage.shardSelector" (dict "shard" $s) | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "storage.shardSelector" (dict "shard" $s) | nindent 14 }}
+      ports:
+        - port: 7000
+          protocol: TCP
+    - from:
+        - podSelector: {}
+      ports:
+        - port: 8080
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              reliefgrid.io/storage-operator: "true"
+      ports:
+        - port: 8081
+          protocol: TCP
+{{- end }}
