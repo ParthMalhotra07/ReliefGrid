@@ -1,0 +1,25 @@
+# demo-2: Register a resource, list it, update its availability and status
+result:     NOT IMPLEMENTED (owner A, goal A3.1)
+runId:      gate-20261027T160755Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-10-27T16:09:04Z
+finished:   2026-10-27T16:09:04Z
+duration:   0.0 s
+code tree:  e57b832f1114 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: (not documented)
+
+## versions
+git head: 7e170aa9092a
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:a57a97cd879b5f7d3729863a7555b8f74d805d870b60a343e0ba036c05e5f21d
+image reliefgrid/coordinator:dev: sha256:598b696b66cdcfadc50623a233388800b2464aacf1dc69d2b848b96b7107bfd9
+
+## checks
+
+## commands
