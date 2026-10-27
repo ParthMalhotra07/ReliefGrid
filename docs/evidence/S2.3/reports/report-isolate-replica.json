@@ -1,0 +1,99 @@
+{
+  "experiment": "isolate-replica",
+  "seed": 27,
+  "runId": "isolate-replica-s27-1793086482",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "isolate-replica",
+    "seed": 27,
+    "shard": 1,
+    "role": "leader",
+    "pick": 0,
+    "faultDelayMs": 12331,
+    "loadSeconds": 108,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-isolate-replica-s27",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 1,
+    "pod": "storage-shard-1-0",
+    "serverId": "storage-shard-1-0/d3d9d582-ce78-4db4-a767-f6f37dbf34b9",
+    "role": "leader",
+    "term": 6
+  },
+  "fault": {
+    "kind": "raft-isolation",
+    "mechanism": "label reliefgrid.io/chaos-isolated=true, excluded by NetworkPolicy storage-shard-1-raft",
+    "startedAt": 1793086496470,
+    "healedAt": 1793086517189
+  },
+  "recovery": {
+    "leader": "storage-shard-1-2",
+    "term": 7,
+    "seconds": 11.3
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793086595471,
+    "seconds": 0.4,
+    "ok": true,
+    "detail": "shard 1 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793086484000,
+    "faultStartedAt": 1793086496470,
+    "faultHealedAt": 1793086517189,
+    "settledAt": 1793086595911,
+    "loadFinishedAt": 1793086592000
+  },
+  "load": {
+    "job": "chaos-load-isolate-replica-s27-1793086482",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 7742,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 1378
+  },
+  "errorsObserved": [
+    {
+      "at": 1793086504516,
+      "source": "harness",
+      "message": "the NetworkPolicy cut did not take within 8s; clearing storage-shard-1-0's conntrack entries"
+    }
+  ],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/isolate-replica-s27-1793086482.json",
+    "job": "chaos-verify-isolate-replica-s27-1793086482",
+    "exitCode": 0,
+    "checked": 7742,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-isolate-replica-s27-1793086482",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "isolation": {
+    "peerToTargetRaft": false,
+    "targetToPeerRaft": false,
+    "peerToTargetData": true,
+    "targetCommitAdvanced": false,
+    "majorityCommitAdvanced": true,
+    "method": "networkpolicy+conntrack"
+  }
+}

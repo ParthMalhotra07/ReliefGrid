@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"hash/fnv"
+	"reflect"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -334,5 +335,86 @@ func TestPayloadHash(t *testing.T) {
 	a := ledger.PayloadHash(json.RawMessage(`{"w":1, "seq": 2}`))
 	if len(a) != 64 || a != ledger.PayloadHash(json.RawMessage(`{"w":1,"seq":2}`)) || a == ledger.PayloadHash(json.RawMessage(`{"w":1,"seq":3}`)) {
 		t.Fatalf("hash %q", a)
+	}
+}
+
+// Every failed attempt is kept with its time, even when a retry later
+// commits the write (v3.1 §26: record temporary errors rather than hiding
+// them), and every entry carries the time its outcome was known.
+func TestDriverRecordsAttemptErrorsAndTimes(t *testing.T) {
+	s := newStore(t)
+	var seen sync.Map
+	faulty := memstore.WithFaults(s, func(c memstore.Call) memstore.Fault {
+		if _, again := seen.LoadOrStore(c.OperationID, true); !again && c.OperationID == "ld-w0-op3" {
+			return memstore.Fault{DropBefore: true}
+		}
+		return memstore.Fault{}
+	})
+	now := time.UnixMilli(t0 + 5000)
+	l, err := ledger.Driver{Store: faulty, Prefix: "ld", Workers: 1, Keys: 2, Ops: 4, Retries: 2, At: t0,
+		Now: func() time.Time { return now }}.Run(testCtx(t))
+	if err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+	if len(l.Errors) != 1 {
+		t.Fatalf("errors = %+v, want the one dropped attempt", l.Errors)
+	}
+	if e := l.Errors[0]; e.OperationID != "ld-w0-op3" || e.Key != "ld-w0-c0" || e.Attempt != 0 || e.At != t0+5000 || e.Error == "" {
+		t.Fatalf("attempt error = %+v", e)
+	}
+	if !slices.ContainsFunc(l.Acked, func(e ledger.Entry) bool { return e.OperationID == "ld-w0-op3" }) {
+		t.Fatalf("the retried write is not acknowledged: %+v", l.Acked)
+	}
+	for _, e := range l.Acked {
+		if e.At != t0+5000 {
+			t.Fatalf("entry %s at %d, want %d", e.OperationID, e.At, t0+5000)
+		}
+	}
+	if v := verify(t, l, s); !v.OK() {
+		t.Fatalf("verify: %+v", v)
+	}
+}
+
+// With Ops 0 the driver writes until Duration has passed, each worker
+// pausing Interval between writes; with neither bound it refuses to run.
+func TestDriverRunsForDuration(t *testing.T) {
+	s := newStore(t)
+	start := time.Now()
+	l, err := ledger.Driver{Store: s, Prefix: "ld", Workers: 2, Keys: 1, Duration: 200 * time.Millisecond,
+		Interval: 10 * time.Millisecond, Retries: 1, At: t0}.Run(testCtx(t))
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("driver: %v", err)
+	}
+	if elapsed < 200*time.Millisecond || elapsed > 5*time.Second {
+		t.Fatalf("ran for %s, want about 200ms", elapsed)
+	}
+	// Per worker: its key's create, then at most one write per Interval.
+	if n := len(l.Acked); n < 2*(1+3) || n > 2*(1+21) {
+		t.Fatalf("%d acknowledged writes in 200ms at one per 10ms per worker", n)
+	}
+	if v := verify(t, l, s); !v.OK() {
+		t.Fatalf("verify: %+v", v)
+	}
+	if _, err := (ledger.Driver{Store: s, Prefix: "unbounded", At: t0}).Run(testCtx(t)); err == nil {
+		t.Fatal("a driver with neither Ops nor Duration ran")
+	}
+}
+
+// Stats counts the ledger as written, and the acknowledgements inside a
+// time window.
+func TestStatsWindow(t *testing.T) {
+	l := &ledger.Ledger{}
+	for i, at := range []int64{100, 200, 300} {
+		l.Record(ledger.Entry{OperationID: string(rune('a' + i)), At: at}, store.Result{Outcome: store.OutcomeOK}, nil)
+	}
+	l.Record(ledger.Entry{OperationID: "r", At: 210}, store.Result{Outcome: store.OutcomeVersionConflict}, nil)
+	l.Record(ledger.Entry{OperationID: "u", At: 250}, store.Result{}, errors.New("timeout"))
+	l.Errors = append(l.Errors, ledger.AttemptError{At: 240, OperationID: "u", Key: "k", Error: "timeout"})
+	got := l.Stats(150, 300)
+	want := ledger.Stats{Acked: 3, Unknown: 1, Rejected: 1, AckedInWindow: 2, ErrorCount: 1,
+		Errors: []ledger.AttemptError{{At: 240, OperationID: "u", Key: "k", Error: "timeout"}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Stats = %+v, want %+v", got, want)
 	}
 }

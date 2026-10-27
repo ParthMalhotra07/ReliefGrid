@@ -122,7 +122,7 @@ func TestLoadThenVerify(t *testing.T) {
 		t.Fatalf("load exit %d: %s", code, out.String())
 	}
 	out.Reset()
-	if code := verify(ctx, s, path, false, &out); code != exitClean || !strings.Contains(out.String(), "checked 24 acknowledged writes over 14 keys: 0 lost") {
+	if code := verify(ctx, s, path, false, window{}, &out); code != exitClean || !strings.Contains(out.String(), "checked 24 acknowledged writes over 14 keys: 0 lost") {
 		t.Fatalf("verify exit %d: %s", code, out.String())
 	}
 
@@ -135,14 +135,14 @@ func TestLoadThenVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 	out.Reset()
-	if code := verify(ctx, s, path, false, &out); code != exitViolations || !strings.Contains(out.String(), "lost cli-w0-op") || !strings.Contains(out.String(), "cli-w0-k0") {
+	if code := verify(ctx, s, path, false, window{}, &out); code != exitViolations || !strings.Contains(out.String(), "lost cli-w0-op") || !strings.Contains(out.String(), "cli-w0-k0") {
 		t.Fatalf("verify after overwrite exit %d: %s", code, out.String())
 	}
 	out.Reset()
-	if code := verify(ctx, s, path, true, &out); code != exitViolations || !strings.Contains(out.String(), `"ok": false`) {
+	if code := verify(ctx, s, path, true, window{}, &out); code != exitViolations || !strings.Contains(out.String(), `"ok": false`) {
 		t.Fatalf("verify --json exit %d: %s", code, out.String())
 	}
-	if code := verify(ctx, s, filepath.Join(t.TempDir(), "absent.json"), false, &out); code != exitIncomplete {
+	if code := verify(ctx, s, filepath.Join(t.TempDir(), "absent.json"), false, window{}, &out); code != exitIncomplete {
 		t.Fatalf("verify of a missing ledger exit %d", code)
 	}
 	if _, err := os.Stat(path); err != nil {
@@ -158,9 +158,52 @@ func TestUsage(t *testing.T) {
 		{"check", "--max-backlog", "many"},
 		{"load"},
 		{"verify", "--coordinator", "http://127.0.0.1:1"},
+		{"verify", "--ledger", "x.json", "--window", "200"},
+		{"load", "--ledger", "x.json", "--ops", "0"},
+		{"inject", "--coordinator", "http://127.0.0.1:1", "--ledger", "x.json"}, // unknown, or without --confirm
+		{"nonsense", "--coordinator", "http://127.0.0.1:1"},
 	} {
 		if code := run(context.Background(), args, &bytes.Buffer{}, &stderr); code != exitUsage {
 			t.Fatalf("run %q = %d, want usage error", args, code)
+		}
+	}
+}
+
+// verify --json --window FROM:TO adds the ledger as written: its counts,
+// the acknowledgements inside the window and every failed attempt.
+func TestVerifyWindowStats(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	s, err := memstore.New(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	path := filepath.Join(t.TempDir(), "ledger.json")
+	at := time.UnixMilli(invchecktest.T0 + 1000)
+	d := ledger.Driver{Store: s, Prefix: "win", Workers: 1, Keys: 1, Ops: 4, Retries: 1, At: invchecktest.T0, Now: func() time.Time { return at }}
+	if code := load(ctx, d, path, &bytes.Buffer{}); code != exitClean {
+		t.Fatalf("load exit %d", code)
+	}
+	for _, tc := range []struct {
+		w    window
+		want int
+	}{
+		{window{from: invchecktest.T0, to: invchecktest.T0 + 1000, set: true}, 5},
+		{window{from: invchecktest.T0 + 1001, to: invchecktest.T0 + 2000, set: true}, 0},
+	} {
+		var out bytes.Buffer
+		if code := verify(ctx, s, path, true, tc.w, &out); code != exitClean {
+			t.Fatalf("verify exit %d: %s", code, out.String())
+		}
+		var res struct {
+			Ledger *ledger.Stats `json:"ledger"`
+		}
+		if err := json.Unmarshal(out.Bytes(), &res); err != nil || res.Ledger == nil {
+			t.Fatalf("verify --json has no ledger stats (%v): %s", err, out.String())
+		}
+		if res.Ledger.Acked != 5 || res.Ledger.AckedInWindow != tc.want || res.Ledger.Errors == nil {
+			t.Fatalf("window %+v: stats %+v, want 5 acked, %d in the window, an errors list", tc.w, *res.Ledger, tc.want)
 		}
 	}
 }
