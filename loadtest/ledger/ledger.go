@@ -50,6 +50,20 @@ type Entry struct {
 	Result *store.Result `json:"result,omitempty"`
 	// Error is the last error of an unknown outcome.
 	Error string `json:"error,omitempty"`
+	// At is when the outcome was known (unix ms, the driver's clock): the
+	// acknowledgement, the rejection, or the last failed attempt.
+	At int64 `json:"at"`
+}
+
+// AttemptError is one failed attempt of a write, kept even when a retry
+// later commits it: temporary errors are recorded, not hidden behind the
+// final result (v3.1 §26).
+type AttemptError struct {
+	At          int64  `json:"at"` // unix ms
+	OperationID string `json:"operationId"`
+	Key         string `json:"key"`
+	Attempt     int    `json:"attempt"` // 0 for the first call
+	Error       string `json:"error"`
 }
 
 // Ledger holds every write of a run, split by what is known of it.
@@ -64,6 +78,8 @@ type Ledger struct {
 	Rejected []Entry `json:"rejected"`
 	// NotApplied are unknown writes Resolve found never committed.
 	NotApplied []Entry `json:"notApplied"`
+	// Errors are every failed attempt, in the order they happened.
+	Errors []AttemptError `json:"errors"`
 }
 
 // PayloadHash is the hex SHA-256 of v in compact JSON form, so that it
@@ -94,6 +110,45 @@ func (l *Ledger) Record(e Entry, res store.Result, err error) {
 	} else {
 		l.Rejected = append(l.Rejected, e)
 	}
+}
+
+// RecordError keeps one failed attempt.
+func (l *Ledger) RecordError(e AttemptError) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Errors = append(l.Errors, e)
+}
+
+// MaxStatErrors bounds the attempt errors Stats lists; ErrorCount has them all.
+const MaxStatErrors = 200
+
+// Stats is the ledger as written, before Resolve: what a run's report shows.
+type Stats struct {
+	Acked    int `json:"acked"`
+	Unknown  int `json:"unknown"`
+	Rejected int `json:"rejected"`
+	// AckedInWindow counts acknowledged writes with At in [from, to].
+	AckedInWindow int            `json:"ackedInWindow"`
+	ErrorCount    int            `json:"errorCount"`
+	Errors        []AttemptError `json:"errors"` // the first MaxStatErrors
+}
+
+// Stats counts l, and the acknowledgements between from and to (unix ms,
+// inclusive).
+func (l *Ledger) Stats(from, to int64) Stats {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	st := Stats{Acked: len(l.Acked), Unknown: len(l.Unknown), Rejected: len(l.Rejected), ErrorCount: len(l.Errors),
+		Errors: slices.Clone(l.Errors[:min(len(l.Errors), MaxStatErrors)])}
+	if st.Errors == nil {
+		st.Errors = []AttemptError{}
+	}
+	for _, e := range l.Acked {
+		if e.At >= from && e.At <= to {
+			st.AckedInWindow++
+		}
+	}
+	return st
 }
 
 // Save writes l as JSON.
