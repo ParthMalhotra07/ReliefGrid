@@ -1,0 +1,22 @@
+# gate gate-20261027T104939Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-10-27T10:49:39Z
+finished:   2026-10-27T11:12:59Z
+code tree:  39706f32ed4e (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos chaos | git hash-object --stdin)
+code dirty: no
+
+demo    round 1                round 2
+demo-1  PENDING                PENDING
+demo-2  NOT IMPLEMENTED        NOT IMPLEMENTED
+demo-3  NOT IMPLEMENTED        NOT IMPLEMENTED
+demo-4  PASS                   PASS
+demo-5  NOT IMPLEMENTED        NOT IMPLEMENTED
+demo-6  PASS                   PASS
+demo-7  PASS                   PASS
+demo-8  NOT IMPLEMENTED        NOT IMPLEMENTED
+demo-9  NOT IMPLEMENTED        NOT IMPLEMENTED
+reset   OK (75 s)              OK (68 s)
+cordons none                   none
+
+result: FAIL (6 of 18 passed)
+evidence: /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261027T104939Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/ /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261027T104939Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/

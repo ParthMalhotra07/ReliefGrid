@@ -31,9 +31,10 @@ STORAGE_RELEASE ?= storage
 DIFF_BASE ?= origin/main
 
 .PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-reset placement-check
+.PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
 
 help: ## List targets
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9 -]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
 
 check: whitespace-check fmt-check vet lint test ## git diff --check, gofmt, go vet, golangci-lint, go test -race (run before every push)
 
@@ -120,3 +121,14 @@ storage-reset: ## Uninstall storage and delete its PVCs and bootstrap manifests 
 	helm --kube-context kind-$(CLUSTER) uninstall $(STORAGE_RELEASE) -n $(STORAGE_NS) --ignore-not-found --wait
 	kubectl --context kind-$(CLUSTER) -n $(STORAGE_NS) delete pvc -l app.kubernetes.io/name=storage,app.kubernetes.io/component=storagenode --ignore-not-found --wait
 	kubectl --context kind-$(CLUSTER) -n $(STORAGE_NS) delete configmap -l app.kubernetes.io/name=storage,app.kubernetes.io/component=storage-manifest --ignore-not-found
+
+# The demo gate (S3.2, v3.1 §28): scripts/demos/. Each demo prints PASS, FAIL, NOT IMPLEMENTED
+# or PENDING and writes docs/evidence/<runId>/demo-N.txt (DEMO_RUN_ID; default one per run).
+demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9: ## Run one §28 demo with its assertions and evidence
+	bash scripts/demos/$@.sh
+
+demo-reset: ## Clean deployment for the demos: recreate the kind cluster, images, storage (asks first)
+	bash scripts/demos/reset.sh
+
+gate: ## All nine demos from a clean deployment, twice, with a summary table (asks first)
+	bash scripts/demos/gate.sh
