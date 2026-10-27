@@ -1624,6 +1624,7 @@ components:
         resource: {type: integer, minimum: 0}
         kv: {type: integer, minimum: 0}
         tombstones: {type: integer, minimum: 0}
+        probe: {type: integer, minimum: 0, description: "S4.6 drift probe: edited without make gen; do not merge"}
     ShardLeader:
       type: object
       required: [shard, leaderId, address, term]
