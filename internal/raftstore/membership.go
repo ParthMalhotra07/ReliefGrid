@@ -55,10 +55,13 @@ func (n *Node) configuration(c raft.Configuration, commit uint64) (Configuration
 // configScan caches configIndex's last answer: the index of the newest
 // configuration entry found, and how far the log had been scanned.
 type configScan struct {
-	mu      sync.Mutex
-	index   uint64       // the newest configuration entry found (0: none yet)
-	scanned uint64       // every entry up to here has been looked at
-	reads   atomic.Int64 // log entries read looking for it (tests)
+	mu    sync.Mutex
+	index uint64 // the newest configuration entry found (0: none yet)
+	// fromSnapshot: index is the newest snapshot's ConfigurationIndex, the
+	// entry itself compacted out of the log.
+	fromSnapshot bool
+	scanned      uint64       // every entry up to here has been looked at
+	reads        atomic.Int64 // log entries read looking for it (tests)
 }
 
 // configIndex is the log index of c, the latest configuration. raft v1.8.0's
@@ -81,11 +84,11 @@ func (n *Node) configIndex(c raft.Configuration) (uint64, error) {
 	// the scanned point is a configuration. A follower's log suffix can be
 	// replaced, so any doubt rescans from the end.
 	from := last
-	if n.cfgScan.index > 0 && n.cfgScan.scanned <= last && n.isConfigEntry(n.cfgScan.index, c) {
+	if n.cfgScan.index > 0 && n.cfgScan.scanned <= last && n.cachedStillHolds(c) {
 		if i, ok, err := n.newestConfigEntry(last, n.cfgScan.scanned+1, c); err != nil {
 			return 0, err
 		} else if ok {
-			n.cfgScan.index = i
+			n.cfgScan.index, n.cfgScan.fromSnapshot = i, false
 		}
 		n.cfgScan.scanned = last
 		return n.cfgScan.index, nil
@@ -94,7 +97,7 @@ func (n *Node) configIndex(c raft.Configuration) (uint64, error) {
 		if i, ok, err := n.newestConfigEntry(from, first, c); err != nil {
 			return 0, err
 		} else if ok {
-			n.cfgScan.index, n.cfgScan.scanned = i, last
+			n.cfgScan.index, n.cfgScan.scanned, n.cfgScan.fromSnapshot = i, last, false
 			return i, nil
 		}
 	}
@@ -103,7 +106,7 @@ func (n *Node) configIndex(c raft.Configuration) (uint64, error) {
 		return 0, fmt.Errorf("raftstore: list snapshots: %w", err)
 	}
 	if len(metas) > 0 && sameServers(metas[0].Configuration, c) {
-		n.cfgScan.index, n.cfgScan.scanned = metas[0].ConfigurationIndex, last
+		n.cfgScan.index, n.cfgScan.scanned, n.cfgScan.fromSnapshot = metas[0].ConfigurationIndex, last, true
 		return metas[0].ConfigurationIndex, nil
 	}
 	return 0, nil // no configuration yet (an empty disk)
@@ -126,6 +129,17 @@ func (n *Node) newestConfigEntry(hi, lo uint64, c raft.Configuration) (uint64, b
 		}
 	}
 	return 0, false, nil
+}
+
+// cachedStillHolds reports whether the cached index still names c: its log
+// entry, or, once compacted, the newest snapshot's configuration at that
+// index (as raft itself records it).
+func (n *Node) cachedStillHolds(c raft.Configuration) bool {
+	if !n.cfgScan.fromSnapshot {
+		return n.isConfigEntry(n.cfgScan.index, c)
+	}
+	metas, err := n.snaps.List()
+	return err == nil && len(metas) > 0 && metas[0].ConfigurationIndex == n.cfgScan.index && sameServers(metas[0].Configuration, c)
 }
 
 func (n *Node) isConfigEntry(i uint64, c raft.Configuration) bool {

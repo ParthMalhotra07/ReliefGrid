@@ -293,13 +293,15 @@ func TestConfigIndexCachedOnACompactedLog(t *testing.T) {
 	}
 	c.waitLeader()
 	writes := int(p.TrailingLogs) + 500
+	wctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute) // ~10k writes, slower under -race
+	defer cancel()
 	var wg sync.WaitGroup
 	errs := make(chan error, 32)
 	for w := range 32 {
 		wg.Go(func() {
 			for i := w; i < writes; i += 32 {
 				cmd := store.CreateEntity{Meta: store.Meta{OperationID: fmt.Sprintf("op-%d", i), At: t0}, Key: fmt.Sprintf("kv:c-%d", i), Value: []byte("1")}
-				if _, err := n.Apply(ctx, cmd); err != nil {
+				if _, err := n.Apply(wctx, cmd); err != nil {
 					errs <- err
 					return
 				}
@@ -311,7 +313,7 @@ func TestConfigIndexCachedOnACompactedLog(t *testing.T) {
 	if err := <-errs; err != nil {
 		t.Fatal(err)
 	}
-	if _, err := n.Snapshot(ctx); err != nil {
+	if _, err := n.Snapshot(wctx); err != nil {
 		t.Fatal(err)
 	}
 	first, _ := n.logs.FirstIndex()
