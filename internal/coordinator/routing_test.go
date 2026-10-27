@@ -297,12 +297,21 @@ func TestUnknownOutcomeIsStickyAcrossRetries(t *testing.T) {
 // When nothing was proposed (NOT_LEADER, NO_LEADER, refused connections)
 // the budget ends in 503 NO_LEADER: retryable, outcomeUnknown=false, with
 // Retry-After, and within the budget.
+//
+// The NO_LEADER and NOT_LEADER nodes each answer exactly once and then stop
+// listening, so every later attempt is a refused dial, never sent. Left
+// answering, they could still be mid-answer when the budget ends, and an
+// attempt cut off after it was sent correctly makes a mutation's outcome
+// unknown (TestHungNodeIsBoundedByTheBudget). Under parallel -race load that
+// happened in about 1 run in 100, whatever the budget.
 func TestNeverProposedExhaustionIsNoLeader(t *testing.T) {
-	h := newHarness(t, func(c *coordinator.Config) { c.Budget = 300 * time.Millisecond })
+	const budget = time.Second // headroom for slow runners
+	h := newHarness(t, func(c *coordinator.Config) { c.Budget = budget })
 	h.ready()
 	shard := h.nodes[2]
-	shard[0].setHandler(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false))
-	shard[1].setHandler(notLeader(shard[0], 1))
+	var noLeader, notLead atomic.Int32
+	shard[0].setHandler(answerOnce(shard[0], &noLeader, failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false)))
+	shard[1].setHandler(answerOnce(shard[1], &notLead, notLeader(shard[0], 1)))
 	shard[2].srv.Close() // refused: never sent
 
 	start := time.Now()
@@ -312,8 +321,23 @@ func TestNeverProposedExhaustionIsNoLeader(t *testing.T) {
 	if e.OutcomeUnknown || !e.Retryable || rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("error = %+v (Retry-After %q)", e, rec.Header().Get("Retry-After"))
 	}
-	if elapsed > 300*time.Millisecond+250*time.Millisecond {
-		t.Fatalf("answered after %s; budget 300ms", elapsed)
+	if noLeader.Load() != 1 || notLead.Load() != 1 {
+		t.Fatalf("NO_LEADER answered %d times, NOT_LEADER %d; want each once", noLeader.Load(), notLead.Load())
+	}
+	if elapsed > budget+500*time.Millisecond {
+		t.Fatalf("answered after %s; budget %s", elapsed, budget)
+	}
+}
+
+// answerOnce answers with h, counting in n, and stops n's listener before
+// the answer is written: every later dial to n is refused (never sent).
+// Connection: close keeps the client from reusing this connection.
+func answerOnce(node *fakeNode, n *atomic.Int32, h func(http.ResponseWriter, *http.Request, []byte)) func(http.ResponseWriter, *http.Request, []byte) {
+	return func(w http.ResponseWriter, r *http.Request, body []byte) {
+		n.Add(1)
+		_ = node.srv.Listener.Close()
+		w.Header().Set("Connection", "close")
+		h(w, r, body)
 	}
 }
 

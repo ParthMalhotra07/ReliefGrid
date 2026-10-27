@@ -299,8 +299,10 @@ func TestScanCursorResumesAFailedShard(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			// Each page that finds shard 1 down waits out the budget.
-			h := newHarness(t, func(c *coordinator.Config) { c.Budget = 50 * time.Millisecond })
+			// Each page that finds shard 1 down waits out the budget, and every
+			// healthy shard must answer within it: at 50 ms, healthy shards were
+			// reported failed in 91 of 104 runs under parallel -race load.
+			h := newHarness(t, func(c *coordinator.Config) { c.Budget = 500 * time.Millisecond })
 			h.ready()
 			shards := keyShards(h, 5000, 5000, 3000)
 			var down []int
