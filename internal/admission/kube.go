@@ -44,11 +44,12 @@ func InCluster(namespace, name string) (Source, error) {
 	}
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.TLSClientConfig = &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}
-	return &configMapSource{
-		url:       "https://" + net.JoinHostPort(host, port) + "/api/v1/namespaces/" + url.PathEscape(namespace) + "/configmaps/" + url.PathEscape(name),
-		tokenFile: serviceAccountDir + "/token",
-		client:    &http.Client{Transport: tr, Timeout: 5 * time.Second},
-	}, nil
+	return newConfigMapSource("https://"+net.JoinHostPort(host, port)+"/api/v1/namespaces/"+url.PathEscape(namespace)+"/configmaps/"+url.PathEscape(name),
+		serviceAccountDir+"/token", &http.Client{Transport: tr, Timeout: 5 * time.Second}), nil
+}
+
+func newConfigMapSource(u, tokenFile string, client *http.Client) *configMapSource {
+	return &configMapSource{url: u, tokenFile: tokenFile, client: client}
 }
 
 func (s *configMapSource) Get(ctx context.Context) (map[string]string, error) {
@@ -70,7 +71,13 @@ func (s *configMapSource) Get(ctx context.Context) (map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("admission: read manifest: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusOK:
+	case http.StatusForbidden:
+		return nil, fmt.Errorf("%w: %.200s", ErrForbidden, body)
+	case http.StatusNotFound:
+		return nil, fmt.Errorf("%w: %.200s", ErrNotFound, body)
+	default:
 		return nil, fmt.Errorf("admission: get manifest: HTTP %d: %.200s", resp.StatusCode, body)
 	}
 	var cm struct {

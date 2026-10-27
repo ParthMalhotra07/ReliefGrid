@@ -7,7 +7,9 @@ package admission
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -56,10 +58,11 @@ func Parse(data map[string]string) (Manifest, error) {
 // ServerID from the group.
 func Decide(m Manifest, id raftstore.Identity, hasState bool) (bool, string) {
 	sid := string(id.ServerID())
+	// Removed first: no stale peerIds or admitted entry reopens a removed ID.
+	if slices.Contains(m.Removed, sid) {
+		return false, fmt.Sprintf("removed: %s was removed from the group by storagectl replace", sid)
+	}
 	if hasState {
-		if slices.Contains(m.Removed, sid) {
-			return false, fmt.Sprintf("removed: %s was removed from the group by storagectl replace", sid)
-		}
 		return true, "ordinary restart of a disk with Raft state"
 	}
 	switch {
@@ -73,6 +76,13 @@ func Decide(m Manifest, id raftstore.Identity, hasState bool) (bool, string) {
 	return false, fmt.Sprintf("not admitted: %s is not a recorded voter and admitted[%s] is %q (storagectl replace admits it)",
 		sid, id.PodName, m.Admitted[id.PodName])
 }
+
+// The API server's refusals of a manifest read: operator errors (RBAC, a
+// wrong or missing manifest), not a transient outage.
+var (
+	ErrForbidden = errors.New("admission: manifest read forbidden (403)")
+	ErrNotFound  = errors.New("admission: manifest not found (404)")
+)
 
 // Source reads the shard's manifest ConfigMap data.
 type Source interface {
@@ -88,10 +98,18 @@ type Source interface {
 func Wait(ctx context.Context, src Source, id raftstore.Identity, hasState bool, poll time.Duration, onWait func(why string)) error {
 	t := time.NewTicker(poll)
 	defer t.Stop()
+	lastLoud := ""
 	for {
-		ok, why := check(ctx, src, id, hasState)
+		ok, why, loud := check(ctx, src, id, hasState)
 		if ok {
 			return nil
+		}
+		if loud && why != lastLoud {
+			// Waiting will not fix these: an operator has to.
+			slog.Error("!!! M7 admission cannot read the manifest; this disk stays closed until it can !!!", "serverId", id.ServerID(), "reason", why)
+		}
+		if loud {
+			lastLoud = why
 		}
 		if onWait != nil {
 			onWait(why)
@@ -104,16 +122,27 @@ func Wait(ctx context.Context, src Source, id raftstore.Identity, hasState bool,
 	}
 }
 
-func check(ctx context.Context, src Source, id raftstore.Identity, hasState bool) (bool, string) {
+// check reads and decides once; loud marks a reason an operator must fix.
+func check(ctx context.Context, src Source, id raftstore.Identity, hasState bool) (ok bool, why string, loud bool) {
 	data, err := src.Get(ctx)
-	if err == nil {
-		var m Manifest
-		if m, err = Parse(data); err == nil {
-			return Decide(m, id, hasState)
+	var problem string
+	switch {
+	case err == nil:
+		m, perr := Parse(data)
+		if perr == nil {
+			ok, why = Decide(m, id, hasState)
+			return ok, why, false
 		}
+		problem, loud = fmt.Sprintf("manifest malformed: %v", perr), true
+	case errors.Is(err, ErrForbidden):
+		problem, loud = fmt.Sprintf("manifest forbidden (403, check Role storage-admission): %v", err), true
+	case errors.Is(err, ErrNotFound):
+		problem, loud = fmt.Sprintf("manifest not found (404): %v", err), true
+	default:
+		problem = fmt.Sprintf("manifest unreachable: %v", err)
 	}
 	if hasState {
-		return true, fmt.Sprintf("ordinary restart; manifest unreadable (%v)", err)
+		return true, "ordinary restart; " + problem, false
 	}
-	return false, fmt.Sprintf("manifest unreadable: %v", err)
+	return false, problem, loud
 }
