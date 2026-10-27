@@ -51,7 +51,8 @@
 #       http 8080, mgmt 8081
 #     PodDisruptionBudget storage-shard-N: minAvailable 2
 #     NetworkPolicy storage-shard-N: ingress to 8081 only from pods labelled
-#       reliefgrid.io/storage-operator=true, to 7000 only from shard N's own pods
+#       reliefgrid.io/storage-operator=true; storage-shard-N-raft (S2.3): to 7000 only from
+#       shard N's own pods, neither side labelled reliefgrid.io/chaos-isolated=true
 #     no manifest ConfigMap: the chart renders none (Helm must never own or replay it)
 #     Job storage-bootstrap-<revision>: an ordinary Job (no helm.sh/hook), labelled
 #       reliefgrid.io/storage-operator=true, runs /storagectl bootstrap with MANIFESTS (JSON
