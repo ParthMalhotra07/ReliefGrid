@@ -23,13 +23,14 @@ endif
 # Storage on kind (S1.5): the standalone chart deploy/helm/storage.
 STORAGE_IMAGE   ?= reliefgrid/storagenode:dev
 COORDINATOR_IMAGE ?= reliefgrid/coordinator:dev
+TOOLS_IMAGE     ?= reliefgrid/tools:dev
 STORAGE_NS      ?= reliefgrid
 STORAGE_RELEASE ?= storage
 
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image coordinator-image storage-reset placement-check
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-reset placement-check
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -43,14 +44,19 @@ whitespace-check: ## git diff --check since the merge base with DIFF_BASE (defau
 fmt-check:
 	@out="$$(gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt needed on:"; echo "$$out"; exit 1; fi
 
+# The chaos build tag adds `invcheck inject` (tools image only); vet, lint
+# and test that build too.
 vet:
 	go vet ./...
+	go vet -tags chaos ./cmd/invcheck/...
 
 lint:
 	golangci-lint run ./...
+	golangci-lint run --build-tags chaos ./cmd/invcheck/...
 
-test: ## go test -race ./...
+test: ## go test -race ./... (and cmd/invcheck with the chaos tag)
 	go test -race ./...
+	go test -race -tags chaos ./cmd/invcheck/...
 
 gen: gen-public gen-internal ## Regenerate code from contracts/ (must leave no diff)
 
@@ -92,6 +98,10 @@ print-%: ## Print a pin, e.g. make -s print-GOLANGCI_LINT_VERSION
 storage-image: ## Build the storage node image (storagenode + storagectl) and load it into kind
 	docker build -f cmd/storagenode/Dockerfile -t $(STORAGE_IMAGE) .
 	kind load docker-image --name $(CLUSTER) $(STORAGE_IMAGE)
+
+tools-image: ## Build the tools image (invcheck with the chaos tag) and load it into kind
+	docker build -f cmd/invcheck/Dockerfile -t $(TOOLS_IMAGE) .
+	kind load docker-image --name $(CLUSTER) $(TOOLS_IMAGE)
 
 coordinator-image: ## Build the coordinator image and load it into kind
 	docker build -f cmd/coordinator/Dockerfile -t $(COORDINATOR_IMAGE) .
