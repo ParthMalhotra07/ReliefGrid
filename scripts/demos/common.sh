@@ -43,11 +43,20 @@ versions() {
 # those: each demo runs it on exit (when it does not hand the cordon on), the gate on exit or
 # interrupt, and reset.sh before anything else.
 DEMO_CORDON_LABEL=reliefgrid.io/demo-cordoned
+# Demo 6 hands its stopped pod to demo 7 through an annotation on the worker it cordoned:
+# "shard=N pod=P node=W serverId=I uid=U term=T". It lives in the cluster, next to the cordon,
+# so demo 7 finds it whatever run directory or make call it comes from, and goes with the
+# cordon (demo_uncordon removes both).
+DEMO_HANDOFF_ANNOTATION=reliefgrid.io/demo6-handoff
 _kctx() { kubectl --context "${KUBE_CONTEXT:-kind-$CLUSTER}" "$@"; }
 # demo_cordon <node>: cordon it and label it as the demos' cordon
 demo_cordon() { _kctx cordon "$1" >/dev/null && _kctx label node "$1" "$DEMO_CORDON_LABEL=true" --overwrite >/dev/null; }
-# demo_uncordon <node>: uncordon it and drop the label
-demo_uncordon() { _kctx uncordon "$1" >/dev/null && _kctx label node "$1" "$DEMO_CORDON_LABEL-" >/dev/null 2>&1; true; }
+# demo_uncordon <node>: uncordon it and drop the label and any hand-off annotation
+demo_uncordon() {
+	_kctx uncordon "$1" >/dev/null && _kctx label node "$1" "$DEMO_CORDON_LABEL-" >/dev/null 2>&1
+	_kctx annotate node "$1" "$DEMO_HANDOFF_ANNOTATION-" >/dev/null 2>&1
+	true
+}
 # restore_demo_cordons: uncordon every node the demos cordoned; prints the nodes it restored
 restore_demo_cordons() {
 	local n
