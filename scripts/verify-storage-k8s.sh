@@ -12,7 +12,9 @@
 # result, once the result is known (a failed run is written, marked FAILED); the S2.1 checks
 # (step 6b2) also go to docs/evidence/S2.1/snapshot-restore-<host>.txt, and the S3.1 checks
 # (step 6e) to docs/evidence/S3.1/readiness-placement-<host>.txt. Exits non-zero
-# if any check fails; prints one PASS/FAIL line per check.
+# if any check fails; prints one PASS/FAIL line per check. Its last check: no kubectl
+# port-forward started from this repository is left running (scripts/port-forwards.sh, #50);
+# every forward it starts is killed on exit, interrupts included.
 #
 # Interface under test:
 #   cmd/storagenode/Dockerfile   multi-stage; final stage distroless, pinned by digest,
@@ -149,6 +151,15 @@ check() { # check <description> <command...>
 	if "$@" >/dev/null 2>&1; then pass "$desc"; else fail "$desc"; fi
 }
 finish() {
+	# Every port-forward this run started is stopped here, then none started from this
+	# repository may be left running (#50): checked before the evidence is written.
+	stop_forwards
+	local left
+	if left="$(repo_port_forwards)" && [ -z "$left" ]; then
+		pass "port-forwards: none started from this repository is left running"
+	else
+		fail "port-forwards: none started from this repository is left running" "$left"
+	fi
 	write_evidence
 	[ "$KEEP_CLUSTER" = 0 ] && make -s cluster-down >/dev/null 2>&1
 	echo
@@ -168,18 +179,33 @@ abort() { # abort <description> [detail]: a failure that makes later checks mean
 tmp="$(mktemp -d)"
 results="$tmp/results"
 : >"$results"
-pf_pid=""
+pf_pid=""  # the current pod port-forward (port_forward); its local port is pf_port
+pf_port=""
 cpf_pid="" # the coordinator port-forward, kept apart from pf_pid
 cport=""   # its local port
+pf_pids=() # every port-forward this run started; all killed on exit
 coord_failover="" # step 6a's measured timeline, for the evidence
 cordoned="" # a worker step 6e cordons; uncordoned again on any exit
+# stop_forwards: kill every port-forward this run started
+stop_forwards() {
+	[ "${#pf_pids[@]}" -gt 0 ] && kill "${pf_pids[@]}" 2>/dev/null
+	local p
+	for p in "${pf_pids[@]}"; do
+		for _ in $(seq 20); do kill -0 "$p" 2>/dev/null || break; sleep 0.1; done
+	done
+	pf_pids=() pf_pid="" cpf_pid=""
+}
 cleanup() {
 	[ -n "$cordoned" ] && kubectl --context "$CTX" uncordon "$cordoned" >/dev/null 2>&1
-	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
-	[ -n "$cpf_pid" ] && kill "$cpf_pid" 2>/dev/null
+	stop_forwards
 	rm -rf "$tmp"
 }
 trap cleanup EXIT
+# An interrupt exits through cleanup too.
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
+# shellcheck source=scripts/port-forwards.sh
+. "$(dirname "$0")/port-forwards.sh"
 
 k() { kubectl --context "$CTX" "$@"; }
 kn() { k -n "$NS" "$@"; }
@@ -250,14 +276,16 @@ job_logs() { kn logs "job/$1" --tail=-1 2>/dev/null; }
 server_ids() { local p; for p in $(pod_names "$1"); do field "$(st "$p")" .serverId; done | sort | tr '\n' ' '; } # server_ids <shard>
 manifest_rv() { kn get configmap "$(sts_name "$1")-manifest" -o jsonpath='{.metadata.resourceVersion}' 2>/dev/null; }
 peer_ids() { kn get configmap "$(sts_name "$1")-manifest" -o jsonpath='{.data.peerIds}' 2>/dev/null; }
-port_forward() { # port_forward <pod>: forward a free local port to the pod's 8080; print the port
+# port_forward <pod>: forward a free local port to the pod's 8080 and set pf_port and pf_pid.
+# Call it in this shell, never in $(...): there pf_pid would be set in a subshell and the
+# forward could never be killed (#50). kubectl itself is backgrounded, so $! is the process.
+port_forward() {
 	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
-	local port
-	port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
-	kn port-forward "pod/$1" "$port:8080" >"$tmp/pf.out" 2>&1 &
+	pf_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+	kubectl --context "$CTX" -n "$NS" port-forward "pod/$1" "$pf_port:8080" >"$tmp/pf.out" 2>&1 &
 	pf_pid=$!
-	for _ in $(seq 50); do (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null && break; sleep 0.1; done
-	echo "$port"
+	pf_pids+=("$pf_pid")
+	for _ in $(seq 50); do (exec 3<>"/dev/tcp/127.0.0.1/$pf_port") 2>/dev/null && break; sleep 0.1; done
 }
 
 COORD=storage-coordinator
@@ -267,8 +295,9 @@ http_adv() { printf '%s.storage-shard-%s.%s.svc.cluster.local:8080' "$2" "$1" "$
 coord_forward() {
 	[ -n "$cpf_pid" ] && kill "$cpf_pid" 2>/dev/null
 	cport="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
-	kn port-forward "svc/$COORD" "$cport:8080" >"$tmp/cpf.out" 2>&1 &
+	kubectl --context "$CTX" -n "$NS" port-forward "svc/$COORD" "$cport:8080" >"$tmp/cpf.out" 2>&1 &
 	cpf_pid=$!
+	pf_pids+=("$cpf_pid")
 	for _ in $(seq 50); do (exec 3<>"/dev/tcp/127.0.0.1/$cport") 2>/dev/null && return 0; sleep 0.1; done
 	return 1
 }
@@ -301,13 +330,16 @@ nodes_ok() {
 		done
 	done
 }
-# write_key <shard> <tag>: PUT a fresh key the ring gives to <shard> through its leader;
-# prints "<key> <value>" on success (version 1 committed), nothing on failure.
+# write_key <shard> <tag>: PUT a fresh key the ring gives to <shard> through its leader; sets
+# wk_kv to "<key> <value>" on success (version 1 committed), "" on failure. Call it in this
+# shell, not in $(...), so its port-forward is tracked (#50).
+wk_kv=""
 write_key() {
 	local shard="$1" tag="$2" leader term port key="" value code i
+	wk_kv=""
 	read -r leader term < <(wait_leader 15 0 $(pod_names "$shard"))
 	[ -n "${leader:-}" ] || return 1
-	port="$(port_forward "$leader")"
+	port_forward "$leader"; port="$pf_port"
 	value="{\"verify\":\"S1.5-$tag-$(date +%s)\"}"
 	for i in $(seq 0 200); do # a foreign key is 400 and never proposed
 		code="$(curl -s -o "$tmp/put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s15-$tag-$i" \
@@ -320,14 +352,14 @@ write_key() {
 	kill "$pf_pid" 2>/dev/null
 	pf_pid=""
 	[ "$code" = 200 ] && [ "$(jq -r .result.version "$tmp/put.json")" = 1 ] || return 1
-	echo "$key $value"
+	wk_kv="$key $value"
 }
 # read_key <shard> <key> <value>: a strong read through the shard's leader returns <value> at version 1
 read_key() {
 	local shard="$1" key="$2" value="$3" leader term port code
 	read -r leader term < <(wait_leader 15 0 $(pod_names "$shard"))
 	[ -n "${leader:-}" ] || return 1
-	port="$(port_forward "$leader")"
+	port_forward "$leader"; port="$pf_port"
 	code="$(curl -s -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
 	kill "$pf_pid" 2>/dev/null
 	pf_pid=""
@@ -340,7 +372,7 @@ exec_dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --time
 # make it stale, so only these paths are fingerprinted.
 write_evidence() {
 	local code_paths code_tree code_dirty result s p
-	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh scripts/placement-check.sh)
+	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh scripts/placement-check.sh scripts/port-forwards.sh)
 	code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin)"
 	code_dirty="$(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
 	if [ "$failures" -eq 0 ]; then result="PASSED ($passes/$passes checks)"; else result="FAILED ($failures of $((passes + failures)) checks failed)"; fi
@@ -795,7 +827,7 @@ read -r leader term < <(wait_leader 10 0 "${wpods[@]}")
 if [ -z "${leader:-}" ]; then
 	fail "write shard-$WRITE_SHARD: leader found"
 else
-	port="$(port_forward "$leader")"
+	port_forward "$leader"; port="$pf_port"
 	key="" value="{\"verify\":\"S1.5-$(date +%s)\"}"
 	for i in $(seq 0 200); do # first key the ring gives to WRITE_SHARD; a foreign key is 400 and never proposed
 		code="$(curl -s -o "$tmp/put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s15-verify-$i" \
@@ -817,7 +849,7 @@ else
 	read -r newleader newterm < <(wait_leader "$ELECTION_MAX_SECONDS" $((term + 1)) "${wpods[@]}")
 	if [ -n "${newleader:-}" ]; then
 		pass "failover shard-$WRITE_SHARD: $newleader leads at term $newterm, $(since "$t0") s after deleting $leader"
-		port="$(port_forward "$newleader")"
+		port_forward "$newleader"; port="$pf_port"
 		code="$(curl -s -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
 		if [ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/get.json")" = "$(jq -c . <<<"$value")" ] && [ "$(jq -r .record.version "$tmp/get.json")" = 1 ]; then
 			pass "failover shard-$WRITE_SHARD: strong read of $key on $newleader returns the write"
@@ -877,7 +909,7 @@ cpf_pid=""
 # --- 6b. Full restart of every replica of one shard ----------------------------------------
 RS=2
 ids_before="$(server_ids "$RS")"
-if kv="$(write_key "$RS" restart)"; then
+if { write_key "$RS" restart; kv="$wk_kv"; [ -n "$kv" ]; }; then
 	pass "restart shard-$RS: sentinel ${kv%% *} written before the restart"
 	uids() { kn get pods $(pod_names "$RS") -o jsonpath='{.items[*].metadata.uid}' 2>/dev/null; }
 	uids_before="$(uids)"
@@ -949,10 +981,10 @@ same_dumps() {
 	echo "$first"
 }
 declare -A snap_applied
-if kvA="$(write_key "$SS" snapA)" && kvK="$(write_key "$SS" snapK)"; then
+if { write_key "$SS" snapA; kvA="$wk_kv"; [ -n "$kvA" ]; } && { write_key "$SS" snapK; kvK="$wk_kv"; [ -n "$kvK" ]; }; then
 	pass "snapshot shard-$SS: sentinel ${kvA%% *} written before the snapshot"
 	read -r sleader _ < <(wait_leader 15 0 $(pod_names "$SS"))
-	port="$(port_forward "$sleader")"
+	port_forward "$sleader"; port="$pf_port"
 	t0="$(now)"
 	if kv_version="$(cas_updates "$port" "${kvK%% *}" 1 "$SNAP_WRITES")"; then
 		pass "snapshot shard-$SS: $SNAP_WRITES writes through $sleader, past the demo threshold of 1024 ($(since "$t0") s)"
@@ -969,10 +1001,10 @@ if kvA="$(write_key "$SS" snapA)" && kvK="$(write_key "$SS" snapK)"; then
 		[ -n "$a" ] && [ "$a" -ge "$SNAP_WRITES" ] && pass "snapshot shard-$SS: $p took a snapshot at applied index $a ($(jq -r .snapshotId <<<"$out"))" ||
 			fail "snapshot shard-$SS: $p took a snapshot past the threshold" "$out"
 	done
-	kvB="$(write_key "$SS" snapB)" && pass "snapshot shard-$SS: sentinel ${kvB%% *} written after the snapshot (in the tail)" ||
+	{ write_key "$SS" snapB; kvB="$wk_kv"; [ -n "$kvB" ]; } && pass "snapshot shard-$SS: sentinel ${kvB%% *} written after the snapshot (in the tail)" ||
 		fail "snapshot shard-$SS: sentinel written after the snapshot"
 	read -r sleader _ < <(wait_leader 15 0 $(pod_names "$SS"))
-	port="$(port_forward "$sleader")"
+	port_forward "$sleader"; port="$pf_port"
 	cas_updates "$port" "${kvK%% *}" "$kv_version" "$TAIL_WRITES" >/dev/null && pass "snapshot shard-$SS: $TAIL_WRITES more writes in the tail" ||
 		fail "snapshot shard-$SS: $TAIL_WRITES more writes in the tail" "$(cat "$tmp/cas.json" 2>/dev/null)"
 	kill "$pf_pid" 2>/dev/null
@@ -1127,7 +1159,7 @@ rejects "storage-shard-0-1 is missing" missing 0 storage-shard-0-1
 
 # transfer-leader: a follower refuses; the leader hands over within TRANSFER_MAX_SECONDS
 read -r tl tterm < <(wait_leader 15 0 "${tpods[@]}")
-kv_t="$(write_key "$TS" transfer)"
+{ write_key "$TS" transfer; kv_t="$wk_kv"; [ -n "$kv_t" ]; }
 for p in "${tpods[@]}"; do [ "$p" != "${tl:-}" ] && tf="$p" && break; done
 out="$(kn exec "$tf" -c storagenode -- /storagectl transfer-leader 2>&1)"
 rc=$?
@@ -1173,7 +1205,7 @@ fi
 # #30: a follower's NOT_LEADER hint is the leader's advertised HTTP address
 read -r hl _ < <(wait_leader 15 0 "${tpods[@]}")
 for p in "${tpods[@]}"; do [ "$p" != "${hl:-}" ] && hf="$p" && break; done
-port="$(port_forward "$hf")"
+port_forward "$hf"; port="$pf_port"
 code="$(curl -s -m 6 -o "$tmp/hint.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/${kv_t%% *}" \
 	-H 'Content-Type: application/json' -H 'If-None-Match: *' \
 	-d "{\"operationId\":\"op-s31-hint-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":{\"hint\":1}}")"
@@ -1214,7 +1246,7 @@ sleep 3
 [ "$(kn get pod "$rf" -o jsonpath='{.status.phase}' 2>/dev/null)" = Pending ] && [ -z "$(kn get pod "$rf" -o jsonpath='{.spec.nodeName}' 2>/dev/null)" ] &&
 	pass "readiness lag: $rf is held Pending while $rnode is cordoned" ||
 	fail "readiness lag: $rf is held Pending while $rnode is cordoned" "phase $(kn get pod "$rf" -o jsonpath='{.status.phase}' 2>/dev/null)"
-port="$(port_forward "${rl:-none}")"
+port_forward "${rl:-none}"; port="$pf_port"
 tl0="$(now)" n=0
 for i in $(seq 0 $((LAG_WRITES * 6))); do # about a third of keys belong to this shard; foreign keys are 400 and never proposed
 	code="$(curl -s -m 5 -o "$tmp/lag.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s31-lag-${tl0%.*}-$i" \
@@ -1263,7 +1295,7 @@ last="$(tail -1 "$tmp/lag.samples")"
 s31_lag="follower $rf held Pending on cordoned $rnode; $n writes through ${rl:-?} (leader appliedIndex $a_end); sampled from the uncordon"$'\n'"samples (t caughtUp appliedIndex leaderCommitIndex): $nsamp, $nbehind behind the leader"$'\n'"first: $(head -1 "$tmp/lag.samples")"$'\n'"first caughtUp: $(awk '$2 == "true"' "$tmp/lag.samples" | head -1)"$'\n'"last: $last"
 
 # #19: FAILOVERS consecutive leader deletes, each with a new leader (any pod) within ELECTION_MAX_SECONDS
-kv_f="$(write_key "$TS" failovers)"
+{ write_key "$TS" failovers; kv_f="$wk_kv"; [ -n "$kv_f" ]; }
 fo_ok=0 fo_times="" fo_same=0
 for i in $(seq "$FAILOVERS"); do
 	if ! kn wait --for=condition=Ready $(for p in "${tpods[@]}"; do echo "pod/$p"; done) --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1 || ! out="$(one_group "$TS")"; then
@@ -1361,7 +1393,7 @@ done
 if [ -n "$held" ]; then
 	pass "rerun: Job $j bootstrapped shard 0 and is holding"
 	ids0="$(server_ids 0)"
-	kv0="$(write_key 0 rerun)" && pass "rerun: sentinel ${kv0%% *} written to shard-0 during the hold" || fail "rerun: sentinel written to shard-0 during the hold"
+	{ write_key 0 rerun; kv0="$wk_kv"; [ -n "$kv0" ]; } && pass "rerun: sentinel ${kv0%% *} written to shard-0 during the hold" || fail "rerun: sentinel written to shard-0 during the hold"
 	echo "phases at the kill: shard-0 $(phase 0), shard-1 $(phase 1), shard-2 $(phase 2)"
 	kn delete job "$j" --cascade=foreground --wait=true >/dev/null 2>&1
 	[ -z "$(kn get pods -l "job-name=$j" -o name 2>/dev/null)" ] && pass "rerun: Job $j and its pod deleted mid-run" || fail "rerun: Job $j and its pod deleted mid-run"

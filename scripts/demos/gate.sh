@@ -11,6 +11,9 @@
 # a missing script (MISSING) and a demo skipped after a failed reset (NOT RUN) are all
 # failures. Exit 0 only if every demo passed in every round.
 #
+# The gate refuses to start while a kubectl port-forward started from this repository is still
+# running (scripts/port-forwards.sh): a leftover from an earlier run.
+#
 # No worker may stay cordoned (demos 6 and 7 cordon one to keep a storage pod down). At the
 # start the gate restores the demos' own cordons (DEMO_CORDON_LABEL) and refuses to run if any
 # other worker is cordoned. After every round it checks again: a cordon left behind is shown in
@@ -41,6 +44,12 @@ export RESET_CONFIRM
 
 trap 'restore_demo_cordons >/dev/null; echo "gate: interrupted; demo cordons restored" >&2; exit 130' INT
 trap 'restore_demo_cordons >/dev/null; echo "gate: interrupted; demo cordons restored" >&2; exit 143' TERM HUP
+# A port-forward left by an earlier run would mislead this one (and holds ports): stop first.
+if left="$(repo_port_forwards "$REPO_ROOT")" && [ -n "$left" ]; then
+	echo "gate: kubectl port-forward processes started from this repository are still running; stop them first:" >&2
+	sed 's/^/  /' <<<"$left" >&2
+	exit 1
+fi
 restore_demo_cordons | sed 's/^/gate: restored a demo cordon on /'
 if left="$(cordoned_nodes)" && [ -n "$left" ]; then
 	echo "gate: $(paste -sd ' ' <<<"$left") is cordoned before the gate, not by a demo; uncordon it first" >&2

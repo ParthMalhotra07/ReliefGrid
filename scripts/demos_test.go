@@ -243,7 +243,9 @@ exit 0
 }
 
 func gateEnv(t *testing.T, dir, root string) []string {
-	return []string{"DEMOS_DIR=" + dir, "GATE_RESET=" + filepath.Join(dir, "reset.sh"), "EVIDENCE_ROOT=" + root, "GATE_RUN_ID=gate-1", fakeKubectl(t, dir)}
+	// PF_REPO_ROOT: an empty tree, so no real port-forward on this machine counts as a leftover.
+	return []string{"DEMOS_DIR=" + dir, "GATE_RESET=" + filepath.Join(dir, "reset.sh"), "EVIDENCE_ROOT=" + root, "GATE_RUN_ID=gate-1",
+		fakeKubectl(t, dir), "PF_REPO_ROOT=" + t.TempDir()}
 }
 
 // cordonedNodes is a "kubectl get nodes -o json" answer with these nodes unschedulable.

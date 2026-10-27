@@ -1,21 +1,21 @@
 # S2.1 snapshot and restore under failure (verify-storage-k8s.sh step 6b2)
 result:     PASSED (21/21 checks)
 host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
-date:       2026-10-27T07:47:51Z
-code tree:  2347a282665f (same fingerprint as the S1.5 evidence)
+date:       2026-10-27T11:36:57Z
+code tree:  e2d3f87bd5f1 (same fingerprint as the S1.5 evidence)
 code dirty: no
 writes:     1100 before the snapshot, 20 in the tail
 
 ## checks
 PASS  snapshot shard-0: sentinel cfg:s15-snapA-0 written before the snapshot
-PASS  snapshot shard-0: 1100 writes through storage-shard-0-0, past the demo threshold of 1024 (26.8 s)
-PASS  snapshot shard-0: storage-shard-0-0 took a snapshot at applied index 1104 (2-1104-1793087006604)
-PASS  snapshot shard-0: storage-shard-0-1 took a snapshot at applied index 1104 (2-1104-1793087006705)
-PASS  snapshot shard-0: storage-shard-0-2 took a snapshot at applied index 1104 (2-1104-1793087006816)
+PASS  snapshot shard-0: 1100 writes through storage-shard-0-0, past the demo threshold of 1024 (34.3 s)
+PASS  snapshot shard-0: storage-shard-0-0 took a snapshot at applied index 1104 (2-1104-1793100715599)
+PASS  snapshot shard-0: storage-shard-0-1 took a snapshot at applied index 1104 (2-1104-1793100715801)
+PASS  snapshot shard-0: storage-shard-0-2 took a snapshot at applied index 1104 (2-1104-1793100715990)
 PASS  snapshot shard-0: sentinel cfg:s15-snapB-3 written after the snapshot (in the tail)
 PASS  snapshot shard-0: 20 more writes in the tail
 PASS  snapshot shard-0: the three dumps agree before the restart (applied index 1125)
-PASS  snapshot shard-0: all three pods deleted at once come back as one group (4.2 s)
+PASS  snapshot shard-0: all three pods deleted at once come back as one group (4.9 s)
 PASS  snapshot shard-0: storage-shard-0-0 restored its snapshot at applied index 1104
 PASS  snapshot shard-0: storage-shard-0-0 logged the restore at applied index 1104
 PASS  snapshot shard-0: storage-shard-0-0 then replayed the tail to applied index 1125
@@ -30,16 +30,16 @@ PASS  snapshot shard-0: the sentinel from the tail reads back
 PASS  snapshot shard-0: the three dumps agree after the restart and equal the dump before it (1125)
 
 ## shard-0 after the restart
-{"podName":"storage-shard-0-0","state":"Leader","term":3,"commitIndex":1128,"appliedIndex":1125,"restoredIndex":1104,"caughtUp":true}
+{"podName":"storage-shard-0-0","state":"Follower","term":3,"commitIndex":1128,"appliedIndex":1125,"restoredIndex":1104,"caughtUp":true}
 {"podName":"storage-shard-0-1","state":"Follower","term":3,"commitIndex":1128,"appliedIndex":1125,"restoredIndex":1104,"caughtUp":true}
-{"podName":"storage-shard-0-2","state":"Follower","term":3,"commitIndex":1128,"appliedIndex":1125,"restoredIndex":1104,"caughtUp":true}
+{"podName":"storage-shard-0-2","state":"Leader","term":3,"commitIndex":1128,"appliedIndex":1125,"restoredIndex":1104,"caughtUp":true}
 
 ## dumps
-{"podName":"storage-shard-0-0","appliedIndex":1125,"sha256":"774ccea9b893985d2ae1dab38ba89d06cf4c694a02b4b8e1296ef6c56bf0b404","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
-{"podName":"storage-shard-0-1","appliedIndex":1125,"sha256":"774ccea9b893985d2ae1dab38ba89d06cf4c694a02b4b8e1296ef6c56bf0b404","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
-{"podName":"storage-shard-0-2","appliedIndex":1125,"sha256":"774ccea9b893985d2ae1dab38ba89d06cf4c694a02b4b8e1296ef6c56bf0b404","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
+{"podName":"storage-shard-0-0","appliedIndex":1125,"sha256":"ba54bb72a41e9b636f4b5b08a39b29cb058a1b50a8529b7f9b37fa62249bb1b2","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
+{"podName":"storage-shard-0-1","appliedIndex":1125,"sha256":"ba54bb72a41e9b636f4b5b08a39b29cb058a1b50a8529b7f9b37fa62249bb1b2","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
+{"podName":"storage-shard-0-2","appliedIndex":1125,"sha256":"ba54bb72a41e9b636f4b5b08a39b29cb058a1b50a8529b7f9b37fa62249bb1b2","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
 
 ## restore log lines
-2026/10/27 07:43:30 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
-2026/10/27 07:43:30 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
-2026/10/27 07:43:30 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
+2026/10/27 11:32:02 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
+2026/10/27 11:32:02 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
+2026/10/27 11:32:02 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1

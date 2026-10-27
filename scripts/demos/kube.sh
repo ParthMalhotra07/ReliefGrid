@@ -27,7 +27,9 @@ FWD_PORT=""
 forward() {
 	local port pid
 	port="$(free_port)"
-	kn port-forward "$1" "$port:$2" >/dev/null 2>&1 &
+	# kubectl itself in the background, not kn: $! must be the kubectl process, not a subshell
+	# that would leave it running when killed (#50).
+	kubectl --context "$CTX" -n "$NS" port-forward "$1" "$port:$2" >/dev/null 2>&1 &
 	pid=$!
 	demo_on_exit kill "$pid"
 	for _ in $(seq 50); do (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null && { FWD_PORT="$port"; return 0; }; sleep 0.1; done
