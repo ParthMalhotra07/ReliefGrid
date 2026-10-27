@@ -49,8 +49,9 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 
   # images and smoke cost runner minutes, so they run only for ready PRs whose diff touches
-  # code (scripts/ci-changes.sh). They are skipped per job, not by a paths filter on the
-  # workflow, so check always runs and a skipped job still reports (as passing).
+  # code, CI or test tooling (scripts/ci-changes.sh). They are skipped per job, not by a
+  # paths filter on the workflow, so check always runs and a skipped job still reports
+  # (as passing).
   changes:
     if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-24.04

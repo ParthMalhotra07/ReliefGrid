@@ -3,8 +3,9 @@
 #
 #   scripts/ci-changes.sh <base sha> <head sha>     prints code=true or code=false
 #
-# Code is cmd/, internal/, deploy/, contracts/, scripts/, and the root Makefile, tools.mk,
-# go.mod and go.sum. Anything else (docs, ui/, .github/) leaves those jobs skipped. The diff
+# Code is cmd/, internal/, deploy/, contracts/, scripts/, chaos/, loadtest/ (in the tools
+# image), .github/ (CI itself), and the root Makefile, tools.mk, go.mod and go.sum. Anything
+# else (docs/, ui/, root files) leaves those jobs skipped. The diff
 # is from the merge base, so commits on the base branch since the PR forked do not count. A
 # base or head it cannot resolve is an error, never "no changes".
 set -euo pipefail
@@ -19,7 +20,7 @@ files="$(git diff --name-only "$base" "$2")"
 code=false
 while IFS= read -r f; do
 	case "$f" in
-	cmd/* | internal/* | deploy/* | contracts/* | scripts/* | Makefile | tools.mk | go.mod | go.sum)
+	cmd/* | internal/* | deploy/* | contracts/* | scripts/* | chaos/* | loadtest/* | .github/* | Makefile | tools.mk | go.mod | go.sum)
 		code=true
 		break
 		;;

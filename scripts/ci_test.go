@@ -17,7 +17,7 @@ import (
 // storage, coordinator and tools images) and a smoke job (PRs to main: a kind
 // cluster in the runner, the storage chart, three groups with leaders, then
 // demo 4, with the evidence uploaded). To limit cost, images and smoke run
-// only for ready (non-draft) PRs whose diff touches code (scripts/ci-changes.sh).
+// only for ready (non-draft) PRs whose diff touches code, CI or test tooling (scripts/ci-changes.sh).
 // They are skipped at the job level rather than by a workflow paths filter, so
 // check always runs and a skipped job still reports.
 // scripts/ci-smoke.sh is the smoke job's body; its tests below run it with
@@ -426,7 +426,10 @@ func TestCIChanges(t *testing.T) {
 	}{
 		{[]string{"docs/notes.md"}, "code=false"},
 		{[]string{"README.md", "ui/app.js"}, "code=false"},
-		{[]string{".github/CODEOWNERS"}, "code=false"},
+		{[]string{".github/workflows/ci.yml"}, "code=true"},
+		{[]string{"chaos/scripts/lib.sh"}, "code=true"},
+		{[]string{"loadtest/ledger/ledger.go"}, "code=true"},
+		{[]string{"chaosnotes.md", "loadtesting.md"}, "code=false"}, // the directories only
 		{[]string{"cmd/x/main.go"}, "code=true"},
 		{[]string{"internal/ring/ring.go"}, "code=true"},
 		{[]string{"deploy/helm/storage/values.yaml"}, "code=true"},
