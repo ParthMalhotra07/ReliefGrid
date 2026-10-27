@@ -114,7 +114,7 @@ func (g *fakeGroup) Status(_ context.Context, addr string) (nodeStatus, error) {
 		return nodeStatus{}, fmt.Errorf("%s unreachable", addr)
 	}
 	leaderID := g.nodes[g.leader].ServerID
-	if n.ServerID == repPod+"/"+g.newInc && !n.HasState {
+	if n.ServerID == repPod+"/"+g.newInc {
 		// The new disk opens Raft only once admitted, and holds the group's
 		// state only once the leader replicates to it.
 		cur, _ := g.store.Get(context.Background(), g.m.Name)

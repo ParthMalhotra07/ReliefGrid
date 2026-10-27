@@ -74,7 +74,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl replace --shard N --pod NAME | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump|transfer-leader [--addr host:port] [--timeout d]")
+	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl replace --shard N --pod NAME [--abort] | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump|transfer-leader [--addr host:port] [--timeout d]")
 	os.Exit(64)
 }
 
@@ -133,6 +133,7 @@ func runReplace(ctx context.Context, args []string, getenv func(string) string) 
 	shard := fs.Int("shard", -1, "the shard whose voter is replaced")
 	pod := fs.String("pod", "", "the pod whose disk was lost, now running its new, unadmitted incarnation")
 	timeout := fs.Duration("timeout", 15*time.Minute, "bound on the whole replacement (rerun to resume)")
+	abort := fs.Bool("abort", false, "clear a replacement stuck in PLANNED, only if nothing has changed since")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -168,6 +169,9 @@ func runReplace(ctx context.Context, args []string, getenv func(string) string) 
 	peers := newHTTPPeers(token, 5*time.Second)
 	r := &replacer{store: store, peers: peers, members: peers, mgmtPort: port, poll: time.Second, call: 5 * time.Second,
 		crashAt: crashAt, log: slog.New(slog.NewTextHandler(os.Stderr, nil))}
+	if *abort {
+		return r.abort(ctx, specs[i], *pod)
+	}
 	return r.run(ctx, specs[i], *pod)
 }
 

@@ -217,6 +217,13 @@ func (r *replacer) run(ctx context.Context, spec manifest, pod string) error {
 		var why string
 		switch rec.Phase {
 		case replacePlanned:
+			if !oldIsMember && v.cfg.Index <= rec.ConfigIndex {
+				// Not evidence: removal commits a newer configuration than
+				// the one PLANNED saw. A view without the old ID at the same
+				// index is stale or someone else's.
+				why = fmt.Sprintf("%s is absent from a configuration at %d, not newer than PLANNED's %d", rec.OldID, v.cfg.Index, rec.ConfigIndex)
+				break
+			}
 			if !oldIsMember {
 				// Removal established from the committed configuration, not
 				// from a response that may have been lost (§11 step 2).
@@ -232,7 +239,12 @@ func (r *replacer) run(ctx context.Context, spec manifest, pod string) error {
 			}
 		case replaceRemoved:
 			// M7: only now, with the removal committed, may the new
-			// incarnation open its transport.
+			// incarnation open its transport; re-checked at the write, so a
+			// removal that no longer holds never admits.
+			if oldIsMember {
+				why = rec.OldID + " is a member again; the new incarnation is not admitted while it is"
+				break
+			}
 			_, inc, _ := strings.Cut(rec.NewID, "/")
 			err = r.record(ctx, v, replaceAdmitted, func(m *manifest) {
 				if m.Admitted == nil {
@@ -241,6 +253,10 @@ func (r *replacer) run(ctx context.Context, spec manifest, pod string) error {
 				m.Admitted[pod] = inc
 			}, stepAdmitted)
 		case replaceAdmitted:
+			if oldIsMember {
+				why = rec.OldID + " is a member again; nothing is added while it is"
+				break
+			}
 			if isMember {
 				err = r.record(ctx, v, replaceNonvoter, nil, stepRecordedNonvoter)
 				break
@@ -259,6 +275,8 @@ func (r *replacer) run(ctx context.Context, spec manifest, pod string) error {
 			}
 			st := v.sts[pod]
 			switch {
+			case oldIsMember:
+				why = rec.OldID + " is a member again; nothing is promoted while it is"
 			case !isMember:
 				why = rec.NewID + " is not in the committed configuration"
 			case st.ServerID != rec.NewID || !st.HasState || !st.CaughtUp:
@@ -282,6 +300,50 @@ func (r *replacer) run(ctx context.Context, spec manifest, pod string) error {
 				return err
 			}
 		}
+	}
+}
+
+// abort clears a replacement stuck in PLANNED, only while nothing can have
+// changed: the leader's latest configuration is committed, is still the one
+// PLANNED recorded, and still has the old voter. Then nothing was removed and
+// the new disk was never admitted, so clearing the record is safe; the disk
+// can be replaced again (wiped again first, or as it is). Anything later is
+// refused: resume it with storagectl replace instead.
+func (r *replacer) abort(ctx context.Context, spec manifest, pod string) error {
+	for {
+		v, err := r.read(ctx, spec, pod)
+		if err != nil {
+			return err
+		}
+		rec := v.m.Replace
+		refuse := func(format string, args ...any) error {
+			return fmt.Errorf("%w: %s: abort %s: %s; resume it with storagectl replace instead", errRefused, v.m.GroupID, pod, fmt.Sprintf(format, args...))
+		}
+		switch {
+		case rec == nil:
+			r.log.Info(v.m.GroupID+": no replacement in progress; nothing to abort", "pod", pod)
+			return nil
+		case rec.PodName != pod:
+			return fmt.Errorf("%w: %s: the replacement in progress is of %s, not %s", errRefused, v.m.GroupID, rec.PodName, pod)
+		case rec.Phase != replacePlanned:
+			return refuse("phase %s is past PLANNED", rec.Phase)
+		case v.cfg == nil:
+			return refuse("no leader reports a committed configuration, so a removal may be in flight")
+		case v.cfg.Index != rec.ConfigIndex:
+			return refuse("the configuration moved from %d to %d since PLANNED (the removal may have committed)", rec.ConfigIndex, v.cfg.Index)
+		}
+		if _, ok := v.cfg.has(rec.OldID); !ok {
+			return refuse("%s is no longer in the configuration", rec.OldID)
+		}
+		m := v.m
+		m.Replace = nil
+		if _, err := r.store.Update(ctx, m); errors.Is(err, errConflict) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		r.log.Info(m.GroupID+": aborted the PLANNED replacement; nothing was removed or admitted", "pod", pod, "oldId", rec.OldID, "newId", rec.NewID)
+		return nil
 	}
 }
 
