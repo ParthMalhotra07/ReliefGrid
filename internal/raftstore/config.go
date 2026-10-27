@@ -65,7 +65,8 @@ type Config struct {
 	beforeRestoreSwap func()
 
 	// beforeRPC, tests only, runs on every incoming RPC that reaches Raft
-	// through the transport's consumer (not heartbeats), before Raft sees it.
+	// through the transport's consumer (not heartbeats), after the commit
+	// fence has observed it and before Raft sees it.
 	beforeRPC func(raft.RPC)
 }
 

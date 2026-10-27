@@ -90,15 +90,16 @@ type Status struct {
 	RestoredIndex uint64
 
 	// LeaderCommitIndex is the leader's commit index as this replica last
-	// learned it (the leader: its own); 0 until an append of the current
-	// term has carried one.
+	// learned it; 0 until an append of the current term has carried one.
+	// A leader reports its own once it is in the current term (its no-op
+	// has committed), 0 before.
 	LeaderCommitIndex uint64
 
 	HasState bool // any term, log or snapshot on disk
-	// CaughtUp: a leader is known and the FSM has completed every command up
-	// to LeaderCommitIndex, which this replica's log already holds. Never
-	// judged against the local CommitIndex alone: after a restart that is 0
-	// until the first append, though heartbeats already name the leader.
+	// CaughtUp: a leader is known, this replica has committed up to
+	// LeaderCommitIndex, and the FSM has completed every command up to it.
+	// Never judged against the local CommitIndex alone: after a restart that
+	// is 0 until the first append, though heartbeats already name the leader.
 	CaughtUp bool
 }
 
@@ -116,6 +117,9 @@ type Node struct {
 	// hasState caches raft.HasExistingState once it is true; Raft state is
 	// never removed while the node runs.
 	hasState atomic.Bool
+	// ownTerm caches the term in which this node, as leader, last saw its
+	// commit index reach an entry of its own term.
+	ownTerm atomic.Uint64
 
 	mu        sync.Mutex
 	mapped    indexMapping // last committed Raft index mapped to a command index
@@ -375,17 +379,49 @@ func (n *Node) Status() Status {
 	}
 	known := false // a commit index from the current term's leader
 	if s.State == raft.Leader.String() {
-		s.LeaderCommitIndex, known = s.CommitIndex, true
+		if n.committedInTerm(s.CommitIndex, s.Term) {
+			s.LeaderCommitIndex, known = s.CommitIndex, true
+		}
 	} else if term, commit := n.fence.get(); term == s.Term && commit > 0 {
 		s.LeaderCommitIndex, known = commit, true
 	}
-	// walkToCommand reads an index missing from the log as compacted, so an
-	// index past this replica's last entry must never reach it.
-	if has && leaderID != "" && known && s.LeaderCommitIndex <= n.raft.LastIndex() {
+	// Raft commits locally only past the append's consistency check, so the
+	// log up to CommitIndex is the leader's; entries past it may be a stale
+	// suffix. CommitIndex never exceeds the last index, so this also keeps
+	// an index this replica lacks away from walkToCommand.
+	if has && leaderID != "" && known && s.CommitIndex >= s.LeaderCommitIndex {
 		target, err := n.commandTarget(s.LeaderCommitIndex)
 		s.CaughtUp = err == nil && s.AppliedIndex >= target
 	}
 	return s
+}
+
+// committedInTerm reports whether the entry at commit, this leader's commit
+// index, is from term. raft v1.8.0 advances a new leader's commit index only
+// once its no-op has a quorum (commitment.go); until then it is what the
+// node heard as a follower and may lag what the old leader committed.
+func (n *Node) committedInTerm(commit, term uint64) bool {
+	if term == 0 || commit == 0 {
+		return false
+	}
+	if n.ownTerm.Load() == term {
+		return true
+	}
+	var l raft.Log
+	entryTerm := uint64(0)
+	switch err := n.logs.GetLog(commit, &l); {
+	case err == nil:
+		entryTerm = l.Term
+	case errors.Is(err, raft.ErrLogNotFound): // compacted into the newest snapshot
+		if metas, err := n.snaps.List(); err == nil && len(metas) > 0 && metas[0].Index == commit {
+			entryTerm = metas[0].Term
+		}
+	}
+	if entryTerm != term {
+		return false
+	}
+	n.ownTerm.Store(term)
+	return true
 }
 
 // WaitApplied blocks until the FSM has completed every command at or below
