@@ -27,7 +27,22 @@ type manifest struct {
 	RingVersion uint64
 	Peers       []peer
 	Phase       string
-	PeerIDs     []string // podName/incarnation of the three original voters
+	PeerIDs     []string // podName/incarnation of the group's voters, in Peers order
+
+	// M7 (written only by storagectl replace).
+	Admitted map[string]string // podName -> incarnation admitted to open Raft
+	Removed  []string          // ServerIDs replace removed from the group
+	Replace  *replaceRecord    // the replacement in progress, if any
+}
+
+// replaceRecord is a replacement in progress, persisted so that a crashed
+// storagectl resumes it rather than starting another (v3.1 §11).
+type replaceRecord struct {
+	PodName     string `json:"podName"`
+	OldID       string `json:"oldId"`
+	NewID       string `json:"newId"`
+	Phase       string `json:"phase"`
+	ConfigIndex uint64 `json:"configIndex"` // the configuration the last recorded phase saw
 }
 
 type peer struct {
@@ -51,6 +66,20 @@ func parseManifest(name, resourceVersion string, data map[string]string) (manife
 	if v := data["peerIds"]; v != "" {
 		if err := json.Unmarshal([]byte(v), &m.PeerIDs); err != nil {
 			return manifest{}, fmt.Errorf("manifest %s: peerIds: %w", name, err)
+		}
+	}
+	for key, dst := range map[string]any{"admitted": &m.Admitted, "removed": &m.Removed, "replace": &m.Replace} {
+		if v := data[key]; v != "" {
+			if err := json.Unmarshal([]byte(v), dst); err != nil {
+				return manifest{}, fmt.Errorf("manifest %s: %s: %w", name, key, err)
+			}
+		}
+	}
+	if r := m.Replace; r != nil {
+		switch r.Phase {
+		case replacePlanned, replaceRemoved, replaceAdmitted, replaceNonvoter, replaceVoter:
+		default:
+			return manifest{}, fmt.Errorf("manifest %s: replace phase %q", name, r.Phase)
 		}
 	}
 	switch {
@@ -83,6 +112,18 @@ func (m manifest) data() map[string]string {
 	if len(m.PeerIDs) > 0 {
 		ids, _ := json.Marshal(m.PeerIDs)
 		d["peerIds"] = string(ids)
+	}
+	if len(m.Admitted) > 0 {
+		b, _ := json.Marshal(m.Admitted)
+		d["admitted"] = string(b)
+	}
+	if len(m.Removed) > 0 {
+		b, _ := json.Marshal(m.Removed)
+		d["removed"] = string(b)
+	}
+	if m.Replace != nil {
+		b, _ := json.Marshal(m.Replace)
+		d["replace"] = string(b)
 	}
 	return d
 }
