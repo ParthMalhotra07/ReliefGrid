@@ -95,8 +95,9 @@ func (s *server) heartbeat(ctx context.Context, c *http.Client, base string) err
 		hb.LeaderId = &id
 	}
 	// The coordinator admits registrations from the committed configuration
-	// (M7, #21); a replica without Raft state has none to report.
-	if c := toConfigurationJSON(st.Configuration); c != nil {
+	// (M7, #21); a replica without Raft state has none to report, and a
+	// coordinator from before #21 is not sent it (see below).
+	if c := toConfigurationJSON(st.Configuration); c != nil && !s.noConfig.Load() {
 		hb.Configuration = &internalapi.RaftConfiguration{Index: c.Index, Committed: c.Committed, Servers: []internalapi.RaftServer{}}
 		for _, sv := range c.Servers {
 			hb.Configuration.Servers = append(hb.Configuration.Servers,
@@ -121,11 +122,28 @@ func (s *server) heartbeat(ctx context.Context, c *http.Client, base string) err
 	// The answer's leader hints are for clients: they feed only the address
 	// in this replica's not-leader hints. It learns its leader from Raft alone.
 	var resp internalapi.HeartbeatResponse
-	if err := post(ctx, c, base+"/internal/nodes/heartbeat", hb, &resp); err != nil {
+	err = post(ctx, c, base+"/internal/nodes/heartbeat", hb, &resp)
+	if err != nil && hb.Configuration != nil && rejectsConfiguration(err) {
+		// A coordinator from before #21 decodes heartbeats strictly and
+		// answers 400 to the unknown field. It admits every node anyway, so
+		// heartbeat without it rather than look DOWN: upgrading the storage
+		// nodes before the coordinator must not be an outage.
+		slog.Warn("the coordinator does not know heartbeat.configuration (older than #21); sending heartbeats without it")
+		s.noConfig.Store(true)
+		hb.Configuration = nil
+		err = post(ctx, c, base+"/internal/nodes/heartbeat", hb, &resp)
+	}
+	if err != nil {
 		return err
 	}
 	s.learnLeaders(resp)
 	return nil
+}
+
+// rejectsConfiguration: a 400 naming heartbeat.configuration as an unknown field.
+func rejectsConfiguration(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, " 400 ") && strings.Contains(msg, "unknown field") && strings.Contains(msg, "configuration")
 }
 
 // post sends v as JSON and decodes a 200 answer into out. A 404 is
