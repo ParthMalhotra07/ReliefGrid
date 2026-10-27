@@ -49,7 +49,7 @@ type leader struct {
 // reported it; a deposed leader's older one never replaces it.
 type shardConfig struct {
 	index uint64
-	ids   map[string]bool // ServerIDs, voters and nonvoters
+	ids   map[string]bool // ServerID -> whether it is a voter; nonvoters are present as false
 }
 
 // observeConfig keeps c if it is committed and newer than what the shard
@@ -60,7 +60,7 @@ func (c *Coordinator) observeConfig(shard int, cfg *internalapi.RaftConfiguratio
 	}
 	ids := map[string]bool{}
 	for _, s := range cfg.Servers {
-		ids[s.Id] = true
+		ids[s.Id] = s.Suffrage == internalapi.RaftServerSuffrageVoter
 	}
 	c.configs[shard] = shardConfig{index: cfg.Index, ids: ids}
 }
@@ -71,6 +71,14 @@ func (c *Coordinator) observeConfig(shard int, cfg *internalapi.RaftConfiguratio
 // replace adds it; the coordinator never routes to it before then. Callers
 // hold c.mu.
 func (c *Coordinator) admitted(m *member) bool {
+	_, ok := c.configs[m.reg.ShardId].ids[m.serverID()]
+	return ok
+}
+
+// voter reports whether m is a voter of its shard's committed configuration:
+// only a voter can lead, so only voters are probed for a leader. Callers
+// hold c.mu.
+func (c *Coordinator) voter(m *member) bool {
 	return c.configs[m.reg.ShardId].ids[m.serverID()]
 }
 

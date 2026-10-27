@@ -322,7 +322,7 @@ func (c *Coordinator) pick(shard int, tried map[string]bool) target {
 	}
 	for _, want := range []internalapi.NodeState{internalapi.UP, internalapi.SUSPECT, internalapi.DOWN} {
 		for _, m := range members {
-			if !tried[m.reg.Address] && c.state(m, now) == want && c.admitted(m) {
+			if !tried[m.reg.Address] && c.state(m, now) == want && c.voter(m) {
 				return target{addr: m.reg.Address, serverID: m.serverID(), pod: m.reg.NodeId}
 			}
 		}
