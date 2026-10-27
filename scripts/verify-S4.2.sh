@@ -280,8 +280,12 @@ for step in "${STEPS[@]}"; do
 	grep -q "STORAGECTL_CRASH_AT is set" "$tmp/replace-$step.log" && pass "crash at $step: the Job logged the loud CRASH_AT warning" ||
 		fail "crash at $step: the Job logged the loud CRASH_AT warning"
 	adm="$(mfield '.admitted | fromjson? | .["'"$POD"'"]')"
-	if [ -n "$adm" ] && jq -e --arg o "$old_id" 'index($o)' <<<"$cfg" >/dev/null; then
-		fail "crash at $step: admitted while $old_id is still in the configuration" "$cfg"
+	# M7: the new incarnation is admitted only once the old ID has left the configuration (an
+	# entry for an earlier replacement's incarnation may already be there).
+	if [ "$adm" = "${new_id#*/}" ] && jq -e --arg o "$old_id" 'index($o)' <<<"$cfg" >/dev/null; then
+		fail "crash at $step: $new_id admitted while $old_id is still in the configuration" "$cfg"
+	else
+		pass "crash at $step: $new_id not admitted while $old_id is in the configuration"
 	fi
 	if [ "$step" = recorded-removed ]; then # a leader change in the two-voter phase
 		kn exec "$(leader_pod)" -c storagenode -- /storagectl transfer-leader >/dev/null 2>&1 &&
