@@ -69,7 +69,7 @@ func startReplicas(t *testing.T) []*replica {
 		if err != nil {
 			t.Fatalf("open %s: %v", pod, err)
 		}
-		s := &server{node: n, ring: rg, shard: testShard, podName: pod, timeout: 3 * time.Second,
+		s := &server{node: n, ring: rg, shard: testShard, podName: pod, serverID: string(n.Identity().ServerID()), timeout: 3 * time.Second,
 			leaderHTTP: func(a raft.ServerAddress) string { return hosts[a] }, operatorToken: testToken}
 		r := &replica{pod: pod, node: n, data: httptest.NewServer(s.dataRoutes()), mgmt: httptest.NewServer(s.mgmtRoutes())}
 		hosts[n.Addr()] = r.dataHost()

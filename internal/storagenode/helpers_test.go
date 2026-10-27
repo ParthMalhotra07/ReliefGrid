@@ -26,7 +26,9 @@ const (
 	t0        = int64(1_792_800_000_000)
 	testShard = 1
 	testPod   = "storage-1-1"
-	testToken = "op-secret"
+	// testServerID is testPod's Raft ServerID (podName/incarnation).
+	testServerID = testPod + "/00000000-0000-4000-8000-000000000011"
+	testToken    = "op-secret"
 )
 
 // operatorAuth is the header /mgmt/bootstrap requires.
@@ -202,6 +204,7 @@ func newTestServer(t *testing.T, n node) *server {
 		ring:          loadRing(t),
 		shard:         testShard,
 		podName:       testPod,
+		serverID:      testServerID,
 		timeout:       2 * time.Second,
 		leaderHTTP:    func(a raft.ServerAddress) string { return "http-of-" + string(a) },
 		operatorToken: testToken,

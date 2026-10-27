@@ -12,6 +12,16 @@ info:
     /internal/outbox and /internal/operations routes for its own shard only,
     and answers 503 NOT_LEADER with a leader hint when it is not the leader.
 
+    Response identity: a storage node sets X-ReliefGrid-Server-Id (its Raft
+    ServerID, podName/incarnation) and X-ReliefGrid-Shard on every answer of
+    those routes, errors included. The coordinator accepts a forwarded
+    answer only if they name the server it dialled: the registered member,
+    or the pod a NOT_LEADER hint named (any incarnation). An answer naming
+    another shard is discarded as never proposed; one naming another server
+    of the shard, or with no identity, is discarded and makes a mutation
+    that gets no verified answer 503 OUTCOME_UNKNOWN. A verified answer is
+    relayed with both headers.
+
     Bodies mirror internal/store: a command body is the store command plus
     ringVersion, and committed results are store.Result. Every committed
     outcome, including a rejection, is stored under its operationId and
@@ -943,6 +953,15 @@ components:
       schema: {$ref: "#/components/schemas/EntityTag"}
     RetryAfter:
       description: Seconds to wait before retrying
+      schema: {type: integer, minimum: 0}
+    ServerId:
+      description: |
+        X-ReliefGrid-Server-Id. The answering storage replica's Raft
+        ServerID, podName/incarnation; set on every storage-node answer
+        (see Response identity above)
+      schema: {type: string, pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'}
+    Shard:
+      description: X-ReliefGrid-Shard. The answering storage replica's shard; set with X-ReliefGrid-Server-Id
       schema: {type: integer, minimum: 0}
 
   responses:
