@@ -59,3 +59,11 @@ func operatorCall(ctx context.Context, name, method, path string, defTimeout tim
 	_, err = fmt.Fprintln(out, string(bytes.TrimSpace(b)))
 	return err
 }
+
+// runTransferLeader is storagectl transfer-leader: POST /mgmt/transfer-leader
+// with the pod's OPERATOR_TOKEN. The leader hands leadership to another
+// voter; the command exits 0 once it no longer leads, printing the node's
+// answer. On a follower the node answers 409 NOT_LEADER, an error here.
+func runTransferLeader(ctx context.Context, args []string, getenv func(string) string, out io.Writer) error {
+	return operatorCall(ctx, "transfer-leader", http.MethodPost, "/mgmt/transfer-leader", 15*time.Second, args, getenv, out)
+}

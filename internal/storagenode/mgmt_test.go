@@ -19,7 +19,7 @@ func TestMgmtStatus(t *testing.T) {
 		Identity: raftstore.Identity{PodName: testPod, Incarnation: "inc", GroupID: "shard-1", Shard: testShard},
 		ServerID: "storage-1-1/inc", Address: "storage-1-1:7000", State: "Follower", Term: 3,
 		LeaderID: "storage-1-0/x", LeaderAddr: "storage-1-0:7000", CommitIndex: 12, LastLogIndex: 12,
-		RaftAppliedIndex: 12, AppliedIndex: 10, RestoredIndex: 9, HasState: true,
+		RaftAppliedIndex: 12, AppliedIndex: 10, RestoredIndex: 9, LeaderCommitIndex: 14, HasState: true,
 	}
 	rec := do(t, newTestServer(t, n).mgmtRoutes(), call{method: http.MethodGet, path: "/mgmt/status"})
 	if rec.Code != http.StatusOK {
@@ -28,7 +28,7 @@ func TestMgmtStatus(t *testing.T) {
 	got := decodeJSON[statusResponse](t, rec)
 	want := statusResponse{PodName: testPod, Incarnation: "inc", GroupID: "shard-1", Shard: testShard, ServerID: "storage-1-1/inc",
 		Address: "storage-1-1:7000", State: "Follower", Term: 3, LeaderID: "storage-1-0/x", LeaderAddr: "storage-1-0:7000",
-		CommitIndex: 12, LastLogIndex: 12, RaftAppliedIndex: 12, AppliedIndex: 10, RestoredIndex: 9, HasState: true, RingVersion: 1}
+		CommitIndex: 12, LastLogIndex: 12, RaftAppliedIndex: 12, AppliedIndex: 10, RestoredIndex: 9, LeaderCommitIndex: 14, HasState: true, RingVersion: 1}
 	if got != want {
 		t.Fatalf("status = %+v\nwant     %+v", got, want)
 	}

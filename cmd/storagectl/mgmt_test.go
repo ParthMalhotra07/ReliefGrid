@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// storagectl snapshot and storagectl dump call the local management
+// storagectl snapshot, dump and transfer-leader call the local management
 // endpoint with the pod's OPERATOR_TOKEN and print its JSON answer.
-func TestSnapshotAndDumpCommands(t *testing.T) {
+func TestOperatorCommands(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
 		run          func(*testing.T, []string, func(string) string, *bytes.Buffer) error
@@ -22,6 +22,9 @@ func TestSnapshotAndDumpCommands(t *testing.T) {
 		{"dump", func(t *testing.T, args []string, env func(string) string, out *bytes.Buffer) error {
 			return runDump(t.Context(), args, env, out)
 		}, http.MethodGet, "/mgmt/dump"},
+		{"transfer-leader", func(t *testing.T, args []string, env func(string) string, out *bytes.Buffer) error {
+			return runTransferLeader(t.Context(), args, env, out)
+		}, http.MethodPost, "/mgmt/transfer-leader"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var got *http.Request

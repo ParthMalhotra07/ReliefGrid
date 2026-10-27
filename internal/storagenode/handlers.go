@@ -340,7 +340,18 @@ func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 
 // read runs fn through the node under the request timeout and writes any
 // failure; ok reports whether the caller should write the response.
+//
+// A stale read is served from this replica's own FSM, so it is refused
+// (503, retryable) until the FSM covers the leader's commit index: a
+// replica catching up would answer with old versions or a false "absent".
 func (s *server) read(w http.ResponseWriter, r *http.Request, mode raftstore.ReadMode, fn func(context.Context, raftstore.Reader) error) (internalapi.ReadInfo, bool) {
+	if mode == raftstore.ReadStale {
+		if st := s.node.Status(); !st.CaughtUp {
+			w.Header().Set("Retry-After", retryAfterSeconds)
+			writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{Code: internalapi.STORAGEUNAVAILABLE, Message: s.podName + " is " + notCaughtUp(st), Retryable: true})
+			return internalapi.ReadInfo{}, false
+		}
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
 	defer cancel()
 	info, err := s.node.Read(ctx, mode, fn)
@@ -430,6 +441,7 @@ func (s *server) status(w http.ResponseWriter, r *http.Request) {
 		LeaderID: string(st.LeaderID), LeaderAddr: string(st.LeaderAddr), CommitIndex: st.CommitIndex,
 		LastLogIndex: st.LastLogIndex, RaftAppliedIndex: st.RaftAppliedIndex, AppliedIndex: st.AppliedIndex,
 		RestoredIndex: st.RestoredIndex, HasState: st.HasState, CaughtUp: st.CaughtUp, RingVersion: s.ring.Version(),
+		LeaderCommitIndex: st.LeaderCommitIndex,
 	})
 }
 
@@ -563,11 +575,44 @@ func (s *server) healthz(w http.ResponseWriter, r *http.Request) {
 // commit index (never raft.AppliedIndex()).
 func (s *server) readyz(w http.ResponseWriter, r *http.Request) {
 	if st := s.node.Status(); !st.CaughtUp {
-		writeMgmtError(w, http.StatusServiceUnavailable, fmt.Sprintf("not caught up: fsm at %d, commit %d", st.AppliedIndex, st.CommitIndex))
+		writeMgmtError(w, http.StatusServiceUnavailable, notCaughtUp(st))
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ready"})
 }
+
+// notCaughtUp says why a replica is not data-ready.
+func notCaughtUp(st raftstore.Status) string {
+	if st.LeaderID == "" {
+		return fmt.Sprintf("not caught up: no known leader (fsm at %d)", st.AppliedIndex)
+	}
+	return fmt.Sprintf("not caught up: fsm at %d, leader commit %d, local commit %d", st.AppliedIndex, st.LeaderCommitIndex, st.CommitIndex)
+}
+
+// transferLeader is operator-only: the leader hands leadership to another
+// voter and answers once it no longer leads. It changes who leads only;
+// ownership and membership are untouched.
+func (s *server) transferLeader(w http.ResponseWriter, r *http.Request) {
+	if !s.operatorOnly(w, r) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), transferTimeout)
+	defer cancel()
+	err := s.node.StepDown(ctx)
+	st := s.node.Status()
+	switch {
+	case errors.Is(err, raftstore.ErrNotLeader):
+		writeMgmtError(w, http.StatusConflict, fmt.Sprintf("NOT_LEADER: %s is not the leader of shard %d; the leader is %q", s.podName, s.shard, st.LeaderID))
+	case err != nil:
+		writeMgmtError(w, http.StatusServiceUnavailable, "transfer-leader: "+err.Error())
+	default:
+		writeJSON(w, http.StatusOK, transferResponse{PodName: s.podName, State: st.State, Term: st.Term, LeaderID: string(st.LeaderID)})
+	}
+}
+
+// transferTimeout bounds a leadership transfer (StepDown's own attempts
+// take up to about 5 s).
+const transferTimeout = 10 * time.Second
 
 func writeMgmtError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})

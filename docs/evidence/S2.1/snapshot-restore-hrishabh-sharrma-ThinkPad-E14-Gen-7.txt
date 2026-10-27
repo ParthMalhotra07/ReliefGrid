@@ -1,21 +1,21 @@
 # S2.1 snapshot and restore under failure (verify-storage-k8s.sh step 6b2)
 result:     PASSED (21/21 checks)
 host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
-date:       2026-10-26T12:06:51Z
-code tree:  eb4ec3510db5 (same fingerprint as the S1.5 evidence)
+date:       2026-10-27T05:31:06Z
+code tree:  69a35c1ca02f (same fingerprint as the S1.5 evidence)
 code dirty: no
 writes:     1100 before the snapshot, 20 in the tail
 
 ## checks
 PASS  snapshot shard-0: sentinel cfg:s15-snapA-0 written before the snapshot
-PASS  snapshot shard-0: 1100 writes through storage-shard-0-0, past the demo threshold of 1024 (27.7 s)
-PASS  snapshot shard-0: storage-shard-0-0 took a snapshot at applied index 1104 (2-1104-1793016309037)
-PASS  snapshot shard-0: storage-shard-0-1 took a snapshot at applied index 1104 (2-1104-1793016309144)
-PASS  snapshot shard-0: storage-shard-0-2 took a snapshot at applied index 1104 (2-1104-1793016309263)
+PASS  snapshot shard-0: 1100 writes through storage-shard-0-0, past the demo threshold of 1024 (30.7 s)
+PASS  snapshot shard-0: storage-shard-0-0 took a snapshot at applied index 1104 (2-1104-1793078776098)
+PASS  snapshot shard-0: storage-shard-0-1 took a snapshot at applied index 1104 (2-1104-1793078776288)
+PASS  snapshot shard-0: storage-shard-0-2 took a snapshot at applied index 1104 (2-1104-1793078776485)
 PASS  snapshot shard-0: sentinel cfg:s15-snapB-3 written after the snapshot (in the tail)
 PASS  snapshot shard-0: 20 more writes in the tail
 PASS  snapshot shard-0: the three dumps agree before the restart (applied index 1125)
-PASS  snapshot shard-0: all three pods deleted at once come back as one group (3.9 s)
+PASS  snapshot shard-0: all three pods deleted at once come back as one group (4.9 s)
 PASS  snapshot shard-0: storage-shard-0-0 restored its snapshot at applied index 1104
 PASS  snapshot shard-0: storage-shard-0-0 logged the restore at applied index 1104
 PASS  snapshot shard-0: storage-shard-0-0 then replayed the tail to applied index 1125
@@ -35,11 +35,11 @@ PASS  snapshot shard-0: the three dumps agree after the restart and equal the du
 {"podName":"storage-shard-0-2","state":"Follower","term":3,"commitIndex":1128,"appliedIndex":1125,"restoredIndex":1104,"caughtUp":true}
 
 ## dumps
-{"podName":"storage-shard-0-0","appliedIndex":1125,"sha256":"54efdf4c075df8962627b7359bcccc68c7469ae528a4ce833b6f505db3f251b1","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
-{"podName":"storage-shard-0-1","appliedIndex":1125,"sha256":"54efdf4c075df8962627b7359bcccc68c7469ae528a4ce833b6f505db3f251b1","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
-{"podName":"storage-shard-0-2","appliedIndex":1125,"sha256":"54efdf4c075df8962627b7359bcccc68c7469ae528a4ce833b6f505db3f251b1","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
+{"podName":"storage-shard-0-0","appliedIndex":1125,"sha256":"a6199e1cd25624c89b846f4637e81f79012aca3346a13d861ecb9bbfa94fad99","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
+{"podName":"storage-shard-0-1","appliedIndex":1125,"sha256":"a6199e1cd25624c89b846f4637e81f79012aca3346a13d861ecb9bbfa94fad99","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
+{"podName":"storage-shard-0-2","appliedIndex":1125,"sha256":"a6199e1cd25624c89b846f4637e81f79012aca3346a13d861ecb9bbfa94fad99","rows":{"attempt_closures":0,"meta":2,"operation_results":1123,"outbox":0,"records":3}}
 
 ## restore log lines
-2026/10/26 12:05:12 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
-2026/10/26 12:05:12 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
-2026/10/26 12:05:12 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
+2026/10/27 05:26:22 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
+2026/10/27 05:26:22 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1
+2026/10/27 05:26:22 INFO raftstore: restored snapshot group=shard-0 shard=0 appliedIndex=1104 gen=1

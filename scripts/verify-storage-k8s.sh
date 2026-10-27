@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Verify check for S1.5 (storage on Kubernetes) and S1.5b (the coordinator in the chart).
+# Verify check for S1.5 (storage on Kubernetes), S1.5b (the coordinator in the chart) and
+# S3.1 (readiness and placement).
 # Run from the repo root:
 #   scripts/verify-storage-k8s.sh
 #   ELECTION_MAX_SECONDS=15 KEEP_CLUSTER=0 scripts/verify-storage-k8s.sh
@@ -9,7 +10,8 @@
 # it). Writes evidence to docs/evidence/S1.5/storage-k8s-<host>.txt, identified by a
 # fingerprint of the code under test and a dirty flag, every PASS/FAIL line and the
 # result, once the result is known (a failed run is written, marked FAILED); the S2.1 checks
-# (step 6b2) also go to docs/evidence/S2.1/snapshot-restore-<host>.txt. Exits non-zero
+# (step 6b2) also go to docs/evidence/S2.1/snapshot-restore-<host>.txt, and the S3.1 checks
+# (step 6e) to docs/evidence/S3.1/readiness-placement-<host>.txt. Exits non-zero
 # if any check fails; prints one PASS/FAIL line per check.
 #
 # Interface under test:
@@ -84,6 +86,19 @@
 #                                restored since the process started (0: none)
 #   storagenode log              one line per snapshot restore containing "restored snapshot" and
 #                                appliedIndex=<n>
+#   make placement-check         (S3.1) exit 0 only if every shard has 3 storage pods on 3 distinct
+#                                nodes labelled role=data; otherwise non-zero, naming the shard and the
+#                                worker. PLACEMENT_PODS_JSON / PLACEMENT_NODES_JSON (env): check those
+#                                saved `kubectl get pods|nodes -o json` files instead of the live cluster
+#   /storagectl transfer-leader [--addr host:port] [--timeout d]   (S3.1)
+#                                POST /mgmt/transfer-leader with OPERATOR_TOKEN: the leader hands
+#                                leadership to another voter (raftstore.StepDown) and exits 0 once it
+#                                is no longer leader; on a follower, non-zero naming NOT_LEADER
+#   GET /mgmt/status             (S3.1) also leaderCommitIndex: the leader's commit index as this
+#                                replica last learned it from the leader (the leader: its own);
+#                                caughtUp (and /readyz) only once appliedIndex covers it
+#   503 NOT_LEADER               (S3.1, #30) leaderHint.address is the leader's advertised
+#                                HTTP_ADVERTISE, not its Raft host with this replica's port
 set -uo pipefail
 
 CLUSTER=reliefgrid
@@ -106,19 +121,25 @@ HOLD_SECONDS="${HOLD_SECONDS:-60}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-1}"
 EVIDENCE="docs/evidence/S1.5/storage-k8s-$(hostname -s).txt"
 EVIDENCE_S21="docs/evidence/S2.1/snapshot-restore-$(hostname -s).txt"
+EVIDENCE_S31="docs/evidence/S3.1/readiness-placement-$(hostname -s).txt"
+TRANSFER_MAX_SECONDS="${TRANSFER_MAX_SECONDS:-5}" # storagectl transfer-leader -> a new leader (S3.1)
+TRANSFERS="${TRANSFERS:-3}"
+FAILOVERS="${FAILOVERS:-20}"                      # consecutive leader deletes, each within ELECTION_MAX_SECONDS (S3.1)
+LAG_WRITES="${LAG_WRITES:-300}"                   # writes while a follower restarts (S3.1 readiness)
 
 failures=0 passes=0
 results="" # every PASS/FAIL line, for the evidence; set to a file once $tmp exists
 s21_results="" # step 6b2's PASS/FAIL lines too, while it runs
+s31_results="" # step 6e's, likewise
 pass() {
-	printf 'PASS  %s\n' "$1" | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}"
+	printf 'PASS  %s\n' "$1" | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}" "${s31_results:-/dev/null}"
 	passes=$((passes + 1))
 }
-fail() {
+fail() { # fail <description> [detail]: a multi-line detail is indented line by line
 	{
 		printf 'FAIL  %s\n' "$1"
-		[ -n "${2:-}" ] && printf '      %s\n' "$2"
-	} | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}"
+		[ -n "${2:-}" ] && sed 's/^/      /' <<<"$2"
+	} | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}" "${s31_results:-/dev/null}"
 	failures=$((failures + 1))
 }
 check() { # check <description> <command...>
@@ -150,7 +171,9 @@ pf_pid=""
 cpf_pid="" # the coordinator port-forward, kept apart from pf_pid
 cport=""   # its local port
 coord_failover="" # step 6a's measured timeline, for the evidence
+cordoned="" # a worker step 6e cordons; uncordoned again on any exit
 cleanup() {
+	[ -n "$cordoned" ] && kubectl --context "$CTX" uncordon "$cordoned" >/dev/null 2>&1
 	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
 	[ -n "$cpf_pid" ] && kill "$cpf_pid" 2>/dev/null
 	rm -rf "$tmp"
@@ -162,7 +185,7 @@ kn() { k -n "$NS" "$@"; }
 sts_name() { printf 'storage-shard-%s' "$1"; }
 pod_names() { printf 'storage-shard-%s-0 storage-shard-%s-1 storage-shard-%s-2' "$1" "$1" "$1"; }
 fqdn() { printf '%s.storage-shard-%s.%s.svc.cluster.local:7000' "$2" "$1" "$NS"; } # fqdn <shard> <pod>
-st() { kn exec "$1" -c storagenode -- /storagectl status 2>/dev/null; }             # status JSON or empty
+st() { timeout 5 kubectl --context "$CTX" -n "$NS" exec "$1" -c storagenode -- /storagectl status 2>/dev/null; } # status JSON or empty
 field() { jq -r "$2 // empty" <<<"$1" 2>/dev/null; }                               # field <json> <jq path>
 now() { date +%s.%N; }
 since() { awk -v a="$1" -v b="$(now)" 'BEGIN { printf "%.1f", b - a }'; }
@@ -174,12 +197,25 @@ leaders() { # leaders <pods...>: "<pod> <term>" for every reachable pod in state
 		[ "$(field "$s" .state)" = Leader ] && echo "$p $(field "$s" .term)"
 	done
 }
-wait_leader() { # wait_leader <seconds> <not-pod|-> <min-term> <pods...>: print "<pod> <term>"
-	local deadline=$((SECONDS + $1)) not="$2" min="$3" l
-	shift 3
-	while [ "$SECONDS" -lt "$deadline" ]; do
-		l="$(leaders "$@")"
-		if [ "$(grep -c . <<<"$l")" -eq 1 ] && [ "${l%% *}" != "$not" ] && [ "${l##* }" -ge "$min" ]; then
+# wait_leader <seconds> <min-term> <pods...>: print "<pod> <term>" once exactly one pod is
+# Leader, at term >= min-term. Which pod does not matter: a deleted leader's pod comes back
+# under the same name, often within an election, and may legitimately win (issue #19). Every
+# poll goes to $tmp/polls ("<t> pod=state/term/leaderId ..."); polls_detail prints it for a FAIL.
+wait_leader() {
+	local t0 max="$1" min="$2" p s l line
+	shift 2
+	t0="$(now)"
+	: >"$tmp/polls"
+	while awk -v t="$(since "$t0")" -v m="$max" 'BEGIN { exit !(t < m) }'; do
+		l="" line=""
+		for p in "$@"; do
+			s="$(st "$p")"
+			line+=" $p=$(field "$s" .state)/$(field "$s" .term)/$(field "$s" .leaderId)"
+			[ "$(field "$s" .state)" = Leader ] && l+="$p $(field "$s" .term)"$'\n'
+		done
+		l="${l%$'\n'}"
+		printf '%5ss%s\n' "$(since "$t0")" "$line" >>"$tmp/polls"
+		if [ "$(grep -c . <<<"$l")" -eq 1 ] && [ "${l##* }" -ge "$min" ]; then
 			echo "$l"
 			return 0
 		fi
@@ -187,6 +223,7 @@ wait_leader() { # wait_leader <seconds> <not-pod|-> <min-term> <pods...>: print 
 	done
 	return 1
 }
+polls_detail() { echo "polls (t after start, pod=state/term/leaderId):"; cat "$tmp/polls"; }
 one_group() { # one_group <shard>: exactly one Leader; every pod has state and names that leader
 	local shard="$1" p s lead="" n=0 ids=""
 	for p in $(pod_names "$shard"); do
@@ -267,7 +304,7 @@ nodes_ok() {
 # prints "<key> <value>" on success (version 1 committed), nothing on failure.
 write_key() {
 	local shard="$1" tag="$2" leader term port key="" value code i
-	read -r leader term < <(wait_leader 15 - 0 $(pod_names "$shard"))
+	read -r leader term < <(wait_leader 15 0 $(pod_names "$shard"))
 	[ -n "${leader:-}" ] || return 1
 	port="$(port_forward "$leader")"
 	value="{\"verify\":\"S1.5-$tag-$(date +%s)\"}"
@@ -287,7 +324,7 @@ write_key() {
 # read_key <shard> <key> <value>: a strong read through the shard's leader returns <value> at version 1
 read_key() {
 	local shard="$1" key="$2" value="$3" leader term port code
-	read -r leader term < <(wait_leader 15 - 0 $(pod_names "$shard"))
+	read -r leader term < <(wait_leader 15 0 $(pod_names "$shard"))
 	[ -n "${leader:-}" ] || return 1
 	port="$(port_forward "$leader")"
 	code="$(curl -s -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
@@ -302,7 +339,7 @@ exec_dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --time
 # make it stale, so only these paths are fingerprinted.
 write_evidence() {
 	local code_paths code_tree code_dirty result s p
-	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh)
+	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh scripts/placement-check.sh)
 	code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin)"
 	code_dirty="$(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
 	if [ "$failures" -eq 0 ]; then result="PASSED ($passes/$passes checks)"; else result="FAILED ($failures of $((passes + failures)) checks failed)"; fi
@@ -323,7 +360,7 @@ write_evidence() {
 		echo
 		for s in "${SHARDS[@]}"; do
 			echo "## shard-$s"
-			for p in $(pod_names "$s"); do st "$p" | jq -c '{podName, serverId, state, term, leaderId, commitIndex, appliedIndex, caughtUp}'; done
+			for p in $(pod_names "$s"); do st "$p" | jq -c '{podName, serverId, state, term, leaderId, commitIndex, leaderCommitIndex, appliedIndex, caughtUp}'; done
 			kn get configmap "$(sts_name "$s")-manifest" -o jsonpath='{.data}' | jq -c .
 			echo
 		done
@@ -335,6 +372,40 @@ write_evidence() {
 	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE"
 	echo "evidence: $EVIDENCE ($result)"
 	[ -s "${tmp:-}/s21" ] && write_evidence_s21 "$code_tree" "$code_dirty"
+	[ -s "${tmp:-}/s31" ] && write_evidence_s31 "$code_tree" "$code_dirty"
+}
+# write_evidence_s31 <code tree> <code dirty>: step 6e's checks, the measured timings and the
+# placement-check outputs, live and doctored
+write_evidence_s31() {
+	local result n_fail n_all
+	n_fail="$(grep -c '^FAIL' "$tmp/s31")" n_all="$(grep -Ec '^(PASS|FAIL)' "$tmp/s31")"
+	if [ "$n_fail" -eq 0 ]; then result="PASSED ($n_all/$n_all checks)"; else result="FAILED ($n_fail of $n_all checks failed)"; fi
+	mkdir -p "$(dirname "$EVIDENCE_S31")"
+	{
+		echo "# S3.1 readiness and placement (verify-storage-k8s.sh step 6e)"
+		echo "result:     $result"
+		echo "host:       $(hostname -s)"
+		echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+		echo "code tree:  ${1:0:12} (same fingerprint as the S1.5 evidence)"
+		echo "code dirty: $2"
+		echo "bounds:     transfer-leader ${TRANSFER_MAX_SECONDS}s x$TRANSFERS, failover ${ELECTION_MAX_SECONDS}s x$FAILOVERS, $LAG_WRITES writes while a follower restarts"
+		echo
+		echo "## checks"
+		cat "$tmp/s31"
+		echo
+		echo "## transfer-leader"
+		printf '%s' "$s31_transfers"
+		echo
+		echo "## failovers (time = delete until the check saw the new leader; polls every ~0.5 s plus 3 execs)"
+		printf '%s' "$s31_failovers"
+		echo
+		echo "## readiness during catch-up"
+		printf '%s\n' "$s31_lag"
+		echo
+		echo "## placement-check output"
+		printf '%s' "$s31_placement"
+	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE_S31"
+	echo "evidence: $EVIDENCE_S31 ($result)"
 }
 # write_evidence_s21 <code tree> <code dirty>: step 6b2's checks and the snapshot shard's state
 # as 6b2 left it (s21_state), not at exit: later steps restart and reinstall the shards.
@@ -719,7 +790,7 @@ exec_dial storage-shard-1-0 "$raft0" && fail "networkpolicy: storage-shard-1-0 c
 
 # --- 6. A write through the leader survives deleting that leader -------------------------
 wpods=($(pod_names "$WRITE_SHARD"))
-read -r leader term < <(wait_leader 10 - 0 "${wpods[@]}")
+read -r leader term < <(wait_leader 10 0 "${wpods[@]}")
 if [ -z "${leader:-}" ]; then
 	fail "write shard-$WRITE_SHARD: leader found"
 else
@@ -742,7 +813,7 @@ else
 	pf_pid=""
 	t0="$(now)"
 	kn delete pod "$leader" --wait=false >/dev/null 2>&1
-	read -r newleader newterm < <(wait_leader "$ELECTION_MAX_SECONDS" "$leader" $((term + 1)) "${wpods[@]}")
+	read -r newleader newterm < <(wait_leader "$ELECTION_MAX_SECONDS" $((term + 1)) "${wpods[@]}")
 	if [ -n "${newleader:-}" ]; then
 		pass "failover shard-$WRITE_SHARD: $newleader leads at term $newterm, $(since "$t0") s after deleting $leader"
 		port="$(port_forward "$newleader")"
@@ -755,7 +826,7 @@ else
 		kill "$pf_pid" 2>/dev/null
 		pf_pid=""
 	else
-		fail "failover shard-$WRITE_SHARD: a new leader within ${ELECTION_MAX_SECONDS}s of deleting $leader"
+		fail "failover shard-$WRITE_SHARD: a new leader within ${ELECTION_MAX_SECONDS}s of deleting $leader" "$(polls_detail)"
 	fi
 	if kn wait --for=condition=Ready "pod/$leader" --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1 && out="$(one_group "$WRITE_SHARD")"; then
 		pass "failover shard-$WRITE_SHARD: $leader rejoins the same group (same ID) and is Ready"
@@ -767,25 +838,28 @@ fi
 # --- 6a. The coordinator follows a leader change (S1.5b) -----------------------------------
 cs="$(cadmin "/admin/locate/${ckey:-none}" 2>/dev/null | jq -r '.shard // empty' 2>/dev/null)"
 if [ -n "${ckey:-}" ] && [ -n "$cs" ]; then
-	read -r cleader cterm < <(wait_leader 15 - 0 $(pod_names "$cs"))
+	read -r cleader cterm < <(wait_leader 15 0 $(pod_names "$cs"))
 	t0="$(now)"
 	kn delete pod "${cleader:-none}" --wait=false >/dev/null 2>&1
 	# The strict election bound is step 6's (issue #19); here the coordinator gets
 	# COORD_FAILOVER_SECONDS from the delete to name the new leader, and the time is recorded.
-	read -r cnew cnewterm < <(wait_leader "$COORD_FAILOVER_SECONDS" "${cleader:-none}" $((${cterm:-0} + 1)) $(pod_names "$cs"))
+	read -r cnew cnewterm < <(wait_leader "$COORD_FAILOVER_SECONDS" $((${cterm:-0} + 1)) $(pod_names "$cs"))
 	t_elected="$(since "$t0")"
-	want="$( [ -n "${cnew:-}" ] && field "$(st "$cnew")" .serverId)" got=""
+	# The winner may be the recreated pod, with the old leader's serverId; so the coordinator
+	# must also report it at the new term, or a stale answer would pass.
+	want="$( [ -n "${cnew:-}" ] && field "$(st "$cnew")" .serverId)" got="" gterm=0
 	while [ -n "$want" ] && awk -v t="$(since "$t0")" -v m="$COORD_FAILOVER_SECONDS" 'BEGIN { exit !(t < m) }'; do
 		got="$(cadmin "/admin/locate/$ckey" 2>/dev/null | jq -r '.leaderId // empty' 2>/dev/null)"
-		[ "$got" = "$want" ] && break
+		gterm="$(cadmin /admin/nodes 2>/dev/null | jq -r --arg p "$cnew" '.nodes[] | select(.nodeId == $p) | .term' 2>/dev/null)"
+		[ "$got" = "$want" ] && [ "${gterm:-0}" -ge "$cnewterm" ] 2>/dev/null && break
 		sleep 0.5
 	done
-	if [ -n "$want" ] && [ "$got" = "$want" ]; then
+	if [ -n "$want" ] && [ "$got" = "$want" ] && [ "${gterm:-0}" -ge "${cnewterm:-1}" ] 2>/dev/null; then
 		coord_failover="shard-$cs: deleted $cleader (term $cterm); $cnew leads at term $cnewterm after $t_elected s; the coordinator names $want after $(since "$t0") s"
 		pass "coordinator failover shard-$cs: the coordinator names the new leader within ${COORD_FAILOVER_SECONDS}s ($(since "$t0") s; elected after $t_elected s)"
 	else
-		coord_failover="shard-$cs: deleted ${cleader:-?}; new leader '${cnew:-none}' after $t_elected s; the coordinator named '$got' at the ${COORD_FAILOVER_SECONDS}s deadline"
-		fail "coordinator failover shard-$cs: the coordinator names the new leader within ${COORD_FAILOVER_SECONDS}s" "$coord_failover"
+		coord_failover="shard-$cs: deleted ${cleader:-?}; new leader '${cnew:-none}' after $t_elected s; the coordinator named '$got' (term '${gterm:-}') at the ${COORD_FAILOVER_SECONDS}s deadline"
+		fail "coordinator failover shard-$cs: the coordinator names the new leader within ${COORD_FAILOVER_SECONDS}s" "$coord_failover"$'\n'"$( [ -z "${cnew:-}" ] && polls_detail)"
 	fi
 	code="$(curl -s -m 6 -o "$tmp/cget.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/data/$ckey")"
 	[ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/cget.json" 2>/dev/null)" = "$(jq -c . <<<"$cval")" ] &&
@@ -876,7 +950,7 @@ same_dumps() {
 declare -A snap_applied
 if kvA="$(write_key "$SS" snapA)" && kvK="$(write_key "$SS" snapK)"; then
 	pass "snapshot shard-$SS: sentinel ${kvA%% *} written before the snapshot"
-	read -r sleader _ < <(wait_leader 15 - 0 $(pod_names "$SS"))
+	read -r sleader _ < <(wait_leader 15 0 $(pod_names "$SS"))
 	port="$(port_forward "$sleader")"
 	t0="$(now)"
 	if kv_version="$(cas_updates "$port" "${kvK%% *}" 1 "$SNAP_WRITES")"; then
@@ -896,7 +970,7 @@ if kvA="$(write_key "$SS" snapA)" && kvK="$(write_key "$SS" snapK)"; then
 	done
 	kvB="$(write_key "$SS" snapB)" && pass "snapshot shard-$SS: sentinel ${kvB%% *} written after the snapshot (in the tail)" ||
 		fail "snapshot shard-$SS: sentinel written after the snapshot"
-	read -r sleader _ < <(wait_leader 15 - 0 $(pod_names "$SS"))
+	read -r sleader _ < <(wait_leader 15 0 $(pod_names "$SS"))
 	port="$(port_forward "$sleader")"
 	cas_updates "$port" "${kvK%% *}" "$kv_version" "$TAIL_WRITES" >/dev/null && pass "snapshot shard-$SS: $TAIL_WRITES more writes in the tail" ||
 		fail "snapshot shard-$SS: $TAIL_WRITES more writes in the tail" "$(cat "$tmp/cas.json" 2>/dev/null)"
@@ -1003,6 +1077,222 @@ for s in "${SHARDS[@]}"; do
 		pass "rollback: manifest shard-$s untouched (resourceVersion, BOOTSTRAPPED, peerIds)" ||
 		fail "rollback: manifest shard-$s untouched" "rv ${rv_before[$s]} -> $(manifest_rv "$s"), phase $(phase "$s"), peerIds $(peer_ids "$s")"
 done
+
+# --- 6e. Readiness and placement (S3.1) ------------------------------------------------------
+# placement-check on the live cluster and on doctored copies; transfer-leader; the not-leader
+# hint (#30); readiness against the leader's commit index (#22), including a follower that
+# restarts during a write burst; then FAILOVERS consecutive leader deletes (#19).
+s31_results="$tmp/s31"
+: >"$s31_results"
+s31_transfers="" s31_failovers="" s31_lag="" s31_placement=""
+TS="$WRITE_SHARD"
+tpods=($(pod_names "$TS"))
+# placement_check [pods json] [nodes json]: make placement-check, live when no files; output in $tmp/pc.out
+placement_check() { PLACEMENT_PODS_JSON="${1:-}" PLACEMENT_NODES_JSON="${2:-}" make -s placement-check >"$tmp/pc.out" 2>&1; }
+# doctor <name> <jq filter>: the saved pods JSON with one change, as $tmp/pods-<name>.json
+doctor() { jq "$2" "$tmp/pods.json" >"$tmp/pods-$1.json"; }
+# rejects <description> <name> <shard> <worker>: placement-check fails on pods-<name>.json, naming both
+rejects() {
+	if placement_check "$tmp/pods-$2.json" "$tmp/nodes.json"; then
+		fail "placement-check: fails when $1" "exit 0: $(cat "$tmp/pc.out")"
+	elif grep -Eq "shard[- ]$3([^0-9]|$)" "$tmp/pc.out" && grep -Fq -- "$4" "$tmp/pc.out"; then
+		pass "placement-check: fails when $1, naming shard $3 and $4"
+	else
+		fail "placement-check: fails when $1, naming shard $3 and $4" "$(cat "$tmp/pc.out")"
+	fi
+	s31_placement+="## $1"$'\n'"$(cat "$tmp/pc.out")"$'\n'
+}
+optok="$(op_token)"
+
+check "make placement-check: target exists" make -n placement-check
+if placement_check; then
+	pass "placement-check: the live placement passes"
+else
+	fail "placement-check: the live placement passes" "$(cat "$tmp/pc.out")"
+fi
+s31_placement+="## live"$'\n'"$(cat "$tmp/pc.out")"$'\n'
+kn get pods -o json >"$tmp/pods.json"
+k get nodes -o json >"$tmp/nodes.json"
+podnode() { jq -r --arg p "$1" '.items[] | select(.metadata.name == $p) | .spec.nodeName' "$tmp/pods.json"; }
+n10="$(podnode storage-shard-1-0)"
+doctor shared "(.items[] | select(.metadata.name == \"storage-shard-1-2\") | .spec.nodeName) = \"$n10\""
+rejects "storage-shard-1-0 and storage-shard-1-2 share a worker" shared 1 "$n10"
+doctor infra "(.items[] | select(.metadata.name == \"storage-shard-2-1\") | .spec.nodeName) = \"$infra_node\""
+rejects "storage-shard-2-1 is on the infra worker" infra 2 "$infra_node"
+doctor unscheduled 'del(.items[] | select(.metadata.name == "storage-shard-0-2") | .spec.nodeName)'
+rejects "storage-shard-0-2 is not scheduled" unscheduled 0 storage-shard-0-2
+doctor missing 'del(.items[] | select(.metadata.name == "storage-shard-0-1"))'
+rejects "storage-shard-0-1 is missing" missing 0 storage-shard-0-1
+
+# transfer-leader: a follower refuses; the leader hands over within TRANSFER_MAX_SECONDS
+read -r tl tterm < <(wait_leader 15 0 "${tpods[@]}")
+kv_t="$(write_key "$TS" transfer)"
+for p in "${tpods[@]}"; do [ "$p" != "${tl:-}" ] && tf="$p" && break; done
+out="$(kn exec "$tf" -c storagenode -- /storagectl transfer-leader 2>&1)"
+rc=$?
+read -r al aterm < <(wait_leader 5 0 "${tpods[@]}")
+[ "$rc" != 0 ] && grep -q NOT_LEADER <<<"$out" && [ "${al:-}" = "${tl:-x}" ] && [ "${aterm:-}" = "${tterm:-x}" ] &&
+	pass "transfer-leader: on follower $tf exits non-zero with NOT_LEADER; ${tl:-?} still leads at term ${tterm:-?}" ||
+	fail "transfer-leader: on follower $tf exits non-zero with NOT_LEADER; the leader is unchanged" "exit $rc: $(head -c 300 <<<"$out"); leader before ${tl:-?}/${tterm:-?}, after ${al:-?}/${aterm:-?}"
+for i in $(seq "$TRANSFERS"); do
+	read -r tl tterm < <(wait_leader 15 0 "${tpods[@]}")
+	t0="$(now)"
+	out="$(kn exec "${tl:-none}" -c storagenode -- /storagectl transfer-leader 2>&1)"
+	rc=$?
+	read -r nl nterm < <(wait_leader "$TRANSFER_MAX_SECONDS" $((${tterm:-0} + 1)) "${tpods[@]}")
+	el="$(since "$t0")"
+	ost="$(st "${tl:-none}")" nid="$( [ -n "${nl:-}" ] && field "$(st "$nl")" .serverId)"
+	if [ "$rc" = 0 ] && [ -n "${nl:-}" ] && [ "$nl" != "$tl" ] && awk -v t="$el" -v m="$TRANSFER_MAX_SECONDS" 'BEGIN { exit !(t <= m) }' &&
+		[ "$(field "$ost" .state)" = Follower ] && [ "$(field "$ost" .leaderId)" = "$nid" ]; then
+		pass "transfer-leader $i/$TRANSFERS: $tl -> $nl (term $tterm -> $nterm) in $el s; $tl follows $nl"
+	else
+		fail "transfer-leader $i/$TRANSFERS: $tl hands leadership to another pod within ${TRANSFER_MAX_SECONDS}s and follows it" \
+			"exit $rc: $(head -c 300 <<<"$out"); new leader '${nl:-none}' after $el s; $tl now $(field "$ost" .state) naming '$(field "$ost" .leaderId)'"$'\n'"$(polls_detail)"
+	fi
+	s31_transfers+="$i: ${tl:-?} (term ${tterm:-?}) -> ${nl:-none} (term ${nterm:-?}) in $el s, storagectl exit $rc"$'\n'
+done
+if out="$(one_group "$TS")"; then pass "transfer-leader: shard-$TS is one group afterwards"; else fail "transfer-leader: shard-$TS is one group afterwards" "$out"; fi
+[ -n "$kv_t" ] && read_key "$TS" "${kv_t%% *}" "${kv_t#* }" && pass "transfer-leader: the key written before the transfers reads back" ||
+	fail "transfer-leader: the key written before the transfers reads back" "key '${kv_t%% *}': $(cat "$tmp/get.json" 2>/dev/null)"
+write_key "$TS" after-transfer >/dev/null && pass "transfer-leader: a write through the new leader commits" || fail "transfer-leader: a write through the new leader commits"
+read -r nl nterm < <(wait_leader 15 0 "${tpods[@]}")
+nid="$(field "$(st "${nl:-none}")" .serverId)" ok=""
+if coord_forward; then
+	t0="$(now)"
+	while awk -v t="$(since "$t0")" -v m="$COORD_FAILOVER_SECONDS" 'BEGIN { exit !(t < m) }'; do
+		nodes="$(cadmin /admin/nodes 2>/dev/null)"
+		[ "$(jq -r --arg p "${nl:-none}" --arg id "$nid" --argjson t "${nterm:-0}" --argjson s "$TS" \
+			'[.nodes[] | select(.shardId == $s)] | (length == 3 and all(.leaderId == $id) and any(.nodeId == $p and .term >= $t))' <<<"$nodes" 2>/dev/null)" = true ] && ok=1 && break
+		sleep 0.5
+	done
+fi
+[ -n "$ok" ] && pass "transfer-leader: the coordinator names $nl (term $nterm) for shard-$TS ($(since "$t0") s)" ||
+	fail "transfer-leader: the coordinator names ${nl:-?} (term ${nterm:-?}) for shard-$TS within ${COORD_FAILOVER_SECONDS}s" "$(head -c 600 <<<"${nodes:-}")"
+
+# #30: a follower's NOT_LEADER hint is the leader's advertised HTTP address
+read -r hl _ < <(wait_leader 15 0 "${tpods[@]}")
+for p in "${tpods[@]}"; do [ "$p" != "${hl:-}" ] && hf="$p" && break; done
+port="$(port_forward "$hf")"
+code="$(curl -s -m 6 -o "$tmp/hint.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/${kv_t%% *}" \
+	-H 'Content-Type: application/json' -H 'If-None-Match: *' \
+	-d "{\"operationId\":\"op-s31-hint-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":{\"hint\":1}}")"
+kill "$pf_pid" 2>/dev/null
+pf_pid=""
+[ "$code" = 503 ] && [ "$(jq -r .code "$tmp/hint.json")" = NOT_LEADER ] && [ "$(jq -r .leaderHint.nodeId "$tmp/hint.json")" = "${hl:-x}" ] &&
+	[ "$(jq -r .leaderHint.address "$tmp/hint.json")" = "$(http_adv "$TS" "${hl:-x}")" ] &&
+	pass "leader hint: a write to follower $hf is 503 NOT_LEADER naming $hl at its HTTP_ADVERTISE $(http_adv "$TS" "${hl:-x}")" ||
+	fail "leader hint: a write to follower $hf is 503 NOT_LEADER naming ${hl:-?} at its HTTP_ADVERTISE" "HTTP $code: $(cat "$tmp/hint.json" 2>/dev/null)"
+
+# #22: every replica reports the leader's commit index, and caughtUp is judged against it
+for s in "${SHARDS[@]}"; do
+	read -r rl _ < <(wait_leader 15 0 $(pod_names "$s"))
+	why="" t0="$(now)"
+	while awk -v t="$(since "$t0")" 'BEGIN { exit !(t < 5) }'; do # writes are quiescent; followers learn within CommitTimeout
+		lc="$(field "$(st "${rl:-none}")" .commitIndex)" why=""
+		for p in $(pod_names "$s"); do
+			ps="$(st "$p")"
+			[ "$(jq -r '.leaderCommitIndex | type' <<<"$ps" 2>/dev/null)" = number ] || { why="$p: no leaderCommitIndex in $(head -c 300 <<<"$ps")"; break; }
+			[ "$(field "$ps" .leaderCommitIndex)" = "$lc" ] && [ "$(field "$ps" .caughtUp)" = true ] ||
+				{ why="$p: leaderCommitIndex $(field "$ps" .leaderCommitIndex), caughtUp $(field "$ps" .caughtUp); leader ${rl:-?} commitIndex $lc"; break; }
+		done
+		[ -z "$why" ] && break
+		sleep 0.5
+	done
+	[ -z "$why" ] && pass "readiness shard-$s: every replica reports the leader's commitIndex ($lc) as leaderCommitIndex and is caughtUp" ||
+		fail "readiness shard-$s: every replica reports the leader's commitIndex as leaderCommitIndex and is caughtUp" "$why"
+done
+# A follower held down for a whole write burst: its worker is cordoned and its PVC is
+# node-local, so the recreated pod stays Pending until the uncordon. Sampled from then on,
+# it must never report caughtUp below the leader's appliedIndex at the end of the burst.
+read -r rl _ < <(wait_leader 15 0 "${tpods[@]}")
+for p in "${tpods[@]}"; do [ "$p" != "${rl:-}" ] && rf="$p" && break; done
+rnode="$(kn get pod "$rf" -o jsonpath='{.spec.nodeName}' 2>/dev/null)"
+k cordon "$rnode" >/dev/null 2>&1 && cordoned="$rnode"
+kn delete pod "$rf" --wait=true --timeout=60s >/dev/null 2>&1
+sleep 3
+[ "$(kn get pod "$rf" -o jsonpath='{.status.phase}' 2>/dev/null)" = Pending ] && [ -z "$(kn get pod "$rf" -o jsonpath='{.spec.nodeName}' 2>/dev/null)" ] &&
+	pass "readiness lag: $rf is held Pending while $rnode is cordoned" ||
+	fail "readiness lag: $rf is held Pending while $rnode is cordoned" "phase $(kn get pod "$rf" -o jsonpath='{.status.phase}' 2>/dev/null)"
+port="$(port_forward "${rl:-none}")"
+tl0="$(now)" n=0
+for i in $(seq 0 $((LAG_WRITES * 6))); do # about a third of keys belong to this shard; foreign keys are 400 and never proposed
+	code="$(curl -s -m 5 -o "$tmp/lag.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s31-lag-${tl0%.*}-$i" \
+		-H 'Content-Type: application/json' -H 'If-None-Match: *' \
+		-d "{\"operationId\":\"op-s31-lag-$i-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":{\"lag\":$i}}")"
+	[ "$code" = 200 ] && n=$((n + 1))
+	[ "$n" -ge "$LAG_WRITES" ] && break
+done
+kill "$pf_pid" 2>/dev/null
+pf_pid=""
+a_end="$(field "$(st "${rl:-none}")" .appliedIndex)"
+[ "$n" -ge "$LAG_WRITES" ] && pass "readiness lag: $n writes committed through ${rl:-?} while $rf was down ($(since "$tl0") s; leader appliedIndex $a_end)" ||
+	fail "readiness lag: $LAG_WRITES writes committed through ${rl:-?} while $rf was down" "$n committed; last HTTP $code: $(head -c 300 "$tmp/lag.json")"
+: >"$tmp/lag.samples"
+: >"$tmp/lag.run"
+( # sample the follower from the uncordon until told to stop: "<t> <caughtUp> <appliedIndex> <leaderCommitIndex>"
+	ts0="$(now)"
+	while [ -e "$tmp/lag.run" ]; do
+		ps="$(st "$rf")"
+		[ -n "$ps" ] && echo "$(since "$ts0") $(field "$ps" .caughtUp) $(field "$ps" .appliedIndex) $(field "$ps" .leaderCommitIndex)" >>"$tmp/lag.samples"
+		sleep 0.1
+	done
+) &
+sampler=$!
+k uncordon "$rnode" >/dev/null 2>&1 && cordoned=""
+kn wait --for=condition=Ready "pod/$rf" --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1
+t0="$(now)"
+while awk -v t="$(since "$t0")" 'BEGIN { exit !(t < 30) }'; do
+	[ "$(field "$(st "$rf")" .appliedIndex)" -ge "${a_end:-0}" ] 2>/dev/null && break
+	sleep 0.5
+done
+sleep 1
+rm -f "$tmp/lag.run"
+wait "$sampler" 2>/dev/null
+bad="$(awk -v a="${a_end:-0}" '$2 == "true" && $3 < a' "$tmp/lag.samples")"
+nsamp="$(grep -c . "$tmp/lag.samples")"
+nbehind="$(awk -v a="${a_end:-0}" '$3 < a' "$tmp/lag.samples" | grep -c .)"
+last="$(tail -1 "$tmp/lag.samples")"
+[ "$(awk '{ print $2 }' <<<"$last")" = true ] && [ "$(awk '{ print $3 }' <<<"$last")" -ge "${a_end:-0}" ] 2>/dev/null &&
+	kn wait --for=condition=Ready "pod/$rf" --timeout=1s >/dev/null 2>&1 &&
+	pass "readiness lag: $rf catches up to appliedIndex >= $a_end and is caughtUp and Ready" ||
+	fail "readiness lag: $rf catches up to appliedIndex >= ${a_end:-?} and is caughtUp and Ready" "last sample (t caughtUp applied leaderCommit): $last"
+[ "$nsamp" -gt 0 ] && [ -z "$bad" ] &&
+	pass "readiness lag: in $nsamp samples ($nbehind behind the leader), $rf never reported caughtUp below the leader's appliedIndex $a_end" ||
+	fail "readiness lag: $rf never reports caughtUp below the leader's appliedIndex ${a_end:-?}" "$nsamp samples; offending (t caughtUp applied leaderCommit): $(head -5 <<<"$bad" | tr '\n' '|')"
+s31_lag="follower $rf held Pending on cordoned $rnode; $n writes through ${rl:-?} (leader appliedIndex $a_end); sampled from the uncordon"$'\n'"samples (t caughtUp appliedIndex leaderCommitIndex): $nsamp, $nbehind behind the leader"$'\n'"first: $(head -1 "$tmp/lag.samples")"$'\n'"first caughtUp: $(awk '$2 == "true"' "$tmp/lag.samples" | head -1)"$'\n'"last: $last"
+
+# #19: FAILOVERS consecutive leader deletes, each with a new leader (any pod) within ELECTION_MAX_SECONDS
+kv_f="$(write_key "$TS" failovers)"
+fo_ok=0 fo_times="" fo_same=0
+for i in $(seq "$FAILOVERS"); do
+	if ! kn wait --for=condition=Ready $(for p in "${tpods[@]}"; do echo "pod/$p"; done) --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1 || ! out="$(one_group "$TS")"; then
+		fail "failover $i/$FAILOVERS: shard-$TS is one Ready group before the delete" "${out:-not Ready}"
+		continue
+	fi
+	read -r fl fterm < <(wait_leader 15 0 "${tpods[@]}")
+	t0="$(now)"
+	kn delete pod "${fl:-none}" --wait=false >/dev/null 2>&1
+	read -r nl nterm < <(wait_leader "$ELECTION_MAX_SECONDS" $((${fterm:-0} + 1)) "${tpods[@]}")
+	el="$(since "$t0")"
+	if [ -n "${nl:-}" ]; then
+		fo_ok=$((fo_ok + 1)) fo_times+="$el"$'\n'
+		[ "$nl" = "$fl" ] && fo_same=$((fo_same + 1))
+		pass "failover $i/$FAILOVERS: $nl leads at term $nterm, $el s after deleting $fl$( [ "$nl" = "$fl" ] && echo ' (the recreated pod won)')"
+	else
+		fail "failover $i/$FAILOVERS: a leader at term > ${fterm:-?} within ${ELECTION_MAX_SECONDS}s of deleting ${fl:-?}" "$(polls_detail)"
+	fi
+	s31_failovers+="$i: deleted ${fl:-?} (term ${fterm:-?}) -> ${nl:-none} (term ${nterm:-?}) seen after $el s"$'\n'
+done
+dist="$(sort -n <<<"${fo_times%$'\n'}" | awk '{ v[NR] = $1 } END { if (NR) printf "min %s, median %s, max %s s", v[1], v[int((NR + 1) / 2)], v[NR] }')"
+[ "$fo_ok" = "$FAILOVERS" ] && pass "failover: $FAILOVERS consecutive leader deletes, each with a new leader within ${ELECTION_MAX_SECONDS}s ($dist; the recreated pod won $fo_same)" ||
+	fail "failover: $FAILOVERS consecutive leader deletes, each with a new leader within ${ELECTION_MAX_SECONDS}s" "$fo_ok passed ($dist)"
+s31_failovers+="seen-by-check times: $dist; the recreated pod won $fo_same of $fo_ok"$'\n'
+kn wait --for=condition=Ready $(for p in "${tpods[@]}"; do echo "pod/$p"; done) --timeout="${REJOIN_MAX_SECONDS}s" >/dev/null 2>&1
+[ -n "$kv_f" ] && read_key "$TS" "${kv_f%% *}" "${kv_f#* }" && pass "failover: the key written before the $FAILOVERS deletes reads back" ||
+	fail "failover: the key written before the $FAILOVERS deletes reads back" "key '${kv_f%% *}': $(cat "$tmp/get.json" 2>/dev/null)"
+[ -n "$cpf_pid" ] && kill "$cpf_pid" 2>/dev/null
+cpf_pid=""
+s31_results=""
 
 # --- 7. Wiped disks after upgrade + rollback: no second cluster ----------------------------
 helm --kube-context "$CTX" uninstall "$RELEASE" -n "$NS" --wait >/dev/null 2>&1

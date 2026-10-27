@@ -78,6 +78,9 @@ type fakeNode struct {
 	snapErr  error
 	snaps    int // Snapshot calls
 
+	stepDownErr error
+	stepDowns   int // StepDown calls
+
 	reading      bool          // a Read is running
 	waits        []uint64      // WaitApplyAfter indexes
 	waitedInRead bool          // WaitApplyAfter ran inside a Read
@@ -177,6 +180,13 @@ func (n *fakeNode) Snapshot(ctx context.Context) (raftstore.SnapshotInfo, error)
 	defer n.mu.Unlock()
 	n.snaps++
 	return n.snapInfo, n.snapErr
+}
+
+func (n *fakeNode) StepDown(ctx context.Context) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.stepDowns++
+	return n.stepDownErr
 }
 
 func (n *fakeNode) appliedCmds() []any {
