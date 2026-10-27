@@ -11,6 +11,7 @@ func TestLoadConfig(t *testing.T) {
 	base := map[string]string{
 		"POD_NAME": "storage-1-2", "SHARD": "1", "DATA_DIR": "/data", "FSM_DIR": "/fsm",
 		"RAFT_ADVERTISE": "storage-1-2.storage-1.reliefgrid.svc.cluster.local:7000", "OPERATOR_TOKEN": "s3cret",
+		"ADMISSION": "off", // TestLoadConfigAdmission covers the gate
 	}
 	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
 
@@ -73,7 +74,7 @@ func TestLoadConfig(t *testing.T) {
 func TestLoadConfigHeartbeats(t *testing.T) {
 	base := map[string]string{
 		"POD_NAME": "storage-1-2", "SHARD": "1", "DATA_DIR": "/data", "FSM_DIR": "/fsm",
-		"RAFT_ADVERTISE": "storage-1-2.storage-1.reliefgrid.svc.cluster.local:7000",
+		"RAFT_ADVERTISE": "storage-1-2.storage-1.reliefgrid.svc.cluster.local:7000", "ADMISSION": "off",
 	}
 	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
 	cfg, err := loadConfig(env(base))

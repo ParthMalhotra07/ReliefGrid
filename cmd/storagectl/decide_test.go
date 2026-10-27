@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -106,6 +107,7 @@ func TestFenced(t *testing.T) {
 			s.LeaderID, s.CaughtUp, s.State = leaderID, caughtUp, "Follower"
 			if s.ServerID == leaderID {
 				s.State, s.CommitIndex = "Leader", commit
+				s.Configuration = committedVoters(m.PeerIDs, 1)
 			}
 			sts[pod] = s
 		}
@@ -170,5 +172,83 @@ func TestManifestRoundTrip(t *testing.T) {
 	d["phase"] = "DONE"
 	if _, err := parseManifest(m.Name, "7", d); err == nil {
 		t.Fatal("unknown phase parsed")
+	}
+}
+
+// committedVoters is a committed configuration of ids, all voters.
+func committedVoters(ids []string, index uint64) *raftConfiguration {
+	c := &raftConfiguration{Index: index, Committed: true}
+	for _, id := range ids {
+		c.Servers = append(c.Servers, configServer{ID: id, Address: "x:7000", Suffrage: suffrageVoter})
+	}
+	return c
+}
+
+// #21: the fence also inspects the leader's committed Raft configuration:
+// exactly the recorded voters, committed. A leader that reports none, an
+// uncommitted one, or a different membership is not a fence.
+func TestFencedInspectsCommittedConfiguration(t *testing.T) {
+	m := testManifest(phaseBootstrapping)
+	base := func(cfg *raftConfiguration) map[string]nodeStatus {
+		sts := statuses(m, true, 0, 1, 2)
+		for pod, s := range sts {
+			s.LeaderID, s.CaughtUp, s.State = m.PeerIDs[0], true, "Follower"
+			if s.ServerID == m.PeerIDs[0] {
+				s.State, s.CommitIndex, s.Configuration = "Leader", 5, cfg
+			}
+			sts[pod] = s
+		}
+		return sts
+	}
+	uncommitted := committedVoters(m.PeerIDs, 1)
+	uncommitted.Committed = false
+	nonvoter := committedVoters(m.PeerIDs, 1)
+	nonvoter.Servers[2].Suffrage = suffrageNonvoter
+	for _, tc := range []struct {
+		name string
+		cfg  *raftConfiguration
+		want bool
+		why  string
+	}{
+		{"the recorded voters, committed", committedVoters(m.PeerIDs, 1), true, ""},
+		{"no configuration reported", nil, false, "configuration"},
+		{"not committed", uncommitted, false, "not committed"},
+		{"a missing voter", committedVoters(m.PeerIDs[:2], 1), false, "voters"},
+		{"an extra voter", committedVoters(append(append([]string{}, m.PeerIDs...), "storage-shard-1-3/x"), 1), false, "voters"},
+		{"a voter is a nonvoter", nonvoter, false, "voters"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, why := fenced(m, base(tc.cfg))
+			if got != tc.want || tc.why != "" && !strings.Contains(why, tc.why) {
+				t.Fatalf("fenced = %v (%s), want %v naming %q", got, why, tc.want, tc.why)
+			}
+		})
+	}
+}
+
+// The M7 fields round-trip through the ConfigMap: admitted, removed and an
+// in-progress replacement; a malformed one is an error.
+func TestManifestRoundTripAdmission(t *testing.T) {
+	m := testManifest(phaseBootstrapped)
+	m.Admitted = map[string]string{"storage-shard-1-2": "new-2"}
+	m.Removed = []string{"storage-shard-1-2/inc-2"}
+	m.Replace = &replaceRecord{PodName: "storage-shard-1-2", OldID: "storage-shard-1-2/inc-2", NewID: "storage-shard-1-2/new-2",
+		Phase: replaceNonvoter, ConfigIndex: 12}
+	got, err := parseManifest(m.Name, "3", m.data())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Admitted["storage-shard-1-2"] != "new-2" || len(got.Removed) != 1 || got.Replace == nil || *got.Replace != *m.Replace {
+		t.Fatalf("round trip: admitted %v removed %v replace %+v", got.Admitted, got.Removed, got.Replace)
+	}
+	d := m.data()
+	d["replace"] = `{"podName":"storage-shard-1-2","phase":"SOMETIME"}`
+	if _, err := parseManifest(m.Name, "3", d); err == nil {
+		t.Fatal("unknown replace phase parsed")
+	}
+	d = m.data()
+	d["admitted"] = `["storage-shard-1-2"]`
+	if _, err := parseManifest(m.Name, "3", d); err == nil {
+		t.Fatal("malformed admitted parsed")
 	}
 }
