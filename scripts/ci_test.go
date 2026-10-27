@@ -1,0 +1,546 @@
+package scripts
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"slices"
+	"strings"
+	"testing"
+
+	"go.yaml.in/yaml/v3"
+)
+
+// CI (S4.6): .github/workflows/ci.yml keeps the fast check job (now with a
+// contract-drift step) and adds a changes job, an images job (builds the
+// storage, coordinator and tools images) and a smoke job (PRs to main: a kind
+// cluster in the runner, the storage chart, three groups with leaders, then
+// demo 4, with the evidence uploaded). To limit cost, images and smoke run
+// only for ready (non-draft) PRs whose diff touches code, CI or test tooling (scripts/ci-changes.sh).
+// They are skipped at the job level rather than by a workflow paths filter, so
+// check always runs and a skipped job still reports.
+// scripts/ci-smoke.sh is the smoke job's body; its tests below run it with
+// fake kind, helm, kubectl and make on PATH and never touch a cluster.
+
+type workflow struct {
+	On   map[string]any `yaml:"on"`
+	Jobs map[string]job `yaml:"jobs"`
+}
+
+type job struct {
+	Name     string         `yaml:"name"`
+	If       string         `yaml:"if"`
+	Needs    any            `yaml:"needs"` // a string or a list
+	Timeout  int            `yaml:"timeout-minutes"`
+	Strategy map[string]any `yaml:"strategy"`
+	Steps    []step         `yaml:"steps"`
+}
+
+type step struct {
+	Name string            `yaml:"name"`
+	If   string            `yaml:"if"`
+	Uses string            `yaml:"uses"`
+	Run  string            `yaml:"run"`
+	With map[string]any    `yaml:"with"`
+	Env  map[string]string `yaml:"env"`
+}
+
+func (j job) needs() []string {
+	switch v := j.Needs.(type) {
+	case string:
+		return []string{v}
+	case []any:
+		var out []string
+		for _, s := range v {
+			out = append(out, s.(string))
+		}
+		return out
+	}
+	return nil
+}
+
+// text is everything a job runs or configures, for substring checks.
+func (j job) text() string {
+	b, _ := yaml.Marshal(j)
+	return string(b)
+}
+
+func loadCI(t *testing.T) workflow {
+	t.Helper()
+	b, err := os.ReadFile("../.github/workflows/ci.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var w workflow
+	if err := yaml.Unmarshal(b, &w); err != nil {
+		t.Fatalf("ci.yml: %v", err)
+	}
+	return w
+}
+
+func mustJob(t *testing.T, w workflow, name string) job {
+	t.Helper()
+	j, ok := w.Jobs[name]
+	if !ok {
+		t.Fatalf("ci.yml has no job %q (jobs: %v)", name, slices.Sorted(func(yield func(string) bool) {
+			for k := range w.Jobs {
+				if !yield(k) {
+					return
+				}
+			}
+		}))
+	}
+	return j
+}
+
+var pinnedAction = regexp.MustCompile(`^[\w.-]+/[\w./-]+@[0-9a-f]{40}$`)
+
+// Every action is pinned to a full commit SHA, as the existing jobs are.
+func TestCIActionsPinned(t *testing.T) {
+	for name, j := range loadCI(t).Jobs {
+		for _, s := range j.Steps {
+			if s.Uses != "" && !pinnedAction.MatchString(s.Uses) {
+				t.Errorf("job %s: %q is not pinned to a commit SHA", name, s.Uses)
+			}
+		}
+	}
+}
+
+// check stays the fast gate: no dependencies, no images, no cluster.
+func TestCICheckStaysFast(t *testing.T) {
+	j := mustJob(t, loadCI(t), "check")
+	if len(j.needs()) > 0 {
+		t.Errorf("check needs %v; it must start at once", j.needs())
+	}
+	if j.Timeout == 0 || j.Timeout > 15 {
+		t.Errorf("check timeout-minutes = %d, want 1..15", j.Timeout)
+	}
+	for _, slow := range []string{"docker build", "kind ", "helm ", "ci-smoke"} {
+		if strings.Contains(j.text(), slow) {
+			t.Errorf("check runs %q; that belongs in images or smoke", slow)
+		}
+	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "make gen-check") }) {
+		t.Error("check has no contract-drift step (make gen-check)")
+	}
+}
+
+// gen-check regenerates from contracts/ and fails on any difference.
+func TestGenCheckTarget(t *testing.T) {
+	out, err := exec.CommandContext(t.Context(), "make", "-C", "..", "-n", "gen-check").CombinedOutput()
+	if err != nil {
+		t.Fatalf("make -n gen-check: %v\n%s", err, out)
+	}
+	gen := strings.Index(string(out), "oapi-codegen")
+	diff := strings.Index(string(out), "git diff --exit-code")
+	if gen < 0 || diff < gen {
+		t.Fatalf("make -n gen-check does not regenerate and then git diff --exit-code:\n%s", out)
+	}
+}
+
+// gated: the conditions images and smoke share. A PR, not a push to main;
+// not a draft; and a diff that touches code.
+var gated = []string{
+	"github.event_name == 'pull_request'",
+	"!github.event.pull_request.draft",
+	"needs.changes.outputs.code == 'true'",
+}
+
+func checkGated(t *testing.T, name string, j job) {
+	t.Helper()
+	for _, cond := range gated {
+		if !strings.Contains(j.If, cond) {
+			t.Errorf("%s if: %q does not contain %q", name, j.If, cond)
+		}
+	}
+	if !slices.Contains(j.needs(), "changes") {
+		t.Errorf("%s needs %v; it must need changes", name, j.needs())
+	}
+}
+
+// A draft that becomes ready must trigger the gated jobs.
+func TestCIPullRequestTypes(t *testing.T) {
+	pr, ok := loadCI(t).On["pull_request"].(map[string]any)
+	if !ok {
+		t.Fatal("ci.yml on.pull_request has no types list")
+	}
+	var types []string
+	for _, v := range pr["types"].([]any) {
+		types = append(types, v.(string))
+	}
+	for _, want := range []string{"opened", "synchronize", "reopened", "ready_for_review"} {
+		if !slices.Contains(types, want) {
+			t.Errorf("on.pull_request.types %v lacks %s", types, want)
+		}
+	}
+	if _, ok := pr["paths"]; ok {
+		t.Error("on.pull_request has a paths filter; it would skip check too (filter per job via changes)")
+	}
+}
+
+// changes decides from the PR's diff whether images and smoke run.
+func TestCIChangesJob(t *testing.T) {
+	j := mustJob(t, loadCI(t), "changes")
+	if !strings.Contains(j.If, "github.event_name == 'pull_request'") {
+		t.Errorf("changes if: %q; it only makes sense on a PR", j.If)
+	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "scripts/ci-changes.sh") }) {
+		t.Error("changes does not run scripts/ci-changes.sh")
+	}
+}
+
+// images builds all three images and hands them to smoke as artifacts, so
+// smoke tests what was built.
+func TestCIImagesJob(t *testing.T) {
+	j := mustJob(t, loadCI(t), "images")
+	checkGated(t, "images", j)
+	// Check names are what branch protection lists: "images (storagenode)", not
+	// every matrix value.
+	if j.Name != "images (${{ matrix.name }})" {
+		t.Errorf("images name: %q, want %q", j.Name, "images (${{ matrix.name }})")
+	}
+	if j.Timeout == 0 || j.Timeout > 20 {
+		t.Errorf("images timeout-minutes = %d, want 1..20", j.Timeout)
+	}
+	text := j.text()
+	for _, df := range []string{"cmd/storagenode/Dockerfile", "cmd/coordinator/Dockerfile", "cmd/invcheck/Dockerfile"} {
+		if !strings.Contains(text, df) {
+			t.Errorf("images does not build %s", df)
+		}
+		if _, err := os.Stat("../" + df); err != nil {
+			t.Errorf("%s: %v", df, err)
+		}
+	}
+	for _, tag := range []string{"reliefgrid/storagenode:dev", "reliefgrid/coordinator:dev", "reliefgrid/tools:dev"} {
+		if !strings.Contains(text, tag) {
+			t.Errorf("images does not tag %s (the chart and demos use these names)", tag)
+		}
+	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.HasPrefix(s.Uses, "actions/upload-artifact@") }) {
+		t.Error("images does not upload the image archives for smoke")
+	}
+}
+
+// smoke runs on PRs to main only, after images, bounded in time, through
+// make ci-smoke, and uploads its evidence whatever the outcome.
+func TestCISmokeJob(t *testing.T) {
+	j := mustJob(t, loadCI(t), "smoke")
+	if !slices.Contains(j.needs(), "images") {
+		t.Errorf("smoke needs %v; it must need images", j.needs())
+	}
+	checkGated(t, "smoke", j)
+	if !strings.Contains(j.If, "github.base_ref == 'main'") {
+		t.Errorf("smoke if: %q does not limit it to PRs to main", j.If)
+	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "scripts/ci-tools.sh") }) {
+		t.Error("smoke does not install the pinned tools with scripts/ci-tools.sh")
+	}
+	if j.Timeout == 0 || j.Timeout > 45 {
+		t.Errorf("smoke timeout-minutes = %d, want 1..45", j.Timeout)
+	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "make ci-smoke") }) {
+		t.Error("smoke does not run make ci-smoke")
+	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.HasPrefix(s.Uses, "actions/download-artifact@") }) {
+		t.Error("smoke does not download the images job's archives")
+	}
+	up := slices.IndexFunc(j.Steps, func(s step) bool { return strings.HasPrefix(s.Uses, "actions/upload-artifact@") })
+	if up < 0 {
+		t.Fatal("smoke does not upload its evidence")
+	}
+	if s := j.Steps[up]; !strings.Contains(s.If, "always()") {
+		t.Errorf("smoke's evidence upload has if: %q; it must run on failure too (always())", s.If)
+	}
+}
+
+// --- scripts/ci-smoke.sh ------------------------------------------------------------------
+
+// fakeTools puts make, kind, helm and kubectl on PATH. Each appends its
+// argv to calls; FAKE_FAIL=<tool> makes that tool exit 1, FAKE_DEMO_FAIL
+// makes only make demo-4 fail (with FAIL evidence), and FAKE_NO_LEADER makes
+// every /storagectl status a follower without a leader.
+func fakeTools(t *testing.T) (bin, calls string) {
+	t.Helper()
+	bin = t.TempDir()
+	calls = filepath.Join(t.TempDir(), "calls")
+	fake := func(name, body string) {
+		src := "#!/usr/bin/env bash\necho \"" + name + " $*\" >>\"$FAKE_CALLS\"\n" +
+			"[ \"${FAKE_FAIL:-}\" = " + name + " ] && exit 1\n" + body + "\nexit 0\n"
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(src), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fake("make", `case "$*" in *demo-4*)
+	mkdir -p "$EVIDENCE_ROOT/$DEMO_RUN_ID"
+	if [ -n "${FAKE_DEMO_FAIL:-}" ]; then echo "result:     FAIL (1 of 9 checks failed)" >"$EVIDENCE_ROOT/$DEMO_RUN_ID/demo-4.txt"; exit 1; fi
+	echo "result:     PASS (9/9 checks)" >"$EVIDENCE_ROOT/$DEMO_RUN_ID/demo-4.txt";;
+esac`)
+	fake("kind", "")
+	fake("helm", "")
+	// kubectl ... exec storage-shard-<s>-<i> ... /storagectl status: replica 0 leads.
+	fake("kubectl", `if [[ "$*" == *"/storagectl status"* ]]; then
+	pod="$(grep -o 'storage-shard-[0-9]-[0-9]' <<<"$*" | head -1)"; s="${pod:14:1}"
+	if [ -n "${FAKE_NO_LEADER:-}" ]; then echo '{"state":"Follower","leaderId":"","term":1}'; exit 0; fi
+	state=Follower; [ "${pod: -1}" = 0 ] && state=Leader
+	echo "{\"state\":\"$state\",\"leaderId\":\"storage-shard-$s-0/inc\",\"term\":2}"
+else echo "kubectl output for: $*"; fi`)
+	return bin, calls
+}
+
+type smokeRun struct {
+	out, calls, evidence string
+	code                 int
+}
+
+func runSmoke(t *testing.T, env ...string) smokeRun {
+	t.Helper()
+	script, err := filepath.Abs("ci-smoke.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bin, calls := fakeTools(t)
+	images := t.TempDir()
+	for _, n := range []string{"storagenode", "coordinator", "tools"} {
+		if err := os.WriteFile(filepath.Join(images, n+".tar"), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	evidence := t.TempDir()
+	out, code := runScript(t, "", append([]string{
+		"PATH=" + bin + ":" + os.Getenv("PATH"), "FAKE_CALLS=" + calls,
+		"IMAGES_DIR=" + images, "EVIDENCE_DIR=" + evidence, "SMOKE_RUN_ID=ci-1-1", "LEADER_TIMEOUT=2",
+	}, env...), script)
+	b, _ := os.ReadFile(calls)
+	return smokeRun{out: out, calls: string(b), evidence: evidence, code: code}
+}
+
+// inOrder fails unless calls has a line containing each want, in order.
+func inOrder(t *testing.T, calls string, wants ...string) {
+	t.Helper()
+	lines := strings.Split(calls, "\n")
+	at := -1
+	for _, w := range wants {
+		i := slices.IndexFunc(lines[at+1:], func(l string) bool { return strings.Contains(l, w) })
+		if i < 0 {
+			t.Fatalf("no call containing %q after line %d; calls:\n%s", w, at, calls)
+		}
+		at += 1 + i
+	}
+}
+
+func TestCISmokeHappyPath(t *testing.T) {
+	r := runSmoke(t)
+	if r.code != 0 {
+		t.Fatalf("exit %d, want 0\n%s", r.code, r.out)
+	}
+	inOrder(t, r.calls,
+		"make -s cluster-up",
+		"kind load image-archive", // the prebuilt images, never a rebuild
+		"helm --kube-context kind-reliefgrid install storage deploy/helm/storage -n reliefgrid --create-namespace --wait --wait-for-jobs",
+		"storage-shard-0-0 -c storagenode -- /storagectl status",
+		"make -s demo-4",
+	)
+	for _, n := range []string{"storagenode", "coordinator", "tools"} {
+		if !regexp.MustCompile(`(?m)^kind load image-archive --name reliefgrid \S+/` + n + `\.tar$`).MatchString(r.calls) {
+			t.Errorf("%s.tar was not kind-loaded into reliefgrid; calls:\n%s", n, r.calls)
+		}
+	}
+	if strings.Contains(r.calls, "-image") || strings.Contains(r.calls, "docker build") {
+		t.Errorf("ci-smoke rebuilt images instead of loading the images job's; calls:\n%s", r.calls)
+	}
+	if got, _ := os.ReadFile(filepath.Join(r.evidence, "ci-1-1", "demo-4.txt")); !strings.Contains(string(got), "PASS") {
+		t.Errorf("demo-4 evidence not under EVIDENCE_DIR/SMOKE_RUN_ID: %q", got)
+	}
+	for _, f := range []string{"leaders.txt", "diagnostics/pods.txt"} {
+		if _, err := os.Stat(filepath.Join(r.evidence, "ci-1-1", f)); err != nil {
+			t.Errorf("evidence %s: %v", f, err)
+		}
+	}
+}
+
+// A failed install stops before the demo, still writes diagnostics, and
+// fails the job.
+func TestCISmokeInstallFails(t *testing.T) {
+	r := runSmoke(t, "FAKE_FAIL=helm")
+	if r.code == 0 {
+		t.Fatalf("exit 0 after a failed helm install\n%s", r.out)
+	}
+	if strings.Contains(r.calls, "demo-4") {
+		t.Errorf("demo-4 ran after a failed install; calls:\n%s", r.calls)
+	}
+	if _, err := os.Stat(filepath.Join(r.evidence, "ci-1-1", "diagnostics", "pods.txt")); err != nil {
+		t.Errorf("no diagnostics after a failed install: %v", err)
+	}
+}
+
+// Groups that never elect a leader fail within LEADER_TIMEOUT, before the
+// demo, naming the shard.
+func TestCISmokeNoLeaders(t *testing.T) {
+	r := runSmoke(t, "FAKE_NO_LEADER=1")
+	if r.code == 0 {
+		t.Fatalf("exit 0 without leaders\n%s", r.out)
+	}
+	if strings.Contains(r.calls, "demo-4") {
+		t.Errorf("demo-4 ran without leaders; calls:\n%s", r.calls)
+	}
+	if !strings.Contains(r.out, "shard 0") {
+		t.Errorf("output does not name the leaderless shard:\n%s", r.out)
+	}
+}
+
+// A failing demo fails the job, and its evidence is still there to upload.
+func TestCISmokeDemoFails(t *testing.T) {
+	r := runSmoke(t, "FAKE_DEMO_FAIL=1")
+	if r.code == 0 {
+		t.Fatalf("exit 0 after demo-4 failed\n%s", r.out)
+	}
+	if got, _ := os.ReadFile(filepath.Join(r.evidence, "ci-1-1", "demo-4.txt")); !strings.Contains(string(got), "FAIL") {
+		t.Errorf("demo-4's FAIL evidence is missing: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(r.evidence, "ci-1-1", "diagnostics", "pods.txt")); err != nil {
+		t.Errorf("no diagnostics after a failure: %v", err)
+	}
+}
+
+// make ci-smoke is the documented entry point.
+func TestCISmokeMakeTarget(t *testing.T) {
+	out, err := exec.CommandContext(t.Context(), "make", "-C", "..", "-n", "ci-smoke").CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "scripts/ci-smoke.sh") {
+		t.Fatalf("make -n ci-smoke: %v\n%s", err, out)
+	}
+}
+
+// --- scripts/ci-changes.sh ----------------------------------------------------------------
+
+// ci-changes.sh <base> <head> prints code=true when the diff touches what
+// images and smoke test, code=false otherwise.
+func TestCIChanges(t *testing.T) {
+	script, err := filepath.Abs("ci-changes.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		files []string
+		want  string
+	}{
+		{[]string{"docs/notes.md"}, "code=false"},
+		{[]string{"README.md", "ui/app.js"}, "code=false"},
+		{[]string{".github/workflows/ci.yml"}, "code=true"},
+		{[]string{"chaos/scripts/lib.sh"}, "code=true"},
+		{[]string{"loadtest/ledger/ledger.go"}, "code=true"},
+		{[]string{"chaosnotes.md", "loadtesting.md"}, "code=false"}, // the directories only
+		{[]string{"cmd/x/main.go"}, "code=true"},
+		{[]string{"internal/ring/ring.go"}, "code=true"},
+		{[]string{"deploy/helm/storage/values.yaml"}, "code=true"},
+		{[]string{"contracts/internal.yaml"}, "code=true"},
+		{[]string{"scripts/demos/demo-4.sh"}, "code=true"},
+		{[]string{"Makefile"}, "code=true"},
+		{[]string{"tools.mk"}, "code=true"},
+		{[]string{"go.mod"}, "code=true"},
+		{[]string{"go.sum"}, "code=true"},
+		{[]string{"docs/a.md", "internal/x.go"}, "code=true"},
+		{[]string{"docs/Makefile"}, "code=false"}, // only the root Makefile
+		{[]string{"internalnotes.md"}, "code=false"},
+	} {
+		t.Run(strings.Join(tc.files, ","), func(t *testing.T) {
+			dir := t.TempDir()
+			git := func(args ...string) string {
+				t.Helper()
+				cmd := exec.CommandContext(t.Context(), "git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com"}, args...)...)
+				out, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("git %v: %v\n%s", args, err, out)
+				}
+				return strings.TrimSpace(string(out))
+			}
+			git("init", "-q")
+			git("commit", "-q", "--allow-empty", "-m", "base")
+			base := git("rev-parse", "HEAD")
+			for _, f := range tc.files {
+				p := filepath.Join(dir, f)
+				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			git("add", "-A")
+			git("commit", "-q", "-m", "change")
+			cmd := exec.CommandContext(t.Context(), "bash", script, base, git("rev-parse", "HEAD"))
+			cmd.Dir = dir
+			out, err := cmd.Output()
+			if err != nil {
+				t.Fatalf("ci-changes.sh: %v", err)
+			}
+			if got := strings.TrimSpace(string(out)); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A base it cannot diff against is not "no changes": it fails.
+func TestCIChangesUnknownBase(t *testing.T) {
+	script, err := filepath.Abs("ci-changes.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "bash", script, "0000000000000000000000000000000000000000", "HEAD")
+	if out, err := cmd.CombinedOutput(); err == nil {
+		t.Fatalf("exit 0 for an unknown base: %s", out)
+	}
+}
+
+// --- scripts/ci-tools.sh ------------------------------------------------------------------
+
+// The dry run prints, per tool, the URL it would download and the sha256 it
+// would require; both come from the tools.mk pins, never from the server.
+func TestCIToolsDryRun(t *testing.T) {
+	pin := func(name string) string {
+		t.Helper()
+		out, err := exec.CommandContext(t.Context(), "make", "-C", "..", "-s", "print-"+name).Output()
+		if err != nil || strings.TrimSpace(string(out)) == "" {
+			t.Fatalf("make print-%s: %v %q", name, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	kind, kubectl, helm := pin("KIND_VERSION"), pin("KUBECTL_VERSION"), pin("HELM_VERSION")
+	want := map[string][2]string{
+		"kind":    {"https://github.com/kubernetes-sigs/kind/releases/download/" + kind + "/kind-linux-amd64", pin("KIND_SHA256")},
+		"kubectl": {"https://dl.k8s.io/release/" + kubectl + "/bin/linux/amd64/kubectl", pin("KUBECTL_SHA256")},
+		"helm":    {"https://get.helm.sh/helm-" + helm + "-linux-amd64.tar.gz", pin("HELM_SHA256")},
+	}
+	for name, w := range want {
+		if !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(w[1]) {
+			t.Errorf("%s sha256 pin %q is not 64 hex digits", name, w[1])
+		}
+	}
+	script, err := filepath.Abs("ci-tools.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "bash", script, t.TempDir())
+	cmd.Env = append(os.Environ(), "CI_TOOLS_DRY_RUN=1")
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("ci-tools.sh dry run: %v\n%s", err, out)
+	}
+	got := map[string][2]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		f := strings.Fields(line) // <tool> <url> <sha256>
+		if len(f) != 3 {
+			t.Fatalf("dry-run line %q: want <tool> <url> <sha256>", line)
+		}
+		got[f[0]] = [2]string{f[1], f[2]}
+	}
+	for name, w := range want {
+		if got[name] != w {
+			t.Errorf("%s: dry run %v, want %v", name, got[name], w)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("dry run names %d tools, want %d:\n%s", len(got), len(want), out)
+	}
+}

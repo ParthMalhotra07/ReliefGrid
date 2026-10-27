@@ -30,7 +30,7 @@ STORAGE_RELEASE ?= storage
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-public gen-internal dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-reset placement-check
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
 
 help: ## List targets
@@ -60,6 +60,10 @@ test: ## go test -race ./... (and cmd/invcheck with the chaos tag)
 	go test -race -tags chaos ./cmd/invcheck/...
 
 gen: gen-public gen-internal ## Regenerate code from contracts/ (must leave no diff)
+
+# Only the generated paths are compared, so unrelated uncommitted work does not fail it.
+gen-check: gen ## Contract drift: regenerate from contracts/ and fail on any difference (CI's check job)
+	git diff --exit-code -- internal/api/gen internal/internalapi
 
 gen-public: ## contracts/public.yaml -> internal/api/gen
 	mkdir -p internal/api/gen
@@ -129,6 +133,9 @@ demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9: ## Run one §28 
 
 demo-reset: ## Clean deployment for the demos: recreate the kind cluster, images, storage (asks first)
 	bash scripts/demos/reset.sh
+
+ci-smoke: ## CI's smoke test on a fresh runner: kind, the storage chart from prebuilt image archives, three leaders, demo 4
+	bash scripts/ci-smoke.sh
 
 gate: ## All nine demos from a clean deployment, twice, with a summary table (asks first)
 	bash scripts/demos/gate.sh
