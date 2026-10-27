@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -23,7 +28,7 @@ func (m *manifestData) Get(context.Context) (map[string]string, error) { return 
 
 func freeAddr(t *testing.T) string {
 	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,7 +38,7 @@ func freeAddr(t *testing.T) string {
 }
 
 func open(addr string) bool {
-	c, err := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+	c, err := (&net.Dialer{Timeout: 200 * time.Millisecond}).DialContext(context.Background(), "tcp", addr)
 	if err != nil {
 		return false
 	}
@@ -78,7 +83,9 @@ func TestRunKeepsAnUnadmittedDiskOnManagementOnly(t *testing.T) {
 	go func() { done <- run(ctx, cfg) }()
 	t.Cleanup(func() {
 		cancel()
-		<-done
+		if err := <-done; err != nil {
+			t.Errorf("run: %v", err)
+		}
 	})
 
 	var st map[string]any
@@ -97,7 +104,7 @@ func TestRunKeepsAnUnadmittedDiskOnManagementOnly(t *testing.T) {
 	}
 
 	inc, _ := st["incarnation"].(string)
-	d := *src.v.Load()
+	d := maps.Clone(*src.v.Load()) // the source has handed out the old map
 	d["admitted"] = `{"storage-shard-1-2":"` + inc + `"}`
 	src.set(d)
 	for !open(raftAddr) || !open(dataAddr) {
@@ -139,4 +146,61 @@ func TestLoadConfigAdmission(t *testing.T) {
 	if _, err := loadConfig(env(map[string]string{"ADMISSION": "maybe"})); err == nil {
 		t.Fatal("ADMISSION=maybe accepted")
 	}
+}
+
+// ADMISSION=off (tests and local runs only; the chart cannot set it) is
+// announced loudly at startup, and the disk opens Raft at once.
+func TestRunWarnsLoudlyWhenAdmissionIsOff(t *testing.T) {
+	var logs syncBuffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	root := t.TempDir()
+	raftAddr, dataAddr, mgmtAddr := freeAddr(t), freeAddr(t), freeAddr(t)
+	_, raftPort, _ := net.SplitHostPort(raftAddr)
+	cfg := config{
+		Raft: raftstore.Config{PodName: "storage-shard-1-2", GroupID: "shard-1", Shard: 1,
+			DataDir: filepath.Join(root, "pvc"), FSMDir: filepath.Join(root, "fsm"),
+			BindAddr: raftAddr, AdvertiseAddr: "localhost:" + raftPort, Profile: raftstore.ProfileDemo},
+		HTTPAddr: dataAddr, MgmtAddr: mgmtAddr, RingPath: filepath.Join("..", "..", "contracts", "ring.yaml"),
+		RequestTimeout: time.Second, AdmissionOff: true,
+	}
+	_, cfg.HTTPPort, _ = net.SplitHostPort(dataAddr)
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- run(ctx, cfg) }()
+	t.Cleanup(func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Errorf("run: %v", err)
+		}
+	})
+	deadline := time.Now().Add(10 * time.Second)
+	for !open(raftAddr) {
+		if time.Now().After(deadline) {
+			t.Fatal("Raft never opened with ADMISSION=off")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if out := logs.String(); !strings.Contains(out, "level=WARN") || !strings.Contains(out, "ADMISSION=off") || !strings.Contains(out, "DISABLED") {
+		t.Fatalf("no loud warning:\n%s", out)
+	}
+}
+
+type syncBuffer struct {
+	mu sync.Mutex
+	b  bytes.Buffer
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
 }
