@@ -37,9 +37,9 @@
 #                           If the cut did not take (connections opened before it survive),
 #                           the harness deletes the pod IP's conntrack entries on every kind
 #                           node (docker exec <node> conntrack -D) and reports which.
-#       3. a bounded settle phase (--settle-max) after the heal: the load Job finishes, the
-#          shard is one group (one leader every member names, serverIds = manifest peerIds),
-#          every member caughtUp at one appliedIndex;
+#       3. a bounded settle phase (--settle-max) once the fault has healed and the load Job has
+#          finished (writers paused, v3.1 §26): the shard becomes one group (one leader every
+#          member names, serverIds = manifest peerIds), every member caughtUp at one appliedIndex;
 #       4. /invcheck verify --ledger ... --json and then /invcheck check --json, each as a Job
 #          against the same Service URL; with --inject lost-write, before verify the harness
 #          runs /invcheck inject --confirm as a Job: a real write through the coordinator that
@@ -61,7 +61,8 @@
 #     target {shard, pod, serverId, role: leader|follower|all, term}
 #     fault {kind: pod-delete|shard-restart|raft-isolation, mechanism, startedAt, healedAt} (unix ms)
 #     recovery {leader, term, seconds}: fault start -> one leader that every reachable member names
-#     settle {maxSeconds, seconds, ok, detail}
+#     settle {maxSeconds, startedAt, seconds, ok, detail}: startedAt is the later of the heal
+#       and the load's end
 #     timings {loadStartedAt, faultStartedAt, faultHealedAt, settledAt, loadFinishedAt} (unix ms)
 #     load {job, coordinator, exitCode, acked, unknown, rejected, ackedDuringFault}
 #       (ackedDuringFault: acknowledged with at in [faultStartedAt, faultHealedAt])
@@ -308,7 +309,8 @@ common_checks() {
 		"(.experiment == \"$e\") and (.seed | type == \"number\") and (.runId | type == \"string\") and (.target.pod | type == \"string\") and (.target.serverId | type == \"string\")"
 	jcheck "$e: fault started under load and healed before the load finished" "$r" \
 		'.timings.loadStartedAt < .timings.faultStartedAt and .timings.faultStartedAt < .timings.faultHealedAt and .timings.faultHealedAt < .timings.loadFinishedAt and .fault.startedAt == .timings.faultStartedAt'
-	jcheck "$e: settled within its bound" "$r" '.settle.ok == true and .settle.seconds <= .settle.maxSeconds and .settle.maxSeconds > 0'
+	jcheck "$e: settled within its bound, from the heal and the load's end" "$r" \
+		'.settle.ok == true and .settle.seconds <= .settle.maxSeconds and .settle.maxSeconds > 0 and .settle.startedAt >= .timings.faultHealedAt and .settle.startedAt >= .timings.loadFinishedAt'
 	jcheck "$e: load ran as a Job against the coordinator Service and finished cleanly" "$r" \
 		"(.load.job | type == \"string\") and .load.coordinator == \"$COORD_URL\" and .load.exitCode == 0 and .load.acked > 0"
 	jcheck "$e: writes were acknowledged during the fault" "$r" '.load.ackedDuringFault > 0'

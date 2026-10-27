@@ -352,7 +352,7 @@ write_report() { # write_report <pass true|false>
 			--argjson s "$(awk -v a="${fault_started_at:-0}" -v b="${recovery_ms:-0}" 'BEGIN { printf "%.1f", (b > 0 ? (b - a) / 1000 : -1) }')" \
 			'{leader: $l, term: $t, seconds: $s}')" \
 		--argjson settle "$(jq -cn --argjson max "$settle_max" --argjson s "${settle_seconds:--1}" --argjson ok "${settle_ok:-false}" --arg d "${settle_detail:-}" \
-			'{maxSeconds: $max, seconds: $s, ok: $ok, detail: $d}')" \
+			--argjson at "${settle_started_at:-0}" '{maxSeconds: $max, startedAt: $at, seconds: $s, ok: $ok, detail: $d}')" \
 		--argjson timings "$(jq -cn --argjson a "${load_started_at:-0}" --argjson b "${fault_started_at:-0}" --argjson c "${fault_healed_at:-0}" \
 			--argjson d "${settled_at:-0}" --argjson e "${load_finished_at:-0}" \
 			'{loadStartedAt: $a, faultStartedAt: $b, faultHealedAt: $c, settledAt: $d, loadFinishedAt: $e}')" \
@@ -401,7 +401,7 @@ chaos_main() {
 	ledger_path="/ledger/$run_id.json"
 	fault_kind="" fault_mechanism="" target_pod="" target_id="" target_term=0
 	verify_json="{}" check_json="{}" isolation="" injected="" recovery_leader="" recovery_term="" recovery_ms=""
-	load_started_at="" fault_started_at="" fault_healed_at="" settled_at="" load_finished_at="" load_exit="" verify_exit="" check_exit=""
+	load_started_at="" settle_started_at="" fault_started_at="" fault_healed_at="" settled_at="" load_finished_at="" load_exit="" verify_exit="" check_exit=""
 	case "$EXPERIMENT" in
 	kill-leader | kill-follower) fault_kind=pod-delete fault_mechanism="kubectl delete pod (graceful)" ;;
 	restart-shard) fault_kind=shard-restart fault_mechanism="kubectl delete pod of all three replicas (graceful)" ;;
@@ -461,22 +461,26 @@ chaos_main() {
 	[ "$EXPERIMENT" = kill-leader ] && [ -n "${recovery_ms:-}" ] && [ $((recovery_ms - fault_started_at)) -gt $((ELECTION_MAX_SECONDS * 1000)) ] &&
 		failed "recovery: the new leader took $(((recovery_ms - fault_started_at) / 1000))s, over ${ELECTION_MAX_SECONDS}s"
 
-	# Settle: the load finishes and the shard is one caught-up group, within the bound.
-	local deadline=$((fault_healed_at + settle_max * 1000))
-	settle_ok=false settle_detail="the load Job is still running"
+	# The writers stop: the load runs its planned duration (its own --timeout bounds it).
+	local deadline=$((load_started_at + (load_seconds + 120) * 1000))
+	while [ "$(now_ms)" -lt "$deadline" ] && ! job_done "$load_job"; do sleep 0.5; done
+	job_done "$load_job" || no_verdict "the load Job did not finish within $((load_seconds + 120))s"
+
+	# Settle (v3.1 §26: writers paused, then converge): from the later of the heal and the
+	# load's end, the shard must become one caught-up group within the bound.
+	settle_started_at="$(now_ms)"
+	deadline=$((settle_started_at + settle_max * 1000))
+	settle_ok=false settle_detail="not checked"
 	while [ "$(now_ms)" -lt "$deadline" ]; do
-		if job_done "$load_job"; then
-			if settle_detail="$(one_group)"; then
-				settle_ok=true settle_detail="load finished; shard $shard is one caught-up group"
-				break
-			fi
+		if settle_detail="$(one_group)"; then
+			settle_ok=true settle_detail="shard $shard is one caught-up group"
+			break
 		fi
 		sleep 0.5
 	done
 	settled_at="$(now_ms)"
-	settle_seconds="$(awk -v a="$fault_healed_at" -v b="$settled_at" 'BEGIN { printf "%.1f", (b - a) / 1000 }')"
+	settle_seconds="$(awk -v a="$settle_started_at" -v b="$settled_at" 'BEGIN { printf "%.1f", (b - a) / 1000 }')"
 	$settle_ok || failed "settle: not settled within ${settle_max}s: $settle_detail"
-	job_done "$load_job" || no_verdict "the load Job did not finish"
 	load_exit="$(job_exit "$load_job")"
 	load_finished_at="$(iso_ms "$(kn get pods -l "job-name=$load_job" -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.finishedAt}')")"
 	[ "${load_exit:-1}" = 0 ] || failed "load: invcheck load exited ${load_exit:-?}"
