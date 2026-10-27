@@ -16,7 +16,7 @@ import (
 // address must be known before it listens.
 func freePort(t *testing.T) string {
 	t.Helper()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func freePort(t *testing.T) string {
 }
 
 func listening(addr string) bool {
-	c, err := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+	c, err := (&net.Dialer{Timeout: 200 * time.Millisecond}).DialContext(context.Background(), "tcp", addr)
 	if err != nil {
 		return false
 	}
@@ -178,8 +178,8 @@ func TestConfigurationReportedCommitted(t *testing.T) {
 }
 
 // Membership changes go through the leader only, and only from the
-// configuration the caller inspected (prevIndex): a stale index is refused
-// with ErrConfigurationChanged and changes nothing.
+// configuration the caller inspected (prevIndex): a stale or zero index is
+// refused with ErrConfigurationChanged and changes nothing.
 func TestMembershipChangeGuards(t *testing.T) {
 	c := newBootstrappedCluster(t, testProfile)
 	li, l := c.waitLeader()
@@ -193,8 +193,11 @@ func TestMembershipChangeGuards(t *testing.T) {
 	if _, err := f.RemoveServer(ctx, victim, cfg.Index); !errors.Is(err, ErrNotLeader) {
 		t.Fatalf("RemoveServer on a follower: %v, want ErrNotLeader", err)
 	}
-	if _, err := l.RemoveServer(ctx, victim, cfg.Index-1); !errors.Is(err, ErrConfigurationChanged) {
-		t.Fatalf("RemoveServer with a stale prevIndex: %v, want ErrConfigurationChanged", err)
+	// raft reads prevIndex 0 as "no check"; raftstore never does.
+	for _, prev := range []uint64{0, cfg.Index + 1} {
+		if _, err := l.RemoveServer(ctx, victim, prev); !errors.Is(err, ErrConfigurationChanged) {
+			t.Fatalf("RemoveServer with prevIndex %d (latest %d): %v, want ErrConfigurationChanged", prev, cfg.Index, err)
+		}
 	}
 	after, err := l.Configuration(ctx)
 	if err != nil || after.Index != cfg.Index || len(voters(after)) != 3 {
