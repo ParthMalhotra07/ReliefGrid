@@ -12,6 +12,9 @@
 #   storage pods (deploy/helm/storage)
 #     env MANIFEST_NAME=storage-shard-N-manifest and POD_NAMESPACE; Role storage-admission:
 #       get on the three manifest ConfigMaps by name, nothing else (the pods' service account)
+#     the chart can set neither ADMISSION nor STORAGECTL_CRASH_AT: no template or value
+#       mentions them, so every rendered pod runs the gate; ADMISSION=off (tests, local runs)
+#       logs a loud WARN at startup
 #     a disk is admitted (M7) iff: the manifest is PENDING (fresh install), or its ServerID is
 #       in peerIds, or admitted[<podName>] == <incarnation>; a disk with Raft state is an
 #       ordinary restart unless its ServerID is in removed. An empty disk with an unreadable
@@ -155,7 +158,17 @@ replace_job() { # replace_job <crash step or ""> -> exit code of the Job
 	return "${code:-97}"
 }
 
-echo "== 0. install and #21"
+echo "== 0. guards, install and #21"
+render="$(helm template "$RELEASE" "$CHART" -n "$NS" 2>/dev/null)"
+for v in ADMISSION STORAGECTL_CRASH_AT; do
+	if grep -qE "name: $v\b" <<<"$render" || grep -rq "$v" "$CHART/templates" "$CHART/values.yaml"; then
+		fail "guard: the chart cannot set $v" "$(grep -rn "$v" "$CHART" | head -5)"
+	else
+		pass "guard: the chart cannot set $v (absent from every template, value and rendered manifest)"
+	fi
+done
+grep -q "name: MANIFEST_NAME" <<<"$render" && pass "guard: every storage pod is rendered with MANIFEST_NAME (the gate on)" ||
+	fail "guard: every storage pod is rendered with MANIFEST_NAME"
 make -s storage-image coordinator-image tools-image >"$tmp/build.log" 2>&1 || abort "images build" "$(tail -20 "$tmp/build.log")"
 helm --kube-context "$CTX" upgrade --install "$RELEASE" "$CHART" -n "$NS" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/helm.log" 2>&1 ||
 	abort "helm upgrade --install" "$(tail -20 "$tmp/helm.log")"
@@ -244,6 +257,8 @@ for step in "${STEPS[@]}"; do
 	else
 		fail "crash at $step: exit 1, at most 3 voters" "exit $rc, phase $ph, voters $n, config $cfg"
 	fi
+	grep -q "STORAGECTL_CRASH_AT is set" "$tmp/replace-$step.log" && pass "crash at $step: the Job logged the loud CRASH_AT warning" ||
+		fail "crash at $step: the Job logged the loud CRASH_AT warning"
 	adm="$(mfield '.admitted | fromjson? | .["'"$POD"'"]')"
 	if [ -n "$adm" ] && jq -e --arg o "$old_id" 'index($o)' <<<"$cfg" >/dev/null; then
 		fail "crash at $step: admitted while $old_id is still in the configuration" "$cfg"
