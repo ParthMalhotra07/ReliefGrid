@@ -1,0 +1,85 @@
+{
+  "experiment": "kill-leader",
+  "seed": 24,
+  "runId": "kill-leader-s24-1793085912",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "kill-leader",
+    "seed": 24,
+    "shard": 1,
+    "role": "leader",
+    "pick": 0,
+    "faultDelayMs": 14838,
+    "loadSeconds": 90,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-kill-leader-s24",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 1,
+    "pod": "storage-shard-1-2",
+    "serverId": "storage-shard-1-2/6436cd84-f319-4658-8e03-3467838da4c1",
+    "role": "leader",
+    "term": 5
+  },
+  "fault": {
+    "kind": "pod-delete",
+    "mechanism": "kubectl delete pod (graceful)",
+    "startedAt": 1793085929006,
+    "healedAt": 1793085933312
+  },
+  "recovery": {
+    "leader": "storage-shard-1-0",
+    "term": 6,
+    "seconds": 3.1
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793086008198,
+    "seconds": 0.6,
+    "ok": true,
+    "detail": "shard 1 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793085914000,
+    "faultStartedAt": 1793085929006,
+    "faultHealedAt": 1793085933312,
+    "settledAt": 1793086008781,
+    "loadFinishedAt": 1793086004000
+  },
+  "load": {
+    "job": "chaos-load-kill-leader-s24-1793085912",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 6365,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 116
+  },
+  "errorsObserved": [],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/kill-leader-s24-1793085912.json",
+    "job": "chaos-verify-kill-leader-s24-1793085912",
+    "exitCode": 0,
+    "checked": 6365,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-kill-leader-s24-1793085912",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  }
+}

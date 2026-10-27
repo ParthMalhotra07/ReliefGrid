@@ -1,0 +1,85 @@
+{
+  "experiment": "restart-shard",
+  "seed": 26,
+  "runId": "restart-shard-s26-1793086222",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "restart-shard",
+    "seed": 26,
+    "shard": 0,
+    "role": "all",
+    "pick": 0,
+    "faultDelayMs": 8524,
+    "loadSeconds": 159,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-restart-shard-s26",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 0,
+    "pod": "storage-shard-0-1",
+    "serverId": "storage-shard-0-1/c306da0d-3e43-4ade-9748-1771420ced07",
+    "role": "all",
+    "term": 4
+  },
+  "fault": {
+    "kind": "shard-restart",
+    "mechanism": "kubectl delete pod of all three replicas (graceful)",
+    "startedAt": 1793086232821,
+    "healedAt": 1793086238237
+  },
+  "recovery": {
+    "leader": "storage-shard-0-1",
+    "term": 5,
+    "seconds": 5.9
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793086386369,
+    "seconds": 0.6,
+    "ok": true,
+    "detail": "shard 0 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793086224000,
+    "faultStartedAt": 1793086232821,
+    "faultHealedAt": 1793086238237,
+    "settledAt": 1793086386966,
+    "loadFinishedAt": 1793086383000
+  },
+  "load": {
+    "job": "chaos-load-restart-shard-s26-1793086222",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 11430,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 235
+  },
+  "errorsObserved": [],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/restart-shard-s26-1793086222.json",
+    "job": "chaos-verify-restart-shard-s26-1793086222",
+    "exitCode": 0,
+    "checked": 11430,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-restart-shard-s26-1793086222",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  }
+}
