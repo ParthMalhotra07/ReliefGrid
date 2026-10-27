@@ -29,6 +29,7 @@ type workflow struct {
 }
 
 type job struct {
+	Name     string         `yaml:"name"`
 	If       string         `yaml:"if"`
 	Needs    any            `yaml:"needs"` // a string or a list
 	Timeout  int            `yaml:"timeout-minutes"`
@@ -194,6 +195,11 @@ func TestCIChangesJob(t *testing.T) {
 func TestCIImagesJob(t *testing.T) {
 	j := mustJob(t, loadCI(t), "images")
 	checkGated(t, "images", j)
+	// Check names are what branch protection lists: "images (storagenode)", not
+	// every matrix value.
+	if j.Name != "images (${{ matrix.name }})" {
+		t.Errorf("images name: %q, want %q", j.Name, "images (${{ matrix.name }})")
+	}
 	if j.Timeout == 0 || j.Timeout > 20 {
 		t.Errorf("images timeout-minutes = %d, want 1..20", j.Timeout)
 	}
