@@ -67,16 +67,19 @@ type fakeNode struct {
 	applyErr error
 	modes    []raftstore.ReadMode
 	readErr  error
-	f        *fsm.FSM
-	index    uint64
-	status   raftstore.Status
-	statuses int // Status calls
-	term     uint64
-	bootErr  error
-	booted   []raft.Server
-	snapInfo raftstore.SnapshotInfo
-	snapErr  error
-	snaps    int // Snapshot calls
+	// readDelay makes every Read take this long, or until its ctx ends
+	// (then it fails with ctx's error, as a fenced read does).
+	readDelay time.Duration
+	f         *fsm.FSM
+	index     uint64
+	status    raftstore.Status
+	statuses  int // Status calls
+	term      uint64
+	bootErr   error
+	booted    []raft.Server
+	snapInfo  raftstore.SnapshotInfo
+	snapErr   error
+	snaps     int // Snapshot calls
 
 	stepDownErr error
 	stepDowns   int // StepDown calls
@@ -125,10 +128,17 @@ func (n *fakeNode) Apply(ctx context.Context, cmd any) (store.Result, error) {
 func (n *fakeNode) Read(ctx context.Context, mode raftstore.ReadMode, fn func(context.Context, raftstore.Reader) error) (raftstore.ReadInfo, error) {
 	n.mu.Lock()
 	n.modes = append(n.modes, mode)
-	readErr := n.readErr
+	readErr, delay := n.readErr, n.readDelay
 	n.mu.Unlock()
 	if readErr != nil {
 		return raftstore.ReadInfo{}, readErr
+	}
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return raftstore.ReadInfo{}, ctx.Err()
+		}
 	}
 	info := raftstore.ReadInfo{Consistency: "strong", ServedBy: testPod, AppliedIndex: n.f.AppliedIndex()}
 	if mode == raftstore.ReadStale {

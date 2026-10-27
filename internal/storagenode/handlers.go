@@ -35,6 +35,9 @@ const (
 	maxBodyBytes  = 1 << 20
 	maxScanLimit  = store.MaxScanLimit // records per shard per scan
 	maxOutboxWait = 1                  // seconds a pending-outbox read may long-poll
+	// outboxRereadMargin is kept, beyond the first read's duration, for a
+	// long-poll's second read.
+	outboxRereadMargin = 100 * time.Millisecond
 )
 
 func (s *server) putData(w http.ResponseWriter, r *http.Request) {
@@ -192,7 +195,7 @@ func (s *server) getData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var rec store.Record
-	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+	info, ok := s.read(r.Context(), w, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
 		rec, err = rd.ReadRecord(ctx, key)
 		return err
 	})
@@ -210,7 +213,7 @@ func (s *server) getClosure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var c store.Closure
-	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+	info, ok := s.read(r.Context(), w, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
 		c, err = rd.ReadClosure(ctx, key, attemptID)
 		return err
 	})
@@ -233,7 +236,7 @@ func (s *server) getOperation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var res store.Result
-	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+	info, ok := s.read(r.Context(), w, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
 		res, err = rd.Operation(ctx, opID)
 		return err
 	})
@@ -269,19 +272,28 @@ func (s *server) pendingOutbox(w http.ResponseWriter, r *http.Request) {
 		events, err = rd.PendingOutbox(ctx, limit)
 		return err
 	}
-	info, ok := s.read(w, r, mode, page)
+	// The whole long-poll, both reads and the wait, fits the storage budget
+	// and the request's own deadline, whichever is sooner (#27), so the
+	// coordinator's and the caller's budgets hold however slow reads are.
+	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
+	defer cancel()
+	start := time.Now()
+	info, ok := s.read(ctx, w, mode, page)
 	if !ok {
 		return
 	}
 	// Long-poll (§14): wait for a commit outside the read, then read a
 	// fenced page once more. An empty page after the wait is a real
-	// "nothing pending".
+	// "nothing pending". The wait leaves room for the second read and is
+	// skipped when there is none: the first page is already a fenced read.
 	if len(events) == 0 && wait > 0 {
-		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(wait)*time.Second)
-		s.node.WaitApplyAfter(ctx, info.AppliedIndex)
-		cancel()
-		if info, ok = s.read(w, r, mode, page); !ok {
-			return
+		if until, ok := waitUntil(ctx, time.Since(start), time.Duration(wait)*time.Second); ok {
+			wctx, wcancel := context.WithDeadline(ctx, until)
+			s.node.WaitApplyAfter(wctx, info.AppliedIndex)
+			wcancel()
+			if info, ok = s.read(ctx, w, mode, page); !ok {
+				return
+			}
 		}
 	}
 	writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: s.shard, Events: nonNil(events), RingVersion: s.ring.Version(), Read: info})
@@ -326,7 +338,7 @@ func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var recs []store.Record
-	info, ok := s.read(w, r, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
+	info, ok := s.read(r.Context(), w, mode, func(ctx context.Context, rd raftstore.Reader) (err error) {
 		recs, err = rd.Scan(ctx, sq, after)
 		return err
 	})
@@ -338,13 +350,28 @@ func (s *server) scan(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// read runs fn through the node under the request timeout and writes any
-// failure; ok reports whether the caller should write the response.
+// waitUntil is when a long-poll's wait must end: after wait, but early
+// enough to leave the second read as long as the first took plus
+// outboxRereadMargin before ctx's deadline. ok=false means no wait fits.
+func waitUntil(ctx context.Context, firstRead, wait time.Duration) (until time.Time, ok bool) {
+	now := time.Now()
+	until = now.Add(wait)
+	if deadline, has := ctx.Deadline(); has {
+		if last := deadline.Add(-firstRead - outboxRereadMargin); last.Before(until) {
+			until = last
+		}
+	}
+	return until, until.After(now)
+}
+
+// read runs fn through the node under ctx and the storage timeout and
+// writes any failure; ok reports whether the caller should write the
+// response.
 //
 // A stale read is served from this replica's own FSM, so it is refused
 // (503, retryable) until the FSM covers the leader's commit index: a
 // replica catching up would answer with old versions or a false "absent".
-func (s *server) read(w http.ResponseWriter, r *http.Request, mode raftstore.ReadMode, fn func(context.Context, raftstore.Reader) error) (internalapi.ReadInfo, bool) {
+func (s *server) read(ctx context.Context, w http.ResponseWriter, mode raftstore.ReadMode, fn func(context.Context, raftstore.Reader) error) (internalapi.ReadInfo, bool) {
 	if mode == raftstore.ReadStale {
 		if st := s.node.Status(); !st.CaughtUp {
 			w.Header().Set("Retry-After", retryAfterSeconds)
@@ -352,7 +379,7 @@ func (s *server) read(w http.ResponseWriter, r *http.Request, mode raftstore.Rea
 			return internalapi.ReadInfo{}, false
 		}
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	info, err := s.node.Read(ctx, mode, fn)
 	if err != nil {
