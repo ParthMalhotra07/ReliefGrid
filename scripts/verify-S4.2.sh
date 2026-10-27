@@ -60,8 +60,16 @@ INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-5m}"
 UNADMITTED_HOLD="${UNADMITTED_HOLD:-20}" # seconds the wiped pod is watched before replace
 EVIDENCE="docs/evidence/S4.2/admission-replace-$(hostname -s).txt"
 
+# The S2.3 harness's Job helpers (start_job, run_job, ensure_pvc). Sourced first, so that the
+# helpers below, which share some of its names, override its versions.
+EXPERIMENT=s42 seed=0 run_id="s42"
+# shellcheck source=chaos/scripts/lib.sh
+. chaos/scripts/lib.sh
+
 failures=0 passes=0
 tmp="$(mktemp -d)"
+work="$tmp"
+: >"$work/notes"
 results="$tmp/results"
 : >"$results"
 load_job=""
@@ -88,6 +96,7 @@ kn() { k -n "$NS" "$@"; }
 pods() { printf 'storage-shard-%s-0 storage-shard-%s-1 storage-shard-%s-2' "$SHARD" "$SHARD" "$SHARD"; }
 st() { timeout 5 kubectl --context "$CTX" -n "$NS" exec "$1" -c storagenode -- /storagectl status 2>/dev/null; }
 field() { jq -r "$2 // empty" <<<"$1" 2>/dev/null; }
+bfield() { jq -r "$2" <<<"$1" 2>/dev/null; } # a boolean: jq's // would turn false into empty
 raft_addr() { printf '%s.storage-shard-%s.%s.svc.cluster.local:%s' "$1" "$SHARD" "$NS" "$2"; }
 dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --timeout 3s >/dev/null 2>&1; }
 manifest() { kn get configmap "storage-shard-$SHARD-manifest" -o json | jq -c .data; }
@@ -172,6 +181,14 @@ grep -q "name: MANIFEST_NAME" <<<"$render" && pass "guard: every storage pod is 
 make -s storage-image coordinator-image tools-image >"$tmp/build.log" 2>&1 || abort "images build" "$(tail -20 "$tmp/build.log")"
 helm --kube-context "$CTX" upgrade --install "$RELEASE" "$CHART" -n "$NS" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/helm.log" 2>&1 ||
 	abort "helm upgrade --install" "$(tail -20 "$tmp/helm.log")"
+# Same :dev tags: helm upgrade restarts nothing whose template is unchanged, so restart the
+# coordinator and the storage pods (one at a time, quorum kept) onto the images just built.
+kn rollout restart deployment/storage-coordinator >/dev/null && kn rollout status deployment/storage-coordinator --timeout=180s >/dev/null &&
+	pass "the coordinator restarted on the new image" || abort "the coordinator restarted on the new image"
+for s0 in 0 1 2; do
+	kn rollout restart "statefulset/storage-shard-$s0" >/dev/null && kn rollout status "statefulset/storage-shard-$s0" --timeout=600s >/dev/null &&
+		pass "storage-shard-$s0 restarted on the new image" || abort "storage-shard-$s0 restarted on the new image"
+done
 wait_for 180 group_ok && pass "shard-$SHARD: three committed voters, caught up" || abort "shard-$SHARD: three committed voters, caught up"
 want="$(mfield '.peerIds | fromjson | sort | join(" ")')"
 for p in $(pods); do
@@ -187,23 +204,26 @@ jq -e '.rules | length == 1 and .[0].resources == ["configmaps"] and .[0].verbs 
 
 echo "== 1. an ordinary restart (intact disk) needs no admission"
 before="$(field "$(st "$POD")" .serverId)"
+admitted0="$(mfield '.admitted')"
 kn delete pod "$POD" --wait=false >/dev/null
 wait_for 120 group_ok && [ "$(field "$(st "$POD")" .serverId)" = "$before" ] &&
 	pass "restart: $POD back as $before without any manifest change" || fail "restart: $POD back as $before without any manifest change"
-[ -z "$(mfield '.admitted')" ] && pass "restart: nothing written to admitted" || fail "restart: nothing written to admitted" "$(manifest)"
+[ "$(mfield '.admitted')" = "$admitted0" ] && pass "restart: admitted unchanged (${admitted0:-none})" || fail "restart: admitted unchanged" "$(manifest)"
 
 echo "== 2. load"
-# The S2.3 harness's Job helpers: invcheck load as an in-cluster Job, ledger on PVC chaos-ledger.
-load_job="s42-load-$(date +%s)" work="$tmp" run_id="$load_job"
-: >"$work/notes"
-# shellcheck source=chaos/scripts/lib.sh
-. chaos/scripts/lib.sh
+load_job="s42-load-$(date +%s)" run_id="$load_job"
 ensure_pvc || abort "PVC chaos-ledger"
 start_job "$load_job" load --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --prefix "$load_job" \
 	--workers 2 --keys 4 --ops 0 --duration 900s --interval 100ms --timeout 1200s || abort "the load Job starts"
 
 echo "== 3. wipe $POD: the empty disk stays unadmitted"
 old_id="$(field "$(st "$POD")" .serverId)"
+# Positive control: the same dial helper reaches the admitted pod, so its failures below mean
+# closed ports, not a broken check.
+peer0="$(leader_pod)"
+[ "$peer0" = "$POD" ] && peer0="$(for p in $(pods); do [ "$p" != "$POD" ] && echo "$p" && break; done)"
+dial "$peer0" "$(raft_addr "$POD" 7000)" && dial "$peer0" "$(raft_addr "$POD" 8080)" &&
+	pass "control: $peer0 reaches $POD:7000 and :8080 before the wipe" || abort "control: $peer0 reaches $POD:7000 and :8080 before the wipe"
 term0="$(field "$(st "$(leader_pod)")" .term)"
 pvc="$(kn get pod "$POD" -o jsonpath='{.spec.volumes[?(@.persistentVolumeClaim)].persistentVolumeClaim.claimName}')"
 kn delete pvc "$pvc" --wait=false >/dev/null
@@ -212,7 +232,7 @@ wait_for 180 bash -c "[ \"\$(kubectl --context $CTX -n $NS exec $POD -c storagen
 	pass "wipe: $POD is back, Unadmitted" || abort "wipe: $POD is back, Unadmitted" "$(st "$POD")"
 s="$(st "$POD")"
 new_id="$(field "$s" .serverId)"
-[ "$new_id" != "$old_id" ] && [ "$(field "$s" .hasState)" = false ] && [ "$(field "$s" .admitted)" = false ] &&
+[ "$new_id" != "$old_id" ] && [ "$(bfield "$s" .hasState)" = false ] && [ "$(bfield "$s" .admitted)" = false ] &&
 	pass "wipe: new incarnation $new_id, no Raft state, not admitted ($(field "$s" .admissionReason))" ||
 	fail "wipe: new incarnation, no Raft state, not admitted" "$s"
 peer="$(leader_pod)"
@@ -286,6 +306,10 @@ jq -e --arg o "$old_id" --arg p "$POD" --arg i "${new_id#*/}" '(.removed | fromj
 	fail "after: removed, admitted, no replace in progress" "$(manifest)"
 wait_for 60 bash -c "[ \"\$(kubectl --context $CTX -n $NS get pod $POD -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}')\" = True ]" &&
 	pass "after: $POD is Ready" || fail "after: $POD is Ready"
+peer="$(leader_pod)"
+[ "$peer" = "$POD" ] && peer="$peer0"
+dial "$peer" "$(raft_addr "$POD" 7000)" && dial "$peer" "$(raft_addr "$POD" 8080)" &&
+	pass "after: $peer reaches $POD:7000 and :8080 once admitted" || fail "after: $peer reaches $POD:7000 and :8080 once admitted"
 replace_job ""
 rc=$?
 [ "$rc" = 0 ] && [ "$(voter_count)" = 3 ] && grep -q "already" "$tmp/replace-final.log" &&
