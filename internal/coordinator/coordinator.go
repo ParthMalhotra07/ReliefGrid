@@ -82,6 +82,7 @@ type Coordinator struct {
 	mu      sync.Mutex
 	nodes   map[string]*member // by pod name
 	leaders []leader           // by shard
+	configs []shardConfig      // by shard: the newest committed Raft configuration reported
 }
 
 // New checks cfg and fills its defaults.
@@ -113,7 +114,7 @@ func New(cfg Config) (*Coordinator, error) {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	return &Coordinator{cfg: cfg, ring: cfg.Ring, nodes: map[string]*member{}, leaders: make([]leader, cfg.Ring.Shards())}, nil
+	return &Coordinator{cfg: cfg, ring: cfg.Ring, nodes: map[string]*member{}, leaders: make([]leader, cfg.Ring.Shards()), configs: make([]shardConfig, cfg.Ring.Shards())}, nil
 }
 
 // Handler serves every route of contracts/internal.yaml.

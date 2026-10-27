@@ -468,7 +468,7 @@ func (s *server) status(w http.ResponseWriter, r *http.Request) {
 		LeaderID: string(st.LeaderID), LeaderAddr: string(st.LeaderAddr), CommitIndex: st.CommitIndex,
 		LastLogIndex: st.LastLogIndex, RaftAppliedIndex: st.RaftAppliedIndex, AppliedIndex: st.AppliedIndex,
 		RestoredIndex: st.RestoredIndex, HasState: st.HasState, CaughtUp: st.CaughtUp, RingVersion: s.ring.Version(),
-		LeaderCommitIndex: st.LeaderCommitIndex,
+		LeaderCommitIndex: st.LeaderCommitIndex, Configuration: toConfigurationJSON(st.Configuration), Admitted: true,
 	})
 }
 

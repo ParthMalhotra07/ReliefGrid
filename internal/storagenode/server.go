@@ -100,6 +100,11 @@ func (s *server) dataRoutes() http.Handler {
 //	                      another voter (raftstore.StepDown); 200 {podName,
 //	                      state, term, leaderId} once it no longer leads, 409
 //	                      NOT_LEADER on a follower, 503 if it still leads
+//	POST /mgmt/membership operator token: {op: remove|add-nonvoter|add-voter,
+//	                      id, address, prevIndex}; on the leader, one change
+//	                      decided from prevIndex; 200 {index}; 409 NOT_LEADER
+//	                      or CONFIG_CHANGED (nothing changed); 503 outcome
+//	                      unknown (re-read the configuration)
 //	GET  /readyz          200 only when the FSM covers the leader's commit
 //	                      index (Status.CaughtUp)
 func (s *server) mgmtRoutes() http.Handler {
@@ -109,6 +114,7 @@ func (s *server) mgmtRoutes() http.Handler {
 	mux.HandleFunc("POST /mgmt/snapshot", s.snapshot)
 	mux.HandleFunc("GET /mgmt/dump", s.dump)
 	mux.HandleFunc("POST /mgmt/transfer-leader", s.transferLeader)
+	mux.HandleFunc("POST /mgmt/membership", s.membership)
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /readyz", s.readyz)
 	return mux
@@ -137,6 +143,13 @@ type statusResponse struct {
 	// LeaderCommitIndex: the leader's commit index as this replica learned
 	// it; caughtUp is judged against it.
 	LeaderCommitIndex uint64 `json:"leaderCommitIndex"`
+	// Configuration is the group's latest configuration as this replica
+	// knows it, and whether it is committed (#21).
+	Configuration *configurationJSON `json:"configuration,omitempty"`
+	// Admitted is false only while the disk waits for M7 admission (state
+	// Unadmitted); AdmissionReason says why.
+	Admitted        bool   `json:"admitted"`
+	AdmissionReason string `json:"admissionReason,omitempty"`
 }
 
 // transferResponse is the /mgmt/transfer-leader body: this replica after

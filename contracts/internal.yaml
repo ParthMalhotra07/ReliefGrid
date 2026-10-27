@@ -1611,6 +1611,33 @@ components:
         appliedIndex: {type: integer, format: uint64}
         commitIndex: {type: integer, format: uint64}
         recordCounts: {$ref: "#/components/schemas/RecordCounts"}
+        configuration:
+          allOf: [{$ref: "#/components/schemas/RaftConfiguration"}]
+          description: |
+            The group's latest Raft configuration as this node knows it (#21).
+            The coordinator admits a registration (M7) only once its ServerID
+            is in the shard's committed configuration, as the leader reports
+            it. Omitted by a node without Raft state.
+    RaftConfiguration:
+      type: object
+      description: |
+        A Raft group's membership at a log index. committed is true once
+        that index is within the commit index (at most one change is ever
+        uncommitted).
+      required: [index, committed, servers]
+      properties:
+        index: {type: integer, format: uint64, description: Log index of the configuration entry}
+        committed: {type: boolean}
+        servers:
+          type: array
+          items: {$ref: "#/components/schemas/RaftServer"}
+    RaftServer:
+      type: object
+      required: [id, address, suffrage]
+      properties:
+        id: {$ref: "#/components/schemas/ServerID"}
+        address: {type: string, description: "Stable Raft address, host:port"}
+        suffrage: {type: string, enum: [Voter, Nonvoter], x-enum-varnames: [RaftServerSuffrageVoter, RaftServerSuffrageNonvoter]}
     RecordCounts:
       type: object
       description: |

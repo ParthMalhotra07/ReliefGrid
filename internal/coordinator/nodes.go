@@ -43,6 +43,37 @@ type leader struct {
 	hintID   string // a NOT_LEADER hint's serverId, which its answers must carry; "" if none
 }
 
+// shardConfig is the newest committed Raft configuration any member of a
+// shard has reported (#21). Committed configurations only move forward in
+// log order, so the one with the highest index is the current one, whoever
+// reported it; a deposed leader's older one never replaces it.
+type shardConfig struct {
+	index uint64
+	ids   map[string]bool // ServerIDs, voters and nonvoters
+}
+
+// observeConfig keeps c if it is committed and newer than what the shard
+// has. Callers hold c.mu.
+func (c *Coordinator) observeConfig(shard int, cfg *internalapi.RaftConfiguration) {
+	if cfg == nil || !cfg.Committed || cfg.Index <= c.configs[shard].index {
+		return
+	}
+	ids := map[string]bool{}
+	for _, s := range cfg.Servers {
+		ids[s.Id] = true
+	}
+	c.configs[shard] = shardConfig{index: cfg.Index, ids: ids}
+}
+
+// admitted reports whether m's disk is admitted (M7, #20): its ServerID is
+// in its shard's committed configuration. A wiped disk registers under the
+// same pod name with a new incarnation, so it is unadmitted until storagectl
+// replace adds it; the coordinator never routes to it before then. Callers
+// hold c.mu.
+func (c *Coordinator) admitted(m *member) bool {
+	return c.configs[m.reg.ShardId].ids[m.serverID()]
+}
+
 // state is m's heartbeat-age state (plan §15): an observation for routing
 // order and the admin view only.
 func (c *Coordinator) state(m *member, now time.Time) internalapi.NodeState {
@@ -111,10 +142,12 @@ func (c *Coordinator) register(w http.ResponseWriter, r *http.Request) {
 	c.mu.Unlock()
 
 	resp.Accepted = true
-	// Admission is not enforced until S4.2 (M7): every registration is
-	// reported admitted. Registration still never bootstraps or adds a
-	// voter; an empty disk joins Raft only through storagectl replace.
-	resp.Admitted = true
+	// M7: admitted only once the shard's committed configuration names this
+	// ServerID. Registration never bootstraps or adds a voter; an empty disk
+	// joins Raft only through storagectl replace.
+	c.mu.Lock()
+	resp.Admitted = c.admitted(c.nodes[reg.NodeId])
+	c.mu.Unlock()
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -154,6 +187,7 @@ func (c *Coordinator) recordHeartbeat(hb *internalapi.Heartbeat) (resp internala
 		return resp, false
 	}
 	m.hb, m.lastSeen = hb, now
+	c.observeConfig(hb.ShardId, hb.Configuration)
 	if hb.LeaderId != nil {
 		pod, _, _ := strings.Cut(*hb.LeaderId, "/")
 		c.learn(hb.ShardId, hb.Term, leader{pod: pod, serverID: *hb.LeaderId})
@@ -227,7 +261,7 @@ func (c *Coordinator) members(shard int) []*member {
 
 func (c *Coordinator) nodeStatus(m *member, now time.Time) internalapi.NodeStatus {
 	st := internalapi.NodeStatus{NodeId: m.reg.NodeId, GroupId: m.reg.GroupId, ShardId: m.reg.ShardId, Incarnation: m.reg.Incarnation,
-		Address: m.reg.Address, Admitted: true, State: c.state(m, now), Health: internalapi.HealthUnavailable}
+		Address: m.reg.Address, Admitted: c.admitted(m), State: c.state(m, now), Health: internalapi.HealthUnavailable}
 	if m.hb != nil {
 		st.Health, st.Term, st.LeaderId = m.hb.Health, m.hb.Term, m.hb.LeaderId
 		st.AppliedIndex, st.CommitIndex = m.hb.AppliedIndex, m.hb.CommitIndex

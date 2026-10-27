@@ -309,20 +309,20 @@ func (c *Coordinator) pick(shard int, tried map[string]bool) target {
 	leaderID, leaderAddr, hasLeader := c.resolve(shard)
 	members := c.members(shard)
 	if hasLeader && !tried[leaderAddr] {
-		down := false
+		down, unadmitted := false, false
 		for _, m := range members {
 			if m.reg.Address == leaderAddr {
-				down = c.state(m, now) == internalapi.DOWN
+				down, unadmitted = c.state(m, now) == internalapi.DOWN, !c.admitted(m)
 			}
 		}
-		if !down {
+		if !down && !unadmitted {
 			l := c.leaders[shard]
 			return target{addr: leaderAddr, serverID: cmp.Or(l.hintID, leaderID), pod: l.pod}
 		}
 	}
 	for _, want := range []internalapi.NodeState{internalapi.UP, internalapi.SUSPECT, internalapi.DOWN} {
 		for _, m := range members {
-			if !tried[m.reg.Address] && c.state(m, now) == want {
+			if !tried[m.reg.Address] && c.state(m, now) == want && c.admitted(m) {
 				return target{addr: m.reg.Address, serverID: m.serverID(), pod: m.reg.NodeId}
 			}
 		}

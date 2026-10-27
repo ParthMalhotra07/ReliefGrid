@@ -94,6 +94,15 @@ func (s *server) heartbeat(ctx context.Context, c *http.Client, base string) err
 		id := string(st.LeaderID)
 		hb.LeaderId = &id
 	}
+	// The coordinator admits registrations from the committed configuration
+	// (M7, #21); a replica without Raft state has none to report.
+	if c := toConfigurationJSON(st.Configuration); c != nil {
+		hb.Configuration = &internalapi.RaftConfiguration{Index: c.Index, Committed: c.Committed, Servers: []internalapi.RaftServer{}}
+		for _, sv := range c.Servers {
+			hb.Configuration.Servers = append(hb.Configuration.Servers,
+				internalapi.RaftServer{Id: sv.ID, Address: sv.Address, Suffrage: internalapi.RaftServerSuffrage(sv.Suffrage)})
+		}
+	}
 	// The counts are a local read: a heartbeat never goes through the log.
 	var counts internalapi.RecordCounts
 	rctx, cancel := context.WithTimeout(ctx, s.timeout)
