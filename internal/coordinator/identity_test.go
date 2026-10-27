@@ -110,19 +110,46 @@ func TestUnverifiedAnswerIsUnknownForMutations(t *testing.T) {
 	}
 }
 
-// A NOT_LEADER hint may name a pod that has not registered; its answer must
-// come from that pod.
+// A NOT_LEADER hint names the leader's pod and, from a current storage
+// node, its full serverId: the answer at the hinted address must come from
+// that server. A hint without serverId (or with one for another pod) falls
+// back to any incarnation of the pod. This holds on every round, not only
+// the attempt right after the hint.
 func TestHintedLeaderMustAnswerAsItself(t *testing.T) {
+	const otherIncarnation = "00000000-0000-4000-8000-0000000000ff"
+	full := func(n *fakeNode) internalapi.LeaderHint {
+		id := n.serverID()
+		return internalapi.LeaderHint{NodeId: n.pod, ServerId: &id, Address: n.host()}
+	}
+	podOnly := func(n *fakeNode) internalapi.LeaderHint {
+		return internalapi.LeaderHint{NodeId: n.pod, Address: n.host()}
+	}
+	foreignID := func(n *fakeNode) internalapi.LeaderHint {
+		id := "storage-1-8/" + otherIncarnation // not n's pod: ignored
+		return internalapi.LeaderHint{NodeId: n.pod, ServerId: &id, Address: n.host()}
+	}
+	as := func(id func(n *fakeNode) string, shard string) func(*fakeNode) *identity {
+		return func(n *fakeNode) *identity { return &identity{serverID: id(n), shard: shard} }
+	}
+	itself := func(n *fakeNode) string { return n.serverID() }
+	reincarnated := func(n *fakeNode) string { return n.pod + "/" + otherIncarnation }
+	another := func(*fakeNode) string { return "storage-1-8/" + otherIncarnation }
+
 	for name, tc := range map[string]struct {
+		hint  func(n *fakeNode) internalapi.LeaderHint
 		claim func(n *fakeNode) *identity
 		want  int
 	}{
-		"as itself": {func(n *fakeNode) *identity { return &identity{serverID: n.serverID(), shard: "1"} }, http.StatusOK},
-		"as another": {func(*fakeNode) *identity {
-			return &identity{serverID: "storage-1-8/00000000-0000-4000-8000-000000000018", shard: "1"}
-		}, http.StatusServiceUnavailable},
-		"anonymously":   {func(*fakeNode) *identity { return nil }, http.StatusServiceUnavailable},
-		"another shard": {func(n *fakeNode) *identity { return &identity{serverID: n.serverID(), shard: "0"} }, http.StatusServiceUnavailable},
+		"serverId, as itself":                  {full, as(itself, "1"), http.StatusOK},
+		"serverId, same pod another disk":      {full, as(reincarnated, "1"), http.StatusServiceUnavailable},
+		"serverId, as another pod":             {full, as(another, "1"), http.StatusServiceUnavailable},
+		"serverId, anonymously":                {full, func(*fakeNode) *identity { return nil }, http.StatusServiceUnavailable},
+		"serverId, another shard":              {full, as(itself, "0"), http.StatusServiceUnavailable},
+		"pod only, as itself":                  {podOnly, as(itself, "1"), http.StatusOK},
+		"pod only, same pod another disk":      {podOnly, as(reincarnated, "1"), http.StatusOK},
+		"pod only, as another pod":             {podOnly, as(another, "1"), http.StatusServiceUnavailable},
+		"serverId of another pod, as itself":   {foreignID, as(itself, "1"), http.StatusOK},
+		"serverId of another pod, as that pod": {foreignID, as(another, "1"), http.StatusServiceUnavailable},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -130,18 +157,37 @@ func TestHintedLeaderMustAnswerAsItself(t *testing.T) {
 			h.ready()
 			fresh := newFakeNode(t, 1, 9) // never registered
 			fresh.setClaim(tc.claim(fresh))
-			h.nodes[1][0].setHandler(notLeader(fresh, 2))
-			for _, n := range h.nodes[1][1:] {
-				n.setHandler(notLeader(fresh, 2))
+			for _, n := range h.nodes[1] {
+				n.setHandler(notLeaderAs(tc.hint(fresh)))
 			}
 			rec := h.do(routedCalls(t, h, 1)[0].call)
 			if rec.Code != tc.want {
-				t.Fatalf("create through a hint to an unregistered pod answering %s: %d %s, want %d", name, rec.Code, rec.Body.String(), tc.want)
+				t.Fatalf("create through a hint to an unregistered pod (%s): %d %s, want %d", name, rec.Code, rec.Body.String(), tc.want)
 			}
 			if len(fresh.requests()) == 0 {
 				t.Fatalf("the hinted address was never tried")
 			}
 		})
+	}
+}
+
+// A hint's serverId is checked for a registered pod too: if Raft names
+// another incarnation of the pod than the one registered, an answer at the
+// registered address from the registered incarnation is not the leader's.
+func TestHintedServerIDOverridesRegistration(t *testing.T) {
+	h := newHarness(t, func(c *coordinator.Config) { c.Budget = 200 * time.Millisecond })
+	h.ready()
+	target := h.nodes[1][1]
+	id := target.pod + "/00000000-0000-4000-8000-0000000000ff"
+	for _, n := range []*fakeNode{h.nodes[1][0], h.nodes[1][2]} {
+		n.setHandler(notLeaderAs(internalapi.LeaderHint{NodeId: target.pod, ServerId: &id, Address: target.host()}))
+	}
+	e := expectError(t, h.do(routedCalls(t, h, 1)[0].call), http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN)
+	if !e.OutcomeUnknown {
+		t.Fatalf("error = %+v, want outcomeUnknown", e)
+	}
+	if len(target.requests()) == 0 {
+		t.Fatalf("the hinted pod was never tried")
 	}
 }
 

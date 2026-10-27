@@ -40,6 +40,7 @@ type leader struct {
 	pod      string // "" if no leader is known
 	serverID string // from a heartbeat; "" when learned from a NOT_LEADER hint
 	addr     string // a NOT_LEADER hint's address, used only if pod is not registered
+	hintID   string // a NOT_LEADER hint's serverId, which its answers must carry; "" if none
 }
 
 // state is m's heartbeat-age state (plan §15): an observation for routing

@@ -133,7 +133,8 @@ func (c *Coordinator) checkRing(w http.ResponseWriter, r *http.Request, body []b
 }
 
 // target is an address to dial and the server that must answer there: a
-// registered member's ServerID, or only the pod a NOT_LEADER hint named.
+// registered member's ServerID, a NOT_LEADER hint's serverId, or only the
+// pod a hint named when it gave no serverId.
 type target struct {
 	addr     string
 	serverID string // podName/incarnation; "" if only pod is known
@@ -315,7 +316,8 @@ func (c *Coordinator) pick(shard int, tried map[string]bool) target {
 			}
 		}
 		if !down {
-			return target{addr: leaderAddr, serverID: leaderID, pod: c.leaders[shard].pod}
+			l := c.leaders[shard]
+			return target{addr: leaderAddr, serverID: cmp.Or(l.hintID, leaderID), pod: l.pod}
 		}
 	}
 	for _, want := range []internalapi.NodeState{internalapi.UP, internalapi.SUSPECT, internalapi.DOWN} {
@@ -329,13 +331,19 @@ func (c *Coordinator) pick(shard int, tried map[string]bool) target {
 }
 
 // hint learns a NOT_LEADER hint and returns the target to try next: the
-// hinted pod as registered, else the hint's address, where the answer must
-// come from the hinted pod (any incarnation: a hint names only the pod). A
-// hint may name a pod that has not registered yet (it just became leader of
-// a restarted coordinator's table). A hint with no pod is not followed.
+// hinted pod as registered, else the hint's address. The answer must come
+// from the hint's serverId, which Raft reports and so outranks the
+// registration; a hint without one (or with one for another pod) accepts
+// any incarnation of the pod. A hint may name a pod that has not registered
+// yet (it just became leader of a restarted coordinator's table). A hint
+// with no pod is not followed.
 func (c *Coordinator) hint(shard int, h internalapi.LeaderHint) target {
 	if h.NodeId == "" {
 		return target{}
+	}
+	var hintID string
+	if h.ServerId != nil && strings.HasPrefix(*h.ServerId, h.NodeId+"/") {
+		hintID = *h.ServerId
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -343,11 +351,11 @@ func (c *Coordinator) hint(shard int, h internalapi.LeaderHint) target {
 	if h.Term != nil {
 		term = *h.Term
 	}
-	c.learn(shard, term, leader{pod: h.NodeId, addr: h.Address})
+	c.learn(shard, term, leader{pod: h.NodeId, addr: h.Address, hintID: hintID})
 	if m := c.nodes[h.NodeId]; m != nil && m.reg.ShardId == shard {
-		return target{addr: m.reg.Address, serverID: m.serverID(), pod: m.reg.NodeId}
+		return target{addr: m.reg.Address, serverID: cmp.Or(hintID, m.serverID()), pod: m.reg.NodeId}
 	}
-	return target{addr: h.Address, pod: h.NodeId}
+	return target{addr: h.Address, serverID: hintID, pod: h.NodeId}
 }
 
 // allDown reports whether shard has registered members and every one is

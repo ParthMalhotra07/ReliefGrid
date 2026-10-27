@@ -170,10 +170,18 @@ func (n *fakeNode) heartbeat(leader *fakeNode, term uint64) internalapi.Heartbea
 	return hb
 }
 
+// notLeader answers NOT_LEADER naming hint, with its full serverId as a
+// storage node sends it.
 func notLeader(hint *fakeNode, term uint64) func(http.ResponseWriter, *http.Request, []byte) {
+	id := hint.serverID()
+	return notLeaderAs(internalapi.LeaderHint{NodeId: hint.pod, ServerId: &id, Address: hint.host(), Term: &term})
+}
+
+// notLeaderAs answers NOT_LEADER with hint as given.
+func notLeaderAs(hint internalapi.LeaderHint) func(http.ResponseWriter, *http.Request, []byte) {
 	return func(w http.ResponseWriter, _ *http.Request, _ []byte) {
 		writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{Code: internalapi.NOTLEADER, Message: "not leader", Retryable: true,
-			LeaderHint: &internalapi.LeaderHint{NodeId: hint.pod, Address: hint.host(), Term: &term}})
+			LeaderHint: &hint})
 	}
 }
 
