@@ -16,8 +16,12 @@
 # replacement stays Pending (its PV and the required anti-affinity both pin it to that
 # worker). It stays down to the end: the ledger and invariant checks run while it is down,
 # so their reads go through the surviving majority too. On PASS the stopped pod and the
-# cordon are handed to demo 7 (<evidence dir>/demo-6.state); on any other exit the worker is
-# uncordoned and the shard heals.
+# cordon are handed to demo 7 through an annotation on that worker (DEMO_HANDOFF_ANNOTATION),
+# which demo 7 finds from any run; on any other exit the worker is uncordoned and the shard
+# heals.
+#
+# It refuses to start, changing nothing, if any shard is already missing a replica (a pending
+# hand-off included): stopping another would cost that shard its majority.
 #
 # Assertions:
 #   1. Placement holds before the stop (make placement-check): one replica per data worker.
@@ -47,8 +51,16 @@ WARMUP_SECONDS="${DEMO6_WARMUP_SECONDS:-8}"
 ELECTION_SECONDS="${DEMO6_ELECTION_SECONDS:-10}"
 run_id="demo6-$(date +%s)" work="$DEMO_TMP" # the harness's names: Job labels, its notes
 load_job="$run_id-load" ledger_path="/ledger/$run_id.json"
-STATE="$(dirname "$DEMO_EVIDENCE")/demo-6.state"
 demo_reset "healthy deployment; load Job $load_job (seed $SEED, ${LOAD_SECONDS}s, 4 writers, ledger $PVC:$ledger_path); stop shard $SHARD's leader after ${WARMUP_SECONDS}s (cordon its worker, delete the pod)"
+missing="$(missing_replicas)"
+case $? in
+2) fail "preflight: $missing"; demo_end ;;
+esac
+if [ -n "$missing" ]; then
+	first="${missing%%$'\n'*}"
+	fail "refuse: ${first%%:*} is missing a replica; demo 6 needs all three replicas of every shard (run demo 7 to finish a pending hand-off)" "$missing"
+	demo_end
+fi
 require_preflight
 
 # Whatever happens, the worker is uncordoned and a running load stopped on exit, unless the
@@ -123,9 +135,12 @@ still_stopped "$STOP_POD" "$STOP_UID" && pass "stopped throughout: $STOP_POD is 
 
 # --- hand-off to demo 7 ---------------------------------------------------------------------------------
 if [ "$DEMO_FAILURES" -eq 0 ]; then
-	mkdir -p "$(dirname "$STATE")"
-	printf 'SHARD=%q\nPOD=%q\nNODE=%q\nSERVER_ID=%q\nOLD_TERM=%q\nPENDING_UID=%q\n' "$SHARD" "$STOP_POD" "$STOP_NODE" "$STOP_ID" "$STOP_TERM" "$STOP_UID" >"$STATE"
-	handed_off=1
-	demo_note "handed to demo 7: $STATE ($STOP_POD stopped, $STOP_NODE cordoned)"
+	value="shard=$SHARD pod=$STOP_POD node=$STOP_NODE serverId=$STOP_ID uid=$STOP_UID term=$STOP_TERM"
+	if k annotate node "$STOP_NODE" "$DEMO_HANDOFF_ANNOTATION=$value" --overwrite >/dev/null; then
+		handed_off=1
+		demo_note "handed to demo 7: node/$STOP_NODE $DEMO_HANDOFF_ANNOTATION=\"$value\" ($STOP_POD stopped, $STOP_NODE cordoned)"
+	else
+		demo_note "could not annotate $STOP_NODE: $STOP_POD is restarted instead of handed to demo 7"
+	fi
 fi
 demo_end

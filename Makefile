@@ -124,8 +124,14 @@ storage-reset: ## Uninstall storage and delete its PVCs and bootstrap manifests 
 
 # The demo gate (S3.2, v3.1 §28): scripts/demos/. Each demo prints PASS, FAIL, NOT IMPLEMENTED
 # or PENDING and writes docs/evidence/<runId>/demo-N.txt (DEMO_RUN_ID; default one per run).
-demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9: ## Run one §28 demo with its assertions and evidence
-	bash scripts/demos/$@.sh
+# One run directory per make invocation: make demo-6 demo-7 writes both demos' evidence under the
+# same DEMO_RUN_ID (computed once, here). A DEMO_RUN_ID from the caller wins.
+ifeq ($(origin DEMO_RUN_ID),undefined)
+DEMO_RUN_ID := $(shell date -u +%Y%m%dT%H%M%SZ)-$(shell hostname -s)
+endif
+
+demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9: ## Run §28 demos (any combination) with assertions and evidence
+	DEMO_RUN_ID='$(DEMO_RUN_ID)' bash scripts/demos/$@.sh
 
 demo-reset: ## Clean deployment for the demos: recreate the kind cluster, images, storage (asks first)
 	bash scripts/demos/reset.sh

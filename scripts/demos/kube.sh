@@ -133,6 +133,30 @@ preflight() {
 		[ -n "$(group_state "$s")" ] || why "shard $s has no single agreed leader" || return 1
 	done
 }
+# missing_replicas [shard...]: one line "shard N: <pods not Ready>" per listed shard (default
+# all) that does not have all three replicas Ready. Reads only kubectl get pods. Exit 2 (and the
+# reason) if the pods cannot be listed at all: a preflight failure, not a missing replica.
+missing_replicas() {
+	local j s
+	j="$(kn get pods -l app.kubernetes.io/component=storagenode -o json 2>/dev/null)" || { echo "cannot list storage pods in $NS (context $CTX)"; return 2; }
+	for s in "${@:-${SHARDS[@]}}"; do
+		jq -r --arg s "$s" '[.items[] | select(.metadata.labels["reliefgrid.io/shard"] == $s)] as $p
+			| ([$p[] | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))] | length) as $ready
+			| if $ready == 3 and ($p | length) == 3 then empty
+			  else "shard \($s): \($ready) of 3 replicas Ready; not Ready: \([$p[] | select(all(.status.conditions[]?; .type != "Ready" or .status != "True")) | .metadata.name] | join(", "))"
+			  end' <<<"$j"
+	done
+}
+
+# demo6_handoffs: the pending demo-6 hand-offs, one annotation value per line, from the workers
+# demo 6 cordoned
+demo6_handoffs() {
+	k get nodes -l "$DEMO_CORDON_LABEL=true" -o json 2>/dev/null |
+		jq -r --arg a "$DEMO_HANDOFF_ANNOTATION" '.items[] | .metadata.annotations[$a] // empty'
+}
+# handoff_field <value> <key>: one key of a hand-off annotation value
+handoff_field() { tr ' ' '\n' <<<"$1" | sed -n "s/^$2=//p"; }
+
 # require_preflight: end the demo as FAIL if preflight does not hold
 require_preflight() {
 	if preflight; then pass "preflight: nine storage pods Ready, nine nodes UP, one leader per shard"; return 0; fi

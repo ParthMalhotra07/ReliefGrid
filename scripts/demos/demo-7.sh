@@ -4,9 +4,12 @@
 # What to show:   Restart the failed node and show replay/catch-up
 # Acceptance:     Recovered node becomes data-ready; equal committed state after settling
 #
-# Seed/reset: continues from demo 6 when <evidence dir>/demo-6.state names a pod that is still
-# stopped (the gate runs 6 then 7 in one run directory). Otherwise it stops shard DEMO7_SHARD's
-# (default 1) leader itself, as demo 6 does (cordon its worker, delete the pod). Either way it
+# Seed/reset: continues from demo 6 when a demo-6 hand-off (the annotation on the worker demo 6
+# cordoned, DEMO_HANDOFF_ANNOTATION) names a pod that is still stopped, from any run or make
+# call. Otherwise it stops shard DEMO7_SHARD's (default 1) leader itself, as demo 6 does
+# (cordon its worker, delete the pod), but only from a fully healthy shard (all three replicas
+# Ready, one agreed leader); it refuses, changing nothing, if the shard is missing a replica
+# that no hand-off accounts for, or if there are several hand-offs. Either way it
 # then writes DEMO7_WRITES (100) keys demo7-<seed>-<run>-<i> owned by that shard while the pod
 # is down, so the restarted replica has entries to replay. DEMO7_SEED (7) names the keys.
 # The worker is uncordoned on every exit path.
@@ -35,16 +38,31 @@ SEED="${DEMO7_SEED:-7}"
 WRITES="${DEMO7_WRITES:-100}"
 REJOIN_SECONDS="${DEMO7_REJOIN_SECONDS:-120}"
 PREFIX="demo7-$SEED-$(date +%s)"
-STATE="$(dirname "$DEMO_EVIDENCE")/demo-6.state"
 
 SHARD="" POD="" NODE="" SERVER_ID="" PENDING_UID="" from=""
-if [ -f "$STATE" ]; then
-	# shellcheck disable=SC1090
-	. "$STATE"
-	from="demo 6 ($STATE)"
+handoffs="$(demo6_handoffs)"
+if [ "$(grep -c . <<<"$handoffs")" -gt 1 ]; then
+	demo_reset "refused: several demo-6 hand-offs"
+	fail "refuse: $(grep -c . <<<"$handoffs") demo-6 hand-offs are pending; demo 7 continues one at a time (uncordon the extra workers)" "$handoffs"
+	demo_end
+elif [ -n "$handoffs" ]; then
+	SHARD="$(handoff_field "$handoffs" shard)" POD="$(handoff_field "$handoffs" pod)" NODE="$(handoff_field "$handoffs" node)"
+	SERVER_ID="$(handoff_field "$handoffs" serverId)" PENDING_UID="$(handoff_field "$handoffs" uid)"
+	from="demo 6 (node/$NODE $DEMO_HANDOFF_ANNOTATION)"
 fi
 SHARD="${SHARD:-${DEMO7_SHARD:-1}}"
 demo_reset "${from:+continues from $from: }shard $SHARD's ${POD:-leader} stopped; $WRITES writes under $PREFIX while it is down (seed $SEED); restart by uncordoning its worker"
+
+# Without a live hand-off, demo 7 stops a replica itself: only from a fully healthy shard.
+if [ -z "$POD" ] || ! still_stopped "$POD" "$PENDING_UID"; then
+	stale="$NODE"
+	missing="$(missing_replicas "$SHARD")"
+	[ $? = 2 ] && { fail "preflight: $missing"; demo_end; }
+	if [ -n "$missing" ] && [ -z "$stale" ]; then
+		fail "refuse: shard $SHARD is not fully healthy ($missing) and no demo-6 hand-off accounts for it; demo 7 stops nothing" "$missing"
+		demo_end
+	fi
+fi
 
 # Preflight differs from the other demos: one storage pod is expected to be down.
 coord_forward || { fail "preflight: cannot reach the coordinator"; demo_end; }
@@ -55,8 +73,16 @@ demo_on_exit restore
 
 # --- the stop, when demo 6 did not leave one ---------------------------------------------------
 if [ -z "$POD" ] || ! still_stopped "$POD" "$PENDING_UID"; then
-	[ -n "$NODE" ] && demo_uncordon "$NODE" # a stale hand-off: undo its cordon first
+	if [ -n "$NODE" ]; then # a stale hand-off: undo its cordon, let the shard heal, then check it
+		demo_uncordon "$NODE"
+		healed=""
+		for _ in $(seq 120); do [ -z "$(missing_replicas "$SHARD")" ] && { healed=1; break; }; sleep 1; done
+		[ -n "$healed" ] || { NODE=""; fail "refuse: shard $SHARD did not heal after the stale hand-off on $NODE was undone" "$(missing_replicas "$SHARD")"; demo_end; }
+	fi
 	POD="" NODE="" from=""
+	g0="$(group_state "$SHARD")"
+	[ -n "$g0" ] || { fail "refuse: shard $SHARD has all three replicas Ready but no single agreed leader; demo 7 stops nothing"; demo_end; }
+	pass "healthy: shard $SHARD has all three replicas Ready and one leader (${g0% *}) before demo 7 stops one"
 	if stop_leader_pod "$SHARD"; then
 		POD="$STOP_POD" NODE="$STOP_NODE" SERVER_ID="$STOP_ID" PENDING_UID="$STOP_UID"
 		pass "stop: $POD ($SERVER_ID) deleted with $NODE cordoned; its replacement is Pending"
@@ -149,5 +175,4 @@ for _ in $(seq 30); do
 	sleep 1
 done
 [ -n "$up" ] && pass "coordinator: all nine nodes UP" || fail "coordinator: all nine nodes UP" "$(cadmin /admin/nodes | jq -c '[.nodes[] | {nodeId, state}]')"
-rm -f "$STATE"
 demo_end
