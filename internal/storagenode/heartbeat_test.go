@@ -30,7 +30,7 @@ type fakeCoordinator struct {
 	// coordinator from before #21 does (it decodes with DisallowUnknownFields).
 	strict   bool
 	rejected int
-	srv        *httptest.Server
+	srv      *httptest.Server
 }
 
 func newFakeCoordinator(t *testing.T) *fakeCoordinator {
