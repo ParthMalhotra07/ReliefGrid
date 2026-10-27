@@ -83,3 +83,32 @@ func TestAdmissionFollowsCommittedConfiguration(t *testing.T) {
 		t.Fatal("the old incarnation was admitted after its removal")
 	}
 }
+
+// With no leader known, the routing fallback probes voters only: a
+// nonvoter (a replacement catching up) can never lead, so it is admitted
+// but never dialled for a routed call.
+func TestRoutingFallbackSkipsNonvoters(t *testing.T) {
+	h := newHarness(t, nil)
+	h.registerAll()
+	row := h.nodes[1]
+	cfg := committedConfig(row...)
+	cfg.Servers[2].Suffrage = internalapi.RaftServerSuffrageNonvoter
+	for _, n := range row { // no leader known
+		hb := n.heartbeat(nil, 3)
+		hb.Configuration = cfg
+		h.do(call{method: http.MethodPost, path: "/internal/nodes/heartbeat", body: hb})
+	}
+	if !adminAdmitted(t, h, row[2].pod) {
+		t.Fatal("the nonvoter is not admitted")
+	}
+	row[0].setHandler(failWith(http.StatusServiceUnavailable, internalapi.STORAGEUNAVAILABLE, false))
+	row[1].setHandler(failWith(http.StatusServiceUnavailable, internalapi.STORAGEUNAVAILABLE, false))
+	key, _ := keyOn(t, h.rg, 1, "kv", "nv")
+	h.do(call{method: http.MethodGet, path: "/internal/data/" + key})
+	if len(row[0].requests()) == 0 || len(row[1].requests()) == 0 {
+		t.Fatalf("the voters were not probed: %d, %d", len(row[0].requests()), len(row[1].requests()))
+	}
+	if got := len(row[2].requests()); got != 0 {
+		t.Fatalf("the nonvoter got %d routed requests", got)
+	}
+}

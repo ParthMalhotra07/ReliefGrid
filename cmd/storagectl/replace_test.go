@@ -55,10 +55,11 @@ type fakeGroup struct {
 
 	ops       []membershipChange // every applied change, in order
 	maxVoters int
+	newInc    string // the incarnation running on repPod's empty disk
 }
 
 func newFakeGroup(t *testing.T, m manifest, store *fakeStore) *fakeGroup {
-	g := &fakeGroup{m: m, store: store, nodes: map[string]*nodeStatus{}, down: map[string]bool{}, index: 10, catchUp: 3, lose: map[string]bool{}}
+	g := &fakeGroup{m: m, store: store, nodes: map[string]*nodeStatus{}, down: map[string]bool{}, index: 10, catchUp: 3, lose: map[string]bool{}, newInc: newInc}
 	for i, p := range m.Peers {
 		addr, _ := mgmtAddr(p.Address, "8081")
 		n := &nodeStatus{PodName: p.PodName, GroupID: m.GroupID, Shard: m.Shard, Address: p.Address, RingVersion: m.RingVersion,
@@ -93,7 +94,7 @@ func (g *fakeGroup) addrOf(pod string) string {
 func (g *fakeGroup) wipe(pod string) {
 	n := g.nodes[g.addrOf(pod)]
 	*n = nodeStatus{PodName: n.PodName, GroupID: n.GroupID, Shard: n.Shard, Address: n.Address, RingVersion: n.RingVersion,
-		ServerID: pod + "/" + newInc, State: "Unadmitted"}
+		ServerID: pod + "/" + g.newInc, State: "Unadmitted"}
 }
 
 func (g *fakeGroup) member(id string) (configServer, bool) {
@@ -113,12 +114,12 @@ func (g *fakeGroup) Status(_ context.Context, addr string) (nodeStatus, error) {
 		return nodeStatus{}, fmt.Errorf("%s unreachable", addr)
 	}
 	leaderID := g.nodes[g.leader].ServerID
-	if n.ServerID == newID {
+	if n.ServerID == repPod+"/"+g.newInc && !n.HasState {
 		// The new disk opens Raft only once admitted, and holds the group's
 		// state only once the leader replicates to it.
 		cur, _ := g.store.Get(context.Background(), g.m.Name)
-		_, inConfig := g.member(newID)
-		if cur.Admitted[repPod] == newInc && inConfig {
+		_, inConfig := g.member(n.ServerID)
+		if cur.Admitted[repPod] == g.newInc && inConfig {
 			n.State, n.HasState, n.LeaderID, n.Term = "Follower", true, leaderID, g.nodes[g.leader].Term
 			if g.catchUp > 0 {
 				g.catchUp--
@@ -454,4 +455,127 @@ func TestReplaceWaitsWhenAVoterIsLostMidway(t *testing.T) {
 		t.Fatalf("after the voter returned: %v\n%s", err, w.logs)
 	}
 	w.done(t)
+}
+
+func (w world) phase(t *testing.T) string {
+	t.Helper()
+	m, err := w.store.Get(t.Context(), bootstrappedManifest().Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Replace == nil {
+		return ""
+	}
+	return m.Replace.Phase
+}
+
+// runFor runs replace until a short deadline: for states it must wait in.
+func (w world) runFor(t *testing.T, d time.Duration) error {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), d)
+	defer cancel()
+	return w.r.run(ctx, bootstrappedManifest(), repPod)
+}
+
+// Removal is established only by a committed configuration newer than the
+// one PLANNED recorded: a read without the old ID at the same index (a
+// stale or foreign view) is not evidence.
+func TestReplaceNeedsANewerConfigurationAsRemovalEvidence(t *testing.T) {
+	w := newWorld(t)
+	w.r.crashAt = stepPlanned
+	if err := w.r.run(t.Context(), bootstrappedManifest(), repPod); !errors.Is(err, errCrash) {
+		t.Fatalf("first run: %v", err)
+	}
+	w.r.crashAt = ""
+	w.g.mu.Lock()
+	i := slices.IndexFunc(w.g.config, func(s configServer) bool { return s.ID == oldID })
+	w.g.config = slices.Delete(w.g.config, i, i+1) // same index: no change committed
+	w.g.mu.Unlock()
+	if err := w.runFor(t, 100*time.Millisecond); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("replace on a same-index view without %s: %v, want it to wait", oldID, err)
+	}
+	if got := w.phase(t); got != replacePlanned {
+		t.Fatalf("phase %q, want still PLANNED: removal recorded without a newer committed configuration", got)
+	}
+}
+
+// Nothing is added or promoted while the old ID is still a member, whatever
+// the manifest's phase says.
+func TestReplaceNeverAddsWhileTheOldVoterIsAMember(t *testing.T) {
+	for _, step := range []string{stepRecordedRemoved, stepRecordedNonvoter} {
+		t.Run(step, func(t *testing.T) {
+			w := newWorld(t)
+			w.r.crashAt = step
+			if err := w.r.run(t.Context(), bootstrappedManifest(), repPod); !errors.Is(err, errCrash) {
+				t.Fatalf("first run: %v", err)
+			}
+			w.r.crashAt = ""
+			w.g.mu.Lock()
+			w.g.config = append(w.g.config, configServer{ID: oldID, Address: "old:7000", Suffrage: suffrageVoter})
+			w.g.index++
+			ops := len(w.g.ops)
+			w.g.mu.Unlock()
+			if err := w.runFor(t, 100*time.Millisecond); !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("replace with %s a member again: %v, want it to wait", oldID, err)
+			}
+			w.g.mu.Lock()
+			defer w.g.mu.Unlock()
+			for _, c := range w.g.ops[ops:] {
+				if c.Op == opAddNonvoter || c.Op == opAddVoter {
+					t.Fatalf("%s while %s is a member", c.Op, oldID)
+				}
+			}
+		})
+	}
+}
+
+// --abort resets a replacement stuck in PLANNED before anything changed:
+// the record is cleared and no membership change is made. The disk is then
+// wiped again (another incarnation) and a fresh replace completes with it.
+func TestReplaceAbortInPlanned(t *testing.T) {
+	w := newWorld(t)
+	w.r.crashAt = stepPlanned
+	if err := w.r.run(t.Context(), bootstrappedManifest(), repPod); !errors.Is(err, errCrash) {
+		t.Fatalf("first run: %v", err)
+	}
+	w.r.crashAt = ""
+	if err := w.r.abort(t.Context(), bootstrappedManifest(), repPod); err != nil {
+		t.Fatalf("abort: %v\n%s", err, w.logs)
+	}
+	if got := w.phase(t); got != "" || len(w.g.ops) != 0 {
+		t.Fatalf("after abort: phase %q, ops %+v", got, w.g.ops)
+	}
+	w.g.mu.Lock()
+	w.g.newInc = "new-3"
+	w.g.wipe(repPod)
+	w.g.mu.Unlock()
+	if err := w.r.run(t.Context(), bootstrappedManifest(), repPod); err != nil {
+		t.Fatalf("replace after abort and a second wipe: %v\n%s", err, w.logs)
+	}
+	m, _ := w.store.Get(t.Context(), bootstrappedManifest().Name)
+	if m.PeerIDs[2] != repPod+"/new-3" || m.Admitted[repPod] != "new-3" || m.Replace != nil {
+		t.Fatalf("manifest after the fresh replace: %+v", m)
+	}
+}
+
+// --abort refuses once anything may have changed: the removal committed
+// (even if PLANNED is still recorded), or a later phase.
+func TestReplaceAbortRefusesAfterRemoval(t *testing.T) {
+	for _, step := range []string{stepRemoved, stepRecordedRemoved, stepAdmitted} {
+		t.Run(step, func(t *testing.T) {
+			w := newWorld(t)
+			w.r.crashAt = step
+			if err := w.r.run(t.Context(), bootstrappedManifest(), repPod); !errors.Is(err, errCrash) {
+				t.Fatalf("first run: %v", err)
+			}
+			before := w.phase(t)
+			err := w.r.abort(t.Context(), bootstrappedManifest(), repPod)
+			if !errors.Is(err, errRefused) || !strings.Contains(err.Error(), "resume") {
+				t.Fatalf("abort after %s: %v, want a refusal telling to resume", step, err)
+			}
+			if got := w.phase(t); got != before {
+				t.Fatalf("a refused abort changed the phase %q -> %q", before, got)
+			}
+		})
+	}
 }

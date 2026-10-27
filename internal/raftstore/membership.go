@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/raft"
 )
@@ -55,8 +56,9 @@ func (n *Node) configuration(c raft.Configuration, commit uint64) (Configuration
 // configuration entry found, and how far the log had been scanned.
 type configScan struct {
 	mu      sync.Mutex
-	index   uint64 // the newest configuration entry found (0: none yet)
-	scanned uint64 // every entry up to here has been looked at
+	index   uint64       // the newest configuration entry found (0: none yet)
+	scanned uint64       // every entry up to here has been looked at
+	reads   atomic.Int64 // log entries read looking for it (tests)
 }
 
 // configIndex is the log index of c, the latest configuration. raft v1.8.0's
@@ -112,6 +114,7 @@ func (n *Node) configIndex(c raft.Configuration) (uint64, error) {
 func (n *Node) newestConfigEntry(hi, lo uint64, c raft.Configuration) (uint64, bool, error) {
 	for i := hi; i >= lo && i > 0; i-- {
 		var l raft.Log
+		n.cfgScan.reads.Add(1)
 		if err := n.logs.GetLog(i, &l); err != nil {
 			if errors.Is(err, raft.ErrLogNotFound) {
 				return 0, false, nil // compacted under the scan
@@ -127,6 +130,7 @@ func (n *Node) newestConfigEntry(hi, lo uint64, c raft.Configuration) (uint64, b
 
 func (n *Node) isConfigEntry(i uint64, c raft.Configuration) bool {
 	var l raft.Log
+	n.cfgScan.reads.Add(1)
 	return n.logs.GetLog(i, &l) == nil && l.Type == raft.LogConfiguration && sameServers(raft.DecodeConfiguration(l.Data), c)
 }
 

@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"net"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/hashicorp/raft"
+
+	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
 // freePort reserves a loopback port and releases it, for a node whose Raft
@@ -270,4 +273,69 @@ func TestReplaceSequenceOnRealRaft(t *testing.T) {
 		t.Fatalf("after promotion: %+v, %v, want voters %v", cfg, err, want)
 	}
 	mustApply(t, l, cas("op-c", "kv:a", 6, 7))
+}
+
+// The configuration's index is cached while the entry it came from is
+// compacted into a snapshot: once the log no longer holds it, the index is
+// the newest snapshot's ConfigurationIndex, and Status() must not rescan the
+// whole retained log (load profile: 10240 trailing entries) on every call.
+func TestConfigIndexCachedOnACompactedLog(t *testing.T) {
+	if testing.Short() {
+		t.Skip("writes past the load profile's TrailingLogs")
+	}
+	p := testProfile
+	p.TrailingLogs = ProfileLoad.TrailingLogs
+	c := newTestCluster(t, 1, p)
+	ctx := testCtx(t)
+	n := c.nodes[0]
+	if err := n.Bootstrap(ctx, c.servers()); err != nil {
+		t.Fatal(err)
+	}
+	c.waitLeader()
+	writes := int(p.TrailingLogs) + 500
+	var wg sync.WaitGroup
+	errs := make(chan error, 32)
+	for w := range 32 {
+		wg.Go(func() {
+			for i := w; i < writes; i += 32 {
+				cmd := store.CreateEntity{Meta: store.Meta{OperationID: fmt.Sprintf("op-%d", i), At: t0}, Key: fmt.Sprintf("kv:c-%d", i), Value: []byte("1")}
+				if _, err := n.Apply(ctx, cmd); err != nil {
+					errs <- err
+					return
+				}
+			}
+		})
+	}
+	wg.Wait()
+	close(errs)
+	if err := <-errs; err != nil {
+		t.Fatal(err)
+	}
+	if _, err := n.Snapshot(ctx); err != nil {
+		t.Fatal(err)
+	}
+	first, _ := n.logs.FirstIndex()
+	metas, err := n.snaps.List()
+	if err != nil || len(metas) == 0 || first <= metas[0].ConfigurationIndex {
+		t.Fatalf("the configuration entry %v is not compacted (first log index %d): %v", metas, first, err)
+	}
+	want := metas[0].ConfigurationIndex
+
+	if got := n.Status().Configuration; got.Index != want || !got.Committed {
+		t.Fatalf("Status configuration %+v, want index %d (the snapshot's), committed", got, want)
+	}
+	before := n.cfgScan.reads.Load()
+	start := time.Now()
+	for range 50 {
+		if got := n.Status().Configuration; got.Index != want {
+			t.Fatalf("Status configuration index %d, want %d", got.Index, want)
+		}
+	}
+	elapsed := time.Since(start)
+	if reads := n.cfgScan.reads.Load() - before; reads > 50*2 {
+		t.Fatalf("50 Status calls read %d log entries looking for the configuration: the cache is not used", reads)
+	}
+	if elapsed > 2*time.Second {
+		t.Fatalf("50 Status calls took %s", elapsed)
+	}
 }

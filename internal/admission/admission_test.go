@@ -1,8 +1,14 @@
 package admission
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -56,6 +62,9 @@ func TestDecide(t *testing.T) {
 		{"another pod admitted", data("BOOTSTRAPPED", `["`+peer0+`","`+peer1+`"]`, `{"storage-shard-1-1":"`+self.Incarnation+`"}`, ""), false, false, "not admitted"},
 		{"ordinary restart", data("BOOTSTRAPPED", `["`+peer0+`","`+peer1+`","`+sid+`"]`, "", ""), true, true, "restart"},
 		{"restart of a removed member", data("BOOTSTRAPPED", `["`+peer0+`","`+peer1+`","storage-shard-1-2/`+otherInc+`"]`, "", `["`+sid+`"]`), true, false, "removed"},
+		// Removed wins over every admission: a stale peerIds or admitted entry
+		// never reopens a removed ServerID.
+		{"empty disk, removed but still in peerIds", data("BOOTSTRAPPED", `["`+peer0+`","`+peer1+`","`+sid+`"]`, `{"storage-shard-1-2":"`+self.Incarnation+`"}`, `["`+sid+`"]`), false, false, "removed"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m, err := Parse(tc.data)
@@ -134,5 +143,63 @@ func TestWait(t *testing.T) {
 	defer stop2()
 	if err := Wait(short2, removed, self, true, time.Millisecond, nil); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("restart of a removed member: %v, want it held until the deadline", err)
+	}
+}
+
+// A manifest read the API server refuses (403: RBAC) or cannot find (404)
+// is an operator error, logged loudly; a network error is only waited out.
+// Both keep an empty disk closed.
+func TestWaitLogsForbiddenAndMissingLoudly(t *testing.T) {
+	var logs bytes.Buffer
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	for _, tc := range []struct {
+		err   error
+		level string
+		why   string
+	}{
+		{fmt.Errorf("get manifest: %w", ErrForbidden), "level=ERROR", "403"},
+		{fmt.Errorf("get manifest: %w", ErrNotFound), "level=ERROR", "404"},
+		{errors.New("dial tcp: connection refused"), "", "unreachable"},
+	} {
+		logs.Reset()
+		var whys []string
+		src := &source{get: func(int32) (map[string]string, error) { return nil, tc.err }}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+		err := Wait(ctx, src, self, false, time.Millisecond, func(why string) { whys = append(whys, why) })
+		cancel()
+		if !errors.Is(err, context.DeadlineExceeded) || len(whys) == 0 || !strings.Contains(whys[0], tc.why) {
+			t.Fatalf("%v: Wait %v, reasons %q", tc.err, err, whys)
+		}
+		if got := strings.Count(logs.String(), "level=ERROR"); tc.level == "" && got != 0 || tc.level != "" && got != 1 {
+			t.Fatalf("%v: %d ERROR lines (want %v, once per distinct reason):\n%s", tc.err, got, tc.level != "", logs.String())
+		}
+	}
+}
+
+// The in-cluster source maps the API server's answers: 403 and 404 to the
+// sentinels, 200 to the ConfigMap's data.
+func TestConfigMapSourceStatuses(t *testing.T) {
+	tok := t.TempDir() + "/token"
+	if err := os.WriteFile(tok, []byte("t0k\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		status int
+		want   error
+	}{{http.StatusForbidden, ErrForbidden}, {http.StatusNotFound, ErrNotFound}, {http.StatusOK, nil}} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Header.Get("Authorization") != "Bearer t0k" {
+				t.Errorf("authorization %q", r.Header.Get("Authorization"))
+			}
+			w.WriteHeader(tc.status)
+			_, _ = w.Write([]byte(`{"data":{"phase":"PENDING"}}`))
+		}))
+		got, err := newConfigMapSource(srv.URL+"/api/v1/namespaces/r/configmaps/m", tok, srv.Client()).Get(context.Background())
+		srv.Close()
+		if tc.want != nil && !errors.Is(err, tc.want) || tc.want == nil && (err != nil || got["phase"] != "PENDING") {
+			t.Fatalf("HTTP %d: %v, %v", tc.status, got, err)
+		}
 	}
 }
