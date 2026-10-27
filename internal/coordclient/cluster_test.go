@@ -7,12 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -378,9 +380,9 @@ func summarize(hits []hit) []string {
 }
 
 // Verify (S1.4): with shard 2 fully down, a scan is partial with
-// failedShards [2] and still returns shards 0 and 1; a mutation to shard 2
-// is 503 (never proposed, so not an unknown outcome); shards 0 and 1 keep
-// working; the coordinator marks shard 2's nodes DOWN.
+// failedShards [2] and still returns shards 0 and 1; shards 0 and 1 keep
+// working; the coordinator marks shard 2's nodes DOWN, and then a mutation
+// to shard 2 is 503 (never proposed, so not an unknown outcome).
 func TestClusterShardDown(t *testing.T) {
 	c := newCluster(t, func(cfg *coordinator.Config) {
 		cfg.SuspectAfter, cfg.DownAfter = 300*time.Millisecond, 600*time.Millisecond
@@ -419,20 +421,6 @@ func TestClusterShardDown(t *testing.T) {
 			got.Partial, got.FailedShards, keys, got.Positions, want)
 	}
 
-	down := c.keyOn(2, "kv:down")
-	rec := c.http(http.MethodPut, c.coord.URL+"/internal/data/"+down, map[string]string{"If-None-Match": "*"},
-		map[string]any{"operationId": "op-down-raw", "at": storetest.T0, "ringVersion": 1, "value": 1})
-	var e internalapi.Error
-	_ = json.Unmarshal(rec.Body.Bytes(), &e)
-	if rec.Code != http.StatusServiceUnavailable || e.Code != internalapi.NOLEADER || e.OutcomeUnknown || !e.Retryable {
-		t.Fatalf("mutation to the down shard = %d %s, want 503 NO_LEADER (never proposed)", rec.Code, rec.Body.String())
-	}
-	_, err = c.client.CreateEntity(ctx, store.CreateEntity{Meta: m("op-down"), Key: down, Value: json.RawMessage(`1`)})
-	var ce *coordclient.Error
-	if !errors.As(err, &ce) || ce.Status != http.StatusServiceUnavailable || errors.Is(err, store.ErrUnknownOutcome) {
-		t.Fatalf("client mutation to the down shard: err = %v, want a 503 that is not an unknown outcome", err)
-	}
-
 	for s := range 2 {
 		key := c.keyOn(s, "kv:alive")
 		if res, err := c.client.CreateEntity(ctx, store.CreateEntity{Meta: m(fmt.Sprintf("op-alive-%d", s)), Key: key, Value: json.RawMessage(`1`)}); err != nil || res.Outcome != store.OutcomeOK {
@@ -460,6 +448,24 @@ func TestClusterShardDown(t *testing.T) {
 		}
 	}
 
+	// The mutation is checked once shard 2 is DOWN, when it is refused
+	// without dialling: before that its freed ports can be bound by another
+	// process (issue #46), whose answer is unverified and so an unknown
+	// outcome (TestClusterImpostorOnAFreedPort).
+	down := c.keyOn(2, "kv:down")
+	rec := c.http(http.MethodPut, c.coord.URL+"/internal/data/"+down, map[string]string{"If-None-Match": "*"},
+		map[string]any{"operationId": "op-down-raw", "at": storetest.T0, "ringVersion": 1, "value": 1})
+	var e internalapi.Error
+	_ = json.Unmarshal(rec.Body.Bytes(), &e)
+	if rec.Code != http.StatusServiceUnavailable || e.Code != internalapi.NOLEADER || e.OutcomeUnknown || !e.Retryable {
+		t.Fatalf("mutation to the down shard = %d %s, want 503 NO_LEADER (never proposed)", rec.Code, rec.Body.String())
+	}
+	_, err = c.client.CreateEntity(ctx, store.CreateEntity{Meta: m("op-down"), Key: down, Value: json.RawMessage(`1`)})
+	var ce *coordclient.Error
+	if !errors.As(err, &ce) || ce.Status != http.StatusServiceUnavailable || errors.Is(err, store.ErrUnknownOutcome) {
+		t.Fatalf("client mutation to the down shard: err = %v, want a 503 that is not an unknown outcome", err)
+	}
+
 	// Once shard 2 is DOWN by heartbeat age, it fails at once: no 2 s wait.
 	start := time.Now()
 	got, err = c.client.Scan(ctx, q)
@@ -473,4 +479,67 @@ func TestClusterShardDown(t *testing.T) {
 func TestClusterStoreContract(t *testing.T) {
 	c := newCluster(t, nil)
 	storetest.Run(t, func(*testing.T) store.Store { return c.client })
+}
+
+// Issue #46: a stopped replica's freed port is bound by another process
+// before the coordinator marks the replica DOWN. Whatever that process
+// answers, the coordinator must not relay it as shard 2's: an answer as
+// another shard was never proposed here (503 NO_LEADER); an answer as
+// another shard-2 server, or with no identity, may have been (503
+// OUTCOME_UNKNOWN). Never 200.
+func TestClusterImpostorOnAFreedPort(t *testing.T) {
+	// The stopped replicas stay UP for the whole test, so every call dials
+	// the impostors rather than failing fast.
+	c := newCluster(t, func(cfg *coordinator.Config) {
+		cfg.SuspectAfter, cfg.DownAfter = time.Minute, 2*time.Minute
+		cfg.Budget = time.Second
+	})
+	var claim atomic.Pointer[[2]string] // serverID, shard; nil: no headers
+	var impostors []*http.Server
+	for _, r := range c.shards[2] {
+		addr := r.dataHost()
+		c.stop(r)
+		ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", addr)
+		if err != nil {
+			t.Fatalf("rebind %s: %v", addr, err)
+		}
+		srv := &http.Server{ReadHeaderTimeout: time.Second, Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			if id := claim.Load(); id != nil {
+				w.Header().Set(internalapi.HeaderServerID, id[0])
+				w.Header().Set(internalapi.HeaderShard, id[1])
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(internalapi.MutationResponse{RingVersion: 1,
+				Result: store.Result{Outcome: store.OutcomeOK, OperationID: "op", Key: "k", Version: 1, Shard: 2, AppliedIndex: 7}})
+		})}
+		go func() { _ = srv.Serve(ln) }()
+		impostors = append(impostors, srv)
+	}
+	t.Cleanup(func() {
+		for _, srv := range impostors {
+			_ = srv.Close()
+		}
+	})
+
+	down := c.keyOn(2, "kv:impostor")
+	for i, tc := range []struct {
+		name  string
+		claim *[2]string
+		code  internalapi.ErrorCode
+	}{
+		{"another shard", &[2]string{c.shards[0][0].pod + "/00000000-0000-4000-8000-000000000000", "0"}, internalapi.NOLEADER},
+		{"same pod, another incarnation", &[2]string{"storage-2-0/00000000-0000-4000-8000-000000000020", "2"}, internalapi.OUTCOMEUNKNOWN},
+		{"no identity", nil, internalapi.OUTCOMEUNKNOWN},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			claim.Store(tc.claim)
+			rec := c.http(http.MethodPut, c.coord.URL+"/internal/data/"+down, map[string]string{"If-None-Match": "*"},
+				map[string]any{"operationId": fmt.Sprintf("op-impostor-%d", i), "at": storetest.T0, "ringVersion": 1, "value": 1})
+			var e internalapi.Error
+			_ = json.Unmarshal(rec.Body.Bytes(), &e)
+			if rec.Code != http.StatusServiceUnavailable || e.Code != tc.code || e.OutcomeUnknown != (tc.code == internalapi.OUTCOMEUNKNOWN) {
+				t.Fatalf("write to shard 2 answered by an impostor (%s) = %d %s, want 503 %s", tc.name, rec.Code, rec.Body.String(), tc.code)
+			}
+		})
+	}
 }

@@ -2,15 +2,19 @@ package coordinator
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"math/rand/v2"
 	"net/http"
 	"net/http/httptrace"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -128,6 +132,43 @@ func (c *Coordinator) checkRing(w http.ResponseWriter, r *http.Request, body []b
 	return true
 }
 
+// target is an address to dial and the server that must answer there: a
+// registered member's ServerID, a NOT_LEADER hint's serverId, or only the
+// pod a hint named when it gave no serverId.
+type target struct {
+	addr     string
+	serverID string // podName/incarnation; "" if only pod is known
+	pod      string
+}
+
+// errWrongShard marks an answer from a node of another shard: it cannot
+// have proposed anything in this one.
+var errWrongShard = errors.New("answered as another shard")
+
+// verify checks that an answer came from t and shard (issue #46): an
+// address is not an identity, since a freed port or a reused pod IP can be
+// answered by another process. errWrongShard means nothing was proposed
+// here; any other error is an answer from an unknown server of this shard,
+// or one that did not say who it is, which may have proposed.
+func verify(h http.Header, t target, shard int) error {
+	sid, sh := h.Get(internalapi.HeaderServerID), h.Get(internalapi.HeaderShard)
+	if sid == "" || sh == "" {
+		return errors.New("answer has no server identity")
+	}
+	got, err := strconv.Atoi(sh)
+	if err != nil {
+		return fmt.Errorf("answer names shard %q", sh)
+	}
+	if got != shard {
+		return fmt.Errorf("%w %d", errWrongShard, got)
+	}
+	pod, _, ok := strings.Cut(sid, "/")
+	if !ok || t.serverID != "" && sid != t.serverID || pod != t.pod {
+		return fmt.Errorf("answered as %s, want %s", sid, cmp.Or(t.serverID, t.pod))
+	}
+	return nil
+}
+
 // answer is a storage node's response, buffered.
 type answer struct {
 	status int
@@ -139,11 +180,15 @@ type answer struct {
 // returns the first answer that is not a routing failure: a committed
 // outcome, a rejection, a validation error or the node's own
 // RING_VERSION_MISMATCH. It follows NOT_LEADER hints, then the shard's
-// members (UP, then SUSPECT, then DOWN), in rounds with backoff.
+// members (UP, then SUSPECT, then DOWN), in rounds with backoff. An answer
+// that does not name the server dialled is a failed attempt (verify), and
+// that address is not dialled again: once every candidate has answered as
+// another server the call ends without waiting out the budget.
 //
 // With no answer it returns unknown=true if r is a mutation and any attempt
 // may have been proposed: headers were written and then the connection
-// failed, timed out, or the node answered OUTCOME_UNKNOWN or another 5xx.
+// failed, timed out, the node answered OUTCOME_UNKNOWN or another 5xx, or
+// an answer came from an unverified server of this shard.
 // That stays true whatever later attempts say (CONTRIBUTING.md,
 // Invariants, 5). A read is
 // never unknown.
@@ -156,20 +201,25 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.Budget)
 	defer cancel()
 	why = "no storage node registered"
-	tried := map[string]bool{}
-	next := "" // a NOT_LEADER hint to follow first
+	tried := map[string]bool{} // by address
+	wrong := map[string]bool{} // addresses that answered as another server: not dialled again
+	var next target            // a NOT_LEADER hint to follow first
 	backoff := minBackoff
 	if c.allDown(shard) {
 		return nil, false, fmt.Sprintf("every member of shard %d is DOWN (no heartbeat for %s)", shard, c.cfg.DownAfter)
 	}
 	for ctx.Err() == nil {
-		addr := next
-		next = ""
-		if addr == "" || tried[addr] {
-			addr = c.pick(shard, tried)
+		t := next
+		next = target{}
+		if t.addr == "" || tried[t.addr] {
+			t = c.pick(shard, tried)
 		}
-		if addr == "" { // every candidate tried this round
+		if t.addr == "" { // every candidate tried this round
 			clear(tried)
+			maps.Copy(tried, wrong)
+			if len(wrong) > 0 && c.pick(shard, tried).addr == "" {
+				return nil, unknown, fmt.Sprintf("every member of shard %d answered as another server (last: %s)", shard, why)
+			}
 			select {
 			case <-ctx.Done():
 			case <-time.After(jitter(backoff)):
@@ -180,11 +230,19 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 			}
 			continue
 		}
+		addr := t.addr
 		tried[addr] = true
 
 		a, sent, err := c.attempt(ctx, addr, r, body)
 		if err != nil {
 			unknown = unknown || mutation && sent
+			why = fmt.Sprintf("%s: %v", addr, err)
+			continue
+		}
+		if err := verify(a.header, t, shard); err != nil {
+			slog.Warn("discarding an answer from an unexpected server", "addr", addr, "shard", shard, "status", a.status, "err", err)
+			unknown = unknown || mutation && !errors.Is(err, errWrongShard)
+			wrong[addr] = true
 			why = fmt.Sprintf("%s: %v", addr, err)
 			continue
 		}
@@ -241,14 +299,14 @@ func (c *Coordinator) attempt(ctx context.Context, addr string, r *http.Request,
 	return &answer{status: resp.StatusCode, header: resp.Header, body: b}, true, nil
 }
 
-// pick returns the next address to try for shard, or "" once every
-// candidate is in tried: the believed leader unless it is DOWN, then the
-// members UP before SUSPECT before DOWN.
-func (c *Coordinator) pick(shard int, tried map[string]bool) string {
+// pick returns the next target to try for shard, or one with no address
+// once every candidate is in tried: the believed leader unless it is DOWN,
+// then the members UP before SUSPECT before DOWN.
+func (c *Coordinator) pick(shard int, tried map[string]bool) target {
 	now := c.cfg.Now()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	_, leaderAddr, hasLeader := c.resolve(shard)
+	leaderID, leaderAddr, hasLeader := c.resolve(shard)
 	members := c.members(shard)
 	if hasLeader && !tried[leaderAddr] {
 		down := false
@@ -258,39 +316,46 @@ func (c *Coordinator) pick(shard int, tried map[string]bool) string {
 			}
 		}
 		if !down {
-			return leaderAddr
+			l := c.leaders[shard]
+			return target{addr: leaderAddr, serverID: cmp.Or(l.hintID, leaderID), pod: l.pod}
 		}
 	}
 	for _, want := range []internalapi.NodeState{internalapi.UP, internalapi.SUSPECT, internalapi.DOWN} {
 		for _, m := range members {
 			if !tried[m.reg.Address] && c.state(m, now) == want {
-				return m.reg.Address
+				return target{addr: m.reg.Address, serverID: m.serverID(), pod: m.reg.NodeId}
 			}
 		}
 	}
-	return ""
+	return target{}
 }
 
-// hint learns a NOT_LEADER hint and returns the address to try next: the
-// hinted pod's registered address, else the hint's own. A hint may name a
-// pod that has not registered yet (it just became leader of a restarted
-// coordinator's table), so its address is followed unverified. That is
-// acceptable only because the coordinator and storage nodes talk inside the
-// cluster network; the internal API is never exposed through the ingress.
-func (c *Coordinator) hint(shard int, h internalapi.LeaderHint) string {
+// hint learns a NOT_LEADER hint and returns the target to try next: the
+// hinted pod as registered, else the hint's address. The answer must come
+// from the hint's serverId, which Raft reports and so outranks the
+// registration; a hint without one (or with one for another pod) accepts
+// any incarnation of the pod. A hint may name a pod that has not registered
+// yet (it just became leader of a restarted coordinator's table). A hint
+// with no pod is not followed.
+func (c *Coordinator) hint(shard int, h internalapi.LeaderHint) target {
+	if h.NodeId == "" {
+		return target{}
+	}
+	var hintID string
+	if h.ServerId != nil && strings.HasPrefix(*h.ServerId, h.NodeId+"/") {
+		hintID = *h.ServerId
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	term := c.leaders[shard].term
 	if h.Term != nil {
 		term = *h.Term
 	}
-	if h.NodeId != "" {
-		c.learn(shard, term, leader{pod: h.NodeId, addr: h.Address})
-	}
+	c.learn(shard, term, leader{pod: h.NodeId, addr: h.Address, hintID: hintID})
 	if m := c.nodes[h.NodeId]; m != nil && m.reg.ShardId == shard {
-		return m.reg.Address
+		return target{addr: m.reg.Address, serverID: cmp.Or(hintID, m.serverID()), pod: m.reg.NodeId}
 	}
-	return h.Address
+	return target{addr: h.Address, serverID: hintID, pod: h.NodeId}
 }
 
 // allDown reports whether shard has registered members and every one is

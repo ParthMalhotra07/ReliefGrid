@@ -34,7 +34,7 @@ type Server struct{ s *server }
 // New serves n with cfg.
 func New(n *raftstore.Node, cfg Config) *Server {
 	return &Server{s: &server{
-		node: n, ring: cfg.Ring, shard: cfg.Shard, podName: cfg.PodName, timeout: cfg.Timeout,
+		node: n, ring: cfg.Ring, shard: cfg.Shard, podName: cfg.PodName, serverID: string(n.Identity().ServerID()), timeout: cfg.Timeout,
 		leaderHTTP: cfg.LeaderHTTP, operatorToken: cfg.OperatorToken,
 	}}
 }

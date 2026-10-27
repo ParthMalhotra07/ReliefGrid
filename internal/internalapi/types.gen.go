@@ -477,9 +477,15 @@ type Kind = store.Kind
 
 // LeaderHint The node believed to lead the shard; a hint, not authority
 type LeaderHint struct {
-	Address string  `json:"address"`
-	NodeId  string  `json:"nodeId"`
-	Term    *uint64 `json:"term,omitempty"`
+	Address string `json:"address"`
+	NodeId  string `json:"nodeId"`
+
+	// ServerId The leader's Raft ServerID, podName/incarnation, whose podName is
+	// nodeId. When present, the coordinator accepts an answer at
+	// address only from this server; without it, from any incarnation
+	// of nodeId. A serverId whose podName is not nodeId is ignored.
+	ServerId *string `json:"serverId,omitempty"`
+	Term     *uint64 `json:"term,omitempty"`
 }
 
 // Location defines model for Location.

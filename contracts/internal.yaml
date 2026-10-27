@@ -12,6 +12,17 @@ info:
     /internal/outbox and /internal/operations routes for its own shard only,
     and answers 503 NOT_LEADER with a leader hint when it is not the leader.
 
+    Response identity: a storage node sets X-ReliefGrid-Server-Id (its Raft
+    ServerID, podName/incarnation) and X-ReliefGrid-Shard on every answer of
+    those routes, errors included. The coordinator accepts a forwarded
+    answer only if they name the server it dialled: the registered member,
+    or the server a NOT_LEADER hint named (its serverId, else any
+    incarnation of its nodeId). An answer naming
+    another shard is discarded as never proposed; one naming another server
+    of the shard, or with no identity, is discarded and makes a mutation
+    that gets no verified answer 503 OUTCOME_UNKNOWN. A verified answer is
+    relayed with both headers.
+
     Bodies mirror internal/store: a command body is the store command plus
     ringVersion, and committed results are store.Result. Every committed
     outcome, including a rejection, is stored under its operationId and
@@ -944,6 +955,15 @@ components:
     RetryAfter:
       description: Seconds to wait before retrying
       schema: {type: integer, minimum: 0}
+    ServerId:
+      description: |
+        X-ReliefGrid-Server-Id. The answering storage replica's Raft
+        ServerID, podName/incarnation; set on every storage-node answer
+        (see Response identity above)
+      schema: {type: string, pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'}
+    Shard:
+      description: X-ReliefGrid-Shard. The answering storage replica's shard; set with X-ReliefGrid-Server-Id
+      schema: {type: integer, minimum: 0}
 
   responses:
     BadRequest:
@@ -1075,7 +1095,7 @@ components:
                 message: storage-1-1 is not the leader of shard 1
                 retryable: true
                 outcomeUnknown: false
-                leaderHint: {nodeId: storage-1-0, address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080, term: 7}
+                leaderHint: {nodeId: storage-1-0, serverId: storage-1-0/5f0c2a4e-8d1b-4c3a-9e7f-1a2b3c4d5e6f, address: storage-1-0.storage-1-headless.reliefgrid.svc.cluster.local:8080, term: 7}
             noLeader:
               value:
                 code: NO_LEADER
@@ -1491,6 +1511,14 @@ components:
       required: [nodeId, address]
       properties:
         nodeId: {type: string}
+        serverId:
+          type: string
+          description: |
+            The leader's Raft ServerID, podName/incarnation, whose podName is
+            nodeId. When present, the coordinator accepts an answer at
+            address only from this server; without it, from any incarnation
+            of nodeId. A serverId whose podName is not nodeId is ignored.
+          pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
         address: {type: string}
         term: {type: integer, format: uint64}
     Error:

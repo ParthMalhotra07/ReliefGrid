@@ -259,6 +259,11 @@ func TestFailureMapping(t *testing.T) {
 			e.LeaderHint.Term == nil || *e.LeaderHint.Term != 7 {
 			t.Fatalf("leaderHint = %+v, want %+v at term 7", e.LeaderHint, want)
 		}
+		// The full Raft leader ID, so the coordinator can tell this
+		// incarnation from another on the hinted address (issue #46).
+		if e.LeaderHint.ServerId == nil || *e.LeaderHint.ServerId != "storage-1-0/5f0c" {
+			t.Fatalf("leaderHint.serverId = %v, want storage-1-0/5f0c", e.LeaderHint.ServerId)
+		}
 		if n.statuses != 0 {
 			t.Fatalf("leaderHint called Status %d times; the term lookup must be cheap", n.statuses)
 		}

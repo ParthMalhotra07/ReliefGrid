@@ -118,11 +118,14 @@ func (s *server) writeNotProposed(w http.ResponseWriter, err error) bool {
 	case errors.As(err, &nle) && nle.LeaderID != "":
 		term := s.node.Term()
 		podName, _, _ := strings.Cut(string(nle.LeaderID), "/")
+		// serverId lets the coordinator check that the hinted address is
+		// answered by this leader, not another incarnation of its pod.
+		serverID := string(nle.LeaderID)
 		writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{
 			Code:       internalapi.NOTLEADER,
 			Message:    s.podName + " is not the leader of shard " + itoa(s.shard),
 			Retryable:  true,
-			LeaderHint: &internalapi.LeaderHint{NodeId: podName, Address: s.hintAddress(nle), Term: &term},
+			LeaderHint: &internalapi.LeaderHint{NodeId: podName, ServerId: &serverID, Address: s.hintAddress(nle), Term: &term},
 		})
 		return true
 	case errors.Is(err, raftstore.ErrNotLeader), errors.Is(err, raftstore.ErrUnavailable):

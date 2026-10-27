@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -36,7 +37,10 @@ type server struct {
 	ring    *ring.Ring
 	shard   int
 	podName string
-	timeout time.Duration
+	// serverID is this replica's Raft ServerID (podName/incarnation), named
+	// on every data-route answer.
+	serverID string
+	timeout  time.Duration
 	// leaderHTTP turns the Raft leader's address into the address of its
 	// data endpoint for leaderHint when the coordinator has not named it
 	// (production: same host, this replica's HTTP port).
@@ -50,7 +54,9 @@ type server struct {
 
 // dataRoutes is the storage-node subset of contracts/internal.yaml. Every
 // mutation checks ringVersion and that this shard owns the key before it is
-// proposed; neither failure is ever proposed.
+// proposed; neither failure is ever proposed. Every answer names this
+// replica (internalapi.HeaderServerID, HeaderShard) so the coordinator can
+// tell it from another process on the same address.
 func (s *server) dataRoutes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("PUT /internal/data/{key}", s.putData)
@@ -66,7 +72,12 @@ func (s *server) dataRoutes() http.Handler {
 	mux.HandleFunc("GET /internal/outbox", s.pendingOutbox)
 	mux.HandleFunc("POST /internal/outbox/published", s.markOutboxPublished)
 	mux.HandleFunc("GET /internal/operations/{operationId}", s.getOperation)
-	return mux
+	shard := strconv.Itoa(s.shard)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(internalapi.HeaderServerID, s.serverID)
+		w.Header().Set(internalapi.HeaderShard, shard)
+		mux.ServeHTTP(w, r)
+	})
 }
 
 // mgmtRoutes is the management endpoint (not in the contract; operator and
