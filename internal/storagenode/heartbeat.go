@@ -40,6 +40,9 @@ func (s *Server) RunHeartbeats(ctx context.Context, cfg HeartbeatConfig) error {
 	if cfg.Client == nil {
 		cfg.Client = &http.Client{Timeout: time.Second}
 	}
+	if cfg.ConfigRetry <= 0 {
+		cfg.ConfigRetry = 30 * time.Second
+	}
 	base := strings.TrimRight(cfg.CoordinatorURL, "/")
 	tick := time.NewTicker(cfg.Interval)
 	defer tick.Stop()
@@ -49,11 +52,14 @@ func (s *Server) RunHeartbeats(ctx context.Context, cfg HeartbeatConfig) error {
 		if !registered {
 			if err = s.s.register(ctx, cfg.Client, base, cfg.Address); err == nil {
 				registered = true
+				// A new registration may be with an upgraded coordinator:
+				// offer the configuration again at once.
+				s.s.noConfigAt.Store(0)
 				slog.Info("registered with the coordinator", "coordinator", base, "address", cfg.Address)
 			}
 		}
 		if registered {
-			if err = s.s.heartbeat(ctx, cfg.Client, base); errors.Is(err, errNotRegistered) {
+			if err = s.s.heartbeat(ctx, cfg.Client, base, cfg.ConfigRetry); errors.Is(err, errNotRegistered) {
 				registered = false
 			}
 		}
@@ -86,7 +92,7 @@ func (s *server) register(ctx context.Context, c *http.Client, base, address str
 	return nil
 }
 
-func (s *server) heartbeat(ctx context.Context, c *http.Client, base string) error {
+func (s *server) heartbeat(ctx context.Context, c *http.Client, base string, configRetry time.Duration) error {
 	st := s.node.Status()
 	hb := internalapi.Heartbeat{NodeId: st.PodName, GroupId: st.GroupID, ShardId: st.Shard, Incarnation: st.Incarnation,
 		Health: internalapi.HealthOk, Term: st.Term, AppliedIndex: st.AppliedIndex, CommitIndex: st.CommitIndex}
@@ -97,7 +103,8 @@ func (s *server) heartbeat(ctx context.Context, c *http.Client, base string) err
 	// The coordinator admits registrations from the committed configuration
 	// (M7, #21); a replica without Raft state has none to report, and a
 	// coordinator from before #21 is not sent it (see below).
-	if c := toConfigurationJSON(st.Configuration); c != nil && !s.noConfig.Load() {
+	since := s.noConfigAt.Load()
+	if c := toConfigurationJSON(st.Configuration); c != nil && (since == 0 || time.Since(time.Unix(0, since)) >= configRetry) {
 		hb.Configuration = &internalapi.RaftConfiguration{Index: c.Index, Committed: c.Committed, Servers: []internalapi.RaftServer{}}
 		for _, sv := range c.Servers {
 			hb.Configuration.Servers = append(hb.Configuration.Servers,
@@ -128,13 +135,20 @@ func (s *server) heartbeat(ctx context.Context, c *http.Client, base string) err
 		// answers 400 to the unknown field. It admits every node anyway, so
 		// heartbeat without it rather than look DOWN: upgrading the storage
 		// nodes before the coordinator must not be an outage.
-		slog.Warn("the coordinator does not know heartbeat.configuration (older than #21); sending heartbeats without it")
-		s.noConfig.Store(true)
+		if since == 0 {
+			slog.Warn("the coordinator does not know heartbeat.configuration (older than #21); heartbeating without it, offering it again periodically",
+				"retry", configRetry)
+		}
+		s.noConfigAt.Store(time.Now().UnixNano())
 		hb.Configuration = nil
 		err = post(ctx, c, base+"/internal/nodes/heartbeat", hb, &resp)
 	}
 	if err != nil {
 		return err
+	}
+	if hb.Configuration != nil && since != 0 {
+		s.noConfigAt.Store(0)
+		slog.Info("the coordinator accepts heartbeat.configuration again")
 	}
 	s.learnLeaders(resp)
 	return nil

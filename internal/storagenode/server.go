@@ -48,9 +48,11 @@ type server struct {
 	// leaders is the coordinator's last answer for this shard: the leader
 	// and its advertised HTTP address, a hint for leaderHint only.
 	leaders atomic.Pointer[internalapi.ShardLeader]
-	// noConfig: the coordinator rejected heartbeat.configuration (it is
-	// older than #21); heartbeats leave it out.
-	noConfig atomic.Bool
+	// noConfigAt: when the coordinator last rejected heartbeat.configuration
+	// (it is older than #21), unix ns; 0 when it accepts it. Never a latch:
+	// the configuration is offered again every ConfigRetry and on every
+	// re-registration.
+	noConfigAt atomic.Int64
 	// operatorToken guards /mgmt/bootstrap; empty disables it (403).
 	operatorToken string
 }

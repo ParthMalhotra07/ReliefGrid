@@ -283,7 +283,9 @@ func TestHeartbeatOffersConfigurationAgainAfterTheCoordinatorUpgrades(t *testing
 	}()
 	defer func() {
 		cancel()
-		<-errc
+		if err := <-errc; err != nil {
+			t.Errorf("RunHeartbeats: %v", err)
+		}
 	}()
 	eventually(t, "heartbeats without configuration", func() bool { _, _, b := c.snapshot(); return len(b) >= 2 })
 
@@ -324,7 +326,9 @@ func TestReRegistrationOffersConfigurationAgain(t *testing.T) {
 	}()
 	defer func() {
 		cancel()
-		<-errc
+		if err := <-errc; err != nil {
+			t.Errorf("RunHeartbeats: %v", err)
+		}
 	}()
 	eventually(t, "heartbeats without configuration", func() bool { _, _, b := c.snapshot(); return len(b) >= 2 })
 	c.mu.Lock()
