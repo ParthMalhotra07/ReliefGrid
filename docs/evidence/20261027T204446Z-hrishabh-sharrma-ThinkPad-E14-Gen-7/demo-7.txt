@@ -1,0 +1,45 @@
+# demo-7: Restart the stopped node; replay, catch-up and equal committed state
+result:     PASS (11/11 checks)
+runId:      20261027T204446Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-10-27T20:45:51Z
+finished:   2026-10-27T20:46:09Z
+duration:   17.4 s
+code tree:  1b4a57182597 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: continues from demo 6 (node/reliefgrid-worker reliefgrid.io/demo6-handoff): shard 1's storage-shard-1-0 stopped; 100 writes under demo7-7-1793133951 while it is down (seed 7); restart by uncordoning its worker
+
+## versions
+git head: b7aea2ff7203
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:65747881bd9a0000b9e54e1338caeab578edcbeae0a04ecccf5be16fd64352e7
+image reliefgrid/coordinator:dev: sha256:881d1d14901ab621231edd4d3e777b0d666cf956040db9f8e8e0178b32116d4d
+
+## checks
+PASS  preflight: coordinator reachable
+PASS  stop: continuing from demo 6: storage-shard-1-0 is still Pending with reliefgrid-worker cordoned
+PASS  stopped: storage-shard-1-0 is down; storage-shard-1-1 leads shard 1 at term 6
+PASS  writes: 100 writes to shard 1 committed while storage-shard-1-0 was down
+PASS  restart: reliefgrid-worker uncordoned; storage-shard-1-0 is Running on it again (2 s)
+PASS  catch-up: storage-shard-1-0 replayed to appliedIndex 4065 (>= commit index 4065) and is caughtUp
+PASS  data-ready: storage-shard-1-0 is Ready (readiness gated on catch-up)
+PASS  identity: storage-shard-1-0 rejoined as storage-shard-1-0/27349f0d-0efe-4ed7-9a2c-24a86b4c689e (same disk); storage-shard-1-1 leads all three
+PASS  equal state: the three replicas' dumps are identical at appliedIndex 4065
+PASS  replayed data: all 100 writes made while it was down are served by storage-shard-1-0's own FSM
+PASS  coordinator: all nine nodes UP
+
+## commands
+shard 1 commit index after the writes: 4065 (leader storage-shard-1-1)
+
+# replay/catch-up of storage-shard-1-0 (polls of /mgmt/status)
+0s {"state":"Follower","appliedIndex":4065,"commitIndex":4065,"leaderCommitIndex":4065,"restoredIndex":731,"caughtUp":true}
+
+# dumps of shard 1 after settling
+storage-shard-1-0 4065 973fa62f515a563707062532a084e9e0c1718fdcda54fb8c16f308f10da25ba4 records=1167
+storage-shard-1-1 4065 973fa62f515a563707062532a084e9e0c1718fdcda54fb8c16f308f10da25ba4 records=1167
+storage-shard-1-2 4065 973fa62f515a563707062532a084e9e0c1718fdcda54fb8c16f308f10da25ba4 records=1167

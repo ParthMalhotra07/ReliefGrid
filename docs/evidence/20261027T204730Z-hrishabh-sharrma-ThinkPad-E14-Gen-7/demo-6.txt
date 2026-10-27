@@ -1,0 +1,27 @@
+# demo-6: Stop a shard's leader under load; a surviving majority keeps serving
+result:     FAIL (1 of 1 checks failed)
+runId:      20261027T204730Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-10-27T20:47:30Z
+finished:   2026-10-27T20:47:31Z
+duration:   0.1 s
+code tree:  1b4a57182597 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: healthy deployment; load Job demo6-1793134050-load (seed 6, 40s, 4 writers, ledger chaos-ledger:/ledger/demo6-1793134050.json); stop shard 1's leader after 8s (cordon its worker, delete the pod)
+
+## versions
+git head: b7aea2ff7203
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:65747881bd9a0000b9e54e1338caeab578edcbeae0a04ecccf5be16fd64352e7
+image reliefgrid/coordinator:dev: sha256:881d1d14901ab621231edd4d3e777b0d666cf956040db9f8e8e0178b32116d4d
+
+## checks
+FAIL  refuse: shard 1 is missing a replica; demo 6 needs all three replicas of every shard (run demo 7 to finish a pending hand-off)
+      shard 1: 2 of 3 replicas Ready; not Ready: storage-shard-1-1
+
+## commands
