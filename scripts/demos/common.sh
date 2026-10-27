@@ -6,10 +6,12 @@ DEMOS_DIR_SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git -C "$DEMOS_DIR_SELF" rev-parse --show-toplevel)"
 EVIDENCE_ROOT="${EVIDENCE_ROOT:-$REPO_ROOT/docs/evidence}"
 CLUSTER="${CLUSTER:-reliefgrid}"
+# shellcheck source=scripts/port-forwards.sh
+. "$REPO_ROOT/scripts/port-forwards.sh"
 
 # The code under test, not the commit: committing evidence (or any docs change) must not
 # make it stale, so only these paths are fingerprinted.
-CODE_PATHS=(go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos chaos)
+CODE_PATHS=(go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos)
 
 # code_tree: 12 hex digits identifying the committed code under CODE_PATHS
 code_tree() {

@@ -47,18 +47,23 @@ step "build and load the coordinator image" make -s coordinator-image
 step "build and load the tools image" make -s tools-image
 step "install deploy/helm/storage" helm --kube-context "$CTX" install storage deploy/helm/storage -n "$NS" --create-namespace \
 	--wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT"
+pf_pid="" # nine_up's port-forward, also killed if the reset is interrupted
+trap '[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
 nine_up() {
-	local tok port pid ok=1
+	local tok port ok=1
 	tok="$(kubectl --context "$CTX" -n "$NS" get secret storage-operator-token -o jsonpath='{.data.token}' | base64 -d)" || return 1
 	port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
 	kubectl --context "$CTX" -n "$NS" port-forward svc/storage-coordinator "$port:8080" >/dev/null 2>&1 &
-	pid=$!
+	pf_pid=$!
 	for _ in $(seq 120); do
 		[ "$(curl -s -m 3 -H "Authorization: Bearer $tok" "http://127.0.0.1:$port/admin/nodes" 2>/dev/null |
 			jq '[.nodes[] | select(.state == "UP")] | length' 2>/dev/null)" = 9 ] && { ok=0; break; }
 		sleep 1
 	done
-	kill "$pid" 2>/dev/null
+	kill "$pf_pid" 2>/dev/null
+	pf_pid=""
 	return "$ok"
 }
 step "wait until the coordinator reports nine storage nodes UP" nine_up
