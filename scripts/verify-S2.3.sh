@@ -3,7 +3,7 @@
 # Run from the repo root, against the local "reliefgrid" kind cluster:
 #   scripts/verify-S2.3.sh
 #   SEED=41 ELECTION_MAX_SECONDS=15 scripts/verify-S2.3.sh
-# It builds and loads the storage and coordinator images, installs (or upgrades)
+# It builds and loads the storage, coordinator and tools images, installs (or upgrades)
 # deploy/helm/storage, waits for every shard to be one caught-up group, then runs the
 # experiments under load and checks each JSON report and the cluster independently of it.
 # It never recreates the cluster. Writes evidence to docs/evidence/S2.3/failure-harness-<host>.txt
@@ -22,8 +22,8 @@
 #     Each run:
 #       1. starts the load as a Job in namespace reliefgrid on the infra worker:
 #          /invcheck load --coordinator http://storage-coordinator.reliefgrid.svc.cluster.local:8080
-#          --ledger /ledger/<runId>.json, image reliefgrid/storagenode:dev (which now also ships
-#          /invcheck), ledger on PVC chaos-ledger; no kubectl port-forward anywhere;
+#          --ledger /ledger/<runId>.json, image reliefgrid/tools:dev, ledger on PVC
+#          chaos-ledger; no kubectl port-forward anywhere;
 #       2. after the seeded fault delay, starts the fault on shard <shard>:
 #          kill-leader      delete the leader's pod (healed: the pod is back and Ready)
 #          kill-follower    delete one follower's pod (healed: likewise)
@@ -34,13 +34,23 @@
 #                           NetworkPolicy storage-shard-N excludes as both target and peer;
 #                           its data (8080) and mgmt (8081) ports stay open; healed by
 #                           removing the label. The fault lasts long enough for an election.
+#                           If the cut did not take (connections opened before it survive),
+#                           the harness deletes the pod IP's conntrack entries on every kind
+#                           node (docker exec <node> conntrack -D) and reports which.
 #       3. a bounded settle phase (--settle-max) after the heal: the load Job finishes, the
 #          shard is one group (one leader every member names, serverIds = manifest peerIds),
 #          every member caughtUp at one appliedIndex;
 #       4. /invcheck verify --ledger ... --json and then /invcheck check --json, each as a Job
 #          against the same Service URL; with --inject lost-write, before verify the harness
-#          first commits a write (through the coordinator) that overwrites the key of one
-#          acknowledged update with a payload no acknowledged write produced.
+#          runs /invcheck inject --confirm as a Job: a real write through the coordinator that
+#          overwrites the key of one acknowledged update with a payload no acknowledged write
+#          produced.
+#   make tools-image             docker build of cmd/invcheck/Dockerfile as reliefgrid/tools:dev, then
+#                                kind load; multi-stage, every base pinned by digest, final stage
+#                                distroless, non-root; /invcheck built with -tags chaos. The storage
+#                                image does not ship /invcheck.
+#   invcheck inject              only with -tags chaos; refuses (exit 64) without --confirm; in the
+#                                default build `inject` is an unknown command (exit 64).
 #   invcheck load ledger (loadtest/ledger): every entry also has "at" (unix ms when its outcome
 #     was known), and the ledger has "errors": [{at, operationId, key, attempt, error}] for
 #     every failed attempt, including ones a retry later fixed (v3.1 §26: record temporary
@@ -60,7 +70,8 @@
 #     invcheck {job, exitCode, verdict, quiescent, violations [...]}
 #     isolation (isolate-replica only) {peerToTargetRaft, targetToPeerRaft, peerToTargetData,
 #       targetCommitAdvanced, majorityCommitAdvanced}: booleans measured during the fault
-#       (raft reachability by storagectl dial; commit advance across the fault window)
+#       (raft reachability by storagectl dial; commit advance across the fault window),
+#       method: networkpolicy | networkpolicy+conntrack
 #     injected (only with --inject) {kind: lost-write, key, operationId}
 set -uo pipefail
 
@@ -70,6 +81,7 @@ NS=reliefgrid
 RELEASE=storage
 CHART=deploy/helm/storage
 IMAGE=reliefgrid/storagenode:dev
+TOOLS_IMAGE=reliefgrid/tools:dev
 COORD_URL="http://storage-coordinator.$NS.svc.cluster.local:8080"
 SHARDS=(0 1 2)
 EXPERIMENTS=(kill-leader kill-follower restart-shard isolate-replica)
@@ -198,8 +210,8 @@ run_job() {
 	local name="$1" code
 	shift
 	kn delete job "$name" --ignore-not-found --wait >/dev/null 2>&1
-	jq -n --arg name "$name" --arg image "$IMAGE" --args '$ARGS.positional' -- "$@" |
-		jq --arg name "$name" --arg image "$IMAGE" '{
+	printf '%s\n' "$@" | jq -Rs 'split("\n")[:-1]' |
+		jq --arg name "$name" --arg image "$TOOLS_IMAGE" '{
 			apiVersion: "batch/v1", kind: "Job", metadata: {name: $name, labels: {"reliefgrid.io/verify": "S2.3"}},
 			spec: {backoffLimit: 0, template: {spec: {
 				restartPolicy: "Never",
@@ -219,7 +231,7 @@ run_job() {
 echo "== 0. preconditions"
 for t in kubectl helm jq docker kind git; do command -v "$t" >/dev/null || abort "tool $t is installed"; done
 k get nodes >/dev/null 2>&1 || abort "kind cluster $CLUSTER is running (make cluster-up)"
-make -s storage-image coordinator-image >"$tmp/build.log" 2>&1 || abort "images build and load into kind" "$(tail -20 "$tmp/build.log")"
+make -s storage-image coordinator-image tools-image >"$tmp/build.log" 2>&1 || abort "images build and load into kind" "$(tail -20 "$tmp/build.log")"
 helm --kube-context "$CTX" upgrade --install "$RELEASE" "$CHART" -n "$NS" --create-namespace --wait --timeout "$INSTALL_TIMEOUT" >"$tmp/helm.log" 2>&1 ||
 	abort "helm upgrade --install $RELEASE" "$(tail -20 "$tmp/helm.log")"
 for s in "${SHARDS[@]}"; do
@@ -232,9 +244,25 @@ for e in "${EXPERIMENTS[@]}"; do
 	check "$f exists and is executable" test -x "$f"
 	check "$f --help exits 0" "$f" --help
 done
+docker run --rm "$TOOLS_IMAGE" >/dev/null 2>&1
+rc=$?
+[ "$rc" = 64 ] && pass "$TOOLS_IMAGE runs /invcheck (usage exit 64)" || fail "$TOOLS_IMAGE runs /invcheck (usage exit 64)" "exit $rc"
 docker run --rm --entrypoint /invcheck "$IMAGE" >/dev/null 2>&1
 rc=$?
-[ "$rc" = 64 ] && pass "$IMAGE ships /invcheck (usage exit 64)" || fail "$IMAGE ships /invcheck (usage exit 64)" "exit $rc"
+[ "$rc" != 64 ] && [ "$rc" != 0 ] && pass "$IMAGE does not ship /invcheck" || fail "$IMAGE does not ship /invcheck" "exit $rc"
+[ "$(docker image inspect "$TOOLS_IMAGE" --format '{{.Config.User}}' 2>/dev/null)" = 65532:65532 ] &&
+	pass "$TOOLS_IMAGE runs as 65532:65532" || fail "$TOOLS_IMAGE runs as 65532:65532"
+froms="$(grep -E '^FROM ' cmd/invcheck/Dockerfile 2>/dev/null)"
+[ -n "$froms" ] && ! grep -vq '@sha256:' <<<"$froms" && tail -1 <<<"$froms" | grep -q 'distroless' &&
+	pass "cmd/invcheck/Dockerfile: every base pinned by digest, final stage distroless" ||
+	fail "cmd/invcheck/Dockerfile: every base pinned by digest, final stage distroless" "${froms:-no Dockerfile}"
+out="$(docker run --rm "$TOOLS_IMAGE" inject --ledger /tmp/x.json --coordinator http://127.0.0.1:1 2>&1)"
+rc=$?
+[ "$rc" = 64 ] && grep -q -- '--confirm' <<<"$out" && pass "tools image: invcheck inject refuses without --confirm (exit 64)" ||
+	fail "tools image: invcheck inject refuses without --confirm (exit 64)" "exit $rc: $out"
+out="$(go run ./cmd/invcheck inject --confirm --ledger /tmp/x.json --coordinator http://127.0.0.1:1 2>&1)"
+grep -q 'unknown command "inject"' <<<"$out" && pass "default build: invcheck inject is an unknown command" ||
+	fail "default build: invcheck inject is an unknown command" "$out"
 if [ ! -d chaos/scripts ]; then
 	fail "chaos/ never port-forwards (the load and checks run in-cluster)" "no chaos/scripts directory"
 elif grep -rn "port-forward" chaos/ >/dev/null 2>&1; then
@@ -296,6 +324,8 @@ independent_checks() {
 	shard="$(jq -r .target.shard "$r")"
 	why="$(wait_group "$shard" 30)" && pass "$e: shard-$shard is one caught-up group afterwards" || fail "$e: shard-$shard is one caught-up group afterwards" "$why"
 	job="$(jq -r .load.job "$r")"
+	[ "$(kn get job "$job" -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null)" = "$TOOLS_IMAGE" ] &&
+		pass "$e: Job $job uses $TOOLS_IMAGE" || fail "$e: Job $job uses $TOOLS_IMAGE"
 	args="$(kn get job "$job" -o jsonpath='{.spec.template.spec.containers[0].command}' 2>/dev/null)"
 	if jq -e --arg u "$COORD_URL" 'index("/invcheck") == 0 and index("load") == 1 and any(.[]; . == $u or . == "--coordinator=" + $u)' <<<"${args:-null}" >/dev/null 2>&1; then
 		pass "$e: Job $job runs /invcheck load against $COORD_URL"
@@ -338,7 +368,7 @@ echo "== 6. isolate the leader's Raft port under load"
 if run_experiment isolate-replica $((SEED + 4)) 0 --role leader; then
 	common_checks isolate-replica "$r"
 	jcheck "isolate-replica: Raft cut both ways, data port open, by the chart's NetworkPolicy" "$r" \
-		'.fault.kind == "raft-isolation" and .isolation.peerToTargetRaft == false and .isolation.targetToPeerRaft == false and .isolation.peerToTargetData == true'
+		'.fault.kind == "raft-isolation" and (.isolation.method == "networkpolicy" or .isolation.method == "networkpolicy+conntrack") and .isolation.peerToTargetRaft == false and .isolation.targetToPeerRaft == false and .isolation.peerToTargetData == true'
 	jcheck "isolate-replica: the isolated old leader committed nothing while the majority moved on under a new leader" "$r" \
 		'.target.role == "leader" and .isolation.targetCommitAdvanced == false and .isolation.majorityCommitAdvanced == true and .recovery.leader != .target.pod and .recovery.term > .target.term'
 	independent_checks isolate-replica "$r"
@@ -351,6 +381,8 @@ fi
 echo "== 7. an injected lost write is caught"
 if TAG=inject run_experiment kill-follower $((SEED + 5)) 1 --inject lost-write; then
 	jcheck "inject: report fails, naming the ledger" "$r" '.pass == false and any(.failures[]; test("ledger|lost"; "i"))'
+	jcheck "inject: the harness reports the injection, and nothing else failed" "$r" \
+		'.load.exitCode == 0 and .invcheck.exitCode == 0 and .settle.ok == true'
 	jcheck "inject: the ledger names the injected key as lost" "$r" \
 		'. as $r | $r.injected.kind == "lost-write" and ($r.injected.key | type == "string") and any($r.ledger.lost[]; .entry.key == $r.injected.key) and $r.ledger.exitCode == 1'
 	out="$(run_job s23-verify-inject verify --coordinator "$COORD_URL" --ledger "$(jq -r .ledger.path "$r")" --json)"
