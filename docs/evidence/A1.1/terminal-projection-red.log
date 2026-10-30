@@ -1,0 +1,14 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	(cached)
+--- FAIL: TestAPIStatusChangesRetainClaimsUntilClosure (0.36s)
+    --- FAIL: TestAPIStatusChangesRetainClaimsUntilClosure/cancel (0.10s)
+        lifecycle_test.go:112: terminal projection presents historical assignment as current: map[string]interface {}{"assignedResourceId":"7bfaae86-fc7f-4c49-8242-0ca9766dd565", "createdAt":"2026-10-30T10:00:00Z", "details":"Synthetic water request", "lastError":"", "location":map[string]interface {}{"lat":0, "lng":0}, "nextAttemptAt":interface {}(nil), "peopleAffected":2, "requestId":"94b277c3-a7f1-40ce-b23a-19acc16bf5fc", "requestType":"WATER", "retryCount":0, "status":"CANCELLED", "updatedAt":"2026-10-30T10:00:00Z", "urgency":"HIGH", "version":"v5"}
+    --- FAIL: TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_reusable (0.09s)
+        lifecycle_test.go:112: terminal projection presents historical assignment as current: map[string]interface {}{"assignedResourceId":"ca65ba21-3ade-4901-8a56-872290a7ada7", "createdAt":"2026-10-30T10:00:00Z", "details":"Synthetic water request", "lastError":"", "location":map[string]interface {}{"lat":0, "lng":0}, "nextAttemptAt":interface {}(nil), "peopleAffected":2, "requestId":"74ce047b-35d9-40f2-9ae1-a7301c388e3a", "requestType":"WATER", "retryCount":0, "status":"FULFILLED", "updatedAt":"2026-10-30T10:00:00Z", "urgency":"HIGH", "version":"v5"}
+    --- FAIL: TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_consumable (0.09s)
+        lifecycle_test.go:112: terminal projection presents historical assignment as current: map[string]interface {}{"assignedResourceId":"f10fd676-db79-4a21-aaca-19d64ec7a330", "createdAt":"2026-10-30T10:00:00Z", "details":"Synthetic water request", "lastError":"", "location":map[string]interface {}{"lat":0, "lng":0}, "nextAttemptAt":interface {}(nil), "peopleAffected":2, "requestId":"3f1b4ce2-d745-4428-a079-cf70c18f47dc", "requestType":"WATER", "retryCount":0, "status":"FULFILLED", "updatedAt":"2026-10-30T10:00:00Z", "urgency":"HIGH", "version":"v5"}
+    --- FAIL: TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_expired_reusable (0.09s)
+        lifecycle_test.go:112: terminal projection presents historical assignment as current: map[string]interface {}{"assignedResourceId":"8674304b-2b58-41ab-9f88-6807e7afe3ae", "createdAt":"2026-10-30T10:00:00Z", "details":"Synthetic water request", "lastError":"", "location":map[string]interface {}{"lat":0, "lng":0}, "nextAttemptAt":interface {}(nil), "peopleAffected":2, "requestId":"35acfa86-f7cf-483a-af7b-6893a63b1c95", "requestType":"WATER", "retryCount":0, "status":"FULFILLED", "updatedAt":"2026-10-30T12:00:00Z", "urgency":"HIGH", "version":"v5"}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	2.152s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+FAIL

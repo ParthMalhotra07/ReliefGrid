@@ -1,0 +1,18 @@
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/api	[no test files]
+--- FAIL: TestAPIIdempotencyKeyMatchesFrozenUUIDContract (0.06s)
+    validation_test.go:21: HTTP 201: {"createdAt":"2026-10-30T10:00:00Z","details":"Synthetic water request","location":{"lat":0,"lng":0},"peopleAffected":2,"requestId":"7f63287a-7b33-57c0-ab72-3accaf95c93e","requestType":"WATER","status":"PENDING","updatedAt":"2026-10-30T10:00:00Z","urgency":"HIGH","version":"v1","assignedResourceId":null,"nextAttemptAt":null,"retryCount":0,"lastError":""}
+        ; want 400
+--- FAIL: TestAPIStrictWireValidation (0.12s)
+    --- FAIL: TestAPIStrictWireValidation/nullable_people_prohibited (0.01s)
+        validation_test.go:58: HTTP 201: {"createdAt":"2026-10-30T10:00:00Z","details":"Synthetic water request","location":{"lat":0,"lng":0},"peopleAffected":1,"requestId":"1053a839-6f53-4ac1-ab29-1bcf970e0ce6","requestType":"WATER","status":"PENDING","updatedAt":"2026-10-30T10:00:00Z","urgency":"HIGH","version":"v1","assignedResourceId":null,"nextAttemptAt":null,"retryCount":0,"lastError":""}
+            ; want 400
+    --- FAIL: TestAPIStrictWireValidation/nullable_urgency_prohibited (0.01s)
+        validation_test.go:58: HTTP 201: {"createdAt":"2026-10-30T10:00:00Z","details":"Synthetic water request","location":{"lat":0,"lng":0},"peopleAffected":2,"requestId":"d0fb1b5b-495c-4b0b-b146-6829541a9b6d","requestType":"WATER","status":"PENDING","updatedAt":"2026-10-30T10:00:00Z","urgency":"NORMAL","version":"v1","assignedResourceId":null,"nextAttemptAt":null,"retryCount":0,"lastError":""}
+            ; want 400
+    --- FAIL: TestAPIStrictWireValidation/nondecimal_near (0.01s)
+        validation_test.go:58: HTTP 200: {"items":[],"positions":[{"appliedIndex":1,"hasMore":false,"shard":0},{"appliedIndex":0,"hasMore":false,"shard":1},{"appliedIndex":1,"hasMore":false,"shard":2}],"partial":false,"failedShards":[],"consistency":"strong"}
+            ; want 400
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.963s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+FAIL
