@@ -206,7 +206,7 @@ paths:
                       eventId: ev-5d21
                       eventType: resource.registered
                       schemaVersion: 1
-                      exchange: relief.resources
+                      exchange: relief.events
                       routingKey: resource.registered.water
                       payload: {resourceId: s-77, type: WATER}
                       published: false
@@ -679,7 +679,7 @@ paths:
                   - eventId: ev-5d21
                     eventType: resource.registered
                     schemaVersion: 1
-                    exchange: relief.resources
+                    exchange: relief.events
                     routingKey: resource.registered.water
                     payload: {resourceId: s-77, type: WATER}
                     entityKey: "res:s-77"

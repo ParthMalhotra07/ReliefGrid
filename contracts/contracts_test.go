@@ -954,14 +954,7 @@ func TestNodeIdentity(t *testing.T) {
 		}
 	}
 
-	raw, err := os.ReadFile(specFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var tree any
-	if err := yaml.Unmarshal(raw, &tree); err != nil {
-		t.Fatal(err)
-	}
+	tree := specTree(t)
 	seen := map[string]int{}
 	walkYAML(tree, func(k string, v any) {
 		s, ok := v.(string)
@@ -991,6 +984,44 @@ func TestNodeIdentity(t *testing.T) {
 			t.Errorf("no example %s in %s", k, specFile)
 		}
 	}
+}
+
+// exchanges is the planned RabbitMQ topology (v3.1 §20): there is no other
+// exchange, so resource.registered.* goes to relief.events.
+var exchanges = []string{"relief.requests", "relief.retry", "relief.events", "relief.dlx"}
+
+// TestExamplesUseKnownExchanges: every exchange named in internal.yaml (an
+// exchange field or any relief.* value) is one of the planned exchanges, so a
+// copied example cannot publish to an exchange that does not exist (#42).
+func TestExamplesUseKnownExchanges(t *testing.T) {
+	seen := 0
+	walkYAML(specTree(t), func(k string, v any) {
+		s, ok := v.(string)
+		if !ok || (k != "exchange" && !strings.HasPrefix(s, "relief.")) {
+			return
+		}
+		seen++
+		if !slices.Contains(exchanges, s) {
+			t.Errorf("example %s %q is not a planned exchange %v", k, s, exchanges)
+		}
+	})
+	if seen == 0 {
+		t.Errorf("no example exchange in %s", specFile)
+	}
+}
+
+// specTree is internal.yaml as plain YAML, examples included.
+func specTree(t *testing.T) any {
+	t.Helper()
+	raw, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tree any
+	if err := yaml.Unmarshal(raw, &tree); err != nil {
+		t.Fatal(err)
+	}
+	return tree
 }
 
 // walkYAML calls fn for every mapping key and value under v.
