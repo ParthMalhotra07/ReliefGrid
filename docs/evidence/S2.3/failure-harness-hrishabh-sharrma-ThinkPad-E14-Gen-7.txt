@@ -1,0 +1,170 @@
+# S2.3 failure harness
+result:     PASSED (97/97 checks)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-10-27T07:40:12Z
+seed base:  23
+code tree:  05da11dc7eba (git ls-tree -r HEAD -- go.mod go.sum cmd internal loadtest chaos deploy/helm/storage scripts/verify-S2.3.sh | git hash-object --stdin)
+code dirty: no
+
+## checks
+PASS  start: shard-0 is one caught-up group
+PASS  start: shard-1 is one caught-up group
+PASS  start: shard-2 is one caught-up group
+PASS  chaos/scripts/kill-leader.sh exists and is executable
+PASS  chaos/scripts/kill-leader.sh --help exits 0
+PASS  chaos/scripts/kill-follower.sh exists and is executable
+PASS  chaos/scripts/kill-follower.sh --help exits 0
+PASS  chaos/scripts/restart-shard.sh exists and is executable
+PASS  chaos/scripts/restart-shard.sh --help exits 0
+PASS  chaos/scripts/isolate-replica.sh exists and is executable
+PASS  chaos/scripts/isolate-replica.sh --help exits 0
+PASS  reliefgrid/tools:dev runs /invcheck (usage exit 64)
+PASS  reliefgrid/storagenode:dev does not ship /invcheck
+PASS  reliefgrid/tools:dev runs as 65532:65532
+PASS  cmd/invcheck/Dockerfile: every base pinned by digest, final stage distroless
+PASS  tools image: invcheck inject refuses without --confirm (exit 64)
+PASS  default build: invcheck inject is an unknown command
+PASS  chaos/ never port-forwards (the load and checks run in-cluster)
+PASS  kill-leader: --seed 7 --plan is a JSON plan, the same both times
+PASS  kill-leader: seeds 1..12 choose 3 different shards
+PASS  kill-follower: --seed 7 --plan is a JSON plan, the same both times
+PASS  kill-follower: seeds 1..12 choose 3 different shards
+PASS  restart-shard: --seed 7 --plan is a JSON plan, the same both times
+PASS  restart-shard: seeds 1..12 choose 3 different shards
+PASS  isolate-replica: --seed 7 --plan is a JSON plan, the same both times
+PASS  isolate-replica: seeds 1..12 choose 3 different shards
+PASS  kill-leader (seed 24): exit 0
+PASS  kill-leader: report pass, no failures
+PASS  kill-leader: report names experiment, seed, runId and target
+PASS  kill-leader: fault started under load and healed before the load finished
+PASS  kill-leader: settled within its bound, from the heal and the load's end
+PASS  kill-leader: load ran as a Job against the coordinator Service and finished cleanly
+PASS  kill-leader: writes were acknowledged during the fault
+PASS  kill-leader: errorsObserved is a list of {at, source, message}
+PASS  kill-leader: ledger: zero acknowledged writes lost
+PASS  kill-leader: invcheck check clean and quiescent
+PASS  kill-leader: the target was the leader and a leader at a higher term took over within 10s
+PASS  kill-leader: shard-1 is one caught-up group afterwards
+PASS  kill-leader: Job chaos-load-kill-leader-s24-1793085912 uses reliefgrid/tools:dev
+PASS  kill-leader: Job chaos-load-kill-leader-s24-1793085912 runs /invcheck load against http://storage-coordinator.reliefgrid.svc.cluster.local:8080
+PASS  kill-leader: an independent invcheck verify Job finds zero lost
+PASS  kill-leader: no pod is left isolated
+PASS  kill-follower (seed 25): exit 0
+PASS  kill-follower: report pass, no failures
+PASS  kill-follower: report names experiment, seed, runId and target
+PASS  kill-follower: fault started under load and healed before the load finished
+PASS  kill-follower: settled within its bound, from the heal and the load's end
+PASS  kill-follower: load ran as a Job against the coordinator Service and finished cleanly
+PASS  kill-follower: writes were acknowledged during the fault
+PASS  kill-follower: errorsObserved is a list of {at, source, message}
+PASS  kill-follower: ledger: zero acknowledged writes lost
+PASS  kill-follower: invcheck check clean and quiescent
+PASS  kill-follower: the target was a follower and the leader kept its term
+PASS  kill-follower: shard-2 is one caught-up group afterwards
+PASS  kill-follower: Job chaos-load-kill-follower-s25-1793086069 uses reliefgrid/tools:dev
+PASS  kill-follower: Job chaos-load-kill-follower-s25-1793086069 runs /invcheck load against http://storage-coordinator.reliefgrid.svc.cluster.local:8080
+PASS  kill-follower: an independent invcheck verify Job finds zero lost
+PASS  kill-follower: no pod is left isolated
+PASS  restart-shard (seed 26): exit 0
+PASS  restart-shard: report pass, no failures
+PASS  restart-shard: report names experiment, seed, runId and target
+PASS  restart-shard: fault started under load and healed before the load finished
+PASS  restart-shard: settled within its bound, from the heal and the load's end
+PASS  restart-shard: load ran as a Job against the coordinator Service and finished cleanly
+PASS  restart-shard: writes were acknowledged during the fault
+PASS  restart-shard: errorsObserved is a list of {at, source, message}
+PASS  restart-shard: ledger: zero acknowledged writes lost
+PASS  restart-shard: invcheck check clean and quiescent
+PASS  restart-shard: all three pods restarted and the group re-formed at a higher term
+PASS  restart-shard: shard-0 is one caught-up group afterwards
+PASS  restart-shard: Job chaos-load-restart-shard-s26-1793086222 uses reliefgrid/tools:dev
+PASS  restart-shard: Job chaos-load-restart-shard-s26-1793086222 runs /invcheck load against http://storage-coordinator.reliefgrid.svc.cluster.local:8080
+PASS  restart-shard: an independent invcheck verify Job finds zero lost
+PASS  restart-shard: no pod is left isolated
+PASS  isolate-replica (seed 27, --role leader): exit 0
+PASS  isolate-replica: report pass, no failures
+PASS  isolate-replica: report names experiment, seed, runId and target
+PASS  isolate-replica: fault started under load and healed before the load finished
+PASS  isolate-replica: settled within its bound, from the heal and the load's end
+PASS  isolate-replica: load ran as a Job against the coordinator Service and finished cleanly
+PASS  isolate-replica: writes were acknowledged during the fault
+PASS  isolate-replica: errorsObserved is a list of {at, source, message}
+PASS  isolate-replica: ledger: zero acknowledged writes lost
+PASS  isolate-replica: invcheck check clean and quiescent
+PASS  isolate-replica: Raft cut both ways, data port open, by the chart's NetworkPolicy
+PASS  isolate-replica: the isolated old leader committed nothing while the majority moved on under a new leader
+PASS  isolate-replica: shard-1 is one caught-up group afterwards
+PASS  isolate-replica: Job chaos-load-isolate-replica-s27-1793086482 uses reliefgrid/tools:dev
+PASS  isolate-replica: Job chaos-load-isolate-replica-s27-1793086482 runs /invcheck load against http://storage-coordinator.reliefgrid.svc.cluster.local:8080
+PASS  isolate-replica: an independent invcheck verify Job finds zero lost
+PASS  isolate-replica: no pod is left isolated
+PASS  isolate-replica: after the heal storage-shard-1-1 reaches storage-shard-1-0:7000 again
+PASS  kill-follower (seed 28, --inject lost-write): exit 1
+PASS  inject: report fails, naming the ledger
+PASS  inject: the harness reports the injection, and nothing else failed
+PASS  inject: the ledger names the injected key as lost
+PASS  inject: an independent invcheck verify Job also reports the key lost (exit 1)
+
+## reports (summary)
+{"experiment":"isolate-replica","seed":27,"pass":true,"target":"storage-shard-1-0","recovery":11.3,"settle":0.4,"acked":7742,"ackedDuringFault":1378,"unknown":0,"errors":1,"lost":0,"invcheck":"clean"}
+{"experiment":"kill-follower","seed":28,"pass":false,"target":"storage-shard-2-1","recovery":0.4,"settle":0.5,"acked":6128,"ackedDuringFault":896,"unknown":0,"errors":0,"lost":1,"invcheck":"clean"}
+{"experiment":"kill-follower","seed":25,"pass":true,"target":"storage-shard-2-2","recovery":0.3,"settle":0.7,"acked":6354,"ackedDuringFault":928,"unknown":0,"errors":0,"lost":0,"invcheck":"clean"}
+{"experiment":"kill-leader","seed":24,"pass":true,"target":"storage-shard-1-2","recovery":3.1,"settle":0.6,"acked":6365,"ackedDuringFault":116,"unknown":0,"errors":0,"lost":0,"invcheck":"clean"}
+{"experiment":"restart-shard","seed":26,"pass":true,"target":"storage-shard-0-1","recovery":5.9,"settle":0.6,"acked":11430,"ackedDuringFault":235,"unknown":0,"errors":0,"lost":0,"invcheck":"clean"}
+
+## kubectl get pods -o wide
+NAME                                                READY   STATUS      RESTARTS   AGE     IP            NODE                 NOMINATED NODE   READINESS GATES
+chaos-check-isolate-replica-s27-1793084550-l46fv    0/1     Completed   0          35m     10.244.4.12   reliefgrid-worker4   <none>           <none>
+chaos-check-isolate-replica-s27-1793085297-g8l2w    0/1     Completed   0          22m     10.244.4.25   reliefgrid-worker4   <none>           <none>
+chaos-check-isolate-replica-s27-1793086482-7j55q    0/1     Completed   0          3m4s    10.244.4.49   reliefgrid-worker4   <none>           <none>
+chaos-check-kill-follower-s25-1793084960-xpkvw      0/1     Completed   0          28m     10.244.4.19   reliefgrid-worker4   <none>           <none>
+chaos-check-kill-follower-s25-1793086069-n9c7z      0/1     Completed   0          10m     10.244.4.41   reliefgrid-worker4   <none>           <none>
+chaos-check-kill-follower-s28-1793085484-csqzl      0/1     Completed   0          20m     10.244.4.30   reliefgrid-worker4   <none>           <none>
+chaos-check-kill-follower-s28-1793086665-h5296      0/1     Completed   0          28s     10.244.4.54   reliefgrid-worker4   <none>           <none>
+chaos-check-kill-follower-s3-1793084421-dbkj6       0/1     Completed   0          37m     10.244.4.9    reliefgrid-worker4   <none>           <none>
+chaos-check-kill-leader-s24-1793084800-hrgt4        0/1     Completed   0          31m     10.244.4.15   reliefgrid-worker4   <none>           <none>
+chaos-check-kill-leader-s24-1793085912-6k2zg        0/1     Completed   0          12m     10.244.4.37   reliefgrid-worker4   <none>           <none>
+chaos-check-restart-shard-s26-1793085678-db2z8      0/1     Completed   0          15m     10.244.4.34   reliefgrid-worker4   <none>           <none>
+chaos-check-restart-shard-s26-1793086222-l9wpt      0/1     Completed   0          6m20s   10.244.4.45   reliefgrid-worker4   <none>           <none>
+chaos-inject-kill-follower-s28-1793085484-snh8g     0/1     Completed   0          20m     10.244.4.28   reliefgrid-worker4   <none>           <none>
+chaos-inject-kill-follower-s28-1793086665-fzwfl     0/1     Completed   0          58s     10.244.4.52   reliefgrid-worker4   <none>           <none>
+chaos-load-isolate-replica-s27-1793084550-2wsvf     0/1     Completed   0          37m     10.244.4.10   reliefgrid-worker4   <none>           <none>
+chaos-load-isolate-replica-s27-1793085297-4w5r8     0/1     Completed   0          25m     10.244.4.23   reliefgrid-worker4   <none>           <none>
+chaos-load-isolate-replica-s27-1793086482-cv42t     0/1     Completed   0          5m29s   10.244.4.47   reliefgrid-worker4   <none>           <none>
+chaos-load-kill-follower-s25-1793084960-xw4nz       0/1     Completed   0          30m     10.244.4.17   reliefgrid-worker4   <none>           <none>
+chaos-load-kill-follower-s25-1793086069-77jbv       0/1     Completed   0          12m     10.244.4.39   reliefgrid-worker4   <none>           <none>
+chaos-load-kill-follower-s28-1793085484-prxdp       0/1     Completed   0          22m     10.244.4.27   reliefgrid-worker4   <none>           <none>
+chaos-load-kill-follower-s28-1793086665-59lxd       0/1     Completed   0          2m25s   10.244.4.51   reliefgrid-worker4   <none>           <none>
+chaos-load-kill-follower-s3-1793084421-gm8x2        0/1     Completed   0          39m     10.244.4.7    reliefgrid-worker4   <none>           <none>
+chaos-load-kill-leader-s24-1793084800-xtnnp         0/1     Completed   0          33m     10.244.4.13   reliefgrid-worker4   <none>           <none>
+chaos-load-kill-leader-s24-1793085912-4jdtk         0/1     Completed   0          14m     10.244.4.35   reliefgrid-worker4   <none>           <none>
+chaos-load-restart-shard-s26-1793085678-j9cqg       0/1     Completed   0          18m     10.244.4.32   reliefgrid-worker4   <none>           <none>
+chaos-load-restart-shard-s26-1793086222-rlk9j       0/1     Completed   0          9m48s   10.244.4.43   reliefgrid-worker4   <none>           <none>
+chaos-verify-isolate-replica-s27-1793084550-psdzs   0/1     Completed   0          35m     10.244.4.11   reliefgrid-worker4   <none>           <none>
+chaos-verify-isolate-replica-s27-1793085297-zb2f8   0/1     Completed   0          23m     10.244.4.24   reliefgrid-worker4   <none>           <none>
+chaos-verify-isolate-replica-s27-1793086482-pdcjn   0/1     Completed   0          3m36s   10.244.4.48   reliefgrid-worker4   <none>           <none>
+chaos-verify-kill-follower-s25-1793084960-n2wgb     0/1     Completed   0          29m     10.244.4.18   reliefgrid-worker4   <none>           <none>
+chaos-verify-kill-follower-s25-1793086069-wzws6     0/1     Completed   0          10m     10.244.4.40   reliefgrid-worker4   <none>           <none>
+chaos-verify-kill-follower-s28-1793085484-9lqzn     0/1     Error       0          20m     10.244.4.29   reliefgrid-worker4   <none>           <none>
+chaos-verify-kill-follower-s28-1793086665-krfh8     0/1     Error       0          54s     10.244.4.53   reliefgrid-worker4   <none>           <none>
+chaos-verify-kill-follower-s3-1793084421-q5c2t      0/1     Completed   0          38m     10.244.4.8    reliefgrid-worker4   <none>           <none>
+chaos-verify-kill-leader-s24-1793084800-txjzz       0/1     Completed   0          31m     10.244.4.14   reliefgrid-worker4   <none>           <none>
+chaos-verify-kill-leader-s24-1793085912-82n5t       0/1     Completed   0          13m     10.244.4.36   reliefgrid-worker4   <none>           <none>
+chaos-verify-restart-shard-s26-1793085678-n4jc5     0/1     Completed   0          16m     10.244.4.33   reliefgrid-worker4   <none>           <none>
+chaos-verify-restart-shard-s26-1793086222-dgv7w     0/1     Completed   0          7m5s    10.244.4.44   reliefgrid-worker4   <none>           <none>
+s23-verify-inject-b86nh                             0/1     Error       0          24s     10.244.4.55   reliefgrid-worker4   <none>           <none>
+s23-verify-isolate-replica-ntbsr                    0/1     Completed   0          3m      10.244.4.50   reliefgrid-worker4   <none>           <none>
+s23-verify-kill-follower-7xxbr                      0/1     Completed   0          10m     10.244.4.42   reliefgrid-worker4   <none>           <none>
+s23-verify-kill-leader-whgbf                        0/1     Completed   0          12m     10.244.4.38   reliefgrid-worker4   <none>           <none>
+s23-verify-restart-shard-zlqgg                      0/1     Completed   0          6m16s   10.244.4.46   reliefgrid-worker4   <none>           <none>
+storage-bootstrap-7-cvsvg                           0/1     Completed   0          15m     10.244.2.52   reliefgrid-worker3   <none>           <none>
+storage-coordinator-76f478cbcf-nnkvm                1/1     Running     0          129m    10.244.4.4    reliefgrid-worker4   <none>           <none>
+storage-shard-0-0                                   1/1     Running     0          9m39s   10.244.2.54   reliefgrid-worker3   <none>           <none>
+storage-shard-0-1                                   1/1     Running     0          9m39s   10.244.1.42   reliefgrid-worker    <none>           <none>
+storage-shard-0-2                                   1/1     Running     0          9m39s   10.244.3.37   reliefgrid-worker2   <none>           <none>
+storage-shard-1-0                                   1/1     Running     0          129m    10.244.3.31   reliefgrid-worker2   <none>           <none>
+storage-shard-1-1                                   1/1     Running     0          39m     10.244.1.37   reliefgrid-worker    <none>           <none>
+storage-shard-1-2                                   1/1     Running     0          14m     10.244.2.53   reliefgrid-worker3   <none>           <none>
+storage-shard-2-0                                   1/1     Running     0          129m    10.244.3.28   reliefgrid-worker2   <none>           <none>
+storage-shard-2-1                                   1/1     Running     0          2m16s   10.244.2.55   reliefgrid-worker3   <none>           <none>
+storage-shard-2-2                                   1/1     Running     0          12m     10.244.1.41   reliefgrid-worker    <none>           <none>

@@ -56,6 +56,8 @@ func main() {
 		err = runSnapshot(ctx, os.Args[2:], os.Getenv, os.Stdout)
 	case "dump":
 		err = runDump(ctx, os.Args[2:], os.Getenv, os.Stdout)
+	case "transfer-leader":
+		err = runTransferLeader(ctx, os.Args[2:], os.Getenv, os.Stdout)
 	default:
 		usage()
 	}
@@ -69,7 +71,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump [--addr host:port] [--timeout d]")
+	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump|transfer-leader [--addr host:port] [--timeout d]")
 	os.Exit(64)
 }
 

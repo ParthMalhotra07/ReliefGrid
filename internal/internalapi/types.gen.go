@@ -477,9 +477,15 @@ type Kind = store.Kind
 
 // LeaderHint The node believed to lead the shard; a hint, not authority
 type LeaderHint struct {
-	Address string  `json:"address"`
-	NodeId  string  `json:"nodeId"`
-	Term    *uint64 `json:"term,omitempty"`
+	Address string `json:"address"`
+	NodeId  string `json:"nodeId"`
+
+	// ServerId The leader's Raft ServerID, podName/incarnation, whose podName is
+	// nodeId. When present, the coordinator accepts an answer at
+	// address only from this server; without it, from any incarnation
+	// of nodeId. A serverId whose podName is not nodeId is ignored.
+	ServerId *string `json:"serverId,omitempty"`
+	Term     *uint64 `json:"term,omitempty"`
 }
 
 // Location defines model for Location.
@@ -746,6 +752,9 @@ type ScanResponse struct {
 	Consistency  ScanResponseConsistency `json:"consistency"`
 	FailedShards *[]int                  `json:"failedShards,omitempty"`
 
+	// NextCursor Continues the walk; absent only when every shard is exhausted
+	NextCursor *string `json:"nextCursor,omitempty"`
+
 	// Partial True if any shard failed; never an empty result
 	Partial bool `json:"partial"`
 
@@ -1008,6 +1017,12 @@ type ScanParams struct {
 
 	// Limit Records per shard, 1 to 1000
 	Limit int `form:"limit" json:"limit"`
+
+	// Cursor Opaque nextCursor of the previous page (coordinator only)
+	Cursor *string `form:"cursor,omitempty" json:"cursor,omitempty"`
+
+	// After Return keys strictly after this one (storage node only; set by the coordinator)
+	After *string `form:"after,omitempty" json:"after,omitempty"`
 
 	// RingVersion The caller's ringVersion, if it has one; a mismatch is 409 RING_VERSION_MISMATCH
 	RingVersion *RingVersionOptional `form:"ringVersion,omitempty" json:"ringVersion,omitempty"`

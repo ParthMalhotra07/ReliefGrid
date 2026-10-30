@@ -90,12 +90,20 @@ type fakeNode struct {
 	mu     sync.Mutex
 	reqs   []seen
 	handle func(w http.ResponseWriter, r *http.Request, body []byte)
+	// claim is the identity n answers with, as a real storage node does on
+	// every data route; nil sends no identity headers.
+	claim *identity
 }
+
+// identity is the X-ReliefGrid-Server-Id and X-ReliefGrid-Shard a node
+// answers with.
+type identity struct{ serverID, shard string }
 
 func newFakeNode(t *testing.T, shard, ordinal int) *fakeNode {
 	t.Helper()
 	n := &fakeNode{t: t, pod: fmt.Sprintf("storage-%d-%d", shard, ordinal), shard: shard,
 		incarnation: fmt.Sprintf("00000000-0000-4000-8000-0000000000%d%d", shard, ordinal)}
+	n.claim = &identity{serverID: n.serverID(), shard: fmt.Sprint(shard)}
 	n.srv = httptest.NewServer(http.HandlerFunc(n.serve))
 	t.Cleanup(n.srv.Close)
 	return n
@@ -110,8 +118,12 @@ func (n *fakeNode) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	n.mu.Lock()
 	n.reqs = append(n.reqs, seen{method: r.Method, path: r.URL.EscapedPath(), query: r.URL.RawQuery, header: r.Header.Clone(), body: body})
-	h := n.handle
+	h, claim := n.handle, n.claim
 	n.mu.Unlock()
+	if claim != nil {
+		w.Header().Set(internalapi.HeaderServerID, claim.serverID)
+		w.Header().Set(internalapi.HeaderShard, claim.shard)
+	}
 	if h != nil {
 		h(w, r, body)
 		return
@@ -123,6 +135,13 @@ func (n *fakeNode) serve(w http.ResponseWriter, r *http.Request) {
 func (n *fakeNode) setHandler(h func(w http.ResponseWriter, r *http.Request, body []byte)) {
 	n.mu.Lock()
 	n.handle = h
+	n.mu.Unlock()
+}
+
+// setClaim makes n answer as id (nil: with no identity headers).
+func (n *fakeNode) setClaim(id *identity) {
+	n.mu.Lock()
+	n.claim = id
 	n.mu.Unlock()
 }
 
@@ -151,10 +170,18 @@ func (n *fakeNode) heartbeat(leader *fakeNode, term uint64) internalapi.Heartbea
 	return hb
 }
 
+// notLeader answers NOT_LEADER naming hint, with its full serverId as a
+// storage node sends it.
 func notLeader(hint *fakeNode, term uint64) func(http.ResponseWriter, *http.Request, []byte) {
+	id := hint.serverID()
+	return notLeaderAs(internalapi.LeaderHint{NodeId: hint.pod, ServerId: &id, Address: hint.host(), Term: &term})
+}
+
+// notLeaderAs answers NOT_LEADER with hint as given.
+func notLeaderAs(hint internalapi.LeaderHint) func(http.ResponseWriter, *http.Request, []byte) {
 	return func(w http.ResponseWriter, _ *http.Request, _ []byte) {
 		writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{Code: internalapi.NOTLEADER, Message: "not leader", Retryable: true,
-			LeaderHint: &internalapi.LeaderHint{NodeId: hint.pod, Address: hint.host(), Term: &term}})
+			LeaderHint: &hint})
 	}
 }
 

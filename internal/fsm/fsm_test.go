@@ -638,7 +638,7 @@ func TestScanFilters(t *testing.T) {
 		Statuses:        []string{string(store.ResourceAvailable)},
 		GeohashPrefixes: []string{"ttn", "tsq4"},
 		Limit:           100,
-	})
+	}, "")
 	if err != nil {
 		t.Fatalf("Scan: %v", err)
 	}
@@ -651,7 +651,7 @@ func TestScanFilters(t *testing.T) {
 		t.Fatalf("scan keys = %v, want %v", keys, want)
 	}
 
-	all, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindRequest, Limit: 100})
+	all, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindRequest, Limit: 100}, "")
 	if err != nil || len(all) != 1 || all[0].Key != "req:q1" {
 		t.Fatalf("request scan = %+v, %v; want only req:q1", all, err)
 	}
@@ -666,11 +666,11 @@ func TestScanLimit(t *testing.T) {
 		createResource(h, resource(id, store.TypeWater, store.ResourceAvailable))
 	}
 	for _, limit := range []int{0, -1, store.MaxScanLimit + 1} {
-		if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: limit}); err == nil {
+		if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: limit}, ""); err == nil {
 			t.Errorf("Scan with limit %d = %d records, want an error", limit, len(recs))
 		}
 	}
-	if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: 2}); err != nil || len(recs) != 2 {
+	if recs, err := h.f.Scan(ctx, store.ScanQuery{Kind: store.KindResource, Limit: 2}, ""); err != nil || len(recs) != 2 {
 		t.Fatalf("Scan limit 2 = %d records, %v", len(recs), err)
 	}
 }

@@ -1,0 +1,24 @@
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "traefik" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 1 charts
+Downloading traefik from repo https://traefik.github.io/charts
+Deleting outdated charts
+Release "reliefgrid" has been upgraded. Happy Helming!
+NAME: reliefgrid
+LAST DEPLOYED: Fri Oct 30 06:05:39 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 3
+TEST SUITE: None
+partitioned roll out complete: 1 new pods have been updated...
+traefik_image=docker.io/traefik@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
+confirmed=100
+pod "reliefgrid-rabbitmq-0" deleted from reliefgrid namespace
+pod/reliefgrid-rabbitmq-0 condition met
+pvc_same_uid=3d982505-ac00-4eb2-b6ec-8b8b0cafb9b2
+received=100
+priority=strict:[31 15 7 2 1]
+priority=urgency:[3 2 1]
+priority=omitted-default-4:[7 0 1]
+PASS  A0.3 RabbitMQ restart verification

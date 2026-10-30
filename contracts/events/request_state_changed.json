@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reliefgrid.internal/events/request_state_changed.json",
+  "title": "RequestStateChanged",
+  "description": "Emitted on every committed state transition of an emergency request.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "eventId",
+    "entityId",
+    "entityVersion",
+    "eventType",
+    "occurredAt",
+    "traceparent",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version; increment on breaking changes."
+    },
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique event identifier (UUID v4)."
+    },
+    "entityId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "The requestId whose state changed."
+    },
+    "entityVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "FSM entity version after this state change was applied."
+    },
+    "eventType": {
+      "type": "string",
+      "const": "request.state_changed",
+      "description": "Discriminator for routing and deserialization."
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when the state change was committed to the FSM."
+    },
+    "traceparent": {
+      "type": "string",
+      "pattern": "^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$",
+      "description": "W3C Trace Context traceparent header value for distributed tracing."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Previous and new state plus the triggering operation.",
+      "required": [
+        "requestId",
+        "previousStatus",
+        "newStatus"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "previousStatus": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "WAITING",
+            "MATCHING",
+            "MATCHED",
+            "IN_PROGRESS",
+            "RETRYING",
+            "CANCELLING",
+            "FULFILLING",
+            "CANCELLED",
+            "FULFILLED"
+          ],
+          "description": "RequestStatus before the transition."
+        },
+        "newStatus": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "WAITING",
+            "MATCHING",
+            "MATCHED",
+            "IN_PROGRESS",
+            "RETRYING",
+            "CANCELLING",
+            "FULFILLING",
+            "CANCELLED",
+            "FULFILLED"
+          ],
+          "description": "RequestStatus after the transition."
+        },
+        "operationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Idempotent operationId that triggered this transition."
+        },
+        "attemptId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Present when the transition is claim-related (MATCHING/MATCHED/RETRYING)."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schemaVersion": 1,
+      "eventId": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "entityId": "550e8400-e29b-41d4-a716-446655440000",
+      "entityVersion": 3,
+      "eventType": "request.state_changed",
+      "occurredAt": "2026-10-21T13:57:00Z",
+      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+      "payload": {
+        "requestId": "550e8400-e29b-41d4-a716-446655440000",
+        "previousStatus": "MATCHING",
+        "newStatus": "MATCHED",
+        "operationId": "880e8400-e29b-41d4-a716-446655440003",
+        "attemptId": "770e8400-e29b-41d4-a716-446655440002"
+      }
+    }
+  ]
+}

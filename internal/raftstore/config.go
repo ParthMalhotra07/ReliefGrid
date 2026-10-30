@@ -63,6 +63,11 @@ type Config struct {
 	// beforeRestoreSwap, tests only, runs in Restore after the image is
 	// staged and before the database is swapped in.
 	beforeRestoreSwap func()
+
+	// beforeRPC, tests only, runs on every incoming RPC that reaches Raft
+	// through the transport's consumer (not heartbeats), after the commit
+	// fence has observed it and before Raft sees it.
+	beforeRPC func(raft.RPC)
 }
 
 // raftConfig builds the library config for this node from the profile.

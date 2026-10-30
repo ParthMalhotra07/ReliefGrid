@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/hashicorp/raft"
+
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -116,11 +118,14 @@ func (s *server) writeNotProposed(w http.ResponseWriter, err error) bool {
 	case errors.As(err, &nle) && nle.LeaderID != "":
 		term := s.node.Term()
 		podName, _, _ := strings.Cut(string(nle.LeaderID), "/")
+		// serverId lets the coordinator check that the hinted address is
+		// answered by this leader, not another incarnation of its pod.
+		serverID := string(nle.LeaderID)
 		writeJSON(w, http.StatusServiceUnavailable, internalapi.Error{
 			Code:       internalapi.NOTLEADER,
 			Message:    s.podName + " is not the leader of shard " + itoa(s.shard),
 			Retryable:  true,
-			LeaderHint: &internalapi.LeaderHint{NodeId: podName, Address: s.leaderHTTP(nle.LeaderAddr), Term: &term},
+			LeaderHint: &internalapi.LeaderHint{NodeId: podName, ServerId: &serverID, Address: s.hintAddress(nle), Term: &term},
 		})
 		return true
 	case errors.Is(err, raftstore.ErrNotLeader), errors.Is(err, raftstore.ErrUnavailable):
@@ -143,5 +148,37 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		slog.Error("write response", "err", err)
+	}
+}
+
+// hintAddress is the leader's data address for a not-leader hint: the
+// address it advertised to the coordinator (HTTP_ADVERTISE) when the
+// coordinator's last answer names the same leader Raft does; otherwise its
+// Raft host with this replica's HTTP port, which is only right when every
+// replica uses the same port (issue #30).
+func (s *server) hintAddress(nle *raftstore.NotLeaderError) string {
+	if a := s.advertised(nle.LeaderID); a != "" {
+		return a
+	}
+	return s.leaderHTTP(nle.LeaderAddr)
+}
+
+// advertised is the coordinator's address for leader id, if its last answer
+// names id as this shard's leader.
+func (s *server) advertised(id raft.ServerID) string {
+	if l := s.leaders.Load(); l != nil && raft.ServerID(l.LeaderId) == id {
+		return l.Address
+	}
+	return ""
+}
+
+// learnLeaders keeps this shard's leader from a coordinator answer. It is a
+// hint for clients only: this replica learns its own leader from Raft.
+func (s *server) learnLeaders(resp internalapi.HeartbeatResponse) {
+	for _, l := range resp.Leaders {
+		if l.Shard == s.shard && l.Address != "" {
+			s.leaders.Store(&l)
+			return
+		}
 	}
 }

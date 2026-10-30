@@ -1,0 +1,12 @@
+ok        go             1.27.2
+ok        golangci-lint  2.15.0
+ok        kind           0.33.0
+ok        kubectl        1.37.1
+ok        helm           3.22.1
+ok        oapi-codegen   2.8.0
+ok        docker         daemon 29.7.2
+ok        RAM            11.6 GiB available, need 8 GiB (PROFILE=full)
+ok        port 6443      held by kind cluster reliefgrid
+ok        port 8080      held by kind cluster reliefgrid
+ok        port 8443      held by kind cluster reliefgrid
+doctor: all tools match tools.mk; Docker, RAM and ports ok

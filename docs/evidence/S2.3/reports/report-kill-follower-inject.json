@@ -1,0 +1,113 @@
+{
+  "experiment": "kill-follower",
+  "seed": 28,
+  "runId": "kill-follower-s28-1793086665",
+  "pass": false,
+  "failures": [
+    "ledger: 1 acknowledged write(s) lost"
+  ],
+  "plan": {
+    "experiment": "kill-follower",
+    "seed": 28,
+    "shard": 2,
+    "role": "follower",
+    "pick": 0,
+    "faultDelayMs": 8445,
+    "loadSeconds": 84,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-kill-follower-s28",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 2,
+    "pod": "storage-shard-2-1",
+    "serverId": "storage-shard-2-1/1b8c6629-20c6-4ed5-a4b9-1d3a2a757a14",
+    "role": "follower",
+    "term": 2
+  },
+  "fault": {
+    "kind": "pod-delete",
+    "mechanism": "kubectl delete pod (graceful)",
+    "startedAt": 1793086675720,
+    "healedAt": 1793086688047
+  },
+  "recovery": {
+    "leader": "storage-shard-2-0",
+    "term": 2,
+    "seconds": 0.4
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793086753862,
+    "seconds": 0.5,
+    "ok": true,
+    "detail": "shard 2 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793086667000,
+    "faultStartedAt": 1793086675720,
+    "faultHealedAt": 1793086688047,
+    "settledAt": 1793086754342,
+    "loadFinishedAt": 1793086751000
+  },
+  "load": {
+    "job": "chaos-load-kill-follower-s28-1793086665",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 6128,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 896
+  },
+  "errorsObserved": [],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/kill-follower-s28-1793086665.json",
+    "job": "chaos-verify-kill-follower-s28-1793086665",
+    "exitCode": 1,
+    "checked": 6128,
+    "lost": [
+      {
+        "entry": {
+          "operationId": "chaos-kill-follower-s28-1793086666-w3-op1532",
+          "key": "chaos-kill-follower-s28-1793086666-w3-k3",
+          "op": "update",
+          "seq": 191,
+          "payloadHash": "e32bd4ca52e8abe8d5c3375d1710ead3c130c2f40f8c60eb83834171b18eddb6",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-kill-follower-s28-1793086666-w3-op1532",
+            "key": "chaos-kill-follower-s28-1793086666-w3-k3",
+            "version": 192,
+            "shard": 2,
+            "appliedIndex": 119045
+          },
+          "at": 1793086751534
+        },
+        "reason": "key chaos-kill-follower-s28-1793086666-w3-k3 holds v193 with payload c670ccb8c48b, last acknowledged write is seq 191 at v192 with payload e32bd4ca52e8"
+      }
+    ],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-kill-follower-s28-1793086665",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "injected": {
+    "kind": "lost-write",
+    "key": "chaos-kill-follower-s28-1793086666-w3-k3",
+    "operationId": "inject-chaos-kill-follower-s28-1793086666-w3-k3-v192",
+    "version": 193
+  }
+}

@@ -259,6 +259,11 @@ func TestFailureMapping(t *testing.T) {
 			e.LeaderHint.Term == nil || *e.LeaderHint.Term != 7 {
 			t.Fatalf("leaderHint = %+v, want %+v at term 7", e.LeaderHint, want)
 		}
+		// The full Raft leader ID, so the coordinator can tell this
+		// incarnation from another on the hinted address (issue #46).
+		if e.LeaderHint.ServerId == nil || *e.LeaderHint.ServerId != "storage-1-0/5f0c" {
+			t.Fatalf("leaderHint.serverId = %v, want storage-1-0/5f0c", e.LeaderHint.ServerId)
+		}
 		if n.statuses != 0 {
 			t.Fatalf("leaderHint called Status %d times; the term lookup must be cheap", n.statuses)
 		}
@@ -331,6 +336,7 @@ func TestReadConsistency(t *testing.T) {
 	for _, tc := range cases {
 		t.Run("consistency="+strings.TrimPrefix(tc.query, "?"), func(t *testing.T) {
 			n := newFakeNode(t)
+			n.status.CaughtUp = true // a stale read needs a caught-up replica
 			n.seed(t, store.CompareAndSet{Meta: meta("op-1"), Key: kvKey, Value: json.RawMessage(`7`)})
 			rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: "/internal/data/" + kvKey + tc.query})
 			if rec.Code != http.StatusOK {
@@ -564,6 +570,7 @@ func TestOutboxConsistencyAndLongPoll(t *testing.T) {
 	} {
 		t.Run("consistency"+tc.query, func(t *testing.T) {
 			n := newFakeNode(t)
+			n.status.CaughtUp = true // a stale read needs a caught-up replica
 			n.seed(t, create)
 			rec := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodGet, path: path(tc.query + "&wait=1")})
 			resp := decodeJSON[internalapi.OutboxPage](t, rec)

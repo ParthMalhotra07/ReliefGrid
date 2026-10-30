@@ -1,0 +1,31 @@
+=== A0.1 Verify: Public contract ===
+
+ok        contracts/public.yaml exists
+ok        openapi-spec-validator: 0 errors
+ok        contracts/events/request_created.json exists
+ok        contracts/events/resource_registered.json exists
+ok        contracts/events/match_proposed.json exists
+ok        contracts/events/request_state_changed.json exists
+ok        contracts/events/resource_state_changed.json exists
+ok    A0.1 public routes, enums, error envelope and event requirements
+ok        A0.1 frozen contract requirements
+ok        contracts/events/match_proposed.json: example(s) validate
+ok        contracts/events/request_created.json: example(s) validate
+ok        contracts/events/request_state_changed.json: example(s) validate
+ok        contracts/events/resource_registered.json: example(s) validate
+ok        contracts/events/resource_state_changed.json: example(s) validate
+mkdir -p internal/api/gen
+go tool oapi-codegen \
+	-generate types \
+	-package gen \
+	-o internal/api/gen/types.gen.go \
+	contracts/public.yaml
+go tool oapi-codegen -generate types -package internalapi \
+	-o internal/internalapi/types.gen.go contracts/internal.yaml
+ok        make gen: git status clean after gen
+ok        go build ./internal/api/gen/... compiles
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	0.056s
+ok        public contract boundary and invalid-input regressions
+
+=== Results: 16 passed, 0 failed ===
+A0.1 VERIFY: ALL PASS

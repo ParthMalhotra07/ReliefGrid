@@ -33,6 +33,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
@@ -136,14 +137,18 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("coordclient: %d %s: %s", e.Status, e.Code, e.Message)
 }
 
-// Is matches store.ErrUnknownOutcome when the outcome is unknown, and
-// store.ErrNotFound for a read that found nothing.
+// Is matches store.ErrUnknownOutcome when the outcome is unknown,
+// store.ErrNotFound for a read that found nothing, and
+// store.ErrRingVersionMismatch for a ring mismatch that a refresh did not fix
+// (for a scan, a cursor from another ring).
 func (e *Error) Is(target error) bool {
 	switch target {
 	case store.ErrUnknownOutcome:
 		return e.OutcomeUnknown
 	case store.ErrNotFound:
 		return e.read && e.Code == internalapi.NOTFOUND
+	case store.ErrRingVersionMismatch:
+		return e.Code == internalapi.RINGVERSIONMISMATCH
 	}
 	return false
 }
@@ -443,15 +448,28 @@ func (c *Client) ReadClosure(ctx context.Context, resourceKey, attemptID string)
 	return resp.Closure, nil
 }
 
-// Scan is one bounded page per shard. A shard the coordinator could not
-// read is in FailedShards with Partial set; an answer that is missing a
-// shard without saying so is made partial here too (CONTRIBUTING.md,
-// Invariants, 7).
+// Scan is one bounded page from every shard q.Cursor still lists. A shard
+// the coordinator could not read is in FailedShards with Partial set; an
+// answer that is missing a shard without saying so is made partial here too
+// (CONTRIBUTING.md, Invariants, 7), and that shard is kept in NextCursor at
+// the position it had.
 func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult, error) {
 	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
 		return store.ScanResult{}, invalid("scan limit %d must be 1 to %d records per shard", q.Limit, store.MaxScanLimit)
 	}
+	expected := map[int]string{} // shards to be read -> the position they are read after
+	for s := range c.Shards() {
+		expected[s] = ""
+	}
 	query := url.Values{"kind": {string(q.Kind)}, "limit": {strconv.Itoa(q.Limit)}, "ringVersion": {""}}
+	if q.Cursor != "" {
+		cur, err := store.DecodeScanCursor(q.Cursor)
+		if err != nil {
+			return store.ScanResult{}, invalid("scan cursor: %v", err)
+		}
+		expected = cur.After
+		query.Set("cursor", q.Cursor)
+	}
 	if q.Type != "" {
 		query.Set("type", string(q.Type))
 	}
@@ -469,15 +487,34 @@ func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 	if resp.FailedShards != nil {
 		out.FailedShards = *resp.FailedShards
 	}
+	if resp.NextCursor != nil {
+		out.NextCursor = *resp.NextCursor
+	}
 	answered := map[int]bool{}
 	for _, p := range resp.Positions {
 		answered[p.Shard] = true
 	}
-	for s := range c.Shards() {
+	var missing []int
+	for _, s := range slices.Sorted(maps.Keys(expected)) {
 		if !answered[s] && !slices.Contains(out.FailedShards, s) {
 			out.Partial = true
 			out.FailedShards = append(out.FailedShards, s)
+			missing = append(missing, s)
 		}
+	}
+	if len(missing) > 0 {
+		next := store.ScanCursor{RingVersion: resp.RingVersion, Query: store.ScanQueryHash(q), After: map[int]string{}}
+		if out.NextCursor != "" {
+			cur, err := store.DecodeScanCursor(out.NextCursor)
+			if err != nil {
+				return store.ScanResult{}, &Error{Status: http.StatusOK, Message: "coordinator sent a malformed nextCursor: " + err.Error(), Retryable: true, read: true}
+			}
+			next = cur
+		}
+		for _, s := range missing {
+			next.After[s] = expected[s]
+		}
+		out.NextCursor = store.EncodeScanCursor(next)
 	}
 	return out, nil
 }

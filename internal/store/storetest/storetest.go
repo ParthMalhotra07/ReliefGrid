@@ -44,6 +44,7 @@ func Run(t *testing.T, newStore func(t *testing.T) store.Store) {
 		{"TransitionResourceAndRetry", testTransitionResourceAndRetry},
 		{"InvalidIsACommittedResult", testInvalidIsACommittedResult},
 		{"ScanCoversEveryShard", testScanCoversEveryShard},
+		{"ScanCursorPaging", testScanCursorPaging},
 		{"OutboxPendingAndPublished", testOutboxPendingAndPublished},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -359,6 +360,96 @@ func testScanCoversEveryShard(t *testing.T, s store.Store, n ns) {
 			errors.Is(err, store.ErrUnknownOutcome) || errors.Is(err, store.ErrNotFound) {
 			t.Fatalf("scan limit %d: err = %v, want a plain error", limit, err)
 		}
+	}
+}
+
+// S1.6: paging with NextCursor returns every matching record exactly once,
+// in key order per shard, and ends with an empty NextCursor. A cursor from
+// another ring version is ErrRingVersionMismatch; a malformed one, or one
+// continued with another limit, is a plain error. None is read as "start
+// over".
+func testScanCursorPaging(t *testing.T, s store.Store, n ns) {
+	ctx := ctxFor(t)
+	shardOf := map[string]int{}
+	for i := range 40 {
+		id := fmt.Sprintf("p%02d", i)
+		res := expect(t, "create "+id, store.OutcomeOK)(s.CreateEntity(ctx, store.CreateEntity{Meta: n.op("c" + id), Key: store.ResourceKey(n.id(id)), Resource: n.resource(id)}))
+		shardOf[res.Key] = res.Shard
+	}
+	perShard := map[int]int{}
+	for _, sh := range shardOf {
+		perShard[sh]++
+	}
+	if len(perShard) != s.Shards() {
+		t.Fatalf("40 resources reached only shards %v of %d", perShard, s.Shards())
+	}
+
+	q := store.ScanQuery{Kind: store.KindResource, Type: store.TypeWater, GeohashPrefixes: []string{n.geohash()}, Limit: 3}
+	seen := map[string]int{}
+	last := map[int]string{}
+	pages := 0
+	for {
+		if pages++; pages > 40 {
+			t.Fatalf("still paging after 40 pages: %d of 40 records", len(seen))
+		}
+		page, err := s.Scan(ctx, q)
+		if err != nil {
+			t.Fatalf("page %d: %v", pages, err)
+		}
+		if page.Partial || len(page.FailedShards) != 0 {
+			t.Fatalf("fault-free page %d partial=%v failed=%v", pages, page.Partial, page.FailedShards)
+		}
+		for _, r := range page.Records {
+			sh, ok := shardOf[r.Key]
+			if !ok {
+				t.Fatalf("page %d returned %s, which matches no created record", pages, r.Key)
+			}
+			if r.Key <= last[sh] {
+				t.Fatalf("shard %d returned %s after %s", sh, r.Key, last[sh])
+			}
+			last[sh] = r.Key
+			seen[r.Key]++
+		}
+		if page.NextCursor == "" {
+			break
+		}
+		q.Cursor = page.NextCursor
+	}
+	for k := range shardOf {
+		if seen[k] != 1 {
+			t.Fatalf("%s returned %d times over %d pages, want once", k, seen[k], pages)
+		}
+	}
+	maxPerShard := 0
+	for _, c := range perShard {
+		maxPerShard = max(maxPerShard, c)
+	}
+	if want := maxPerShard/3 + 1; pages != want {
+		t.Fatalf("walk took %d pages, want %d (largest shard has %d records, limit 3)", pages, want, maxPerShard)
+	}
+
+	first, err := s.Scan(ctx, store.ScanQuery{Kind: store.KindResource, GeohashPrefixes: []string{n.geohash()}, Limit: 3})
+	if err != nil || first.NextCursor == "" {
+		t.Fatalf("first page = nextCursor %q, %v; want one", first.NextCursor, err)
+	}
+	cur, err := store.DecodeScanCursor(first.NextCursor)
+	if err != nil {
+		t.Fatalf("decode a store's own cursor: %v", err)
+	}
+	cur.RingVersion += 1 << 20
+	stale := store.ScanQuery{Kind: store.KindResource, GeohashPrefixes: []string{n.geohash()}, Limit: 3, Cursor: store.EncodeScanCursor(cur)}
+	if res, err := s.Scan(ctx, stale); !errors.Is(err, store.ErrRingVersionMismatch) || errors.Is(err, store.ErrUnknownOutcome) || len(res.Records) != 0 {
+		t.Fatalf("stale-ring cursor = %d records, %v; want ErrRingVersionMismatch", len(res.Records), err)
+	}
+	other := store.ScanQuery{Kind: store.KindResource, GeohashPrefixes: []string{n.geohash()}, Limit: 4, Cursor: first.NextCursor}
+	if res, err := s.Scan(ctx, other); err == nil || errors.Is(err, store.ErrRingVersionMismatch) || errors.Is(err, store.ErrUnknownOutcome) || len(res.Records) != 0 {
+		t.Fatalf("cursor continued with another limit = %d records, %v; want a plain error", len(res.Records), err)
+	}
+	bad := stale
+	bad.Cursor = "not-a-cursor"
+	if res, err := s.Scan(ctx, bad); err == nil || errors.Is(err, store.ErrRingVersionMismatch) || errors.Is(err, store.ErrUnknownOutcome) ||
+		errors.Is(err, store.ErrNotFound) || len(res.Records) != 0 {
+		t.Fatalf("malformed cursor = %d records, %v; want a plain error", len(res.Records), err)
 	}
 }
 

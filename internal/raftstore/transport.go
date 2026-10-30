@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -62,4 +63,93 @@ func newDNSTransport(bind, advertise string, logger hclog.Logger) (*raft.Network
 		Timeout: 10 * time.Second,
 		Logger:  logger,
 	}), nil
+}
+
+// commitFence is the leader's commit index as this replica last learned it:
+// the newest term seen, and the highest LeaderCommitIndex carried by any
+// AppendEntries. Every leader's commit index is really committed, so the
+// highest is kept across terms: a new leader advances its own only once its
+// no-op commits, and until then may advertise less than the old leader
+// committed. A deposed leader's append (a lower term) never sets the term.
+type commitFence struct {
+	mu     sync.Mutex
+	term   uint64
+	commit uint64
+}
+
+func (f *commitFence) observe(term, commit uint64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	switch {
+	case term > f.term:
+		f.term, f.commit = term, max(f.commit, commit)
+	case term == f.term && commit > f.commit:
+		f.commit = commit
+	}
+}
+
+func (f *commitFence) get() (term, commit uint64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.term, f.commit
+}
+
+// fenceTransport is the Raft transport with every incoming AppendEntries
+// observed on the way to Raft, to learn the leader's commit index (issue
+// #22). Heartbeats take NetworkTransport's fast path and never pass here;
+// they carry no commit index anyway (net_transport.go in v1.8.0), while
+// every append does (replication.go), at least every CommitTimeout.
+// Embedding keeps the optional interfaces Raft looks for (WithPreVote,
+// WithClose).
+type fenceTransport struct {
+	*raft.NetworkTransport
+	fence     *commitFence
+	consumeCh chan raft.RPC
+	done      chan struct{}
+	closeOnce sync.Once
+	before    func(raft.RPC) // tests only
+}
+
+func newFenceTransport(t *raft.NetworkTransport, fence *commitFence, before func(raft.RPC)) *fenceTransport {
+	ft := &fenceTransport{NetworkTransport: t, fence: fence, consumeCh: make(chan raft.RPC), done: make(chan struct{}), before: before}
+	go ft.forward()
+	return ft
+}
+
+func (t *fenceTransport) forward() {
+	in := t.NetworkTransport.Consumer()
+	for {
+		select {
+		case <-t.done:
+			return
+		case rpc := <-in:
+			if ae, ok := rpc.Command.(*raft.AppendEntriesRequest); ok {
+				t.fence.observe(ae.Term, ae.LeaderCommitIndex)
+			}
+			if t.before != nil {
+				t.before(rpc)
+			}
+			select {
+			case t.consumeCh <- rpc:
+			case <-t.done:
+				return
+			}
+		}
+	}
+}
+
+// Raft enables pre-vote and closes the transport on Shutdown only through
+// these optional interfaces, which the embedded NetworkTransport provides.
+var (
+	_ raft.WithPreVote = (*fenceTransport)(nil)
+	_ raft.WithClose   = (*fenceTransport)(nil)
+)
+
+// Consumer is what Raft reads incoming RPCs from.
+func (t *fenceTransport) Consumer() <-chan raft.RPC { return t.consumeCh }
+
+// Close stops forwarding and closes the network transport.
+func (t *fenceTransport) Close() error {
+	t.closeOnce.Do(func() { close(t.done) })
+	return t.NetworkTransport.Close()
 }

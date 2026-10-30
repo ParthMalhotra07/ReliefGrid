@@ -1,0 +1,85 @@
+{
+  "experiment": "kill-follower",
+  "seed": 25,
+  "runId": "kill-follower-s25-1793086069",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "kill-follower",
+    "seed": 25,
+    "shard": 2,
+    "role": "follower",
+    "pick": 1,
+    "faultDelayMs": 11500,
+    "loadSeconds": 87,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-kill-follower-s25",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 2,
+    "pod": "storage-shard-2-2",
+    "serverId": "storage-shard-2-2/cab316e5-6441-411b-8caa-dcac05e4c701",
+    "role": "follower",
+    "term": 2
+  },
+  "fault": {
+    "kind": "pod-delete",
+    "mechanism": "kubectl delete pod (graceful)",
+    "startedAt": 1793086082631,
+    "healedAt": 1793086095328
+  },
+  "recovery": {
+    "leader": "storage-shard-2-0",
+    "term": 2,
+    "seconds": 0.3
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793086160688,
+    "seconds": 0.7,
+    "ok": true,
+    "detail": "shard 2 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793086071000,
+    "faultStartedAt": 1793086082631,
+    "faultHealedAt": 1793086095328,
+    "settledAt": 1793086161380,
+    "loadFinishedAt": 1793086158000
+  },
+  "load": {
+    "job": "chaos-load-kill-follower-s25-1793086069",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 6354,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 928
+  },
+  "errorsObserved": [],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/kill-follower-s25-1793086069.json",
+    "job": "chaos-verify-kill-follower-s25-1793086069",
+    "exitCode": 0,
+    "checked": 6354,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-kill-follower-s25-1793086069",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  }
+}

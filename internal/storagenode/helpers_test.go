@@ -26,7 +26,9 @@ const (
 	t0        = int64(1_792_800_000_000)
 	testShard = 1
 	testPod   = "storage-1-1"
-	testToken = "op-secret"
+	// testServerID is testPod's Raft ServerID (podName/incarnation).
+	testServerID = testPod + "/00000000-0000-4000-8000-000000000011"
+	testToken    = "op-secret"
 )
 
 // operatorAuth is the header /mgmt/bootstrap requires.
@@ -67,16 +69,22 @@ type fakeNode struct {
 	applyErr error
 	modes    []raftstore.ReadMode
 	readErr  error
-	f        *fsm.FSM
-	index    uint64
-	status   raftstore.Status
-	statuses int // Status calls
-	term     uint64
-	bootErr  error
-	booted   []raft.Server
-	snapInfo raftstore.SnapshotInfo
-	snapErr  error
-	snaps    int // Snapshot calls
+	// readDelay makes every Read take this long, or until its ctx ends
+	// (then it fails with ctx's error, as a fenced read does).
+	readDelay time.Duration
+	f         *fsm.FSM
+	index     uint64
+	status    raftstore.Status
+	statuses  int // Status calls
+	term      uint64
+	bootErr   error
+	booted    []raft.Server
+	snapInfo  raftstore.SnapshotInfo
+	snapErr   error
+	snaps     int // Snapshot calls
+
+	stepDownErr error
+	stepDowns   int // StepDown calls
 
 	reading      bool          // a Read is running
 	waits        []uint64      // WaitApplyAfter indexes
@@ -122,10 +130,17 @@ func (n *fakeNode) Apply(ctx context.Context, cmd any) (store.Result, error) {
 func (n *fakeNode) Read(ctx context.Context, mode raftstore.ReadMode, fn func(context.Context, raftstore.Reader) error) (raftstore.ReadInfo, error) {
 	n.mu.Lock()
 	n.modes = append(n.modes, mode)
-	readErr := n.readErr
+	readErr, delay := n.readErr, n.readDelay
 	n.mu.Unlock()
 	if readErr != nil {
 		return raftstore.ReadInfo{}, readErr
+	}
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return raftstore.ReadInfo{}, ctx.Err()
+		}
 	}
 	info := raftstore.ReadInfo{Consistency: "strong", ServedBy: testPod, AppliedIndex: n.f.AppliedIndex()}
 	if mode == raftstore.ReadStale {
@@ -179,6 +194,13 @@ func (n *fakeNode) Snapshot(ctx context.Context) (raftstore.SnapshotInfo, error)
 	return n.snapInfo, n.snapErr
 }
 
+func (n *fakeNode) StepDown(ctx context.Context) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	n.stepDowns++
+	return n.stepDownErr
+}
+
 func (n *fakeNode) appliedCmds() []any {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -192,6 +214,7 @@ func newTestServer(t *testing.T, n node) *server {
 		ring:          loadRing(t),
 		shard:         testShard,
 		podName:       testPod,
+		serverID:      testServerID,
 		timeout:       2 * time.Second,
 		leaderHTTP:    func(a raft.ServerAddress) string { return "http-of-" + string(a) },
 		operatorToken: testToken,

@@ -109,9 +109,14 @@ func (s *server) heartbeat(ctx context.Context, c *http.Client, base string) err
 	if !st.CaughtUp || err != nil {
 		hb.Health = internalapi.HealthDegraded
 	}
-	// The answer's leader hints are for the coordinator's clients; this
-	// replica learns its leader from Raft alone.
-	return post(ctx, c, base+"/internal/nodes/heartbeat", hb, &internalapi.HeartbeatResponse{})
+	// The answer's leader hints are for clients: they feed only the address
+	// in this replica's not-leader hints. It learns its leader from Raft alone.
+	var resp internalapi.HeartbeatResponse
+	if err := post(ctx, c, base+"/internal/nodes/heartbeat", hb, &resp); err != nil {
+		return err
+	}
+	s.learnLeaders(resp)
+	return nil
 }
 
 // post sends v as JSON and decodes a 200 answer into out. A 404 is

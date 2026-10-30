@@ -4,12 +4,19 @@
 | --- | --- |
 | `ring.yaml` | The consistent-hash ring: ringVersion, shards, vnodes and the token-map checksum. |
 | `internal.yaml` | Coordinator and storage-node routes (plan v3.1 §40). Generated types: `internal/internalapi`. |
-| `public.yaml` | The public API (v3.1 §7). |
+| `public.yaml` | The public API (v3.1 §7). `make gen-public` generates `internal/api/gen`. |
 | `events/*.json` | Broker event schemas. |
 
 Contracts are frozen after 21 October. A change needs both owners' approval, and the regenerated
 code (`make gen`) must be in the same PR. `go test ./contracts` checks `internal.yaml` against
 `internal/store`, `ring.yaml` and the table below.
+
+`make gen` runs both `gen-public` and `gen-internal`; neither generator replaces the other.
+Public contract tests also validate examples and reject unsupported request fields,
+invalid geography/urgency and client assignment writes. Public IDs/types map to the stored
+entities; public versions are opaque strings. Event `schemaVersion` is an integer, matching
+the outbox. Public urgency NORMAL/HIGH/CRITICAL maps to stored and explicit AMQP priority
+values 1/2/3; zero is never an application urgency.
 
 ## Store outcome → HTTP status
 
@@ -22,6 +29,7 @@ internal API a committed rejection carries the store `Result` in the error body'
   lands in week three.
 
 Every error body has `code`, `message`, `retryable` and `outcomeUnknown`.
+Public errors additionally require `correlationId` and may carry validation `details`.
 
 | Store result | Code | Internal HTTP | Public HTTP | Notes |
 | --- | --- | --- | --- | --- |
@@ -38,7 +46,7 @@ Every error body has `code`, `message`, `retryable` and `outcomeUnknown`.
 | idempotency mismatch | `CONFLICT_IDEMPOTENCY_KEY` | — | 409 | Public only: same Idempotency-Key, different payload hash. |
 | `VERSION_CONFLICT` | `VERSION_CONFLICT` | 412 on the generic data routes (`PUT`/`DELETE /internal/data`); 409 on the domain transition routes | 409 | Expected version, status or attempt did not match. §40: 412 for a failed generic CAS, 409 for a domain or attempt conflict. The FSM reports all three mismatches as this one outcome, so the status follows the route. Public becomes 412 with If-Match in week three. |
 | `EXISTS` | `EXISTS` | 412 | replay the original 201 + Location if the payload hash matches, else 409 | Create on an existing key (internal: `If-None-Match: *` failed). |
-| ring version mismatch | `RING_VERSION_MISMATCH` | 409 | 503 | Never proposed; the body gives the server's ringVersion. The coordinator refreshes and retries; the public API sees 503 only when that fails. retryable=true, outcomeUnknown=false. |
+| `ErrRingVersionMismatch` | `RING_VERSION_MISMATCH` | 409 | 503 | Never proposed; the body gives the server's ringVersion. The coordinator refreshes and retries; the public API sees 503 only when that fails. retryable=true, outcomeUnknown=false. A scan cursor made under another ring version gets this too; refreshing cannot fix it, so the walk restarts with an empty cursor. |
 | `ErrUnknownOutcome` | `OUTCOME_UNKNOWN` | 503 | 503 | May have committed. retryable=true, outcomeUnknown=true, with Retry-After. Retry the same operationId or read the operation; never treat it as a rejection. |
 | not leader | `NOT_LEADER` | 503 | 503 | Never proposed. leaderHint names the leader. retryable=true, outcomeUnknown=false. The coordinator retries at the hint within its budget. |
 | no leader | `NO_LEADER` | 503 | 503 | No leader known, or a read could not be fenced; nothing was proposed. A leader that loses quorum after proposing answers `OUTCOME_UNKNOWN`. retryable=true, outcomeUnknown=false, with Retry-After. |

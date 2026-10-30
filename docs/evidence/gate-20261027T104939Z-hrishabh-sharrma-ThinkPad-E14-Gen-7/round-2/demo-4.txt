@@ -1,0 +1,64 @@
+# demo-4: Seed a deterministic dataset; logical key counts, replica copies and locate samples
+result:     PASS (9/9 checks)
+runId:      gate-20261027T104939Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-10-27T10:54:43Z
+finished:   2026-10-27T10:55:37Z
+duration:   54.0 s
+code tree:  39706f32ed4e (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment; dataset seed 4: 300 keys demo4-4-0..299, value {seed, i}, operation IDs demo4-4-<i> (re-runs replay)
+
+## versions
+git head: ed97a8a35383
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:73af591766e5a3ecad0a4828daaf3a5f54bd31b683d88512f8de5eb3bed2da46
+image reliefgrid/coordinator:dev: sha256:b690e73cf6cd9f4b8ea1a491a6f9d1def0da9f399845eae7fffc36e3c1416519
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  seed: 300 keys committed through the coordinator (0 replayed from an earlier run, 13 s)
+PASS  locate: all 300 keys have a shard, a 16-hex hash, the shard's three replicas and a leader among them
+PASS  dataset: every shard owns some of the 300 seeded keys (shard 0: 107, shard 1: 84, shard 2: 109)
+PASS  read back: all 300 keys at version 1 with their values (strong reads)
+PASS  distribution: every shard holds at least its seeded keys (shard 0: 107, shard 1: 84, shard 2: 109), counts known, three replicas
+PASS  replicas shard-0: three identical copies at appliedIndex 109, each with at least 107 seeded keys
+PASS  replicas shard-1: three identical copies at appliedIndex 86, each with at least 84 seeded keys
+PASS  replicas shard-2: three identical copies at appliedIndex 111, each with at least 109 seeded keys
+
+## commands
+
+# logical record counts per shard (/admin/distribution, the leader's counts)
+$ jq -r .shards[] | "shard \(.shard): records \(.records) (kv \(.counts.kv // "?"), request \(.counts.request // "?"), resource \(.counts.resource // "?")) replicas \(.replicas) countsKnown \(.countsKnown) heartbeat age \(.heartbeatAgeMs // "?") ms"
+shard 0: records 107 (kv 107, request 0, resource 0) replicas 3 countsKnown true heartbeat age 255 ms
+shard 1: records 84 (kv 84, request 0, resource 0) replicas 3 countsKnown true heartbeat age 272 ms
+shard 2: records 109 (kv 109, request 0, resource 0) replicas 3 countsKnown true heartbeat age 288 ms
+[exit 0, 0.0 s]
+
+# replica copies of shard 0 (logical 107 records x 3 replicas = 321 copies)
+storage-shard-0-0 109 8edf11a6bfab639b9e3b78f575d1e20508b563e7e394da6a26fc7f89294a7f0d records=107
+storage-shard-0-1 109 8edf11a6bfab639b9e3b78f575d1e20508b563e7e394da6a26fc7f89294a7f0d records=107
+storage-shard-0-2 109 8edf11a6bfab639b9e3b78f575d1e20508b563e7e394da6a26fc7f89294a7f0d records=107
+
+# replica copies of shard 1 (logical 84 records x 3 replicas = 252 copies)
+storage-shard-1-0 86 567714aef029d9310257464e26aa69196d0adc07a58a1bf995035b9114e61c39 records=84
+storage-shard-1-1 86 567714aef029d9310257464e26aa69196d0adc07a58a1bf995035b9114e61c39 records=84
+storage-shard-1-2 86 567714aef029d9310257464e26aa69196d0adc07a58a1bf995035b9114e61c39 records=84
+
+# replica copies of shard 2 (logical 109 records x 3 replicas = 327 copies)
+storage-shard-2-0 111 d68e2cebc406e6547cfcf6d51f3de755ffdc5dd80143be8e11eca1062b659a42 records=109
+storage-shard-2-1 111 d68e2cebc406e6547cfcf6d51f3de755ffdc5dd80143be8e11eca1062b659a42 records=109
+storage-shard-2-2 111 d68e2cebc406e6547cfcf6d51f3de755ffdc5dd80143be8e11eca1062b659a42 records=109
+
+# locate samples (two keys per shard)
+{"key":"demo4-4-2","shard":0,"hash":"da81d3f80727281b","leaderId":"storage-shard-0-0/ef848f12-1c7a-4926-9108-a52e45c52fa7","replicas":["storage-shard-0-0","storage-shard-0-1","storage-shard-0-2"]}
+{"key":"demo4-4-5","shard":0,"hash":"e97a3f0c0a4eb1a9","leaderId":"storage-shard-0-0/ef848f12-1c7a-4926-9108-a52e45c52fa7","replicas":["storage-shard-0-0","storage-shard-0-1","storage-shard-0-2"]}
+{"key":"demo4-4-0","shard":1,"hash":"fc99f6e7c25739ad","leaderId":"storage-shard-1-0/399abfd4-68f2-4927-ab67-788225ceb555","replicas":["storage-shard-1-0","storage-shard-1-1","storage-shard-1-2"]}
+{"key":"demo4-4-3","shard":1,"hash":"a033d7e817743ad7","leaderId":"storage-shard-1-0/399abfd4-68f2-4927-ab67-788225ceb555","replicas":["storage-shard-1-0","storage-shard-1-1","storage-shard-1-2"]}
+{"key":"demo4-4-1","shard":2,"hash":"20d281c631e8fcb0","leaderId":"storage-shard-2-0/c7a221b7-087c-4ef4-bc2e-18c3c1b6ed59","replicas":["storage-shard-2-0","storage-shard-2-1","storage-shard-2-2"]}
+{"key":"demo4-4-9","shard":2,"hash":"97db0fa8c9df057f","leaderId":"storage-shard-2-0/c7a221b7-087c-4ef4-bc2e-18c3c1b6ed59","replicas":["storage-shard-2-0","storage-shard-2-1","storage-shard-2-2"]}
