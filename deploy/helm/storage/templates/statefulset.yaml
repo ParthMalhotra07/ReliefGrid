@@ -41,7 +41,10 @@ spec:
               labelSelector:
                 matchLabels:
                   {{- include "storage.shardSelector" (dict "shard" $s) | nindent 18 }}
-      automountServiceAccountToken: false
+      # The token reads this shard's manifest for M7 admission (Role
+      # storage-admission: get on the manifests by name, nothing else).
+      serviceAccountName: storage-node
+      automountServiceAccountToken: true
       enableServiceLinks: false
       terminationGracePeriodSeconds: 30
       securityContext:
@@ -85,6 +88,12 @@ spec:
               value: {{ include "storage.coordinatorURL" $ }}
             - name: HTTP_ADVERTISE
               value: $(POD_NAME).storage-shard-{{ $s }}.{{ $.Release.Namespace }}.svc.cluster.local:8080
+            # M7: an empty or replaced disk opens Raft only once this manifest
+            # admits it. There is deliberately no value to turn the gate off.
+            - name: MANIFEST_NAME
+              value: storage-shard-{{ $s }}-manifest
+            - name: POD_NAMESPACE
+              valueFrom: {fieldRef: {fieldPath: metadata.namespace}}
             - name: TMPDIR
               value: /tmp
           ports:

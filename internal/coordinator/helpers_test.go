@@ -256,12 +256,17 @@ func (h *harness) registerAll() {
 	}
 }
 
-// elect has every member of shard heartbeat that leader leads at term.
+// elect has every member of shard heartbeat that leader leads at term; the
+// leader reports the shard's three nodes as the committed configuration.
 func (h *harness) elect(shard, leader int, term uint64) {
 	h.t.Helper()
 	l := h.nodes[shard][leader]
 	for _, n := range h.nodes[shard] {
-		if rec := h.do(call{method: http.MethodPost, path: "/internal/nodes/heartbeat", body: n.heartbeat(l, term)}); rec.Code != http.StatusOK {
+		hb := n.heartbeat(l, term)
+		if n == l {
+			hb.Configuration = committedConfig(h.nodes[shard]...)
+		}
+		if rec := h.do(call{method: http.MethodPost, path: "/internal/nodes/heartbeat", body: hb}); rec.Code != http.StatusOK {
 			h.t.Fatalf("heartbeat %s: %d %s", n.pod, rec.Code, rec.Body.String())
 		}
 	}
@@ -358,4 +363,13 @@ func expectError(t *testing.T, rec *httptest.ResponseRecorder, status int, code 
 		t.Fatalf("code = %s (%s), want %s", e.Code, e.Message, code)
 	}
 	return e
+}
+
+// committedConfig is a committed configuration of nodes, all voters.
+func committedConfig(nodes ...*fakeNode) *internalapi.RaftConfiguration {
+	c := &internalapi.RaftConfiguration{Index: 3, Committed: true}
+	for _, n := range nodes {
+		c.Servers = append(c.Servers, internalapi.RaftServer{Id: n.serverID(), Address: n.pod + ":7000", Suffrage: internalapi.RaftServerSuffrageVoter})
+	}
+	return c
 }

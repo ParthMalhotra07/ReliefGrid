@@ -26,7 +26,11 @@ type fakeCoordinator struct {
 	beats      []internalapi.Heartbeat
 	failFirstN int // answer the first n registrations with 503
 	forget     int // answer the next n heartbeats with 404 (coordinator restarted)
-	srv        *httptest.Server
+	// strict answers a heartbeat carrying configuration with 400, as a
+	// coordinator from before #21 does (it decodes with DisallowUnknownFields).
+	strict   bool
+	rejected int
+	srv      *httptest.Server
 }
 
 func newFakeCoordinator(t *testing.T) *fakeCoordinator {
@@ -56,6 +60,12 @@ func newFakeCoordinator(t *testing.T) *fakeCoordinator {
 			t.Errorf("heartbeat body %q: %v", body, err)
 		}
 		c.mu.Lock()
+		if c.strict && hb.Configuration != nil {
+			c.rejected++
+			c.mu.Unlock()
+			writeError(w, http.StatusBadRequest, internalapi.INVALID, `heartbeat: json: unknown field "configuration"`)
+			return
+		}
 		c.order = append(c.order, "heartbeat")
 		c.beats = append(c.beats, hb)
 		forgot := c.forget > 0
@@ -221,4 +231,111 @@ func TestHeartbeatNotFoundRegistersAgain(t *testing.T) {
 	if want := []string{"register", "heartbeat", "register", "heartbeat"}; !slices.Equal(order[:4], want) {
 		t.Fatalf("calls = %v, want %v", order, want)
 	}
+}
+
+// Heartbeats carry the committed configuration (#21), but a coordinator
+// from before #21 rejects that unknown field with 400. The replica then
+// heartbeats without it (that coordinator admits every node anyway), so
+// upgrading the storage nodes before the coordinator is not an outage.
+func TestHeartbeatFallsBackForACoordinatorWithoutConfiguration(t *testing.T) {
+	n := heartbeatNode(t)
+	n.status.Configuration = raftstore.Configuration{Index: 3, Committed: true,
+		Servers: []raftstore.Server{{ID: "storage-1-1/" + testIncarnation, Address: "storage-1-1:7000", Suffrage: "Voter"}}}
+	c := newFakeCoordinator(t)
+	c.strict = true
+	stop := runHeartbeats(t, n, c)
+	eventually(t, "accepted heartbeats", func() bool { _, _, b := c.snapshot(); return len(b) >= 3 })
+	if err := stop(); err != nil {
+		t.Fatalf("RunHeartbeats: %v", err)
+	}
+	c.mu.Lock()
+	rejected := c.rejected
+	c.mu.Unlock()
+	if rejected != 1 {
+		t.Fatalf("%d heartbeats rejected, want only the first", rejected)
+	}
+
+	// A coordinator that knows the field gets it.
+	c2 := newFakeCoordinator(t)
+	stop = runHeartbeats(t, n, c2)
+	eventually(t, "a heartbeat", func() bool { _, _, b := c2.snapshot(); return len(b) >= 1 })
+	_ = stop()
+	if _, _, beats := c2.snapshot(); beats[0].Configuration == nil || beats[0].Configuration.Index != 3 {
+		t.Fatalf("heartbeat to a current coordinator: %+v", beats[0].Configuration)
+	}
+}
+
+// The fallback must not latch: a coordinator upgraded in place starts
+// accepting the configuration, and the replica offers it again on its
+// periodic retry (ConfigRetry) without a restart, clearing the fallback.
+func TestHeartbeatOffersConfigurationAgainAfterTheCoordinatorUpgrades(t *testing.T) {
+	n := heartbeatNode(t)
+	n.status.Configuration = raftstore.Configuration{Index: 3, Committed: true,
+		Servers: []raftstore.Server{{ID: "storage-1-1/" + testIncarnation, Address: "storage-1-1:7000", Suffrage: "Voter"}}}
+	c := newFakeCoordinator(t)
+	c.strict = true
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &Server{s: newTestServer(t, n)}
+	errc := make(chan error, 1)
+	go func() {
+		errc <- s.RunHeartbeats(ctx, HeartbeatConfig{CoordinatorURL: c.srv.URL, Address: "storage-1-1.storage-1-headless:8080",
+			Interval: 20 * time.Millisecond, ConfigRetry: 100 * time.Millisecond})
+	}()
+	defer func() {
+		cancel()
+		if err := <-errc; err != nil {
+			t.Errorf("RunHeartbeats: %v", err)
+		}
+	}()
+	eventually(t, "heartbeats without configuration", func() bool { _, _, b := c.snapshot(); return len(b) >= 2 })
+
+	c.mu.Lock()
+	c.strict = false // upgraded in place
+	c.mu.Unlock()
+	eventually(t, "a heartbeat with configuration again", func() bool {
+		_, _, beats := c.snapshot()
+		return len(beats) > 0 && beats[len(beats)-1].Configuration != nil
+	})
+	// Cleared: every heartbeat carries it from now on, not only the retries.
+	c.mu.Lock()
+	start := len(c.beats)
+	c.mu.Unlock()
+	eventually(t, "five more heartbeats", func() bool { _, _, b := c.snapshot(); return len(b) >= start+5 })
+	_, _, beats := c.snapshot()
+	for i, hb := range beats[start : start+5] {
+		if hb.Configuration == nil {
+			t.Fatalf("heartbeat %d after the upgrade has no configuration: the fallback latched", start+i)
+		}
+	}
+}
+
+// A re-registration (the coordinator restarted, possibly upgraded) offers
+// the configuration again at once, not only after ConfigRetry.
+func TestReRegistrationOffersConfigurationAgain(t *testing.T) {
+	n := heartbeatNode(t)
+	n.status.Configuration = raftstore.Configuration{Index: 3, Committed: true,
+		Servers: []raftstore.Server{{ID: "storage-1-1/" + testIncarnation, Address: "storage-1-1:7000", Suffrage: "Voter"}}}
+	c := newFakeCoordinator(t)
+	c.strict = true
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &Server{s: newTestServer(t, n)}
+	errc := make(chan error, 1)
+	go func() {
+		errc <- s.RunHeartbeats(ctx, HeartbeatConfig{CoordinatorURL: c.srv.URL, Address: "storage-1-1.storage-1-headless:8080",
+			Interval: 20 * time.Millisecond, ConfigRetry: time.Hour})
+	}()
+	defer func() {
+		cancel()
+		if err := <-errc; err != nil {
+			t.Errorf("RunHeartbeats: %v", err)
+		}
+	}()
+	eventually(t, "heartbeats without configuration", func() bool { _, _, b := c.snapshot(); return len(b) >= 2 })
+	c.mu.Lock()
+	c.strict, c.forget = false, 1 // a restarted, upgraded coordinator
+	c.mu.Unlock()
+	eventually(t, "re-registration, then a heartbeat with configuration", func() bool {
+		order, regs, beats := c.snapshot()
+		return len(regs) >= 2 && order[len(order)-1] == "heartbeat" && beats[len(beats)-1].Configuration != nil
+	})
 }

@@ -58,4 +58,8 @@ type HeartbeatConfig struct {
 	Interval time.Duration
 	// Client sends the calls (default: a client with a 1 s timeout).
 	Client *http.Client
+	// ConfigRetry is how often a replica whose coordinator rejected
+	// heartbeat.configuration (one older than #21) offers it again
+	// (default 30 s); a re-registration offers it at once.
+	ConfigRetry time.Duration
 }

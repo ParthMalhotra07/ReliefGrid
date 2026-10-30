@@ -1,6 +1,7 @@
 package raftstore
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -59,6 +60,12 @@ type Config struct {
 	Profile Profile
 	// Logger receives Raft's own logs; nil logs at info to stderr.
 	Logger hclog.Logger
+
+	// Admit, if set, decides whether this disk may open its Raft transport
+	// (M7). Open calls it once the disk's identity exists and before the
+	// transport listens; it blocks until admitted or fails Open with its
+	// error, leaving nothing open. hasState reports existing Raft state.
+	Admit func(ctx context.Context, id Identity, hasState bool) error
 
 	// beforeRestoreSwap, tests only, runs in Restore after the image is
 	// staged and before the database is swapped in.

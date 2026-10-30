@@ -136,6 +136,12 @@ func (c *fakeCluster) Bootstrap(_ context.Context, addr string, voters []peerVot
 		}
 	}
 	target.State, target.CommitIndex = "Leader", 2
+	// The bootstrap configuration (index 1), committed with the leader's
+	// no-op, as the leader reports it in /mgmt/status (#21).
+	target.Configuration = &raftConfiguration{Index: 1, Committed: true}
+	for _, v := range voters {
+		target.Configuration.Servers = append(target.Configuration.Servers, configServer{ID: v.ID, Address: v.Address, Suffrage: suffrageVoter})
+	}
 	if err := c.failNext; err != nil {
 		c.failNext = nil
 		return err
