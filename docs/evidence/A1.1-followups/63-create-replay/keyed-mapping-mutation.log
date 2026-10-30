@@ -1,0 +1,17 @@
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=false
+    create_followup_test.go:145: error = map[string]interface {}{"code":"DOMAIN_CONFLICT", "correlationId":"0f04acc7-3794-4a60-91b9-42efe25cb831", "message":"operation is not allowed in the current state", "outcomeUnknown":false, "retryable":false}; want CONFLICT_IDEMPOTENCY_KEY, retryable=false, unknown=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=true
+    create_followup_test.go:145: error = map[string]interface {}{"code":"OPERATION_ID_REUSED", "correlationId":"916142c4-8d4e-4f73-924d-aa1dd137aa9c", "message":"operation ID has a different payload", "outcomeUnknown":false, "retryable":false}; want CONFLICT_IDEMPOTENCY_KEY, retryable=false, unknown=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=false
+    create_followup_test.go:145: error = map[string]interface {}{"code":"DOMAIN_CONFLICT", "correlationId":"2acf1e7e-36db-4c0a-9d58-fea686e530bf", "message":"operation is not allowed in the current state", "outcomeUnknown":false, "retryable":false}; want CONFLICT_IDEMPOTENCY_KEY, retryable=false, unknown=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=true
+    create_followup_test.go:145: error = map[string]interface {}{"code":"OPERATION_ID_REUSED", "correlationId":"0337808a-8793-430e-a99a-92bfc33a8df7", "message":"operation ID has a different payload", "outcomeUnknown":false, "retryable":false}; want CONFLICT_IDEMPOTENCY_KEY, retryable=false, unknown=false
+--- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey (0.34s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=false (0.18s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=true (0.05s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=false (0.05s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=true (0.05s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.398s
+FAIL

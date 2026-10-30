@@ -1,0 +1,13 @@
+=== RUN   TestAPICreationIntentCASLoserRereadsWinnerDeterministically
+=== RUN   TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=false
+    create_followup_test.go:83: HTTP 404: {"code":"NOT_FOUND","correlationId":"4e73a12c-d176-4b19-a09c-7fd914d6ccaf","message":"entity not found","outcomeUnknown":false,"retryable":false}
+        ; want 201
+=== RUN   TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=true
+    create_followup_test.go:81: HTTP 404: {"code":"NOT_FOUND","correlationId":"cb010c5b-9dd9-4fb6-80aa-91f69953f735","message":"entity not found","outcomeUnknown":false,"retryable":false}
+        ; want 409
+--- FAIL: TestAPICreationIntentCASLoserRereadsWinnerDeterministically (0.21s)
+    --- FAIL: TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=false (0.16s)
+    --- FAIL: TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=true (0.05s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.249s
+FAIL

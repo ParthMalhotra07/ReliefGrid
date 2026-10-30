@@ -66,5 +66,5 @@ No tests were weakened, skipped or given larger timeouts.
 
 Pre-PR review: READY for this scoped fix. It neither grants ownership nor changes
 acknowledgement or retry handoffs. Unknown outcomes remain distinct from refusals.
-Issue 63 items 2-4 (deterministic intent race coverage, EXISTS mapping/coverage and
-metadata tombstone documentation) remain open and are not claimed resolved.
+This folder records the initial item-1 fix. The later items 2-4 are covered in
+../63-create-replay/README.md, added on the same follow-up branch after this check.

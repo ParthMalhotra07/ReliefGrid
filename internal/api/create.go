@@ -122,7 +122,7 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request, operation string
 	if err != nil {
 		return remoteError(err, true)
 	}
-	if result.Outcome == store.OutcomeExists || result.Outcome == store.OutcomeOperationIDReuse {
+	if intentKey != "" && (result.Outcome == store.OutcomeExists || result.Outcome == store.OutcomeOperationIDReuse) {
 		return issue(409, "CONFLICT_IDEMPOTENCY_KEY", "creation identity has a different committed payload")
 	}
 	if err := committed(result); err != nil {
@@ -133,6 +133,10 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request, operation string
 	return nil
 }
 
+// reserve stores immutable idempotency metadata. api-create: records must not
+// be deleted or independently expired: they retain the exact command and the
+// original response needed after edits, crashes or lost replies. A tombstone
+// prevents create-if-absent reuse; deleting one requires an explicit migration.
 func (s *Server) reserve(ctx context.Context, key string, proposed creationIntent) (creationIntent, error) {
 	rec, err := s.read(ctx, key)
 	var p *problem
