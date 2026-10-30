@@ -460,7 +460,7 @@ func testOutboxPendingAndPublished(t *testing.T, s store.Store, n ns) {
 		Exchange: "relief.resources", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":1}`)}
 	res := expect(t, "create with outbox", store.OutcomeOK)(s.CreateEntity(ctx, store.CreateEntity{Meta: n.op("c"), Key: key, Resource: n.resource("r1"), Outbox: []store.OutboxEvent{ev}}))
 
-	pending, err := s.PendingOutbox(ctx, res.Shard, 100)
+	pending, err := s.PendingOutbox(ctx, store.OutboxQuery{Shard: res.Shard, Limit: 100})
 	if err != nil {
 		t.Fatalf("pending: %v", err)
 	}
@@ -470,7 +470,7 @@ func testOutboxPendingAndPublished(t *testing.T, s store.Store, n ns) {
 	}
 
 	expect(t, "mark published", store.OutcomeOK)(s.MarkOutboxPublished(ctx, store.MarkOutboxPublished{Meta: n.op("pub"), Shard: res.Shard, EventIDs: []string{ev.EventID}}))
-	pending, err = s.PendingOutbox(ctx, res.Shard, 100)
+	pending, err = s.PendingOutbox(ctx, store.OutboxQuery{Shard: res.Shard, Limit: 100})
 	if err != nil || find(pending, ev.EventID) != nil {
 		t.Fatalf("after publish: %v, event still pending = %v", err, find(pending, ev.EventID) != nil)
 	}

@@ -45,7 +45,7 @@ func TestMatchLaterPageFailureLeavesPendingWithoutHandoff(t *testing.T) {
 		t.Fatalf("incomplete walk changed request: %+v", r)
 	}
 	for shard := range raw.Shards() {
-		events, err := raw.PendingOutbox(ctx, shard, 100)
+		events, err := raw.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: 100})
 		if err != nil || len(events) != 0 {
 			t.Fatalf("incomplete walk persisted handoff: %v, %v", events, err)
 		}

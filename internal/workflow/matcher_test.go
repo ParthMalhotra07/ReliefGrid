@@ -208,7 +208,7 @@ func TestMatchPartialScanNeverCommitsNoCandidate(t *testing.T) {
 	}
 	assertStates(t, ctx, raw, f.InitialState, "")
 	for shard := range raw.Shards() {
-		events, err := raw.PendingOutbox(ctx, shard, 100)
+		events, err := raw.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: 100})
 		if err != nil || len(events) != 0 {
 			t.Fatalf("partial scan persisted handoff: %v, %v", events, err)
 		}
@@ -262,7 +262,7 @@ func TestMatchNoCandidateHasCommittedRetryHandoff(t *testing.T) {
 	}
 	retry := false
 	for shard := range raw.Shards() {
-		events, err := raw.PendingOutbox(ctx, shard, 100)
+		events, err := raw.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: 100})
 		if err != nil {
 			t.Fatal(err)
 		}

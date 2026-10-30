@@ -158,3 +158,16 @@ func TestStoreContract(t *testing.T) {
 	s := newStore(t)
 	storetest.Run(t, func(*testing.T) store.Store { return s })
 }
+
+// #41: memstore serves every read strong, and a long-poll Wait returns at
+// once instead of waiting.
+func TestPendingOutboxIgnoresWait(t *testing.T) {
+	s := newStore(t)
+	start := time.Now()
+	if _, err := s.PendingOutbox(testCtx(t), store.OutboxQuery{Shard: 0, Limit: 10, Wait: time.Second, Consistency: store.ConsistencyStale}); err != nil {
+		t.Fatal(err)
+	}
+	if d := time.Since(start); d > 100*time.Millisecond {
+		t.Fatalf("memstore PendingOutbox waited %s", d)
+	}
+}
