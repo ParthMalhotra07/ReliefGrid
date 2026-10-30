@@ -1,0 +1,38 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+0 issues.
+golangci-lint run --build-tags chaos ./cmd/invcheck/...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	1.122s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	2.326s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	1.450s
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	11.021s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/admission	1.267s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	5.314s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	13.292s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	31.850s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	1.038s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/obs	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	59.610s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	11.519s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
+go test -race -tags chaos ./cmd/invcheck/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)

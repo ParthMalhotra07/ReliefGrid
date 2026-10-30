@@ -1,0 +1,213 @@
+{
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "relief.requests",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "relief.retry",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "relief.events",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "relief.dlx",
+      "vhost": "/",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "matching.requests",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 1,
+        "x-dead-letter-strategy": "at-least-once",
+        "x-overflow": "reject-publish",
+        "x-max-length": 10000,
+        "x-max-length-bytes": 67108864,
+        "x-dead-letter-exchange": "relief.dlx",
+        "x-delivery-limit": 20
+      }
+    },
+    {
+      "name": "retry.5s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 1,
+        "x-dead-letter-strategy": "at-least-once",
+        "x-overflow": "reject-publish",
+        "x-max-length": 10000,
+        "x-max-length-bytes": 67108864,
+        "x-dead-letter-exchange": "relief.requests",
+        "x-dead-letter-routing-key": "request.retry",
+        "x-delivery-limit": 20,
+        "x-message-ttl": 5000
+      }
+    },
+    {
+      "name": "retry.30s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 1,
+        "x-dead-letter-strategy": "at-least-once",
+        "x-overflow": "reject-publish",
+        "x-max-length": 10000,
+        "x-max-length-bytes": 67108864,
+        "x-dead-letter-exchange": "relief.requests",
+        "x-dead-letter-routing-key": "request.retry",
+        "x-delivery-limit": 20,
+        "x-message-ttl": 30000
+      }
+    },
+    {
+      "name": "retry.120s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 1,
+        "x-dead-letter-strategy": "at-least-once",
+        "x-overflow": "reject-publish",
+        "x-max-length": 10000,
+        "x-max-length-bytes": 67108864,
+        "x-dead-letter-exchange": "relief.requests",
+        "x-dead-letter-routing-key": "request.retry",
+        "x-delivery-limit": 20,
+        "x-message-ttl": 120000
+      }
+    },
+    {
+      "name": "matching.dead",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 1,
+        "x-overflow": "reject-publish",
+        "x-max-length": 10000,
+        "x-max-length-bytes": 67108864
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "source": "relief.requests",
+      "vhost": "/",
+      "destination": "matching.requests",
+      "destination_type": "queue",
+      "routing_key": "request.created.*",
+      "arguments": {}
+    },
+    {
+      "source": "relief.requests",
+      "vhost": "/",
+      "destination": "matching.requests",
+      "destination_type": "queue",
+      "routing_key": "request.retry",
+      "arguments": {}
+    },
+    {
+      "source": "relief.retry",
+      "vhost": "/",
+      "destination": "retry.5s",
+      "destination_type": "queue",
+      "routing_key": "delay.5s",
+      "arguments": {}
+    },
+    {
+      "source": "relief.retry",
+      "vhost": "/",
+      "destination": "retry.30s",
+      "destination_type": "queue",
+      "routing_key": "delay.30s",
+      "arguments": {}
+    },
+    {
+      "source": "relief.retry",
+      "vhost": "/",
+      "destination": "retry.120s",
+      "destination_type": "queue",
+      "routing_key": "delay.120s",
+      "arguments": {}
+    },
+    {
+      "source": "relief.dlx",
+      "vhost": "/",
+      "destination": "matching.dead",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {}
+    }
+  ],
+  "policies": [
+    {
+      "name": "matching-safety",
+      "vhost": "/",
+      "pattern": "^matching\\.requests$",
+      "apply-to": "quorum_queues",
+      "priority": 10,
+      "definition": {
+        "dead-letter-strategy": "at-least-once",
+        "overflow": "reject-publish",
+        "max-length": 10000,
+        "max-length-bytes": 67108864,
+        "dead-letter-exchange": "relief.dlx",
+        "delivery-limit": 20
+      }
+    },
+    {
+      "name": "retry-safety",
+      "vhost": "/",
+      "pattern": "^retry\\.(5s|30s|120s)$",
+      "apply-to": "quorum_queues",
+      "priority": 10,
+      "definition": {
+        "dead-letter-strategy": "at-least-once",
+        "overflow": "reject-publish",
+        "max-length": 10000,
+        "max-length-bytes": 67108864,
+        "dead-letter-exchange": "relief.requests",
+        "dead-letter-routing-key": "request.retry",
+        "delivery-limit": 20
+      }
+    }
+  ]
+}

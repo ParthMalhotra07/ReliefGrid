@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-rabbitmq-definitions
+  labels:
+    {{- include "reliefgrid.rabbitmqLabels" . | nindent 4 }}
+data:
+  definitions.json: |
+    {{- .Files.Get "files/rabbitmq-definitions.json" | nindent 4 }}
