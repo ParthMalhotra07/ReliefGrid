@@ -1,0 +1,119 @@
+# S4.2 admission gate and storagectl replace
+result:     PASSED (63/63 checks)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-10-27T19:42:36Z
+code tree:  201a7fa75166
+code dirty: no
+shard/pod:  1/storage-shard-1-2
+
+## checks
+PASS  guard: the chart cannot set ADMISSION (absent from every template, value and rendered manifest)
+PASS  guard: the chart cannot set STORAGECTL_CRASH_AT (absent from every template, value and rendered manifest)
+PASS  guard: every storage pod is rendered with MANIFEST_NAME (the gate on)
+PASS  the coordinator restarted on the new image
+PASS  storage-shard-0 restarted on the new image
+PASS  storage-shard-1 restarted on the new image
+PASS  storage-shard-2 restarted on the new image
+PASS  shard-1: three committed voters, caught up
+PASS  #21: storage-shard-1-0 reports the committed configuration = manifest peerIds
+PASS  #21: storage-shard-1-1 reports the committed configuration = manifest peerIds
+PASS  #21: storage-shard-1-2 reports the committed configuration = manifest peerIds
+PASS  #21: the bootstrap fence names the committed configuration
+PASS  Role storage-admission: get on the three manifests only
+PASS  restart: storage-shard-1-2 back as storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 without any manifest change
+PASS  restart: admitted unchanged (none)
+PASS  control: storage-shard-1-0 reaches storage-shard-1-2:7000 and :8080 before the wipe
+PASS  wipe: storage-shard-1-2 is back, Unadmitted
+PASS  wipe: new incarnation storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4, no Raft state, not admitted (not admitted: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 is not a recorded voter and admitted[storage-shard-1-2] is "" (storagectl replace admits it))
+PASS  wipe: the old voter's address takes no Raft or data traffic for 20s
+PASS  wipe: no election while the wiped pod waits (term 6)
+PASS  wipe: storage-shard-1-2 is not Ready
+PASS  wipe: the coordinator lists storage-shard-1-2 unadmitted
+PASS  refuse: replacing storage-shard-1-0 (still running) exits 2, configuration unchanged
+PASS  crash at planned: exit 1, phase PLANNED, 3 voters
+PASS  crash at planned: the Job logged the loud CRASH_AT warning
+PASS  crash at planned: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  crash at removed: exit 1, phase PLANNED, 2 voters
+PASS  crash at removed: the Job logged the loud CRASH_AT warning
+PASS  crash at removed: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  crash at recorded-removed: exit 1, phase REMOVED, 2 voters
+PASS  crash at recorded-removed: the Job logged the loud CRASH_AT warning
+PASS  crash at recorded-removed: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  leader change mid-replace (after recorded-removed)
+PASS  crash at admitted: exit 1, phase ADMITTED, 2 voters
+PASS  crash at admitted: the Job logged the loud CRASH_AT warning
+PASS  crash at admitted: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  crash at nonvoter: exit 1, phase ADMITTED, 2 voters
+PASS  crash at nonvoter: the Job logged the loud CRASH_AT warning
+PASS  crash at nonvoter: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  crash at recorded-nonvoter: exit 1, phase NONVOTER, 2 voters
+PASS  crash at recorded-nonvoter: the Job logged the loud CRASH_AT warning
+PASS  crash at recorded-nonvoter: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  crash at voter: exit 1, phase NONVOTER, 3 voters
+PASS  crash at voter: the Job logged the loud CRASH_AT warning
+PASS  crash at voter: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  crash at recorded-voter: exit 1, phase VOTER, 3 voters
+PASS  crash at recorded-voter: the Job logged the loud CRASH_AT warning
+PASS  crash at recorded-voter: storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 not admitted while storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 is in the configuration
+PASS  replace: the final run completes
+PASS  replace: phase PLANNED logged
+PASS  replace: phase REMOVED logged
+PASS  replace: phase ADMITTED logged
+PASS  replace: phase NONVOTER logged
+PASS  replace: phase VOTER logged
+PASS  after: three committed voters, all caught up
+PASS  after: manifest peerIds = committed voters, with storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 and without storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012
+PASS  after: removed has storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012, admitted[storage-shard-1-2] is the new incarnation, no replace in progress
+PASS  after: storage-shard-1-2 is Ready
+PASS  after: storage-shard-1-1 reaches storage-shard-1-2:7000 and :8080 once admitted
+PASS  after: a re-run finds the replacement done and changes nothing
+PASS  #21: helm upgrade after the replacement: the bootstrap Job verifies the updated peerIds
+PASS  ledger: 2028 acknowledged writes, 0 lost
+PASS  invcheck: clean and quiescent
+
+## manifest
+{
+  "admitted": "{\"storage-shard-1-2\":\"d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4\"}",
+  "groupId": "shard-1",
+  "peerIds": "[\"storage-shard-1-0/9e2881d6-4c3a-4e45-b45e-b98e68a99f41\",\"storage-shard-1-1/07679650-694c-4251-a6a3-7fd457ddf93e\",\"storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4\"]",
+  "peers": "[{\"podName\":\"storage-shard-1-0\",\"address\":\"storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-1\",\"address\":\"storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-2\",\"address\":\"storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000\"}]",
+  "phase": "BOOTSTRAPPED",
+  "removed": "[\"storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012\"]",
+  "ringVersion": "1",
+  "shard": "1"
+}
+
+## replace Job logs
+2026/10/27 19:41:31 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step admitted (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:32.103Z level=INFO msg="shard-1: recorded" phase=ADMITTED pod=storage-shard-1-2 configIndex=2881
+time=2026-10-27T19:41:32.103Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=admitted
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step admitted
+time=2026-10-27T19:42:09.856Z level=INFO msg="shard-1: already replaced; verified" pod=storage-shard-1-2 voters="[storage-shard-1-0/9e2881d6-4c3a-4e45-b45e-b98e68a99f41 storage-shard-1-1/07679650-694c-4251-a6a3-7fd457ddf93e storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4]"
+2026/10/27 19:41:36 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step nonvoter (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:37.221Z level=INFO msg="shard-1: committed" op=add-nonvoter id=storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 index=3003
+time=2026-10-27T19:41:37.221Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=nonvoter
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step nonvoter
+2026/10/27 19:41:13 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step planned (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:15.015Z level=INFO msg="shard-1: recorded" phase=PLANNED pod=storage-shard-1-2 oldId=storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 newId=storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 configIndex=1
+time=2026-10-27T19:41:15.015Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=planned
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step planned
+2026/10/27 19:41:43 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step recorded-nonvoter (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:44.077Z level=INFO msg="shard-1: recorded" phase=NONVOTER pod=storage-shard-1-2 configIndex=3003
+time=2026-10-27T19:41:44.077Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=recorded-nonvoter
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step recorded-nonvoter
+2026/10/27 19:41:24 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step recorded-removed (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:25.577Z level=INFO msg="shard-1: recorded" phase=REMOVED pod=storage-shard-1-2 configIndex=2881
+time=2026-10-27T19:41:25.577Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=recorded-removed
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step recorded-removed
+2026/10/27 19:41:55 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step recorded-voter (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:56.107Z level=INFO msg="shard-1: recorded" phase=VOTER pod=storage-shard-1-2 configIndex=3082
+time=2026-10-27T19:41:56.107Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=recorded-voter
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step recorded-voter
+2026/10/27 19:41:18 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step removed (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:19.748Z level=INFO msg="shard-1: committed" op=remove id=storage-shard-1-2/583526bb-bd40-4396-827d-5942e9b0e012 index=2881
+time=2026-10-27T19:41:19.748Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=removed
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step removed
+2026/10/27 19:41:48 WARN !!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step voter (tests and the S4.2 Verify only) !!!
+time=2026-10-27T19:41:49.254Z level=INFO msg="shard-1: committed" op=add-voter id=storage-shard-1-2/d1dccd59-a801-4c9c-9b50-bf91d7a6a8d4 index=3082
+time=2026-10-27T19:41:49.255Z level=WARN msg="crashing on purpose (STORAGECTL_CRASH_AT)" step=voter
+storagectl: storagectl: crash injected (STORAGECTL_CRASH_AT) after step voter

@@ -113,6 +113,41 @@ func (h *httpPeers) Bootstrap(ctx context.Context, addr string, voters []peerVot
 	}
 }
 
+// Membership sends one change to POST /mgmt/membership on the leader.
+func (h *httpPeers) Membership(ctx context.Context, addr string, c membershipChange) (uint64, error) {
+	body, err := json.Marshal(c)
+	if err != nil {
+		return 0, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "http://"+addr+"/mgmt/membership", bytes.NewReader(body))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+h.token)
+	resp, err := h.client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("storagectl: membership %s %s at %s: %w", c.Op, c.ID, addr, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	switch {
+	case resp.StatusCode == http.StatusOK:
+		var out struct {
+			Index uint64 `json:"index"`
+		}
+		if err := json.Unmarshal(b, &out); err != nil {
+			return 0, fmt.Errorf("storagectl: membership answer from %s: %w", addr, err)
+		}
+		return out.Index, nil
+	case resp.StatusCode == http.StatusConflict && bytes.Contains(b, []byte("NOT_LEADER")):
+		return 0, fmt.Errorf("%w: %s: %s", errNotLeader, addr, bytes.TrimSpace(b))
+	case resp.StatusCode == http.StatusConflict && bytes.Contains(b, []byte("CONFIG_CHANGED")):
+		return 0, fmt.Errorf("%w: %s: %s", errConfigChanged, addr, bytes.TrimSpace(b))
+	}
+	return 0, fmt.Errorf("storagectl: membership %s %s at %s: HTTP %d: %s", c.Op, c.ID, addr, resp.StatusCode, bytes.TrimSpace(b))
+}
+
 // dial opens and closes a TCP connection to addr (storagectl dial): a
 // reachability check from inside a distroless pod, which has no shell.
 func dial(ctx context.Context, addr string) error {

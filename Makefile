@@ -30,7 +30,7 @@ STORAGE_RELEASE ?= storage
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-reset placement-check
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-replace storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
 
 help: ## List targets
@@ -111,6 +111,9 @@ tools-image: ## Build the tools image (invcheck with the chaos tag) and load it 
 coordinator-image: ## Build the coordinator image and load it into kind
 	docker build -f cmd/coordinator/Dockerfile -t $(COORDINATOR_IMAGE) .
 	kind load docker-image --name $(CLUSTER) $(COORDINATOR_IMAGE)
+
+storage-replace: ## Run storagectl replace SHARD=N POD=<pod> as a Job (M7 disk replacement; rerun to resume)
+	KUBE_CONTEXT=kind-$(CLUSTER) NAMESPACE=$(STORAGE_NS) SHARD='$(SHARD)' POD='$(POD)' CRASH_AT='$(CRASH_AT)' scripts/storage-replace.sh
 
 placement-check: ## Fail if two replicas of a storage shard share a worker (or one is off the data workers)
 	KUBE_CONTEXT=kind-$(CLUSTER) NAMESPACE=$(STORAGE_NS) scripts/placement-check.sh

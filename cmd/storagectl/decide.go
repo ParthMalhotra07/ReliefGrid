@@ -19,6 +19,50 @@ type nodeStatus struct {
 	HasState    bool   `json:"hasState"`
 	CaughtUp    bool   `json:"caughtUp"`
 	RingVersion uint64 `json:"ringVersion"`
+	// Configuration is the group's latest Raft configuration as the node
+	// knows it (#21); nil from a node with no Raft state.
+	Configuration *raftConfiguration `json:"configuration,omitempty"`
+}
+
+// raftConfiguration is /mgmt/status's configuration.
+type raftConfiguration struct {
+	Index     uint64         `json:"index"`
+	Committed bool           `json:"committed"`
+	Servers   []configServer `json:"servers"`
+}
+
+type configServer struct {
+	ID       string `json:"id"`
+	Address  string `json:"address"`
+	Suffrage string `json:"suffrage"`
+}
+
+const (
+	suffrageVoter    = "Voter"
+	suffrageNonvoter = "Nonvoter"
+)
+
+// voters is c's voter IDs, sorted; ok is false if c has a nonvoter.
+func (c *raftConfiguration) voters() (ids []string, ok bool) {
+	ok = true
+	for _, s := range c.Servers {
+		if s.Suffrage != suffrageVoter {
+			ok = false
+			continue
+		}
+		ids = append(ids, s.ID)
+	}
+	slices.Sort(ids)
+	return ids, ok
+}
+
+func (c *raftConfiguration) has(id string) (configServer, bool) {
+	for _, s := range c.Servers {
+		if s.ID == id {
+			return s, true
+		}
+	}
+	return configServer{}, false
 }
 
 type action int
@@ -113,7 +157,8 @@ func mismatch(m manifest, p peer, s nodeStatus) string {
 // different (stale) self-proclaimed leader's commit index never counts.
 func fenced(m manifest, sts map[string]nodeStatus) (bool, string) {
 	leaders := map[string]int{}
-	commits := map[string]uint64{} // self-reported leaders' commit index, by ID
+	commits := map[string]uint64{}                // self-reported leaders' commit index, by ID
+	leaderCfgs := map[string]*raftConfiguration{} // and their configuration
 	for _, p := range m.Peers {
 		s, ok := sts[p.PodName]
 		if !ok || !s.HasState || !s.CaughtUp || s.LeaderID == "" {
@@ -121,7 +166,7 @@ func fenced(m manifest, sts map[string]nodeStatus) (bool, string) {
 		}
 		leaders[s.LeaderID]++
 		if s.State == "Leader" && s.ServerID == s.LeaderID {
-			commits[s.ServerID] = s.CommitIndex
+			commits[s.ServerID], leaderCfgs[s.ServerID] = s.CommitIndex, s.Configuration
 		}
 	}
 	for id, n := range leaders {
@@ -138,7 +183,21 @@ func fenced(m manifest, sts map[string]nodeStatus) (bool, string) {
 		if leaderCommit < 2 {
 			return false, fmt.Sprintf("leader %s has commit index %d", id, leaderCommit)
 		}
-		return true, fmt.Sprintf("leader %s, %d of %d caught up, commit index %d", id, n, len(m.Peers), leaderCommit)
+		// #21: the leader's committed configuration is exactly the recorded
+		// voters.
+		cfg := leaderCfgs[id]
+		if cfg == nil {
+			return false, fmt.Sprintf("leader %s reports no Raft configuration", id)
+		}
+		if !cfg.Committed {
+			return false, fmt.Sprintf("leader %s's configuration at %d is not committed", id, cfg.Index)
+		}
+		want := slices.Sorted(slices.Values(m.PeerIDs))
+		if got, all := cfg.voters(); !all || !slices.Equal(got, want) {
+			return false, fmt.Sprintf("leader %s's committed configuration has voters %v (all voters: %v), the manifest records %v", id, got, all, want)
+		}
+		return true, fmt.Sprintf("leader %s, %d of %d caught up, commit index %d, committed configuration %d of %d voters at %d",
+			id, n, len(m.Peers), leaderCommit, len(m.PeerIDs), len(m.PeerIDs), cfg.Index)
 	}
 	return false, "no majority agrees on a caught-up leader"
 }

@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"syscall"
 	"time"
@@ -58,6 +59,8 @@ func main() {
 		err = runDump(ctx, os.Args[2:], os.Getenv, os.Stdout)
 	case "transfer-leader":
 		err = runTransferLeader(ctx, os.Args[2:], os.Getenv, os.Stdout)
+	case "replace":
+		err = runReplace(ctx, os.Args[2:], os.Getenv)
 	default:
 		usage()
 	}
@@ -71,7 +74,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump|transfer-leader [--addr host:port] [--timeout d]")
+	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl replace --shard N --pod NAME [--abort] | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump|transfer-leader [--addr host:port] [--timeout d]")
 	os.Exit(64)
 }
 
@@ -119,6 +122,57 @@ func runBootstrap(ctx context.Context, getenv func(string) string) error {
 		log: slog.New(slog.NewTextHandler(os.Stderr, nil)),
 	}
 	return b.run(ctx, specs)
+}
+
+// runReplace is storagectl replace (v3.1 §11, M7), run as a Job with the
+// bootstrap Job's service account and environment (POD_NAMESPACE,
+// OPERATOR_TOKEN, MANIFESTS). STORAGECTL_CRASH_AT stops it after that step,
+// for the tests and the S4.2 Verify only; the chart never sets it.
+func runReplace(ctx context.Context, args []string, getenv func(string) string) error {
+	fs := flag.NewFlagSet("replace", flag.ContinueOnError)
+	shard := fs.Int("shard", -1, "the shard whose voter is replaced")
+	pod := fs.String("pod", "", "the pod whose disk was lost, now running its new, unadmitted incarnation")
+	timeout := fs.Duration("timeout", 15*time.Minute, "bound on the whole replacement (rerun to resume)")
+	abort := fs.Bool("abort", false, "clear a replacement stuck in PLANNED, only if nothing has changed since")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	ns, token := getenv("POD_NAMESPACE"), getenv("OPERATOR_TOKEN")
+	if ns == "" || token == "" {
+		return errors.New("POD_NAMESPACE and OPERATOR_TOKEN are required")
+	}
+	specs, err := parseSpecs(getenv("MANIFESTS"))
+	if err != nil {
+		return err
+	}
+	i := slices.IndexFunc(specs, func(m manifest) bool { return m.Shard == *shard })
+	if i < 0 || *pod == "" {
+		return fmt.Errorf("--shard must name a shard in MANIFESTS and --pod is required")
+	}
+	crashAt := getenv("STORAGECTL_CRASH_AT")
+	if crashAt != "" {
+		if !slices.Contains(replaceSteps, crashAt) {
+			return fmt.Errorf("STORAGECTL_CRASH_AT %q: steps are %v", crashAt, replaceSteps)
+		}
+		slog.Warn("!!! STORAGECTL_CRASH_AT is set: this run will stop on purpose after step " + crashAt + " (tests and the S4.2 Verify only) !!!")
+	}
+	port := getenv("MGMT_PORT")
+	if port == "" {
+		port = "8081"
+	}
+	store, err := inClusterStore(ns)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, *timeout)
+	defer cancel()
+	peers := newHTTPPeers(token, 5*time.Second)
+	r := &replacer{store: store, peers: peers, members: peers, mgmtPort: port, poll: time.Second, call: 5 * time.Second,
+		crashAt: crashAt, log: slog.New(slog.NewTextHandler(os.Stderr, nil))}
+	if *abort {
+		return r.abort(ctx, specs[i], *pod)
+	}
+	return r.run(ctx, specs[i], *pod)
 }
 
 // spec is one MANIFESTS entry: what the chart knows about a shard's group.

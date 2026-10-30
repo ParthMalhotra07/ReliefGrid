@@ -102,6 +102,24 @@ func (e NodeState) Valid() bool {
 	}
 }
 
+// Defines values for RaftServerSuffrage.
+const (
+	RaftServerSuffrageNonvoter RaftServerSuffrage = "Nonvoter"
+	RaftServerSuffrageVoter    RaftServerSuffrage = "Voter"
+)
+
+// Valid indicates whether the value is a known member of the RaftServerSuffrage enum.
+func (e RaftServerSuffrage) Valid() bool {
+	switch e {
+	case RaftServerSuffrageNonvoter:
+		return true
+	case RaftServerSuffrageVoter:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReadInfoConsistency.
 const (
 	ReadInfoConsistencyLinearizable ReadInfoConsistency = "linearizable"
@@ -436,6 +454,12 @@ type Heartbeat struct {
 	AppliedIndex uint64 `json:"appliedIndex"`
 	CommitIndex  uint64 `json:"commitIndex"`
 
+	// Configuration The group's latest Raft configuration as this node knows it (#21).
+	// The coordinator admits a registration (M7) only once its ServerID
+	// is in the shard's committed configuration, as the leader reports
+	// it. Omitted by a node without Raft state.
+	Configuration *RaftConfiguration `json:"configuration,omitempty"`
+
 	// GroupId Raft group, e.g. shard-1
 	GroupId string `json:"groupId"`
 
@@ -642,6 +666,30 @@ type PutDataBody struct {
 	// Value Generic value (JSON)
 	Value *json.RawMessage `json:"value,omitempty"`
 }
+
+// RaftConfiguration A Raft group's membership at a log index. committed is true once
+// that index is within the commit index (at most one change is ever
+// uncommitted).
+type RaftConfiguration struct {
+	Committed bool `json:"committed"`
+
+	// Index Log index of the configuration entry
+	Index   uint64       `json:"index"`
+	Servers []RaftServer `json:"servers"`
+}
+
+// RaftServer defines model for RaftServer.
+type RaftServer struct {
+	// Address Stable Raft address, host:port
+	Address string `json:"address"`
+
+	// Id The Raft ServerID, podName/incarnation (v3.1 §10)
+	Id       ServerID           `json:"id"`
+	Suffrage RaftServerSuffrage `json:"suffrage"`
+}
+
+// RaftServerSuffrage defines model for RaftServer.Suffrage.
+type RaftServerSuffrage string
 
 // ReadInfo How a read was served (§13)
 type ReadInfo struct {

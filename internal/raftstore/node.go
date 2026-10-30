@@ -34,6 +34,10 @@ var (
 	// ErrUnavailable: a read could not be fenced (no quorum, shutting down).
 	// Nothing was changed; the caller may retry.
 	ErrUnavailable = errors.New("raftstore: unavailable")
+	// ErrConfigurationChanged: a membership change named a prevIndex that
+	// is no longer the latest configuration's. Nothing was changed; re-read
+	// the configuration and decide again.
+	ErrConfigurationChanged = errors.New("raftstore: configuration changed")
 )
 
 // NotLeaderError carries the current leader as this node knows it; both
@@ -95,6 +99,10 @@ type Status struct {
 	// has committed), 0 before.
 	LeaderCommitIndex uint64
 
+	// Configuration is the group's latest configuration and whether it is
+	// committed (#21).
+	Configuration Configuration
+
 	HasState bool // any term, log or snapshot on disk
 	// CaughtUp: a leader is known, this replica has committed up to
 	// LeaderCommitIndex, and the FSM has completed every command up to it.
@@ -113,6 +121,8 @@ type Node struct {
 	snaps *raft.FileSnapshotStore
 	trans *fenceTransport
 	fence commitFence
+	// cfgScan finds the latest configuration's index (Configuration).
+	cfgScan configScan
 
 	// hasState caches raft.HasExistingState once it is true; Raft state is
 	// never removed while the node runs.
@@ -185,6 +195,11 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 	}
 	if n.id, err = loadOrCreateIdentity(cfg.DataDir, Identity{PodName: cfg.PodName, GroupID: cfg.GroupID, Shard: cfg.Shard}, n.logs, hasState); err != nil {
 		return nil, err
+	}
+	if cfg.Admit != nil {
+		if err := cfg.Admit(ctx, n.id, hasState); err != nil {
+			return nil, fmt.Errorf("raftstore: %s not admitted: %w", n.id.ServerID(), err)
+		}
 	}
 	if n.sm, err = newStateMachine(ctx, cfg.FSMDir, cfg.GroupID, cfg.Shard); err != nil {
 		return nil, err
@@ -376,6 +391,9 @@ func (n *Node) Status() Status {
 		AppliedIndex:     n.sm.appliedIndex(),
 		RestoredIndex:    n.sm.restoredIndex(),
 		HasState:         has,
+	}
+	if f := n.raft.GetConfiguration(); f.Error() == nil {
+		s.Configuration, _ = n.configuration(f.Configuration(), s.CommitIndex)
 	}
 	known := false // a commit index from the current term's leader
 	if s.State == raft.Leader.String() {

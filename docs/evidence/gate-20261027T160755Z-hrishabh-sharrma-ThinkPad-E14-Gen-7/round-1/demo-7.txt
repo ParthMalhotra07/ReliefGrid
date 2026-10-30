@@ -1,0 +1,54 @@
+# demo-7: Restart the stopped node; replay, catch-up and equal committed state
+result:     PASS (11/11 checks)
+runId:      gate-20261027T160755Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-10-27T16:11:05Z
+finished:   2026-10-27T16:11:31Z
+duration:   26.0 s
+code tree:  e57b832f1114 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: continues from demo 6 (/home/hrishabh-sharrma/code/ReliefGrid-s1/docs/evidence/gate-20261027T160755Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-6.state): shard 1's storage-shard-1-0 stopped; 100 writes under demo7-7-1793117465 while it is down (seed 7); restart by uncordoning its worker
+
+## versions
+git head: 7e170aa9092a
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:a57a97cd879b5f7d3729863a7555b8f74d805d870b60a343e0ba036c05e5f21d
+image reliefgrid/coordinator:dev: sha256:598b696b66cdcfadc50623a233388800b2464aacf1dc69d2b848b96b7107bfd9
+
+## checks
+PASS  preflight: coordinator reachable
+PASS  stop: continuing from demo 6: storage-shard-1-0 is still Pending with reliefgrid-worker2 cordoned
+PASS  stopped: storage-shard-1-0 is down; storage-shard-1-1 leads shard 1 at term 3
+PASS  writes: 100 writes to shard 1 committed while storage-shard-1-0 was down
+PASS  restart: reliefgrid-worker2 uncordoned; storage-shard-1-0 is Running on it again (1 s)
+PASS  catch-up: storage-shard-1-0 replayed to appliedIndex 2133 (>= commit index 2133) and is caughtUp
+PASS  data-ready: storage-shard-1-0 is Ready (readiness gated on catch-up)
+PASS  identity: storage-shard-1-0 rejoined as storage-shard-1-0/d04f1cda-59dc-4efd-88ac-56e7b863eef3 (same disk); storage-shard-1-1 leads all three
+PASS  equal state: the three replicas' dumps are identical at appliedIndex 2133
+PASS  replayed data: all 100 writes made while it was down are served by storage-shard-1-0's own FSM
+PASS  coordinator: all nine nodes UP
+
+## commands
+shard 1 commit index after the writes: 2133 (leader storage-shard-1-1)
+
+# replay/catch-up of storage-shard-1-0 (polls of /mgmt/status)
+0s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+1s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+2s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+2s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+3s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+4s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+5s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+5s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+6s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+7s {"state":"Follower","appliedIndex":2133,"commitIndex":2133,"leaderCommitIndex":2133,"restoredIndex":2067,"caughtUp":true}
+
+# dumps of shard 1 after settling
+storage-shard-1-0 2133 e9589bc374b585e5c3d8704f65d1a906ac37ae8f98166c61f02c3343c0068e3b records=579
+storage-shard-1-1 2133 e9589bc374b585e5c3d8704f65d1a906ac37ae8f98166c61f02c3343c0068e3b records=579
+storage-shard-1-2 2133 e9589bc374b585e5c3d8704f65d1a906ac37ae8f98166c61f02c3343c0068e3b records=579

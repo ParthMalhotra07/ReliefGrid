@@ -206,8 +206,10 @@ func TestStaleLeaderHintRetriesNewLeaderWithSameOperation(t *testing.T) {
 func TestDiscoveryProbesMembersWithoutAHint(t *testing.T) {
 	h := newHarness(t, nil)
 	h.registerAll()
-	for _, n := range h.nodes[0] { // shard 0 reports no leader
-		h.do(call{method: http.MethodPost, path: "/internal/nodes/heartbeat", body: n.heartbeat(nil, 3)})
+	for _, n := range h.nodes[0] { // shard 0 reports no leader, but its committed configuration (M7)
+		hb := n.heartbeat(nil, 3)
+		hb.Configuration = committedConfig(h.nodes[0]...)
+		h.do(call{method: http.MethodPost, path: "/internal/nodes/heartbeat", body: hb})
 	}
 	for _, n := range h.nodes[0] {
 		if n != h.nodes[0][2] {

@@ -149,6 +149,7 @@ func newCluster(t *testing.T, mod func(*coordinator.Config)) *cluster {
 	for s := range c.shards {
 		c.waitCoordinatorLeader(s, "")
 	}
+	c.waitAllAdmitted()
 	ctx, cancel := context.WithTimeout(context.Background(), clusterWait)
 	defer cancel()
 	if c.client, err = coordclient.New(ctx, c.coord.URL); err != nil {
@@ -236,6 +237,35 @@ func (c *cluster) waitCoordinatorLeader(shard int, notPod string) string {
 	}
 	c.t.Fatalf("coordinator never learned a leader for shard %d", shard)
 	return ""
+}
+
+// waitAllAdmitted waits until the coordinator admits every replica (M7):
+// admission follows the committed configuration, which a newly elected
+// leader reports about one heartbeat after it is first named leader.
+func (c *cluster) waitAllAdmitted() {
+	c.t.Helper()
+	want := 0
+	for _, row := range c.shards {
+		want += len(row)
+	}
+	n := 0
+	for deadline := time.Now().Add(clusterWait); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		rec := c.http(http.MethodGet, c.coord.URL+"/admin/nodes", map[string]string{"Authorization": "Bearer " + operatorToken}, nil)
+		var nodes internalapi.AdminNodes
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &nodes) != nil {
+			continue
+		}
+		n = 0
+		for _, node := range nodes.Nodes {
+			if node.Admitted {
+				n++
+			}
+		}
+		if n == want {
+			return
+		}
+	}
+	c.t.Fatalf("the coordinator admitted %d of %d replicas", n, want)
 }
 
 func (c *cluster) keyOn(shard int, base string) string {

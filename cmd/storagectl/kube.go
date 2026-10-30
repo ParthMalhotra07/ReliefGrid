@@ -209,6 +209,9 @@ func (k *kubeStore) Update(ctx context.Context, m manifest) (string, error) {
 	if len(m.PeerIDs) == 0 {
 		delete(data, "peerIds")
 	}
+	if m.Replace == nil {
+		delete(data, "replace") // a finished replacement clears its record
+	}
 	cm.raw["data"] = data
 	body, err := json.Marshal(cm.raw)
 	if err != nil {
