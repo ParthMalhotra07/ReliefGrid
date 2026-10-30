@@ -14,6 +14,7 @@ require (
 	github.com/hashicorp/raft v1.8.0
 	github.com/hashicorp/raft-boltdb/v2 v2.4.2
 	github.com/oapi-codegen/runtime v1.7.0
+	github.com/rabbitmq/amqp091-go v1.16.0
 	go.yaml.in/yaml/v3 v3.0.4
 	modernc.org/sqlite v1.60.1
 )

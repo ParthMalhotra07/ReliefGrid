@@ -1,0 +1,30 @@
+rabbitmq:
+  image: rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+  username: reliefgrid
+  password: reliefgrid
+  erlangCookie: reliefgrid-local-cookie
+  storage:
+    size: 1Gi
+    storageClassName: standard
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      memory: 1Gi
+
+traefik:
+  enabled: true
+  image:
+    digest: sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
+  versionOverride: v3.7.16
+  service:
+    spec:
+      type: ClusterIP
+  nodeSelector:
+    role: infra
+  tolerations:
+    - key: role
+      operator: Equal
+      value: infra
+      effect: NoSchedule

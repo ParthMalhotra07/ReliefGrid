@@ -1,0 +1,16 @@
+Warning: resource serviceaccounts/reliefgrid-traefik is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+serviceaccount/reliefgrid-traefik configured (server dry run)
+secret/reliefgrid-rabbitmq created (server dry run)
+Warning: resource clusterroles/reliefgrid-traefik-reliefgrid is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+clusterrole.rbac.authorization.k8s.io/reliefgrid-traefik-reliefgrid configured (server dry run)
+Warning: resource clusterrolebindings/reliefgrid-traefik-reliefgrid is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+clusterrolebinding.rbac.authorization.k8s.io/reliefgrid-traefik-reliefgrid configured (server dry run)
+Warning: resource services/reliefgrid-traefik is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+service/reliefgrid-traefik configured (server dry run)
+service/reliefgrid-rabbitmq-headless created (server dry run)
+service/reliefgrid-rabbitmq created (server dry run)
+Warning: resource deployments/reliefgrid-traefik is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+deployment.apps/reliefgrid-traefik configured (server dry run)
+statefulset.apps/reliefgrid-rabbitmq created (server dry run)
+Warning: resource ingressclasses/reliefgrid-traefik is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
+ingressclass.networking.k8s.io/reliefgrid-traefik configured (server dry run)

@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-rabbitmq-headless
+  labels:
+    {{- include "reliefgrid.rabbitmqLabels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: amqp
+    - name: epmd
+      port: 4369
+      targetPort: epmd
+    - name: clustering
+      port: 25672
+      targetPort: clustering
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-rabbitmq
+  labels:
+    {{- include "reliefgrid.rabbitmqLabels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: amqp
+    - name: management
+      port: 15672
+      targetPort: management

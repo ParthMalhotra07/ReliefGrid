@@ -1,0 +1,23 @@
+go vet ./...
+golangci-lint run ./...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	1.064s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	1.348s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	1.025s
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	7.407s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	6.641s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	7.413s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	8.991s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	1.467s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	1.021s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/obs	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	17.545s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	4.622s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	6.218s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	1.831s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	1.035s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	1.104s
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	1.072s
