@@ -1,0 +1,65 @@
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CreateEntity
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"730d9f2f-a247-4abe-b415-64f2497e1c9f","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 400
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CompareAndSet
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"593d0a79-236a-4841-b7a9-df57f20c3399","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 400
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CreateEntity
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"c8a364b8-def0-4f44-b3f2-a6d8f355916b","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 400
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CompareAndSet
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"bba8860b-d6d3-4afb-bcc0-3e0cc2302443","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 400
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CreateEntity
+    refusal_test.go:47: error = map[string]interface {}{"code":"OUTCOME_UNKNOWN", "correlationId":"39352382-d9cf-4b5f-93f7-09c12ba90892", "message":"storage is temporarily unavailable", "outcomeUnknown":true, "retryable":true}; want STORAGE_UNAVAILABLE, retryable=true, unknown=false
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CompareAndSet
+    refusal_test.go:47: error = map[string]interface {}{"code":"OUTCOME_UNKNOWN", "correlationId":"e9bafb33-6876-4984-8103-a693bcf0d7ec", "message":"storage is temporarily unavailable", "outcomeUnknown":true, "retryable":true}; want STORAGE_UNAVAILABLE, retryable=true, unknown=false
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CreateEntity
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"57aa131a-5ca1-420e-830f-8c163c59e779","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 409
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CompareAndSet
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"c84f425d-aef5-4def-901d-89d3c38e40cf","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 409
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CreateEntity
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"96e5455c-1e9a-4227-a43f-8035dd0f793c","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 409
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CompareAndSet
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"c0590c72-bf55-4766-8c3d-18d0d2b56b8f","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 409
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CreateEntity
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"f7c86931-ecc4-4ca0-9387-e5f5f0e43c7a","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 409
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CompareAndSet
+    refusal_test.go:47: HTTP 503: {"code":"OUTCOME_UNKNOWN","correlationId":"893dd8ba-aaa5-4480-8619-c02917af1157","message":"storage is temporarily unavailable","outcomeUnknown":true,"retryable":true}
+        ; want 409
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CreateEntity
+    refusal_test.go:47: error = map[string]interface {}{"code":"OUTCOME_UNKNOWN", "correlationId":"c8f8ec72-0908-443f-aaa0-1cac66348086", "message":"storage is temporarily unavailable", "outcomeUnknown":true, "retryable":true}; want STORAGE_UNAVAILABLE, retryable=false, unknown=false
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CompareAndSet
+    refusal_test.go:47: error = map[string]interface {}{"code":"OUTCOME_UNKNOWN", "correlationId":"f94403bf-8b20-44e8-9783-ff3a7943c682", "message":"storage is temporarily unavailable", "outcomeUnknown":true, "retryable":true}; want STORAGE_UNAVAILABLE, retryable=false, unknown=false
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CompareAndSet
+--- FAIL: TestAPIMutationErrorsPreserveKnownRefusals (1.20s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CreateEntity (0.07s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CompareAndSet (0.06s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CreateEntity (0.05s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CompareAndSet (0.05s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CreateEntity (0.19s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CompareAndSet (0.07s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CreateEntity (0.05s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CompareAndSet (0.07s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CreateEntity (0.06s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CompareAndSet (0.05s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CreateEntity (0.05s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CompareAndSet (0.05s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CreateEntity (0.06s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CompareAndSet (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CreateEntity (0.07s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CompareAndSet (0.07s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CreateEntity (0.06s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CompareAndSet (0.07s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	1.272s
+FAIL

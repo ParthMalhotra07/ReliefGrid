@@ -142,6 +142,22 @@ func remoteError(err error, mutation bool) error {
 		case "NO_LEADER", "NOT_LEADER", "RING_VERSION_MISMATCH", "STORAGE_UNAVAILABLE":
 			return unavailable(code, false)
 		}
+		if mutation {
+			// coordclient distinguishes a refused/not-sent call from a lost
+			// answer after sending. Do not turn its known refusal into an
+			// unknown write merely because no committed Result accompanies it.
+			switch code {
+			case "INVALID":
+				return issue(400, code, "storage rejected the command")
+			case "NOT_FOUND":
+				return issue(404, code, "entity not found")
+			case "DOMAIN_CONFLICT", "VERSION_CONFLICT", "OPERATION_ID_REUSED":
+				return issue(409, code, "storage refused the command")
+			}
+			p := issue(503, "STORAGE_UNAVAILABLE", "storage did not accept the command")
+			p.retryable = ce.Retryable
+			return p
+		}
 	}
 	if errors.Is(err, store.ErrRingVersionMismatch) {
 		return unavailable("RING_VERSION_MISMATCH", false)
