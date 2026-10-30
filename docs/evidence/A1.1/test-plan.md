@@ -46,10 +46,10 @@ make gen-check
 bash scripts/verify-A1.1.sh
 ```
 
-The draft starts with this acceptance plan; implementation is incomplete.
-The required failing-test checkpoint precedes implementation approval.
-Failing test changes stay local until they can satisfy the repository's
-pre-push checks. No A1.1 verification success is claimed by this document.
+The draft started with this acceptance plan. The failing-test checkpoint and
+the UUID-fixture correction were approved before the final implementation.
+The complete source/tests now pass the repository and goal checks; see README.md
+and the raw evidence logs. This plan is not a substitute for those results.
 
 ## Baseline
 
