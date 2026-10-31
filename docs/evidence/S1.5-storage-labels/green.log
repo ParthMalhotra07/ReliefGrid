@@ -1,0 +1,5 @@
+go test -race -count=1 -tags integration -run '^TestStorageChartUniquePodLabelsPreserveSelectors$' -v ./scripts/...
+=== RUN   TestStorageChartUniquePodLabelsPreserveSelectors
+--- PASS: TestStorageChartUniquePodLabelsPreserveSelectors (0.83s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	1.853s

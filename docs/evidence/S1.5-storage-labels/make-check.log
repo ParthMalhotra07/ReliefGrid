@@ -1,0 +1,38 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+0 issues.
+golangci-lint run --build-tags chaos ./cmd/invcheck/...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	1.146s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	1.055s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	2.459s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	2.021s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	1.398s
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	10.732s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/admission	1.250s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	4.557s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	12.636s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	31.282s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	13.417s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	70.760s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	1.019s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	1.025s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	8.933s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/obs	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	63.589s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	4.758s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	10.281s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	1.033s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	7.880s
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	6.601s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	39.164s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	1.060s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	1.154s
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	1.060s
+go test -race -tags chaos ./cmd/invcheck/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	1.945s

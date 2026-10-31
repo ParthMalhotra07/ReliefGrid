@@ -1,0 +1,7 @@
+=== RUN   TestStorageChartUniquePodLabelsPreserveSelectors
+    storage_labels_test.go:57: storage chart must render unique YAML mapping keys: yaml: unmarshal errors:
+          line 709: mapping key "app.kubernetes.io/name" already defined at line 706
+--- FAIL: TestStorageChartUniquePodLabelsPreserveSelectors (0.51s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.536s
+FAIL
