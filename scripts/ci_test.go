@@ -430,7 +430,12 @@ func TestCIChanges(t *testing.T) {
 		want  string
 	}{
 		{[]string{"docs/notes.md"}, "code=false"},
-		{[]string{"README.md", "ui/app.js"}, "code=false"},
+		{[]string{"README.md"}, "code=false"},
+		{[]string{"README.md", "ui/app.js"}, "code=true"}, // the UI is built into an image
+		{[]string{"ui/src/index.html"}, "code=true"},
+		{[]string{".dockerignore"}, "code=true"},       // changes every image's build context
+		{[]string{"uinotes.md"}, "code=false"},         // the directory only
+		{[]string{"docs/.dockerignore"}, "code=false"}, // only the root .dockerignore
 		{[]string{".github/workflows/ci.yml"}, "code=true"},
 		{[]string{"chaos/scripts/lib.sh"}, "code=true"},
 		{[]string{"loadtest/ledger/ledger.go"}, "code=true"},
