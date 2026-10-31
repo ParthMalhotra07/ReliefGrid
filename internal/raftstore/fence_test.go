@@ -37,10 +37,28 @@ var slowLease = Profile{
 
 // testNet blocks outgoing RPCs between chosen addresses and lets a test run
 // a hook after an RPC succeeds but before Raft sees its response.
+// intercept, if set, sees every outgoing request first: it may drop it
+// (true) or change it before it is sent.
 type testNet struct {
-	mu      sync.Mutex
-	blocked map[[2]raft.ServerAddress]bool // from, to
-	after   atomic.Pointer[func(from, to raft.ServerAddress, req any)]
+	mu        sync.Mutex
+	blocked   map[[2]raft.ServerAddress]bool // from, to
+	after     atomic.Pointer[func(from, to raft.ServerAddress, req any)]
+	intercept atomic.Pointer[func(from, to raft.ServerAddress, req any) bool]
+}
+
+// heal unblocks every pair.
+func (n *testNet) heal() {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	clear(n.blocked)
+}
+
+// drop decides whether from's request to to is dropped.
+func (n *testNet) drop(from, to raft.ServerAddress, req any) bool {
+	if h := n.intercept.Load(); h != nil && (*h)(from, to, req) {
+		return true
+	}
+	return n.dropped(from, to)
 }
 
 func (n *testNet) block(from, to raft.ServerAddress) {
@@ -73,7 +91,7 @@ func newPartitionableCluster(t testing.TB, p Profile, fence ReadFence) (*testClu
 	for i := range c.cfgs {
 		self := raft.ServerAddress(c.cfgs[i].AdvertiseAddr)
 		c.cfgs[i].ReadFence = fence
-		c.cfgs[i].dropSend = func(to raft.ServerAddress, _ any) bool { return net.dropped(self, to) }
+		c.cfgs[i].dropSend = func(to raft.ServerAddress, req any) bool { return net.drop(self, to, req) }
 		c.cfgs[i].afterSend = func(to raft.ServerAddress, req any) {
 			if h := net.after.Load(); h != nil {
 				(*h)(self, to, req)
@@ -633,6 +651,166 @@ func TestFencedReadAcrossCompaction(t *testing.T) {
 	expectValue(t, r.rec, v, int(v))
 	if r.info.AppliedIndex < snap.AppliedIndex {
 		t.Fatalf("read observed %d, before the snapshot's %d", r.info.AppliedIndex, snap.AppliedIndex)
+	}
+}
+
+// The fence's term safety rests on two checks, either of which suffices on
+// its own: sameTerm, and quorumAcceptedSince counting only acceptances of
+// requests of the read's term. This is the schedule that needs one of
+// them. A leads term T (ownTerm cached as T). A is cut off; B and C elect
+// B in T+1 and commit w. A read starts on A, which still reports Leader in
+// T, and pauses before the own-term gate. A rejoins, receives w without
+// learning it committed (the append's commit index lags, as when it was
+// sent before w committed), and wins T+2 by a transfer; its no-op cannot
+// commit, so its commit index stays below w. The resumed read must be
+// refused or see w: its gate passes on the cached T, its read index is
+// below w, and T+2 heartbeats sent after it began answer.
+func TestFencedReadTermChangeBeforeOwnTermGate(t *testing.T) {
+	c, net := newPartitionableCluster(t, testProfile, ReadFenceIndex)
+	// A (node 0) keeps its lease for seconds after it is cut off, so it
+	// still reports Leader once the majority has committed w. B and C time
+	// out well after A's heartbeat interval (HeartbeatTimeout/10), so A,
+	// leading T+2 with its appends held, is not deposed by them.
+	long := Profile{Name: "long-lease", SnapshotThreshold: 1 << 30, TrailingLogs: 4, SnapshotInterval: time.Hour,
+		HeartbeatTimeout: 6 * time.Second, ElectionTimeout: 6 * time.Second, LeaderLeaseTimeout: 6 * time.Second}
+	mid := Profile{Name: "mid", SnapshotThreshold: 1 << 30, TrailingLogs: 4, SnapshotInterval: time.Hour,
+		HeartbeatTimeout: 2 * time.Second, ElectionTimeout: 2 * time.Second, LeaderLeaseTimeout: time.Second}
+	for i := range c.nodes {
+		c.cfgs[i].Profile = mid
+		if i == 0 {
+			c.cfgs[i].Profile = long
+		}
+		c.restart(i)
+		c.waitLeader()
+	}
+	a := c.nodes[0]
+	leaderOf := func(nodes ...*Node) *Node {
+		for _, n := range nodes {
+			if n.raft.State() == raft.Leader {
+				return n
+			}
+		}
+		return nil
+	}
+	// transferTo moves leadership to a, retrying: raft v1.8.0 can report a
+	// timeout for a transfer that happens (see stepDown).
+	transferTo := func(from ...*Node) {
+		t.Helper()
+		for deadline := time.Now().Add(waitFor); a.raft.State() != raft.Leader; time.Sleep(20 * time.Millisecond) {
+			if time.Now().After(deadline) {
+				t.Fatal("leadership never moved to node 0")
+			}
+			if l := leaderOf(from...); l != nil {
+				_ = l.raft.LeadershipTransferToServer(a.Identity().ServerID(), a.Addr()).Error()
+			}
+		}
+	}
+	transferTo(c.nodes[1], c.nodes[2])
+	c.waitLeader()
+	mustApply(t, a, cas("op-1", "kv:a", 0, 1))
+	if rec, _, err := fencedRead(a, "kv:a", 2*time.Second); err != nil {
+		t.Fatalf("fenced read before the partition: %v", err)
+	} else {
+		expectValue(t, rec, 1, 1)
+	}
+	termT := a.raft.CurrentTerm()
+	if got := a.ownTerm.Load(); got != termT {
+		t.Fatalf("ownTerm %d after a fenced read in term %d; the gate's cache is not set up", got, termT)
+	}
+
+	paused, resume := make(chan uint64, 1), make(chan struct{})
+	var armed atomic.Bool
+	var resumeOnce sync.Once
+	t.Cleanup(func() { resumeOnce.Do(func() { close(resume) }) })
+	hook := func(term uint64) {
+		if armed.CompareAndSwap(true, false) {
+			paused <- term
+			<-resume
+		}
+	}
+	a.beforeOpenTerm.Store(&hook)
+
+	net.isolate(a.Addr(), c.nodes[1].Addr(), c.nodes[2].Addr())
+	var b *Node
+	for deadline := time.Now().Add(waitFor); b == nil; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the majority never elected a leader")
+		}
+		b = leaderOf(c.nodes[1], c.nodes[2])
+	}
+	termB := b.raft.CurrentTerm()
+	wIndex := mustApply(t, b, cas("op-2", "kv:a", 1, 2)).AppliedIndex
+
+	type readResult struct {
+		rec  store.Record
+		info ReadInfo
+		err  error
+	}
+	read := make(chan readResult, 1)
+	armed.Store(true)
+	go func() {
+		rec, info, err := fencedRead(a, "kv:a", 30*time.Second)
+		read <- readResult{rec, info, err}
+	}()
+	select {
+	case term := <-paused:
+		if term != termT {
+			t.Fatalf("the read took term %d, want the old term %d", term, termT)
+		}
+	case r := <-read:
+		t.Fatalf("the read ended (%v) before reaching the gate; node 0 no longer reported Leader in term %d (lease too short?)", r.err, termT)
+	case <-time.After(waitFor):
+		t.Fatal("the read never reached the gate")
+	}
+
+	// Appends to A carry a commit index below w; A's appends of its next
+	// term (its no-op) are dropped. Heartbeats pass both ways.
+	intercept := func(from, to raft.ServerAddress, req any) bool {
+		ae, ok := req.(*raft.AppendEntriesRequest)
+		if !ok {
+			return false
+		}
+		if to == a.Addr() && ae.LeaderCommitIndex >= wIndex {
+			ae.LeaderCommitIndex = wIndex - 1
+		}
+		return from == a.Addr() && ae.Term > termB && len(ae.Entries) > 0
+	}
+	net.intercept.Store(&intercept)
+	net.heal()
+	for deadline := time.Now().Add(waitFor); a.raft.State() == raft.Leader || a.raft.LastIndex() < wIndex; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("node 0 never rejoined and received w (state %v, last index %d, w at %d)", a.raft.State(), a.raft.LastIndex(), wIndex)
+		}
+	}
+	transferTo(c.nodes[1], c.nodes[2])
+
+	// The dangerous state, checked before the read resumes.
+	if term := a.raft.CurrentTerm(); term <= termB {
+		t.Fatalf("node 0 leads term %d, want a term after %d", term, termB)
+	}
+	if ci := a.raft.CommitIndex(); ci >= wIndex {
+		t.Fatalf("node 0's commit index %d already covers w at %d; the scenario is not set up", ci, wIndex)
+	}
+	if got := a.ownTerm.Load(); got != termT {
+		t.Fatalf("ownTerm %d, want the stale %d", got, termT)
+	}
+	resumeOnce.Do(func() { close(resume) })
+
+	select {
+	case r := <-read:
+		switch {
+		case r.err == nil && r.rec.Version != 2:
+			t.Fatalf("fenced read served version %d value %s without w (committed at %d in term %d): %+v",
+				r.rec.Version, r.rec.Value, wIndex, termB, r.info)
+		case r.err == nil:
+			expectValue(t, r.rec, 2, 2)
+		case !retryable(r.err):
+			t.Fatalf("fenced read: %v, want NotLeader or Unavailable (retryable)", r.err)
+		default:
+			t.Logf("fenced read refused: %v", r.err)
+		}
+	case <-time.After(40 * time.Second):
+		t.Fatal("the resumed read never returned")
 	}
 }
 

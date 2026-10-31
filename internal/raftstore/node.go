@@ -140,6 +140,9 @@ type Node struct {
 	// beforeFenceWait, tests only, runs in a fenced read after the quorum
 	// check and before the read index is mapped to a command.
 	beforeFenceWait atomic.Pointer[func(readIndex uint64)]
+	// beforeOpenTerm, tests only, runs in a fenced read after it has taken
+	// the term and seen Leader, before the own-term gate.
+	beforeOpenTerm atomic.Pointer[func(term uint64)]
 
 	mu        sync.Mutex
 	mapped    indexMapping // last committed Raft index mapped to a command index

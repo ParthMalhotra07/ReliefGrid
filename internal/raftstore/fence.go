@@ -44,6 +44,9 @@ func (n *Node) readFence(ctx context.Context) error {
 	if n.raft.State() != raft.Leader {
 		return n.notLeader()
 	}
+	if h := n.beforeOpenTerm.Load(); h != nil {
+		(*h)(term)
+	}
 	if err := n.openTerm(ctx, term); err != nil {
 		return err
 	}
@@ -68,6 +71,14 @@ func (n *Node) readFence(ctx context.Context) error {
 }
 
 // sameTerm is nil while this node is still the leader of term.
+//
+// It is defence in depth, not what makes the fence safe on its own: with
+// sameTerm removed, quorumAcceptedSince still demands a quorum of
+// acceptances of term-T requests sent after the read began, and that
+// already rules out any later leader having committed before it began.
+// Removing both (ack term matching and sameTerm) is unsafe:
+// TestFencedReadTermChangeBeforeOwnTermGate fails. Removing sameTerm
+// alone passes every test, as it should.
 func (n *Node) sameTerm(term uint64) error {
 	if n.raft.State() != raft.Leader || n.raft.CurrentTerm() != term {
 		return n.notLeader()
