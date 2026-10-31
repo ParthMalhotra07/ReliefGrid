@@ -1,0 +1,31 @@
+# S4.1 strong-read benchmark: barrier (ReadStrong) vs fence (ReadLinearizable), 3-node loopback cluster
+command:    go test ./internal/raftstore -run '^$' -bench StrongRead -benchtime 2000x -count 5
+commit:     5ad15ac
+code dirty: no
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7 (8 CPUs, shared with other work; load average ~2)
+date:       2026-10-31T08:36:41Z
+
+goos: linux
+goarch: amd64
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    509105 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/serial-8         	    2000	    493616 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/serial-8         	    2000	    449566 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/serial-8         	    2000	    430583 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/serial-8         	    2000	    423521 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    108823 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    112730 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    113950 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    108726 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    113965 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    189025 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    126903 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    126084 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    125445 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    124887 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     22727 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23560 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23877 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     21198 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23335 ns/op	         0 entries/op
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	7.815s

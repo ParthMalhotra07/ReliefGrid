@@ -1,0 +1,32 @@
+# S4.1 read fence: §14 suite, seeded runs
+result:     PASSED (21/21 runs)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-10-31T08:36:08Z
+go:         go1.27.2
+seeds:      1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+suite:      ^(TestFencedRead|TestStaleReadUnaffectedByReadFence|TestOpenRejectsUnknownReadFence|TestStrongReadWaitsForFSMNotRaftAppliedIndex|TestNewLeaderNotReadyUntilOwnTermCommits)
+code tree:  1c952bcec9b0 (git ls-tree -r HEAD -- go.mod go.sum cmd internal deploy/helm/storage scripts/verify-S4.1.sh | git hash-object --stdin)
+code dirty: no
+
+## runs
+seed 1: PASS (20 s)
+seed 2: PASS (20 s)
+seed 3: PASS (19 s)
+seed 4: PASS (20 s)
+seed 5: PASS (20 s)
+seed 6: PASS (21 s)
+seed 7: PASS (19 s)
+seed 8: PASS (22 s)
+seed 9: PASS (21 s)
+seed 10: PASS (21 s)
+seed 11: PASS (21 s)
+seed 12: PASS (19 s)
+seed 13: PASS (20 s)
+seed 14: PASS (22 s)
+seed 15: PASS (21 s)
+seed 16: PASS (20 s)
+seed 17: PASS (21 s)
+seed 18: PASS (19 s)
+seed 19: PASS (21 s)
+seed 20: PASS (20 s)
+routes and config: PASS
