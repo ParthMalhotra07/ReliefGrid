@@ -142,9 +142,9 @@ func (w *faulty) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 	})
 }
 
-func (w *faulty) PendingOutbox(ctx context.Context, shard, limit int) ([]store.OutboxEvent, error) {
+func (w *faulty) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]store.OutboxEvent, error) {
 	return run(ctx, w.hook(Call{Method: "PendingOutbox"}), func(ctx context.Context) ([]store.OutboxEvent, error) {
-		return w.s.PendingOutbox(ctx, shard, limit)
+		return w.s.PendingOutbox(ctx, q)
 	})
 }
 

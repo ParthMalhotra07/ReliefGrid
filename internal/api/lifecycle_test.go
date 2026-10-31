@@ -125,7 +125,7 @@ func TestAPIOutboxEnvelopesAndRouting(t *testing.T) {
 	object(t, call(ctx, h, "PUT", "/api/v1/resources/"+id(t, res, "resourceId")+"/status", `{"status":"OFFLINE"}`, ""), 200)
 	all := make([]store.OutboxEvent, 0, 4)
 	for shard := 0; shard < s.Shards(); shard++ {
-		rows, err := s.PendingOutbox(ctx, shard, 100)
+		rows, err := s.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: 100})
 		if err != nil {
 			t.Fatal(err)
 		}
