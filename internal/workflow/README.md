@@ -53,9 +53,10 @@ intent and returns an error.
 
 Callers must not acknowledge errors. MATCHED and IGNORED describe current committed
 state; NO_CANDIDATE includes a committed retry handoff, and DEFERRED describes an
-existing future WAITING schedule. RETRYING/CANCELLING/FULFILLING return
-ErrNeedsRecovery without clearing the intent. Their cleanup, consumer backoff,
-reconcilers and all 17 schedules remain A2.x work. RabbitMQ publication and
+existing future WAITING schedule. RETRYING still returns ErrNeedsRecovery
+without clearing the intent. CANCELLING/FULFILLING resume the bounded A2.1
+cleanup below; state-aware retries, periodic reconciliation and the complete
+adversarial suite remain A2.2–A2.4. RabbitMQ publication and
 deployment remain A1.3–A1.5; this goal does not run the real cluster path.
 
 Outbox envelopes carry a deterministic, unsampled root traceparent for retry
@@ -65,3 +66,31 @@ can be found on a later retry or resource-registration wakeup.
 
 Run `bash scripts/verify-A1.2.sh` and `make check`. See
 `docs/evidence/A1.2/` for the red checkpoint and actual passing output.
+
+## Cancellation and completion [A2.1]
+
+The API commits CANCELLING/FULFILLING with the immutable attempt and the chosen
+resource disposition. Cleanup(ctx, requestID), also reached by Match for those
+states, reads the exact authoritative closure. If absent it submits CloseAttempt
+for only that attempt. A returned historical OK is not enough: the helper must
+read the exact bound permanent closure before proposing the terminal CAS.
+
+The committed cleanup version supplies its proposal timestamp and disposition.
+Operation IDs include that version and frozen payload identity, so retries and
+restarts of the same version use identical commands despite clock changes.
+RetryWorkflow may advance the request version; an old final CAS then loses
+safely. A later helper inspects the durable closure first and never repeats an
+old release or changes the stored disposition. Concurrent helpers use the same
+deterministic final command, allowing one terminal mutation and one outbox row.
+
+Cancellation and fulfillment notifications use the frozen request.state_changed
+schema with newStatus=CANCELLED/FULFILLED and request.status.cancelled/fulfilled
+routing, following the public API's existing convention. The event and terminal
+transition commit together. Terminal records retain the FSM's historical audit
+fields; the API hides historical assignment as a current ownership grant.
+
+Unknown mutations and failed authoritative reads return errors with recovery
+intent intact. A recorded closure cannot release a later different owner. The
+helper does not start background scans or consume matching.wakeups; those remain
+A2.4. Run make verify-A2.1 for the real-FSM fault/barrier cases, frozen schema
+validation and API protections. make check runs it in CI via the shared Makefile.

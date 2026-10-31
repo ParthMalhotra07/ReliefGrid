@@ -1,0 +1,9 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+internal/workflow/cleanup_test.go:456:11: QF1008: could remove embedded field "Store" from selector (staticcheck)
+	return s.Store.Operation(ctx, store.RequestKey(cleanupRequest), "create-request-"+cleanupRequest)
+	         ^
+1 issues:
+* staticcheck: 1
+make: *** [Makefile:57: lint] Error 1

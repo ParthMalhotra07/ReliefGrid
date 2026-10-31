@@ -49,7 +49,8 @@ type Matcher struct {
 
 // Result describes committed progress, not permission to acknowledge an error.
 // NO_CANDIDATE includes a durable retry handoff. DEFERRED is an existing future
-// schedule. Cleanup states and unresolved operations return an error instead.
+// schedule. Cleanup returns CANCELLED/FULFILLED only after its exact closure;
+// RETRYING and unresolved operations return an error instead.
 type Result struct {
 	Outcome       string
 	ResourceID    string
@@ -119,8 +120,8 @@ func (m *Matcher) id() string {
 	return m.cfg.NewID()
 }
 
-// Match performs bounded work for one request. Reconciliation and RabbitMQ ack
-// decisions belong to their later goals; callers must not ack an error here.
+// Match performs bounded matching or cancellation/completion work for one
+// request. Consumers own acknowledgement; callers must not ack an error here.
 func (m *Matcher) Match(ctx context.Context, requestID string) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, m.cfg.WorkTimeout)
 	defer cancel()
@@ -130,6 +131,9 @@ func (m *Matcher) Match(ctx context.Context, requestID string) (Result, error) {
 	}
 	if rec.Request == nil {
 		return Result{}, fmt.Errorf("workflow: %s is not a request", rec.Key)
+	}
+	if rec.Request.Status == store.RequestCancelling || rec.Request.Status == store.RequestFulfilling {
+		return m.cleanup(ctx, rec)
 	}
 	if rec.Request.Status != store.RequestMatching && rec.Request.Status != store.RequestPending && rec.Request.Status != store.RequestWaiting {
 		return m.obsolete(rec)
