@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -127,6 +128,55 @@ func TestConsumerMalformedEventsRejectWithoutRequeue(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		record store.Record
+		err    error
+	}{
+		{name: "not found", err: store.ErrNotFound},
+		{name: "wrapped not found", err: fmt.Errorf("strong read: %w", store.ErrNotFound)},
+		{name: "deleted", record: store.Record{Deleted: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, s := realStore(t)
+			ack := &ackLog{t: t}
+			c := mq.Consumer{Store: readOverride{Store: s, record: tc.record, err: tc.err}, Handle: func(context.Context, store.Record) error {
+				t.Fatal("permanently absent request reached handler")
+				return nil
+			}}
+			if err := c.Process(ctx, eventDelivery(t, ack)); err != nil {
+				t.Fatalf("permanent absence restarts consumer: %v", err)
+			}
+			if ack.rejects != 1 || ack.acks != 0 || ack.nacks != 0 {
+				t.Fatalf("permanent absence not rejected once: %+v", ack)
+			}
+		})
+	}
+}
+
+func TestConsumerSurfacesPermanentAbsenceRejectFailure(t *testing.T) {
+	ctx, s := realStore(t)
+	want := errors.New("reject connection lost")
+	ack := &ackLog{t: t, err: want}
+	c := mq.Consumer{Store: readOverride{Store: s, err: store.ErrNotFound}, Handle: func(context.Context, store.Record) error { return nil }}
+	if err := c.Process(ctx, eventDelivery(t, ack)); !errors.Is(err, want) {
+		t.Fatalf("reject error lost: %v", err)
+	}
+}
+
+// Override only the read response to exercise the Store contract's tombstone
+// and wrapped-not-found cases; all business transitions use the real FSM above.
+type readOverride struct {
+	store.Store
+	record store.Record
+	err    error
+}
+
+func (s readOverride) ReadRecord(context.Context, string) (store.Record, error) {
+	return s.record, s.err
 }
 
 func TestConsumerSurfacesAcknowledgementFailure(t *testing.T) {

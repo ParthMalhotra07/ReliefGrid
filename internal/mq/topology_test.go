@@ -47,8 +47,8 @@ func TestTopologyDefinitionsAndHelmStayIdentical(t *testing.T) {
 	if err := json.Unmarshal(mq.Definitions(), &d); err != nil {
 		t.Fatal(err)
 	}
-	if len(d.Exchanges) != 4 || len(d.Queues) != 5 {
-		t.Fatalf("exchanges=%d queues=%d; want 4/5", len(d.Exchanges), len(d.Queues))
+	if len(d.Exchanges) != 4 || len(d.Queues) != 6 {
+		t.Fatalf("exchanges=%d queues=%d; want 4/6", len(d.Exchanges), len(d.Queues))
 	}
 	wantExchanges := map[string]string{"relief.requests": "topic", "relief.retry": "direct", "relief.events": "topic", "relief.dlx": "fanout"}
 	for _, e := range d.Exchanges {
@@ -79,6 +79,9 @@ func TestTopologyDefinitionsAndHelmStayIdentical(t *testing.T) {
 		{"relief.requests", "matching.requests", "request.created.*"}, {"relief.requests", "matching.requests", "request.retry"},
 		{"relief.retry", "retry.5s", "delay.5s"}, {"relief.retry", "retry.30s", "delay.30s"},
 		{"relief.retry", "retry.120s", "delay.120s"}, {"relief.dlx", "matching.dead", ""},
+		{"relief.events", mq.WakeupQueue, "resource.registered.*"},
+		{"relief.events", mq.WakeupQueue, "match.*"},
+		{"relief.events", mq.WakeupQueue, "request.status.*"},
 	} {
 		found := false
 		for _, b := range d.Bindings {

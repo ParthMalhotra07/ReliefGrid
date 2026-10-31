@@ -457,7 +457,7 @@ func testOutboxPendingAndPublished(t *testing.T, s store.Store, n ns) {
 	ctx := ctxFor(t)
 	key := store.ResourceKey(n.id("r1"))
 	ev := store.OutboxEvent{EventID: n.id("ev1"), EventType: "resource.registered", SchemaVersion: 1,
-		Exchange: "relief.resources", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":1}`)}
+		Exchange: "relief.events", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":1}`)}
 	res := expect(t, "create with outbox", store.OutcomeOK)(s.CreateEntity(ctx, store.CreateEntity{Meta: n.op("c"), Key: key, Resource: n.resource("r1"), Outbox: []store.OutboxEvent{ev}}))
 
 	pending, err := s.PendingOutbox(ctx, res.Shard, 100)

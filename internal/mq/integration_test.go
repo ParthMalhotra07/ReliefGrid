@@ -103,6 +103,64 @@ func TestIntegrationMalformedDeliveryReachesMatchingDead(t *testing.T) {
 	t.Log("malformed -> reject(requeue=false) -> relief.dlx -> matching.dead")
 }
 
+func TestIntegrationMissingRequestDeadLettersWithoutRestart(t *testing.T) {
+	ctx, conn, _ := isolatedBroker(t)
+	s, err := memstore.New(ctx, memstore.WithShards(3))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	ch, err := conn.Channel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ch.Close() }()
+	publishConfirmed(t, ctx, ch, "relief.requests", "request.created.medicine", eventDelivery(t, nil).Body, 2)
+	d := awaitDelivery(t, ctx, ch, "matching.requests")
+	c := mq.Consumer{Store: s, Handle: func(context.Context, store.Record) error {
+		t.Fatal("missing request reached handler")
+		return nil
+	}}
+	if err := c.Process(ctx, d); err != nil {
+		t.Fatalf("missing request restarts consumer: %v", err)
+	}
+	dead := awaitDelivery(t, ctx, ch, "matching.dead")
+	deaths, ok := dead.Headers["x-death"].([]any)
+	if !ok || len(deaths) != 1 {
+		t.Fatalf("unexpected death history: %+v", dead.Headers)
+	}
+	death, ok := deaths[0].(amqp.Table)
+	if !ok || death["reason"] != "rejected" || death["queue"] != "matching.requests" || death["count"] != int64(1) {
+		t.Fatalf("absence exhausted delivery limit instead of one rejection: %+v", dead.Headers)
+	}
+	if err := dead.Ack(false); err != nil {
+		t.Fatal(err)
+	}
+	t.Log("missing request -> one reject(requeue=false) -> matching.dead; no consumer restart")
+}
+
+func TestIntegrationDomainEventsRouteToDurableWakeups(t *testing.T) {
+	ctx, conn, admin := isolatedBroker(t)
+	ch, err := conn.Channel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ch.Close() }()
+	for _, key := range []string{"resource.registered.medicine", "match.confirmed", "request.status.cancelled"} {
+		body := []byte("durable wakeup " + key)
+		publishConfirmed(t, ctx, ch, "relief.events", key, body, 2)
+		d := awaitDelivery(t, ctx, ch, "matching.wakeups")
+		if d.RoutingKey != key || d.DeliveryMode != amqp.Persistent || !bytes.Equal(d.Body, body) {
+			t.Fatalf("wakeup changed: %+v", d)
+		}
+		if err := d.Ack(false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertLivePolicies(t, ctx, admin)
+	t.Log("all three relief.events patterns: mandatory routed confirm -> durable quorum matching.wakeups")
+}
+
 func TestIntegrationManualAckPrefetchAndInterruptedHandoff(t *testing.T) {
 	ctx, conn, admin := isolatedBroker(t)
 	s, err := memstore.New(ctx, memstore.WithShards(3))
@@ -304,6 +362,7 @@ func assertLivePolicies(t *testing.T, ctx context.Context, a brokerAdmin) {
 		{"retry.30s", "relief.requests", "request.retry", 30000},
 		{"retry.120s", "relief.requests", "request.retry", 120000},
 		{"matching.requests", "relief.dlx", "", 0},
+		{"matching.wakeups", "relief.dlx", "", 0},
 	} {
 		var q struct {
 			Type      string
@@ -312,7 +371,22 @@ func assertLivePolicies(t *testing.T, ctx context.Context, a brokerAdmin) {
 			Effective map[string]any `json:"effective_policy_definition"`
 			Members   []string
 		}
-		a.call(t, ctx, http.MethodGet, "/api/queues/"+url.PathEscape(a.vhost)+"/"+url.PathEscape(tc.queue), nil, &q)
+		// Management statistics publish asynchronously. Await their presence
+		// inside the original test context, then assert the exact policy below.
+		metadataPoll := time.NewTicker(20 * time.Millisecond)
+		for {
+			a.call(t, ctx, http.MethodGet, "/api/queues/"+url.PathEscape(a.vhost)+"/"+url.PathEscape(tc.queue), nil, &q)
+			if q.Policy != "" && len(q.Effective) != 0 {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				metadataPoll.Stop()
+				t.Fatalf("%s policy metadata did not appear within original deadline: %v", tc.queue, ctx.Err())
+			case <-metadataPoll.C:
+			}
+		}
+		metadataPoll.Stop()
 		if q.Type != "quorum" || len(q.Members) != 1 || q.Policy == "" {
 			t.Errorf("%s quorum/policy: %+v", tc.queue, q)
 		}

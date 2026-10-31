@@ -26,7 +26,7 @@ func TestMutationRoutesBuildStoreCommands(t *testing.T) {
 	resource := &store.Resource{ID: resID, Type: store.TypeWater, Name: "Tanker", Geohash: "ttnfv8k",
 		AvailableFrom: t0, AvailableUntil: t0 + 86_400_000, Status: store.ResourceAvailable, Reusable: true}
 	outbox := []store.OutboxEvent{{EventID: "ev-1", EventType: "resource.registered", SchemaVersion: 1,
-		Exchange: "relief.resources", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":"x"}`)}}
+		Exchange: "relief.events", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":"x"}`)}}
 	value := json.RawMessage(`{"radiusKm":50}`)
 	window := &store.Window{From: t0, Until: t0 + 1000}
 
@@ -412,7 +412,7 @@ func TestOtherReadRoutes(t *testing.T) {
 	_, otherResID := keyOn(t, rg, (testShard+1)%rg.Shards(), store.ResourceKeyPrefix, "s")
 	n := newFakeNode(t)
 	attempt := store.Attempt{AttemptID: "a-1", ResourceID: resID, Fingerprint: "fp"}
-	ev := store.OutboxEvent{EventID: "ev-1", EventType: "resource.registered", SchemaVersion: 1, Exchange: "relief.resources",
+	ev := store.OutboxEvent{EventID: "ev-1", EventType: "resource.registered", SchemaVersion: 1, Exchange: "relief.events",
 		RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":"x"}`)}
 	n.seed(t, store.CreateEntity{Meta: meta("op-create"), Key: resKey, Outbox: []store.OutboxEvent{ev},
 		Resource: &store.Resource{ID: resID, Type: store.TypeWater, Name: "T", Geohash: "ttnfv8k", AvailableFrom: t0,
@@ -554,7 +554,7 @@ func TestOutboxConsistencyAndLongPoll(t *testing.T) {
 	rg := loadRing(t)
 	resKey, resID := keyOn(t, rg, testShard, store.ResourceKeyPrefix, "s")
 	create := store.CreateEntity{Meta: meta("op-create"), Key: resKey, Outbox: []store.OutboxEvent{{EventID: "ev-1", EventType: "resource.registered",
-		SchemaVersion: 1, Exchange: "relief.resources", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":"x"}`)}},
+		SchemaVersion: 1, Exchange: "relief.events", RoutingKey: "resource.registered.water", Payload: json.RawMessage(`{"id":"x"}`)}},
 		Resource: &store.Resource{ID: resID, Type: store.TypeWater, Name: "T", Geohash: "ttnfv8k", AvailableFrom: t0,
 			AvailableUntil: t0 + 86_400_000, Status: store.ResourceAvailable, Reusable: true}}
 	path := func(q string) string { return fmt.Sprintf("/internal/outbox?shard=%d&limit=10%s", testShard, q) }

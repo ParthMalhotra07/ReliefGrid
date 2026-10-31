@@ -2,6 +2,7 @@ package mq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -72,10 +73,19 @@ func (c Consumer) Process(ctx context.Context, d amqp.Delivery) error {
 	readCtx, readCancel := context.WithTimeout(ctx, call)
 	rec, err := c.Store.ReadRecord(readCtx, store.RequestKey(e.EntityID))
 	readCancel()
+	if errors.Is(err, store.ErrNotFound) || (err == nil && rec.Deleted) {
+		// An authoritative absence is permanent for this delivery, unlike a
+		// failed read. Reject it once so reconnects do not burn delivery-limit.
+		if err := d.Reject(false); err != nil {
+			return fmt.Errorf("reject absent request event %s: %w", e.EventID, err)
+		}
+		slog.WarnContext(ctx, "rejected matching event for absent request", "eventId", e.EventID, "requestId", e.EntityID)
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("read current request for event %s: %w", e.EventID, err)
 	}
-	if rec.Deleted || rec.Request == nil {
+	if rec.Request == nil {
 		return fmt.Errorf("event %s has no current request", e.EventID)
 	}
 	switch rec.Request.Status {

@@ -15,6 +15,7 @@ import (
 
 const (
 	MatchingQueue = "matching.requests"
+	WakeupQueue   = "matching.wakeups"
 	DeadQueue     = "matching.dead"
 	Prefetch      = 8
 	callTimeout   = 5 * time.Second

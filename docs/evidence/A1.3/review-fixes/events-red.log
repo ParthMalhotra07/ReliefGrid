@@ -1,0 +1,6 @@
+=== RUN   TestIntegrationDomainEventsRouteToDurableWakeups
+    integration_test.go:151: mandatory return: NO_ROUTE
+--- FAIL: TestIntegrationDomainEventsRouteToDurableWakeups (0.63s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.671s
+FAIL

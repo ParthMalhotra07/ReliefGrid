@@ -15,7 +15,9 @@ Topology: relief.requests (topic), relief.retry (direct), relief.events (topic)
 and relief.dlx (fanout). matching.requests accepts request.created.* and
 request.retry. retry.5s/30s/120s have fixed queue TTLs and override the expired
 message route to relief.requests/request.retry. matching.dead is the poison sink.
-All five durable queues explicitly request quorum with one initial member.
+matching.wakeups durably accepts resource.registered.*, match.* and
+request.status.* from relief.events, separately from request-ID work. All six
+durable queues explicitly request quorum with one initial member.
 
 Source queues have at-least-once dead-lettering, reject-publish overflow,
 10,000-message/64-MiB bounds and a broker delivery limit of 20. Those bounds also
@@ -34,6 +36,9 @@ for a claim. Malformed work is rejected without requeue; warnings and RabbitMQ's
 x-death headers expose the reason and source queue.
 
 Terminal/already-matched work is acknowledged after the authoritative reread.
+Authoritative ErrNotFound (including wrapped errors) or a committed tombstone
+is rejected once without requeue into matching.dead. Reject errors propagate;
+transient read failures remain unacknowledged and are never treated as absence.
 For other work, the handler must return nil only after its durable handoff
 commits or an authoritative reread proves no action remains. An unknown outcome
 must remain an error. Read/handler errors are left unacknowledged.
@@ -58,7 +63,11 @@ GITHUB_ACTIONS=true. Unit tests alone need no broker.
 
 Limits: one durable broker is one failure domain, not broker-node redundancy.
 Business retry/recovery supervision remains A2.2; the outbox relay remains A1.4,
-and matcher process/Helm application integration remains A1.5. relief.events is
-declared here; wakeup/SSE subscriber queues are wired by their consuming goals.
-Until a route has a subscriber, the relay must retain any mandatory-returned
-event. Poison inspection/replay tooling and due-work repair remain later work.
+and matcher process/Helm application integration remains A1.5. matching.wakeups
+retains domain events for the A2.4 resource-registration wakeup handler; that
+handler is not implemented here. This queue has the same bounded backpressure
+and dead-letter safety as matching.requests, with no expiry or discard consumer.
+SSE still needs its own per-API temporary subscribers in A4.1. Unknown routing
+keys remain unroutable and must stay in the outbox. Poison inspection/replay
+tooling and due-work repair remain later work. Broker delivery-limit counts
+across transient reconnects are tracked separately for A2.2.

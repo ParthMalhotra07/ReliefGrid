@@ -60,6 +60,22 @@
       }
     },
     {
+      "name": "matching.wakeups",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 1,
+        "x-dead-letter-strategy": "at-least-once",
+        "x-overflow": "reject-publish",
+        "x-max-length": 10000,
+        "x-max-length-bytes": 67108864,
+        "x-dead-letter-exchange": "relief.dlx",
+        "x-delivery-limit": 20
+      }
+    },
+    {
       "name": "retry.5s",
       "vhost": "/",
       "durable": true,
@@ -175,13 +191,37 @@
       "destination_type": "queue",
       "routing_key": "",
       "arguments": {}
+    },
+    {
+      "source": "relief.events",
+      "vhost": "/",
+      "destination": "matching.wakeups",
+      "destination_type": "queue",
+      "routing_key": "resource.registered.*",
+      "arguments": {}
+    },
+    {
+      "source": "relief.events",
+      "vhost": "/",
+      "destination": "matching.wakeups",
+      "destination_type": "queue",
+      "routing_key": "match.*",
+      "arguments": {}
+    },
+    {
+      "source": "relief.events",
+      "vhost": "/",
+      "destination": "matching.wakeups",
+      "destination_type": "queue",
+      "routing_key": "request.status.*",
+      "arguments": {}
     }
   ],
   "policies": [
     {
       "name": "matching-safety",
       "vhost": "/",
-      "pattern": "^matching\\.requests$",
+      "pattern": "^matching\\.(requests|wakeups)$",
       "apply-to": "quorum_queues",
       "priority": 10,
       "definition": {
