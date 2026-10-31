@@ -27,6 +27,7 @@ func TestAPIMutationErrorsPreserveKnownRefusals(t *testing.T) {
 		{"version refusal", &coordclient.Error{Status: 412, Code: internalapi.VERSIONCONFLICT}, 409, "VERSION_CONFLICT", false, false},
 		{"operation reuse refusal", &coordclient.Error{Status: 409, Code: internalapi.OPERATIONIDREUSED}, 409, "OPERATION_ID_REUSED", false, false},
 		{"unclassified bad upstream route", &coordclient.Error{Status: 404, Message: "bad route"}, 503, "STORAGE_UNAVAILABLE", false, false},
+		{"no answer after sending (status zero)", &coordclient.Error{Code: internalapi.OUTCOMEUNKNOWN, Retryable: true, OutcomeUnknown: true}, 503, "OUTCOME_UNKNOWN", true, true},
 		{"lost committed response", &coordclient.Error{Status: 503, Code: internalapi.OUTCOMEUNKNOWN, Retryable: true, OutcomeUnknown: true}, 503, "OUTCOME_UNKNOWN", true, true},
 		{"unclassified mutation transport", errors.New("response lost after write"), 503, "OUTCOME_UNKNOWN", true, true},
 	} {
