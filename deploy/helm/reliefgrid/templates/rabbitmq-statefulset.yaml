@@ -13,6 +13,8 @@ spec:
       app.kubernetes.io/component: rabbitmq
   template:
     metadata:
+      annotations:
+        checksum/definitions: {{ .Files.Get "files/rabbitmq-definitions.json" | sha256sum }}
       labels:
         {{- include "reliefgrid.rabbitmqLabels" . | nindent 8 }}
     spec:
@@ -31,6 +33,15 @@ spec:
         - name: rabbitmq
           image: {{ .Values.rabbitmq.image | quote }}
           imagePullPolicy: IfNotPresent
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -ec
+                  - |
+                    rabbitmqctl wait "$RABBITMQ_PID_FILE" --timeout 120
+                    rabbitmqctl import_definitions /etc/reliefgrid/definitions.json --timeout 30
           ports:
             - name: amqp
               containerPort: 5672
@@ -41,6 +52,8 @@ spec:
             - name: clustering
               containerPort: 25672
           env:
+            - name: RABBITMQ_PID_FILE
+              value: /tmp/reliefgrid-rabbitmq.pid
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -89,6 +102,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/rabbitmq
+            - name: definitions
+              mountPath: /etc/reliefgrid
+              readOnly: true
+      volumes:
+        - name: definitions
+          configMap:
+            name: {{ include "reliefgrid.fullname" . }}-rabbitmq-definitions
   volumeClaimTemplates:
     - metadata:
         name: data

@@ -1,0 +1,134 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+0 issues.
+golangci-lint run --build-tags chaos ./cmd/invcheck/...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/admission	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/obs	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	72.502s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
+go test -race -tags chaos ./cmd/invcheck/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a13-review'
+bash scripts/verify-A1.3.sh
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	2.542s
+diagnostic: initial Docker port sample 1 unavailable
+diagnostic: initial Docker port sample 2 unavailable
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+=== RUN   TestConsumerReadsCurrentStateBeforeDurableHandlerAndAck
+--- PASS: TestConsumerReadsCurrentStateBeforeDurableHandlerAndAck (0.13s)
+=== RUN   TestConsumerDropsStaleHintAfterReadingTerminalState
+--- PASS: TestConsumerDropsStaleHintAfterReadingTerminalState (0.09s)
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/handoff
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/read
+--- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead (0.16s)
+    --- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/handoff (0.08s)
+    --- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/read (0.09s)
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/not-json
+2026/10/31 06:40:09 WARN rejected malformed matching event messageId="" error="invalid character 'o' in literal null (expecting 'u')"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{}
+2026/10/31 06:40:09 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":99}
+2026/10/31 06:40:09 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/null
+2026/10/31 06:40:09 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":1,"eventId":"not-a-uuid"}
+2026/10/31 06:40:09 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+--- PASS: TestConsumerMalformedEventsRejectWithoutRequeue (0.48s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/not-json (0.10s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{} (0.09s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":99} (0.09s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/null (0.08s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":1,"eventId":"not-a-uuid"} (0.11s)
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found
+2026/10/31 06:40:10 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found
+2026/10/31 06:40:10 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted
+2026/10/31 06:40:10 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+--- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue (0.27s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found (0.09s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found (0.09s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted (0.09s)
+=== RUN   TestConsumerSurfacesPermanentAbsenceRejectFailure
+--- PASS: TestConsumerSurfacesPermanentAbsenceRejectFailure (0.10s)
+=== RUN   TestConsumerSurfacesAcknowledgementFailure
+--- PASS: TestConsumerSurfacesAcknowledgementFailure (0.10s)
+=== RUN   TestConsumerAcceptsRealWorkflowRetryEnvelope
+--- PASS: TestConsumerAcceptsRealWorkflowRetryEnvelope (0.15s)
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case
+2026/10/31 06:40:10 WARN rejected malformed matching event messageId="" error="event property entityId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case
+2026/10/31 06:40:10 WARN rejected malformed matching event messageId="" error="event property requestId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity
+2026/10/31 06:40:10 WARN rejected malformed matching event messageId="" error="duplicate event property \"entityId\""
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document
+2026/10/31 06:40:10 WARN rejected malformed matching event messageId="" error="trailing event JSON"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property
+2026/10/31 06:40:10 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload
+2026/10/31 06:40:10 WARN rejected malformed matching event messageId="" error="request.created schema: jsonschema validation failed with 'https://reliefgrid.internal/events/request_created.json#'\n- at '/payload/requestType': value must be one of 'WATER', 'FOOD', 'MEDICINE', 'TRANSPORTATION', 'SHELTER'"
+--- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties (0.11s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload (0.00s)
+=== RUN   TestIntegrationRetryTTLDeadLetterRoutePreservesPriority
+    integration_test.go:54: TTL -> relief.requests/request.retry -> matching.requests; priority=3; reason=expired
+--- PASS: TestIntegrationRetryTTLDeadLetterRoutePreservesPriority (6.18s)
+=== RUN   TestIntegrationMalformedDeliveryReachesMatchingDead
+2026/10/31 06:40:17 WARN rejected malformed matching event messageId=bd4e054e-626a-4805-8893-f3e926b5a97f error="invalid character 'm' looking for beginning of value"
+    integration_test.go:103: malformed -> reject(requeue=false) -> relief.dlx -> matching.dead
+--- PASS: TestIntegrationMalformedDeliveryReachesMatchingDead (0.53s)
+=== RUN   TestIntegrationMissingRequestDeadLettersWithoutRestart
+2026/10/31 06:40:17 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+    integration_test.go:139: missing request -> one reject(requeue=false) -> matching.dead; no consumer restart
+--- PASS: TestIntegrationMissingRequestDeadLettersWithoutRestart (0.51s)
+=== RUN   TestIntegrationDomainEventsRouteToDurableWakeups
+    integration_test.go:161: all three relief.events patterns: mandatory routed confirm -> durable quorum matching.wakeups
+--- PASS: TestIntegrationDomainEventsRouteToDurableWakeups (4.24s)
+=== RUN   TestIntegrationManualAckPrefetchAndInterruptedHandoff
+    integration_test.go:238: prefetch=8; manual ack=true; interrupted handoff redelivered
+--- PASS: TestIntegrationManualAckPrefetchAndInterruptedHandoff (4.92s)
+=== RUN   TestEmbeddedCreatedSchemaMatchesFrozenContract
+--- PASS: TestEmbeddedCreatedSchemaMatchesFrozenContract (0.00s)
+=== RUN   TestTopologyDefinitionsAndHelmStayIdentical
+--- PASS: TestTopologyDefinitionsAndHelmStayIdentical (0.01s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	19.063s
+A1.3 VERIFY: ALL PASS
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a13-review'

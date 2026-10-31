@@ -1,0 +1,21 @@
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case
+    envelope_test.go:37: malformed envelope reached durable handler
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case
+    envelope_test.go:37: malformed envelope reached durable handler
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload
+--- FAIL: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties (0.14s)
+    --- FAIL: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case (0.01s)
+    --- FAIL: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case (0.01s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity (0.01s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document (0.01s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property (0.01s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload (0.01s)
+=== RUN   TestEmbeddedCreatedSchemaMatchesFrozenContract
+--- PASS: TestEmbeddedCreatedSchemaMatchesFrozenContract (0.01s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.231s
+FAIL

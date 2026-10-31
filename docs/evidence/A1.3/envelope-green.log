@@ -1,0 +1,24 @@
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case
+2026/10/30 13:14:30 WARN rejected malformed matching event messageId="" error="event property entityId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case
+2026/10/30 13:14:30 WARN rejected malformed matching event messageId="" error="event property requestId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity
+2026/10/30 13:14:30 WARN rejected malformed matching event messageId="" error="duplicate event property \"entityId\""
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document
+2026/10/30 13:14:30 WARN rejected malformed matching event messageId="" error="trailing event JSON"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property
+2026/10/30 13:14:30 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload
+2026/10/30 13:14:31 WARN rejected malformed matching event messageId="" error="request.created schema: jsonschema validation failed with 'https://reliefgrid.internal/events/request_created.json#'\n- at '/payload/requestType': value must be one of 'WATER', 'FOOD', 'MEDICINE', 'TRANSPORTATION', 'SHELTER'"
+--- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties (0.18s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case (0.01s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case (0.02s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity (0.02s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document (0.01s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property (0.02s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload (0.03s)
+=== RUN   TestEmbeddedCreatedSchemaMatchesFrozenContract
+--- PASS: TestEmbeddedCreatedSchemaMatchesFrozenContract (0.13s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	1.371s

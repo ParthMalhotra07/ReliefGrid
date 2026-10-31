@@ -1,0 +1,17 @@
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found
+    consumer_test.go:151: permanent absence restarts consumer: read current request for event a1b2c3d4-e5f6-7890-abcd-ef1234567890: store: not found
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found
+    consumer_test.go:151: permanent absence restarts consumer: read current request for event a1b2c3d4-e5f6-7890-abcd-ef1234567890: strong read: store: not found
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted
+    consumer_test.go:151: permanent absence restarts consumer: event a1b2c3d4-e5f6-7890-abcd-ef1234567890 has no current request
+--- FAIL: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue (0.22s)
+    --- FAIL: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found (0.08s)
+    --- FAIL: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found (0.07s)
+    --- FAIL: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted (0.08s)
+=== RUN   TestConsumerSurfacesPermanentAbsenceRejectFailure
+    consumer_test.go:166: reject error lost: read current request for event a1b2c3d4-e5f6-7890-abcd-ef1234567890: store: not found
+--- FAIL: TestConsumerSurfacesPermanentAbsenceRejectFailure (0.06s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.356s
+FAIL

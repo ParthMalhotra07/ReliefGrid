@@ -32,6 +32,7 @@ DIFF_BASE ?= origin/main
 
 .PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-replace storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
+.PHONY: verify-A1.3
 
 help: ## List targets
 	@grep -E '^[a-z0-9 -]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -58,6 +59,11 @@ lint:
 test: ## go test -race ./... (and cmd/invcheck with the chaos tag)
 	go test -race ./...
 	go test -race -tags chaos ./cmd/invcheck/...
+	@# CI also proves the real pinned-broker TTL/DLX/consumer path (A1.3).
+	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.3; fi
+
+verify-A1.3: ## Verify live messaging against the pinned disposable broker
+	bash scripts/verify-A1.3.sh
 
 gen: gen-public gen-internal ## Regenerate code from contracts/ (must leave no diff)
 
