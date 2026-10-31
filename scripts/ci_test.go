@@ -242,6 +242,11 @@ func TestCISmokeJob(t *testing.T) {
 	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "make ci-smoke") }) {
 		t.Error("smoke does not run make ci-smoke")
 	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool {
+		return strings.Contains(s.Run, "TestStorageChartNoDuplicateKeys") && s.Env["REQUIRE_HELM"] != ""
+	}) {
+		t.Error("smoke does not run TestStorageChartNoDuplicateKeys with REQUIRE_HELM set (check has no helm, so it skips there)")
+	}
 	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.HasPrefix(s.Uses, "actions/download-artifact@") }) {
 		t.Error("smoke does not download the images job's archives")
 	}
