@@ -636,6 +636,70 @@ func TestFencedReadAcrossCompaction(t *testing.T) {
 	}
 }
 
+// Close while a fenced read waits for SQLite: the read gives up at once
+// with a retryable error instead of waiting out its deadline. Close itself
+// waits for the in-flight Apply (raft.Shutdown waits for the FSM), so it is
+// bounded from the moment the paused Apply is let go.
+func TestFencedReadCloseDuringFSMWait(t *testing.T) {
+	c, _ := newPartitionableCluster(t, testProfile, ReadFenceIndex)
+	li, l := c.waitLeader()
+	mustApply(t, l, cas("op-1", "kv:a", 0, 1))
+
+	var paused atomic.Bool
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }) })
+	l.sm.setBeforeApply(func(uint64) {
+		if paused.Load() {
+			<-release
+		}
+	})
+	paused.Store(true)
+	go func() { _, _ = l.Apply(context.Background(), cas("op-2", "kv:a", 1, 2)) }() // fails once closed
+	for deadline := time.Now().Add(waitFor); ; time.Sleep(5 * time.Millisecond) {
+		if s := l.Status(); s.RaftAppliedIndex > s.AppliedIndex {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the write never reached the paused FSM")
+		}
+	}
+
+	read := make(chan error, 1)
+	go func() {
+		_, _, err := fencedRead(l, "kv:a", waitFor)
+		read <- err
+	}()
+	select {
+	case err := <-read:
+		t.Fatalf("fenced read returned (%v) before SQLite applied the committed write", err)
+	case <-time.After(300 * time.Millisecond):
+	}
+
+	closed := make(chan error, 1)
+	start := time.Now()
+	go func() { closed <- l.Close() }()
+	select {
+	case err := <-read:
+		if err == nil || !retryable(err) || !errors.Is(err, errClosing) {
+			t.Fatalf("fenced read during Close: %v, want a retryable error from closing", err)
+		}
+		t.Logf("read refused %s after Close began: %v", time.Since(start), err)
+	case <-time.After(time.Second):
+		t.Fatal("fenced read still waiting 1s after Close began")
+	}
+	releaseOnce.Do(func() { close(release) })
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Errorf("Close: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Close did not return within 5s of the Apply being released")
+	}
+	c.nodes[li] = nil
+}
+
 // A fence that cannot complete (no follower answers) never serves, and
 // returns a retryable error within the caller's deadline.
 func TestFencedReadDeadline(t *testing.T) {

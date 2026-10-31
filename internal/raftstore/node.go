@@ -651,6 +651,9 @@ func (n *Node) Close() error {
 	}
 	n.closed = true
 	n.mu.Unlock()
+	// Waiters on the FSM give up now, not when Raft has finished shutting
+	// down (which waits for an in-flight Apply).
+	n.sm.beginClose()
 	err := n.raft.Shutdown().Error()
 	return errors.Join(err, n.trans.Close(), n.logs.Close(), n.sm.close())
 }
