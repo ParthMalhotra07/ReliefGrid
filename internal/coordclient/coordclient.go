@@ -367,6 +367,27 @@ func entityID(key, prefix string) (string, error) {
 	return id, nil
 }
 
+// consistency is the wire form of a read mode: the zero value is sent as
+// an explicit strong, so the call never depends on a server default.
+func consistency(m store.Consistency) (string, error) {
+	switch m {
+	case "", store.ConsistencyStrong:
+		return string(store.ConsistencyStrong), nil
+	case store.ConsistencyStale:
+		return string(store.ConsistencyStale), nil
+	}
+	return "", invalid("consistency %q must be strong or stale", m)
+}
+
+// servedStale rejects a stale answer to a strong read: a stale miss is only a
+// hint, so it must never stand in for the authoritative result.
+func servedStale(asked, served string) error {
+	if asked == string(store.ConsistencyStrong) && served == string(store.ConsistencyStale) {
+		return &Error{Status: http.StatusOK, Message: "asked for a strong read, served stale", Retryable: true, read: true}
+	}
+	return nil
+}
+
 func (c *Client) CreateEntity(ctx context.Context, cmd store.CreateEntity) (store.Result, error) {
 	return c.mutate(ctx, mutation{method: http.MethodPut, path: "/internal/data/" + url.PathEscape(cmd.Key),
 		header: map[string]string{"If-None-Match": "*"}, body: cmd, drop: []string{"key"}})
@@ -457,11 +478,15 @@ func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
 		return store.ScanResult{}, invalid("scan limit %d must be 1 to %d records per shard", q.Limit, store.MaxScanLimit)
 	}
+	mode, err := consistency(q.Consistency)
+	if err != nil {
+		return store.ScanResult{}, err
+	}
 	expected := map[int]string{} // shards to be read -> the position they are read after
 	for s := range c.Shards() {
 		expected[s] = ""
 	}
-	query := url.Values{"kind": {string(q.Kind)}, "limit": {strconv.Itoa(q.Limit)}, "ringVersion": {""}}
+	query := url.Values{"kind": {string(q.Kind)}, "limit": {strconv.Itoa(q.Limit)}, "ringVersion": {""}, "consistency": {mode}}
 	if q.Cursor != "" {
 		cur, err := store.DecodeScanCursor(q.Cursor)
 		if err != nil {
@@ -481,6 +506,9 @@ func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 	}
 	var resp internalapi.ScanResponse
 	if err := c.read(ctx, "/internal/scan", query, &resp); err != nil {
+		return store.ScanResult{}, err
+	}
+	if err := servedStale(mode, string(resp.Consistency)); err != nil {
 		return store.ScanResult{}, err
 	}
 	out := store.ScanResult{Records: resp.Records, Partial: resp.Partial, Positions: resp.Positions}
@@ -519,15 +547,31 @@ func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 	return out, nil
 }
 
-func (c *Client) PendingOutbox(ctx context.Context, shard, limit int) ([]store.OutboxEvent, error) {
-	if shard < 0 || shard >= c.Shards() {
-		return nil, invalid("no shard %d", shard)
+// PendingOutbox long-polls inside the client's timeout: the server's wait,
+// the reads around it and any ring refresh share the one budget.
+func (c *Client) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]store.OutboxEvent, error) {
+	if q.Shard < 0 || q.Shard >= c.Shards() {
+		return nil, invalid("no shard %d", q.Shard)
 	}
-	if limit < 1 || limit > maxOutboxLimit {
-		return nil, invalid("outbox limit %d must be 1 to %d", limit, maxOutboxLimit)
+	if q.Limit < 1 || q.Limit > maxOutboxLimit {
+		return nil, invalid("outbox limit %d must be 1 to %d", q.Limit, maxOutboxLimit)
+	}
+	if q.Wait < 0 || q.Wait > store.MaxOutboxWait || q.Wait%time.Second != 0 {
+		return nil, invalid("outbox wait %s must be whole seconds, 0 to %s", q.Wait, store.MaxOutboxWait)
+	}
+	mode, err := consistency(q.Consistency)
+	if err != nil {
+		return nil, err
+	}
+	query := url.Values{"shard": {strconv.Itoa(q.Shard)}, "limit": {strconv.Itoa(q.Limit)}, "consistency": {mode}}
+	if q.Wait > 0 {
+		query.Set("wait", strconv.Itoa(int(q.Wait/time.Second)))
 	}
 	var resp internalapi.OutboxPage
-	if err := c.read(ctx, "/internal/outbox", url.Values{"shard": {strconv.Itoa(shard)}, "limit": {strconv.Itoa(limit)}}, &resp); err != nil {
+	if err := c.read(ctx, "/internal/outbox", query, &resp); err != nil {
+		return nil, err
+	}
+	if err := servedStale(mode, string(resp.Read.Consistency)); err != nil {
 		return nil, err
 	}
 	return resp.Events, nil

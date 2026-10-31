@@ -23,9 +23,10 @@ spec:
       {{- include "storage.shardSelector" (dict "shard" $s) | nindent 6 }}
   template:
     metadata:
+      {{- /* One merged map: both helpers emit app.kubernetes.io/name (#66). The
+      selector is merged first so its values win and the pods always match it. */}}
       labels:
-        {{- include "storage.labels" $ | nindent 8 }}
-        {{- include "storage.shardSelector" (dict "shard" $s) | nindent 8 }}
+        {{- merge (include "storage.shardSelector" (dict "shard" $s) | fromYaml) (include "storage.labels" $ | fromYaml) | toYaml | nindent 8 }}
       annotations:
         checksum/ring: {{ $.Files.Get "files/ring.yaml" | sha256sum }}
     spec:

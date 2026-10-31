@@ -1,0 +1,6 @@
+# github.com/ParthMalhotra07/ReliefGrid/internal/mq_test [github.com/ParthMalhotra07/ReliefGrid/internal/mq.test]
+internal/mq/consumer_test.go:204:46: too many arguments in call to s.PendingOutbox
+	have (context.Context, int, number)
+	want (context.Context, store.OutboxQuery)
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq [build failed]
+FAIL

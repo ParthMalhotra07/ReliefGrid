@@ -201,7 +201,7 @@ func TestConsumerAcceptsRealWorkflowRetryEnvelope(t *testing.T) {
 	}
 	var retry []byte
 	for shard := range s.Shards() {
-		events, err := s.PendingOutbox(ctx, shard, 100)
+		events, err := s.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: 100})
 		if err != nil {
 			t.Fatal(err)
 		}

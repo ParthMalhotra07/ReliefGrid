@@ -29,21 +29,29 @@ if [ -z "${MQ_AMQP_URL:-}" ] && [ -z "${MQ_MANAGEMENT_URL:-}" ]; then
     -p 127.0.0.1::5672 -p 127.0.0.1::15672 \
     -e RABBITMQ_DEFAULT_USER=reliefgrid -e RABBITMQ_DEFAULT_PASS=reliefgrid \
     "$image")"
-  amqp_address="$(docker port "$broker" 5672/tcp)"
-  management_address="$(docker port "$broker" 15672/tcp)"
-  export MQ_AMQP_URL="amqp://reliefgrid:reliefgrid@${amqp_address}/"
-  export MQ_MANAGEMENT_URL="http://${management_address}"
   ready=false
+  : > "$tmp/readiness.err"
   for _ in $(seq 1 60); do
-    if curl --fail --silent --max-time 1 -u reliefgrid:reliefgrid \
-      "$MQ_MANAGEMENT_URL/api/overview" -o "$tmp/overview.json"; then
+    # Docker Desktop may publish the host mappings after container creation.
+    # Observe current addresses with readiness instead of freezing that sample.
+    amqp_address="$(docker port "$broker" 5672/tcp)"
+    management_address="$(docker port "$broker" 15672/tcp)"
+    export MQ_AMQP_URL="amqp://reliefgrid:reliefgrid@${amqp_address}/"
+    export MQ_MANAGEMENT_URL="http://${management_address}"
+    if [[ ! "$amqp_address" =~ ^127\.0\.0\.1:[0-9]+$ ]] || [[ ! "$management_address" =~ ^127\.0\.0\.1:[0-9]+$ ]]; then
+      sleep 1
+      continue
+    fi
+    if curl --fail --silent --show-error --max-time 1 -u reliefgrid:reliefgrid \
+      "$MQ_MANAGEMENT_URL/api/overview" -o "$tmp/overview.json" 2>"$tmp/readiness.err"; then
       ready=true
       break
     fi
     sleep 1
   done
   if [ "$ready" != true ]; then
-    printf 'FAIL A1.3 pinned broker unavailable\n' >&2
+    printf 'FAIL A1.3 pinned broker unavailable at %s\n' "$MQ_MANAGEMENT_URL" >&2
+    cat "$tmp/readiness.err" >&2
     exit 1
   fi
   printf 'broker_image=%s\n' "$image"

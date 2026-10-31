@@ -393,7 +393,7 @@ func Run(ctx context.Context, s store.Store, opt Options) (Report, error) {
 	}
 	rep.Violations = Check(recs)
 	for shard := range s.Shards() {
-		evs, err := s.PendingOutbox(ctx, shard, OutboxLimit)
+		evs, err := s.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: OutboxLimit})
 		if err != nil {
 			return rep, incomplete("outbox of shard %d: %w", shard, err)
 		}

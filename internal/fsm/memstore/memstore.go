@@ -257,11 +257,14 @@ func (s *Store) scanCursor(q store.ScanQuery) (store.ScanCursor, error) {
 	return cur, nil
 }
 
-func (s *Store) PendingOutbox(ctx context.Context, shard, limit int) ([]store.OutboxEvent, error) {
-	if shard < 0 || shard >= len(s.shards) {
-		return nil, fmt.Errorf("memstore: no shard %d", shard)
+// PendingOutbox reads strong whatever q.Consistency says and returns at once:
+// q.Wait is a hint to a networked store, and nothing here commits while a
+// caller waits.
+func (s *Store) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]store.OutboxEvent, error) {
+	if q.Shard < 0 || q.Shard >= len(s.shards) {
+		return nil, fmt.Errorf("memstore: no shard %d", q.Shard)
 	}
-	return s.shards[shard].f.PendingOutbox(ctx, limit)
+	return s.shards[q.Shard].f.PendingOutbox(ctx, q.Limit)
 }
 
 func (s *Store) Operation(ctx context.Context, key, operationID string) (store.Result, error) {

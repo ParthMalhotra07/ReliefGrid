@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 // Store is the authoritative storage surface the workflow, API and relay
@@ -47,8 +48,9 @@ type Store interface {
 	// is read; a cursor from another ring version is ErrRingVersionMismatch.
 	// Walk until NextCursor is empty.
 	Scan(ctx context.Context, q ScanQuery) (ScanResult, error)
-	// PendingOutbox pages unpublished events of one shard in commit order.
-	PendingOutbox(ctx context.Context, shard, limit int) ([]OutboxEvent, error)
+	// PendingOutbox pages unpublished events of q.Shard in commit order. With
+	// q.Wait it may hold the call until an event is pending or Wait passes.
+	PendingOutbox(ctx context.Context, q OutboxQuery) ([]OutboxEvent, error)
 	// Operation returns the historical result stored for an operation ID on
 	// the shard owning key. It is never proof of current ownership.
 	Operation(ctx context.Context, key, operationID string) (Result, error)
@@ -360,6 +362,16 @@ type Result struct {
 // MaxScanLimit is the largest ScanQuery.Limit: records per shard per page.
 const MaxScanLimit = 1000
 
+// Consistency is how a read is served (M5). The zero value is strong.
+type Consistency string
+
+const (
+	ConsistencyStrong Consistency = "strong"
+	// ConsistencyStale reads one replica's applied state without a leader
+	// round trip. It can miss recent writes: a hint, never proof of absence.
+	ConsistencyStale Consistency = "stale"
+)
+
 // ScanQuery selects records of one Kind. Empty filters match everything.
 // Statuses holds RequestStatus or ResourceStatus values for that Kind. Each
 // geohash prefix is the key range [p, p+"\xff"), so a matcher's geohash cover
@@ -380,6 +392,24 @@ type ScanQuery struct {
 	// walk are returned exactly once; keys inserted or deleted during it may
 	// or may not be.
 	Cursor string `json:"cursor,omitempty"`
+	// Consistency is how every shard is read; "" is strong. It does not
+	// change which records match, so it is not part of the cursor's query.
+	Consistency Consistency `json:"consistency,omitempty"`
+}
+
+// MaxOutboxWait is the longest OutboxQuery.Wait (§14 long-poll).
+const MaxOutboxWait = time.Second
+
+// OutboxQuery selects one page of a shard's unpublished events.
+type OutboxQuery struct {
+	Shard int `json:"shard"`
+	// Limit caps the events returned, 1 to 100.
+	Limit int `json:"limit"`
+	// Wait long-polls when nothing is pending: 0 or whole seconds up to
+	// MaxOutboxWait. The caller's deadline still caps the whole call.
+	Wait time.Duration `json:"wait,omitempty"`
+	// Consistency is how the shard is read; "" is strong.
+	Consistency Consistency `json:"consistency,omitempty"`
 }
 
 type ScanResult struct {
