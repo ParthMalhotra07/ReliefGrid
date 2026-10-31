@@ -143,8 +143,11 @@ func (n *fakeNode) Read(ctx context.Context, mode raftstore.ReadMode, fn func(co
 		}
 	}
 	info := raftstore.ReadInfo{Consistency: "strong", ServedBy: testPod, AppliedIndex: n.f.AppliedIndex()}
-	if mode == raftstore.ReadStale {
+	switch mode {
+	case raftstore.ReadStale:
 		info.Consistency, info.StalePossible = "stale", true
+	case raftstore.ReadLinearizable:
+		info.Consistency = "linearizable"
 	}
 	n.setReading(true)
 	defer n.setReading(false)

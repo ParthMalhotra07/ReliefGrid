@@ -27,8 +27,8 @@ import (
 // from the path, Apply it under the request timeout and write the result
 // with writeResult or the failure with writeFailure.
 //
-// Reads parse ?consistency (strong default, linearizable served as strong
-// until S4.1, stale opt-in), check key ownership (a foreign key is 400,
+// Reads parse ?consistency (strong default, linearizable through the node's
+// read fence, stale opt-in), check key ownership (a foreign key is 400,
 // never a 404 "absent") and run through node.Read.
 
 const (
@@ -392,12 +392,15 @@ func (s *server) read(ctx context.Context, w http.ResponseWriter, mode raftstore
 	}, true
 }
 
-// readMode parses ?consistency. linearizable is served as strong until the
-// S4.1 read fence lands; the response reports "strong".
+// readMode parses ?consistency. linearizable goes to the read fence (S4.1);
+// with STRONG_READ_FENCE=barrier the node serves it as strong and the
+// response reports "strong".
 func (s *server) readMode(w http.ResponseWriter, r *http.Request) (raftstore.ReadMode, bool) {
 	switch c := r.URL.Query().Get("consistency"); c {
-	case "", "strong", "linearizable":
+	case "", "strong":
 		return raftstore.ReadStrong, true
+	case "linearizable":
+		return raftstore.ReadLinearizable, true
 	case "stale":
 		return raftstore.ReadStale, true
 	default:

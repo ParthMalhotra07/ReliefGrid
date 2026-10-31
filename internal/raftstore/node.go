@@ -62,11 +62,14 @@ const (
 	ReadStrong ReadMode = iota
 	// ReadStale reads the local FSM with no fence; any replica serves it.
 	ReadStale
+	// ReadLinearizable is the v3.1 §13 read fence (S4.1): no log entry per
+	// read. Config.ReadFence can serve it as ReadStrong instead.
+	ReadLinearizable
 )
 
 // ReadInfo describes how a read was served.
 type ReadInfo struct {
-	Consistency   string // "strong" or "stale"
+	Consistency   string // "strong", "linearizable" or "stale"
 	ServedBy      string // pod name
 	AppliedIndex  uint64 // FSM position the read observed
 	StalePossible bool
@@ -131,6 +134,13 @@ type Node struct {
 	// commit index reach an entry of its own term.
 	ownTerm atomic.Uint64
 
+	// gate is the current term's read gate (fence.go).
+	gateMu sync.Mutex
+	gate   *termGate
+	// beforeFenceWait, tests only, runs in a fenced read after the quorum
+	// check and before the read index is mapped to a command.
+	beforeFenceWait atomic.Pointer[func(readIndex uint64)]
+
 	mu        sync.Mutex
 	mapped    indexMapping // last committed Raft index mapped to a command index
 	snapCache snapshotTarget
@@ -156,6 +166,11 @@ const retainSnapshots = 2
 func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 	if cfg.PodName == "" || cfg.GroupID == "" || cfg.DataDir == "" || cfg.FSMDir == "" {
 		return nil, errors.New("raftstore: PodName, GroupID, DataDir and FSMDir are required")
+	}
+	switch cfg.ReadFence {
+	case "", ReadFenceIndex, ReadFenceBarrier:
+	default:
+		return nil, fmt.Errorf("raftstore: ReadFence %q: want %q or %q", cfg.ReadFence, ReadFenceIndex, ReadFenceBarrier)
 	}
 	if filepath.Clean(cfg.DataDir) == filepath.Clean(cfg.FSMDir) {
 		return nil, errors.New("raftstore: FSMDir must not be DataDir; the FSM directory is wiped on start")
@@ -210,6 +225,7 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 		return nil, err
 	}
 	n.trans = newFenceTransport(nt, &n.fence, cfg.beforeRPC)
+	n.trans.dropSend, n.trans.afterSend = cfg.dropSend, cfg.afterSend
 	rc := cfg.raftConfig(n.id.ServerID())
 	rc.Logger = logger
 	// NewRaft restores the latest snapshot into the fresh FSM before it
@@ -295,27 +311,26 @@ func (n *Node) Apply(ctx context.Context, cmd any) (store.Result, error) {
 	return res, nil
 }
 
-// Read runs fn against the FSM. A strong read needs this node to be the
-// leader (ErrNotLeader otherwise) and a committed barrier (ErrUnavailable if
-// it cannot get one). Restore cannot swap the database while fn runs.
+// Read runs fn against the FSM. A strong or linearizable read needs this
+// node to be the leader (ErrNotLeader otherwise) and a fence: a committed
+// barrier for strong, the read fence (fence.go) for linearizable unless
+// Config.ReadFence is ReadFenceBarrier. A fence that cannot complete is
+// ErrUnavailable; neither is ever served stale. Restore cannot swap the
+// database while fn runs.
 func (n *Node) Read(ctx context.Context, mode ReadMode, fn func(context.Context, Reader) error) (ReadInfo, error) {
 	info := ReadInfo{Consistency: "stale", ServedBy: n.cfg.PodName, StalePossible: true}
-	switch mode {
-	case ReadStale:
-	case ReadStrong:
-		if n.raft.State() != raft.Leader {
-			return ReadInfo{}, n.notLeader()
-		}
-		// The barrier commits in this term and its future is answered on the
-		// FSM goroutine after every earlier command has applied.
-		err := wait(ctx, n.raft.Barrier(enqueueTimeout(ctx)))
-		if errors.Is(err, raft.ErrNotLeader) || errors.Is(err, raft.ErrLeadershipLost) {
-			return ReadInfo{}, n.notLeader()
-		}
-		if err != nil {
-			return ReadInfo{}, fmt.Errorf("%w: barrier: %w", ErrUnavailable, err)
+	switch {
+	case mode == ReadStale:
+	case mode == ReadStrong, mode == ReadLinearizable && n.cfg.ReadFence == ReadFenceBarrier:
+		if err := n.barrier(ctx); err != nil {
+			return ReadInfo{}, err
 		}
 		info = ReadInfo{Consistency: "strong", ServedBy: n.cfg.PodName}
+	case mode == ReadLinearizable:
+		if err := n.readFence(ctx); err != nil {
+			return ReadInfo{}, err
+		}
+		info = ReadInfo{Consistency: "linearizable", ServedBy: n.cfg.PodName}
 	default:
 		return ReadInfo{}, fmt.Errorf("raftstore: unknown read mode %d", mode)
 	}
@@ -324,6 +339,32 @@ func (n *Node) Read(ctx context.Context, mode ReadMode, fn func(context.Context,
 		return fn(ctx, f)
 	})
 	return info, err
+}
+
+// barrier commits a barrier in this term; its future is answered on the FSM
+// goroutine after every earlier command has applied.
+func (n *Node) barrier(ctx context.Context) error {
+	if n.raft.State() != raft.Leader {
+		return n.notLeader()
+	}
+	if err := n.leaderErr(wait(ctx, n.raft.Barrier(enqueueTimeout(ctx)))); err != nil {
+		return fmt.Errorf("barrier: %w", err)
+	}
+	return nil
+}
+
+// leaderErr maps a failed leader-only Raft future: lost or no leadership is
+// a *NotLeaderError, anything else (ctx ending, shutdown, no quorum) wraps
+// ErrUnavailable. Both are retryable and mean nothing was changed.
+func (n *Node) leaderErr(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, raft.ErrNotLeader), errors.Is(err, raft.ErrLeadershipLost):
+		return n.notLeader()
+	default:
+		return fmt.Errorf("%w: %w", ErrUnavailable, err)
+	}
 }
 
 func (n *Node) notLeader() error {

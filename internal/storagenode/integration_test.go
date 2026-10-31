@@ -196,6 +196,16 @@ func TestStorageNodesWriteSurvivesLeaderKill(t *testing.T) {
 		t.Fatalf("read = %+v", resp)
 	}
 
+	// The read fence on a real node, straight after the leader change.
+	rec = httpDo(t, http.MethodGet, newLeader.data.URL+"/internal/data/"+key+"?consistency=linearizable", nil, nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("linearizable read through new leader: %d %s", rec.Code, rec.Body.String())
+	}
+	if resp := decodeJSON[internalapi.RecordResponse](t, rec); resp.Record.Version != 1 || resp.Read.Consistency != "linearizable" ||
+		resp.Read.StalePossible || resp.Read.ServedBy != newLeader.pod {
+		t.Fatalf("linearizable read = %+v", resp)
+	}
+
 	var other *replica
 	for _, r := range reps {
 		if r.node != nil && r != newLeader {
@@ -203,6 +213,7 @@ func TestStorageNodesWriteSurvivesLeaderKill(t *testing.T) {
 		}
 	}
 	expectError(t, httpDo(t, http.MethodGet, other.data.URL+"/internal/data/"+key, nil, nil), http.StatusServiceUnavailable, internalapi.NOTLEADER)
+	expectError(t, httpDo(t, http.MethodGet, other.data.URL+"/internal/data/"+key+"?consistency=linearizable", nil, nil), http.StatusServiceUnavailable, internalapi.NOTLEADER)
 	deadline := time.Now().Add(waitFor)
 	for {
 		rec = httpDo(t, http.MethodGet, other.data.URL+"/internal/data/"+key+"?consistency=stale", nil, nil)
