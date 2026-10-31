@@ -41,7 +41,9 @@ is rejected once without requeue into matching.dead. Reject errors propagate;
 transient read failures remain unacknowledged and are never treated as absence.
 For other work, the handler must return nil only after its durable handoff
 commits or an authoritative reread proves no action remains. An unknown outcome
-must remain an error. Read/handler errors are left unacknowledged.
+must remain an error unless a durable state-preserving retry handoff commits.
+Read/handler errors use the optional Retry callback below; without it they remain
+unacknowledged.
 
 `Consumer.Consume` uses one dedicated channel, manual acknowledgements and
 prefetch 8. It owns channel cancellation and closes that channel on failure or
@@ -62,12 +64,37 @@ CI's existing make check invokes this verifier via the shared Makefile when
 GITHUB_ACTIONS=true. Unit tests alone need no broker.
 
 Limits: one durable broker is one failure domain, not broker-node redundancy.
-Business retry/recovery supervision remains A2.2; the outbox relay remains A1.4,
+State-aware business retries are implemented in A2.2; the outbox relay is A1.4,
 and matcher process/Helm application integration remains A1.5. matching.wakeups
 retains domain events for the A2.4 resource-registration wakeup handler; that
 handler is not implemented here. This queue has the same bounded backpressure
 and dead-letter safety as matching.requests, with no expiry or discard consumer.
 SSE still needs its own per-API temporary subscribers in A4.1. Unknown routing
 keys remain unroutable and must stay in the outbox. Poison inspection/replay
-tooling and due-work repair remain later work. Broker delivery-limit counts
-across transient reconnects are tracked separately for A2.2.
+tooling and periodic due-work repair remain later work.
+
+## Confirmed delayed transport recovery [A2.2]
+
+Production configures Consumer.Retry with TransportRetry. If an authoritative
+read or domain handoff fails, it republishes the byte-identical original work
+hint persistently and mandatorily to relief.retry/delay.5s, using a separate
+bounded publisher connection. Only a routed positive confirm permits source
+acknowledgement. A nack, return, cancellation, unknown confirm, or failed ack
+returns an error; the consumption channel closes and the caller backs off before
+reconnecting. With no Retry callback, the original unacknowledged behaviour stays.
+
+The transport copy is a durable scheduling hint, not proof of current ownership
+or a successful domain mutation. Its event ID, body and derived urgency remain
+unchanged. It does not forward broker death/delivery headers; those describe a
+delivery's transport history and do not increment persisted business retryCount.
+Logs distinguish retryClass=transport, brokerDeliveryCount and brokerDeaths.
+This allows more than 20 healthy transient failures without changing the broker's
+poison delivery limit. Invalid and permanently absent work still dead-letters once.
+A lost confirm may leave both copies: current-state/due-time rereads make them safe.
+
+make verify-A2.2 runs unit fault cases plus live tests on the pinned broker.
+The new integration,a22 tag isolates the 25-hop acceptance test (at least 125s
+at the fixed 5s TTL) from A1.3's existing integration tests. The shared CI Makefile
+runs both verifiers. Existing integration tests retain their 30s budget; the new
+25-hop test has a measured-path 180s budget. This is transport recovery; periodic
+durable workflow scans and wakeup consumption still belong to A2.4.

@@ -1,0 +1,57 @@
+=== A2.1 Verify: cancellation/completion ===
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims/SCH05
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims/SCH06
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims/SCH09
+--- PASS: TestCleanupCancellationFixturesFenceLateClaims (0.23s)
+    --- PASS: TestCleanupCancellationFixturesFenceLateClaims/SCH05 (0.08s)
+    --- PASS: TestCleanupCancellationFixturesFenceLateClaims/SCH06 (0.08s)
+    --- PASS: TestCleanupCancellationFixturesFenceLateClaims/SCH09 (0.07s)
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/cancel
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/reusable
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/consumable
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/expired
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+--- PASS: TestCleanupDispositionsAndAtomicTerminalEvents (0.33s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/cancel (0.08s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/reusable (0.08s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/consumable (0.08s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/expired (0.08s)
+=== RUN   TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart
+=== RUN   TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/before_commit
+=== RUN   TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/after_commit
+--- PASS: TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart (0.15s)
+    --- PASS: TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/before_commit (0.08s)
+    --- PASS: TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/after_commit (0.07s)
+=== RUN   TestCleanupLostTerminalResponseDoesNotDuplicateEvent
+--- PASS: TestCleanupLostTerminalResponseDoesNotDuplicateEvent (0.08s)
+=== RUN   TestCleanupCompetingHelpersFinalizeOnce
+--- PASS: TestCleanupCompetingHelpersFinalizeOnce (0.09s)
+=== RUN   TestCleanupNeverReleasesNewOwner
+--- PASS: TestCleanupNeverReleasesNewOwner (0.08s)
+=== RUN   TestCleanupFailedAuthoritativeReadNeverFinalizes
+=== RUN   TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadRecord
+=== RUN   TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadClosure
+--- PASS: TestCleanupFailedAuthoritativeReadNeverFinalizes (0.12s)
+    --- PASS: TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadRecord (0.06s)
+    --- PASS: TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadClosure (0.06s)
+=== RUN   TestCleanupMatchResumesCleanupState
+--- PASS: TestCleanupMatchResumesCleanupState (0.07s)
+=== RUN   TestCleanupHistoricalOKIsNotClosureProof
+--- PASS: TestCleanupHistoricalOKIsNotClosureProof (0.06s)
+=== RUN   TestCleanupRescheduleWinsBeforeFinalCAS
+--- PASS: TestCleanupRescheduleWinsBeforeFinalCAS (0.09s)
+=== RUN   TestCleanupTerminalCommandSurvivesRestartBeforeCommit
+--- PASS: TestCleanupTerminalCommandSurvivesRestartBeforeCommit (0.07s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	2.429s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	1.111s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	3.680s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	2.082s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	1.078s
+A2.1 VERIFY: ALL PASS

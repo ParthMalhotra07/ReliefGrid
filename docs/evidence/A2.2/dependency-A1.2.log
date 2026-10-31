@@ -1,0 +1,178 @@
+=== A1.2 Verify: geography and matching ===
+=== RUN   TestEncodeKnownCellsAndInvalidCoordinates
+--- PASS: TestEncodeKnownCellsAndInvalidCoordinates (0.00s)
+=== RUN   TestHaversineKM
+=== RUN   TestHaversineKM/identical
+=== RUN   TestHaversineKM/equatorial_degree
+=== RUN   TestHaversineKM/dateline
+=== RUN   TestHaversineKM/antipodes
+--- PASS: TestHaversineKM (0.00s)
+    --- PASS: TestHaversineKM/identical (0.00s)
+    --- PASS: TestHaversineKM/equatorial_degree (0.00s)
+    --- PASS: TestHaversineKM/dateline (0.00s)
+    --- PASS: TestHaversineKM/antipodes (0.00s)
+=== RUN   TestCoverIncludesAdjacentCellsDatelineAndPoles
+=== RUN   TestCoverIncludesAdjacentCellsDatelineAndPoles/equator_boundary
+=== RUN   TestCoverIncludesAdjacentCellsDatelineAndPoles/dateline
+=== RUN   TestCoverIncludesAdjacentCellsDatelineAndPoles/north_pole
+=== RUN   TestCoverIncludesAdjacentCellsDatelineAndPoles/south_pole
+--- PASS: TestCoverIncludesAdjacentCellsDatelineAndPoles (0.00s)
+    --- PASS: TestCoverIncludesAdjacentCellsDatelineAndPoles/equator_boundary (0.00s)
+    --- PASS: TestCoverIncludesAdjacentCellsDatelineAndPoles/dateline (0.00s)
+    --- PASS: TestCoverIncludesAdjacentCellsDatelineAndPoles/north_pole (0.00s)
+    --- PASS: TestCoverIncludesAdjacentCellsDatelineAndPoles/south_pole (0.00s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	1.021s
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims/SCH05
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims/SCH06
+=== RUN   TestCleanupCancellationFixturesFenceLateClaims/SCH09
+--- PASS: TestCleanupCancellationFixturesFenceLateClaims (0.26s)
+    --- PASS: TestCleanupCancellationFixturesFenceLateClaims/SCH05 (0.09s)
+    --- PASS: TestCleanupCancellationFixturesFenceLateClaims/SCH06 (0.09s)
+    --- PASS: TestCleanupCancellationFixturesFenceLateClaims/SCH09 (0.08s)
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/cancel
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/reusable
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/consumable
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+=== RUN   TestCleanupDispositionsAndAtomicTerminalEvents/expired
+    cleanup_test.go:245: actual terminal event validates against frozen request.state_changed schema
+--- PASS: TestCleanupDispositionsAndAtomicTerminalEvents (0.36s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/cancel (0.09s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/reusable (0.09s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/consumable (0.09s)
+    --- PASS: TestCleanupDispositionsAndAtomicTerminalEvents/expired (0.09s)
+=== RUN   TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart
+=== RUN   TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/before_commit
+=== RUN   TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/after_commit
+--- PASS: TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart (0.16s)
+    --- PASS: TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/before_commit (0.08s)
+    --- PASS: TestCleanupUnknownClosePreservesIntentAndCommandAcrossRestart/after_commit (0.08s)
+=== RUN   TestCleanupLostTerminalResponseDoesNotDuplicateEvent
+--- PASS: TestCleanupLostTerminalResponseDoesNotDuplicateEvent (0.09s)
+=== RUN   TestCleanupCompetingHelpersFinalizeOnce
+--- PASS: TestCleanupCompetingHelpersFinalizeOnce (0.09s)
+=== RUN   TestCleanupNeverReleasesNewOwner
+--- PASS: TestCleanupNeverReleasesNewOwner (0.08s)
+=== RUN   TestCleanupFailedAuthoritativeReadNeverFinalizes
+=== RUN   TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadRecord
+=== RUN   TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadClosure
+--- PASS: TestCleanupFailedAuthoritativeReadNeverFinalizes (0.13s)
+    --- PASS: TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadRecord (0.06s)
+    --- PASS: TestCleanupFailedAuthoritativeReadNeverFinalizes/ReadClosure (0.06s)
+=== RUN   TestCleanupMatchResumesCleanupState
+--- PASS: TestCleanupMatchResumesCleanupState (0.07s)
+=== RUN   TestCleanupHistoricalOKIsNotClosureProof
+--- PASS: TestCleanupHistoricalOKIsNotClosureProof (0.06s)
+=== RUN   TestCleanupRescheduleWinsBeforeFinalCAS
+--- PASS: TestCleanupRescheduleWinsBeforeFinalCAS (0.08s)
+=== RUN   TestCleanupTerminalCommandSurvivesRestartBeforeCommit
+--- PASS: TestCleanupTerminalCommandSurvivesRestartBeforeCommit (0.07s)
+=== RUN   TestMatchFiltersTypeRadiusWindowAndStatus
+--- PASS: TestMatchFiltersTypeRadiusWindowAndStatus (0.08s)
+=== RUN   TestMatchAvailabilityInclusiveStartExclusiveEnd
+=== RUN   TestMatchAvailabilityInclusiveStartExclusiveEnd/start
+=== RUN   TestMatchAvailabilityInclusiveStartExclusiveEnd/before_end
+=== RUN   TestMatchAvailabilityInclusiveStartExclusiveEnd/at_end
+--- PASS: TestMatchAvailabilityInclusiveStartExclusiveEnd (0.21s)
+    --- PASS: TestMatchAvailabilityInclusiveStartExclusiveEnd/start (0.08s)
+    --- PASS: TestMatchAvailabilityInclusiveStartExclusiveEnd/before_end (0.07s)
+    --- PASS: TestMatchAvailabilityInclusiveStartExclusiveEnd/at_end (0.06s)
+=== RUN   TestMatchAcrossGeohashBoundaries
+=== RUN   TestMatchAcrossGeohashBoundaries/prime_meridian
+=== RUN   TestMatchAcrossGeohashBoundaries/dateline
+=== RUN   TestMatchAcrossGeohashBoundaries/pole
+--- PASS: TestMatchAcrossGeohashBoundaries (0.28s)
+    --- PASS: TestMatchAcrossGeohashBoundaries/prime_meridian (0.07s)
+    --- PASS: TestMatchAcrossGeohashBoundaries/dateline (0.08s)
+    --- PASS: TestMatchAcrossGeohashBoundaries/pole (0.13s)
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-1/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-1/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-2/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-2/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-3/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-3/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-4/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-4/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-5/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-5/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-6/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-6/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-7/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-7/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-8/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-8/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-9/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-9/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-10/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-10/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-11/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-11/order-1
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-12/order-0
+=== RUN   TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-12/order-1
+--- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder (2.30s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-1/order-0 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-1/order-1 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-2/order-0 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-2/order-1 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-3/order-0 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-3/order-1 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-4/order-0 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-4/order-1 (0.08s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-5/order-0 (0.09s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-5/order-1 (0.10s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-6/order-0 (0.11s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-6/order-1 (0.11s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-7/order-0 (0.12s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-7/order-1 (0.12s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-8/order-0 (0.12s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-8/order-1 (0.12s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-9/order-0 (0.10s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-9/order-1 (0.09s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-10/order-0 (0.09s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-10/order-1 (0.09s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-11/order-0 (0.09s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-11/order-1 (0.10s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-12/order-0 (0.10s)
+    --- PASS: TestMatchSeededTopThreeStableAcrossEqualDistanceInsertionOrder/seed-12/order-1 (0.09s)
+=== RUN   TestMatchPagesBeyondIneligibleFirstPage
+--- PASS: TestMatchPagesBeyondIneligibleFirstPage (0.10s)
+=== RUN   TestMatchPartialScanNeverCommitsNoCandidate
+--- PASS: TestMatchPartialScanNeverCommitsNoCandidate (0.11s)
+=== RUN   TestMatchEmptyHintScanRequiresAuthoritativeFallback
+--- PASS: TestMatchEmptyHintScanRequiresAuthoritativeFallback (0.16s)
+=== RUN   TestMatchNoCandidateHasCommittedRetryHandoff
+--- PASS: TestMatchNoCandidateHasCommittedRetryHandoff (0.07s)
+=== RUN   TestMatchClaimsOnlyAfterCommittedBoundIntent
+--- PASS: TestMatchClaimsOnlyAfterCommittedBoundIntent (0.09s)
+=== RUN   TestMatchLaterPageFailureLeavesPendingWithoutHandoff
+--- PASS: TestMatchLaterPageFailureLeavesPendingWithoutHandoff (0.08s)
+=== RUN   TestMatchClaimCommandSurvivesRetryWorkflowUpdatedAtChange
+--- PASS: TestMatchClaimCommandSurvivesRetryWorkflowUpdatedAtChange (0.10s)
+=== RUN   TestMatchConcurrentIntentCASLoserNeverClaims
+--- PASS: TestMatchConcurrentIntentCASLoserNeverClaims (0.10s)
+=== RUN   TestMatchUnknownClaimRetainsIntentAndRetriesIdenticalCommandAfterRestart
+--- PASS: TestMatchUnknownClaimRetainsIntentAndRetriesIdenticalCommandAfterRestart (0.10s)
+=== RUN   TestMatchDroppedIntentCASResponseUsesCommittedIntent
+--- PASS: TestMatchDroppedIntentCASResponseUsesCommittedIntent (0.10s)
+=== RUN   TestMatchRetargetRequiresClosureForExactOldAttempt
+=== RUN   TestMatchRetargetRequiresClosureForExactOldAttempt/held
+=== RUN   TestMatchRetargetRequiresClosureForExactOldAttempt/offline
+=== RUN   TestMatchRetargetRequiresClosureForExactOldAttempt/closed
+--- PASS: TestMatchRetargetRequiresClosureForExactOldAttempt (0.34s)
+    --- PASS: TestMatchRetargetRequiresClosureForExactOldAttempt/held (0.11s)
+    --- PASS: TestMatchRetargetRequiresClosureForExactOldAttempt/offline (0.11s)
+    --- PASS: TestMatchRetargetRequiresClosureForExactOldAttempt/closed (0.11s)
+=== RUN   TestMatchHeldObservationWithUnknownClaimCannotRetarget
+--- PASS: TestMatchHeldObservationWithUnknownClaimCannotRetarget (0.08s)
+=== RUN   TestMatchDelayedClaimAfterClosureIsClosed
+--- PASS: TestMatchDelayedClaimAfterClosureIsClosed (0.12s)
+=== RUN   TestMatchHistoricalSuccessAfterCancellationCannotConfirm
+--- PASS: TestMatchHistoricalSuccessAfterCancellationCannotConfirm (0.10s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	7.005s
+A1.2 VERIFY: ALL PASS

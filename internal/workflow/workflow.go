@@ -50,7 +50,8 @@ type Matcher struct {
 // Result describes committed progress, not permission to acknowledge an error.
 // NO_CANDIDATE includes a durable retry handoff. DEFERRED is an existing future
 // schedule. Cleanup returns CANCELLED/FULFILLED only after its exact closure;
-// RETRYING and unresolved operations return an error instead.
+// RETRY_SCHEDULED includes an atomic due-time/outbox handoff; unresolved work
+// returns an error with its intent intact.
 type Result struct {
 	Outcome       string
 	ResourceID    string
@@ -131,6 +132,12 @@ func (m *Matcher) Match(ctx context.Context, requestID string) (Result, error) {
 	}
 	if rec.Request == nil {
 		return Result{}, fmt.Errorf("workflow: %s is not a request", rec.Key)
+	}
+	if workState(rec.Request.Status) && rec.Request.NextAttemptAt > m.cfg.Now().UnixMilli() {
+		return Result{Outcome: "DEFERRED", NextAttemptAt: rec.Request.NextAttemptAt}, nil
+	}
+	if rec.Request.Status == store.RequestRetrying {
+		return m.retrying(ctx, rec)
 	}
 	if rec.Request.Status == store.RequestCancelling || rec.Request.Status == store.RequestFulfilling {
 		return m.cleanup(ctx, rec)
@@ -315,8 +322,25 @@ func (m *Matcher) propose(ctx context.Context, rec store.Record) (store.Record, 
 		return rec, nil, err
 	}
 	if chosen == nil {
+		if rec.Request.Status == store.RequestWaiting {
+			// WAITING -> WAITING is not a domain transition. Preserve the state
+			// with an exact-version RetryWorkflow and its atomic retry outbox.
+			cmd, err := retryCommand(rec, at, "NO_CANDIDATE")
+			if err != nil {
+				return rec, nil, err
+			}
+			current, err := m.applyRetry(ctx, rec, cmd)
+			if err != nil {
+				return current, nil, err
+			}
+			if current.Request != nil && current.Request.Status == store.RequestWaiting && current.Version == rec.Version+1 && current.Request.NextAttemptAt == cmd.NextAttemptAt {
+				return current, &Result{Outcome: "NO_CANDIDATE", NextAttemptAt: cmd.NextAttemptAt}, nil
+			}
+			out, err := m.obsolete(current)
+			return current, &out, err
+		}
 		cmd := transition(rec, store.RequestWaiting, at)
-		cmd.NextAttemptAt = at + 5000
+		cmd.NextAttemptAt = at + retryDelay(rec.Request.RetryCount)
 		cmd.LastError = "NO_CANDIDATE"
 		cmd.OperationID = transitionID(cmd)
 		cmd.Outbox, err = events(rec, cmd, "request.retry", nil)

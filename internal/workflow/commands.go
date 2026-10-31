@@ -133,6 +133,11 @@ func events(rec store.Record, cmd store.TransitionRequest, eventType string, a *
 	exchange, route := "relief.events", eventType
 	if eventType == "request.retry" {
 		exchange, route = "relief.retry", "delay.5s"
+		if cmd.NextAttemptAt-cmd.At >= 120000 {
+			route = "delay.120s"
+		} else if cmd.NextAttemptAt-cmd.At >= 30000 {
+			route = "delay.30s"
+		}
 	}
 	return []store.OutboxEvent{{
 		EventID: eventID, EventType: eventType, SchemaVersion: 1,

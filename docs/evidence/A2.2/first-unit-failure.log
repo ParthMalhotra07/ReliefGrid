@@ -1,0 +1,139 @@
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/PENDING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/WAITING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/MATCHING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/RETRYING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/CANCELLING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/FULFILLING
+--- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates (0.41s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/PENDING (0.06s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/WAITING (0.06s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/MATCHING (0.07s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/RETRYING (0.07s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/CANCELLING (0.07s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/FULFILLING (0.08s)
+=== RUN   TestRetryUnknownClaimKeepsIntentAndExactCommand
+=== RUN   TestRetryUnknownClaimKeepsIntentAndExactCommand/before_commit
+=== RUN   TestRetryUnknownClaimKeepsIntentAndExactCommand/lost_response
+--- PASS: TestRetryUnknownClaimKeepsIntentAndExactCommand (0.17s)
+    --- PASS: TestRetryUnknownClaimKeepsIntentAndExactCommand/before_commit (0.08s)
+    --- PASS: TestRetryUnknownClaimKeepsIntentAndExactCommand/lost_response (0.09s)
+=== RUN   TestRetryRetargetFencesConfirmation
+=== RUN   TestRetryRetargetFencesConfirmation/confirmation_first
+=== RUN   TestRetryRetargetFencesConfirmation/RETRYING_first
+--- PASS: TestRetryRetargetFencesConfirmation (0.14s)
+    --- PASS: TestRetryRetargetFencesConfirmation/confirmation_first (0.07s)
+    --- PASS: TestRetryRetargetFencesConfirmation/RETRYING_first (0.08s)
+=== RUN   TestRetryUnknownClosureNeverClearsAttempt
+--- PASS: TestRetryUnknownClosureNeverClearsAttempt (0.07s)
+=== RUN   TestRetryDroppedScheduleResponseReplaysIdenticalCommand
+--- PASS: TestRetryDroppedScheduleResponseReplaysIdenticalCommand (0.05s)
+=== RUN   TestRetryBrokerDownLeavesIntentAndOutboxPending
+--- PASS: TestRetryBrokerDownLeavesIntentAndOutboxPending (0.07s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	1.963s
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirmed
+    retry_test.go:63: transport retry changed the durable hint: [{EventID:a1b2c3d4-e5f6-7890-abcd-ef1234567890 EventType:request.created SchemaVersion:1 Exchange:relief.retry RoutingKey:delay.5s Payload:{
+              "schemaVersion": 1,
+              "eventId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "entityId": "550e8400-e29b-41d4-a716-446655440000",
+              "entityVersion": 1,
+              "eventType": "request.created",
+              "occurredAt": "2026-10-21T13:55:00Z",
+              "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+              "payload": {
+                "requestType": "MEDICINE",
+                "details": "Medical supplies requested at the north entrance.",
+                "peopleAffected": 4,
+                "urgency": "HIGH",
+                "location": {
+                  "lat": 28.6139,
+                  "lng": 77.209
+                },
+                "requestId": "550e8400-e29b-41d4-a716-446655440000",
+                "status": "PENDING"
+              }
+            } EntityKey: EntityVersion:0 CreatedAt:0 Published:false}]
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_mandatory_publish_returned
+    retry_test.go:63: transport retry changed the durable hint: [{EventID:a1b2c3d4-e5f6-7890-abcd-ef1234567890 EventType:request.created SchemaVersion:1 Exchange:relief.retry RoutingKey:delay.5s Payload:{
+              "schemaVersion": 1,
+              "eventId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "entityId": "550e8400-e29b-41d4-a716-446655440000",
+              "entityVersion": 1,
+              "eventType": "request.created",
+              "occurredAt": "2026-10-21T13:55:00Z",
+              "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+              "payload": {
+                "requestType": "MEDICINE",
+                "details": "Medical supplies requested at the north entrance.",
+                "peopleAffected": 4,
+                "urgency": "HIGH",
+                "location": {
+                  "lat": 28.6139,
+                  "lng": 77.209
+                },
+                "requestId": "550e8400-e29b-41d4-a716-446655440000",
+                "status": "PENDING"
+              }
+            } EntityKey: EntityVersion:0 CreatedAt:0 Published:false}]
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_publisher_confirm_rejected
+    retry_test.go:63: transport retry changed the durable hint: [{EventID:a1b2c3d4-e5f6-7890-abcd-ef1234567890 EventType:request.created SchemaVersion:1 Exchange:relief.retry RoutingKey:delay.5s Payload:{
+              "schemaVersion": 1,
+              "eventId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "entityId": "550e8400-e29b-41d4-a716-446655440000",
+              "entityVersion": 1,
+              "eventType": "request.created",
+              "occurredAt": "2026-10-21T13:55:00Z",
+              "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+              "payload": {
+                "requestType": "MEDICINE",
+                "details": "Medical supplies requested at the north entrance.",
+                "peopleAffected": 4,
+                "urgency": "HIGH",
+                "location": {
+                  "lat": 28.6139,
+                  "lng": 77.209
+                },
+                "requestId": "550e8400-e29b-41d4-a716-446655440000",
+                "status": "PENDING"
+              }
+            } EntityKey: EntityVersion:0 CreatedAt:0 Published:false}]
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirm_lost
+    retry_test.go:63: transport retry changed the durable hint: [{EventID:a1b2c3d4-e5f6-7890-abcd-ef1234567890 EventType:request.created SchemaVersion:1 Exchange:relief.retry RoutingKey:delay.5s Payload:{
+              "schemaVersion": 1,
+              "eventId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+              "entityId": "550e8400-e29b-41d4-a716-446655440000",
+              "entityVersion": 1,
+              "eventType": "request.created",
+              "occurredAt": "2026-10-21T13:55:00Z",
+              "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+              "payload": {
+                "requestType": "MEDICINE",
+                "details": "Medical supplies requested at the north entrance.",
+                "peopleAffected": 4,
+                "urgency": "HIGH",
+                "location": {
+                  "lat": 28.6139,
+                  "lng": 77.209
+                },
+                "requestId": "550e8400-e29b-41d4-a716-446655440000",
+                "status": "PENDING"
+              }
+            } EntityKey: EntityVersion:0 CreatedAt:0 Published:false}]
+--- FAIL: TestRetryTransportConfirmsBeforeAckAndKeepsPayload (0.19s)
+    --- FAIL: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirmed (0.05s)
+    --- FAIL: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_mandatory_publish_returned (0.04s)
+    --- FAIL: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_publisher_confirm_rejected (0.05s)
+    --- FAIL: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirm_lost (0.05s)
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/poison
+2026/10/31 08:39:42 WARN rejected malformed matching event messageId="" error="invalid character 'p' looking for beginning of value"
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/absent
+2026/10/31 08:39:42 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+--- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence (0.09s)
+    --- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/poison (0.04s)
+    --- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/absent (0.04s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.326s
+FAIL
