@@ -43,15 +43,18 @@ func (s *dnsStreamLayer) Dial(address raft.ServerAddress, timeout time.Duration)
 	return d.DialContext(ctx, "tcp", string(address))
 }
 
-// newDNSTransport listens on bind and advertises advertise. A port of 0 in
-// advertise is replaced with the bound port.
-func newDNSTransport(bind, advertise string, logger hclog.Logger) (*raft.NetworkTransport, error) {
+// newDNSTransport listens on bind through listen (net.ListenConfig.Listen if
+// nil) and advertises advertise. A port of 0 in advertise is replaced with the
+// bound port.
+func newDNSTransport(bind, advertise string, listen func(ctx context.Context, network, address string) (net.Listener, error), logger hclog.Logger) (*raft.NetworkTransport, error) {
 	host, port, err := net.SplitHostPort(advertise)
 	if err != nil || host == "" {
 		return nil, fmt.Errorf("raftstore: advertise address %q must be host:port", advertise)
 	}
-	var lc net.ListenConfig
-	ln, err := lc.Listen(context.Background(), "tcp", bind)
+	if listen == nil {
+		listen = (&net.ListenConfig{}).Listen
+	}
+	ln, err := listen(context.Background(), "tcp", bind)
 	if err != nil {
 		return nil, fmt.Errorf("raftstore: listen %s: %w", bind, err)
 	}

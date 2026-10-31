@@ -223,7 +223,7 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 		return nil, err
 	}
 	n.sm.beforeSwap = cfg.beforeRestoreSwap
-	nt, err := newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, logger.Named("transport"))
+	nt, err := newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, cfg.listen, logger.Named("transport"))
 	if err != nil {
 		return nil, err
 	}

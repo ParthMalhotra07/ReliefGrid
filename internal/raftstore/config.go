@@ -3,6 +3,7 @@ package raftstore
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -99,6 +100,10 @@ type Config struct {
 	// afterSend, tests only, runs after an outgoing RPC has succeeded and
 	// before Raft sees the response; blocking in it delays the response.
 	afterSend func(target raft.ServerAddress, req any)
+	// listen, tests only, opens the Raft listener in place of
+	// net.ListenConfig.Listen, so a test can keep a stopped node's port
+	// reserved for its restart (issue #58).
+	listen func(ctx context.Context, network, address string) (net.Listener, error)
 }
 
 // raftConfig builds the library config for this node from the profile.

@@ -15,19 +15,6 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
-// freePort reserves a loopback port and releases it, for a node whose Raft
-// address must be known before it listens.
-func freePort(t *testing.T) string {
-	t.Helper()
-	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, port, _ := net.SplitHostPort(ln.Addr().String())
-	_ = ln.Close()
-	return port
-}
-
 func listening(addr string) bool {
 	c, err := (&net.Dialer{Timeout: 200 * time.Millisecond}).DialContext(context.Background(), "tcp", addr)
 	if err != nil {
@@ -63,11 +50,12 @@ func ids(servers []raft.Server) []raft.ServerID {
 // the same incarnation waits again on the next start.
 func TestOpenWaitsForAdmissionBeforeTransport(t *testing.T) {
 	root := t.TempDir()
-	port := freePort(t)
+	port, listen := reservePort(t)
 	cfg := Config{
 		PodName: "storage-1-0", GroupID: "shard-1", Shard: 1,
 		DataDir: root + "/pvc", FSMDir: root + "/emptydir",
 		BindAddr: "127.0.0.1:" + port, AdvertiseAddr: "localhost:" + port, Profile: testProfile,
+		listen: listen,
 	}
 	type admitCall struct {
 		id       Identity
