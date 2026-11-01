@@ -1,0 +1,199 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+0 issues.
+golangci-lint run --build-tags chaos ./cmd/invcheck/...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/admission	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/obs	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	24.259s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
+go test -race -tags chaos ./cmd/invcheck/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a14-refresh'
+bash scripts/verify-A1.3.sh
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	1.767s
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+=== RUN   TestConsumerReadsCurrentStateBeforeDurableHandlerAndAck
+--- PASS: TestConsumerReadsCurrentStateBeforeDurableHandlerAndAck (0.07s)
+=== RUN   TestConsumerDropsStaleHintAfterReadingTerminalState
+--- PASS: TestConsumerDropsStaleHintAfterReadingTerminalState (0.06s)
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/handoff
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/read
+--- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead (0.08s)
+    --- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/handoff (0.04s)
+    --- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/read (0.04s)
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/not-json
+2026/10/31 07:12:21 WARN rejected malformed matching event messageId="" error="invalid character 'o' in literal null (expecting 'u')"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{}
+2026/10/31 07:12:21 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":99}
+2026/10/31 07:12:21 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/null
+2026/10/31 07:12:21 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":1,"eventId":"not-a-uuid"}
+2026/10/31 07:12:21 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+--- PASS: TestConsumerMalformedEventsRejectWithoutRequeue (0.19s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/not-json (0.04s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{} (0.04s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":99} (0.04s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/null (0.04s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":1,"eventId":"not-a-uuid"} (0.04s)
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found
+2026/10/31 07:12:21 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found
+2026/10/31 07:12:21 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted
+2026/10/31 07:12:21 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+--- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue (0.13s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found (0.04s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found (0.04s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted (0.04s)
+=== RUN   TestConsumerSurfacesPermanentAbsenceRejectFailure
+--- PASS: TestConsumerSurfacesPermanentAbsenceRejectFailure (0.05s)
+=== RUN   TestConsumerSurfacesAcknowledgementFailure
+--- PASS: TestConsumerSurfacesAcknowledgementFailure (0.06s)
+=== RUN   TestConsumerAcceptsRealWorkflowRetryEnvelope
+--- PASS: TestConsumerAcceptsRealWorkflowRetryEnvelope (0.07s)
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case
+2026/10/31 07:12:22 WARN rejected malformed matching event messageId="" error="event property entityId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case
+2026/10/31 07:12:22 WARN rejected malformed matching event messageId="" error="event property requestId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity
+2026/10/31 07:12:22 WARN rejected malformed matching event messageId="" error="duplicate event property \"entityId\""
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document
+2026/10/31 07:12:22 WARN rejected malformed matching event messageId="" error="trailing event JSON"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property
+2026/10/31 07:12:22 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload
+2026/10/31 07:12:22 WARN rejected malformed matching event messageId="" error="request.created schema: jsonschema validation failed with 'https://reliefgrid.internal/events/request_created.json#'\n- at '/payload/requestType': value must be one of 'WATER', 'FOOD', 'MEDICINE', 'TRANSPORTATION', 'SHELTER'"
+--- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties (0.06s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload (0.00s)
+=== RUN   TestIntegrationRetryTTLDeadLetterRoutePreservesPriority
+    integration_test.go:54: TTL -> relief.requests/request.retry -> matching.requests; priority=3; reason=expired
+--- PASS: TestIntegrationRetryTTLDeadLetterRoutePreservesPriority (5.62s)
+=== RUN   TestIntegrationMalformedDeliveryReachesMatchingDead
+2026/10/31 07:12:27 WARN rejected malformed matching event messageId=aad5ed3d-df58-450e-a284-4c57c0d0c8b6 error="invalid character 'm' looking for beginning of value"
+    integration_test.go:103: malformed -> reject(requeue=false) -> relief.dlx -> matching.dead
+--- PASS: TestIntegrationMalformedDeliveryReachesMatchingDead (0.35s)
+=== RUN   TestIntegrationMissingRequestDeadLettersWithoutRestart
+2026/10/31 07:12:28 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+    integration_test.go:139: missing request -> one reject(requeue=false) -> matching.dead; no consumer restart
+--- PASS: TestIntegrationMissingRequestDeadLettersWithoutRestart (0.32s)
+=== RUN   TestIntegrationDomainEventsRouteToDurableWakeups
+    integration_test.go:161: all three relief.events patterns: mandatory routed confirm -> durable quorum matching.wakeups
+--- PASS: TestIntegrationDomainEventsRouteToDurableWakeups (0.90s)
+=== RUN   TestIntegrationManualAckPrefetchAndInterruptedHandoff
+    integration_test.go:238: prefetch=8; manual ack=true; interrupted handoff redelivered
+--- PASS: TestIntegrationManualAckPrefetchAndInterruptedHandoff (5.00s)
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"NORMAL"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"HIGH"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"CRITICAL"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":1}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":3}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":0}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":4}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2.5}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"urgent"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":null}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/not-json
+--- PASS: TestEventPriorityPreservesPublicAndRetryUrgency (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"NORMAL"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"HIGH"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"CRITICAL"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":1}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":3}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":0}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":4}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2.5}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"urgent"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":null}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/not-json (0.00s)
+=== RUN   TestEmbeddedCreatedSchemaMatchesFrozenContract
+--- PASS: TestEmbeddedCreatedSchemaMatchesFrozenContract (0.00s)
+=== RUN   TestTopologyDefinitionsAndHelmStayIdentical
+--- PASS: TestTopologyDefinitionsAndHelmStayIdentical (0.00s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	14.012s
+A1.3 VERIFY: ALL PASS
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a14-refresh'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a14-refresh'
+bash scripts/verify-A1.4.sh
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	1.991s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	1.813s
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	[no test files]
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+=== RUN   TestRelayThroughCoordinatorClientUsesStrongWaitAndShardBatch
+--- PASS: TestRelayThroughCoordinatorClientUsesStrongWaitAndShardBatch (0.09s)
+=== RUN   TestIntegrationUnroutableConfirmNeverMarksAndNextPublishSucceeds
+    integration_test.go:57: mandatory return + broker ack leaves row pending; same session routes retry; only routed confirm marks
+--- PASS: TestIntegrationUnroutableConfirmNeverMarksAndNextPublishSucceeds (0.82s)
+=== RUN   TestIntegrationBrokerStopsMidBatchAndPendingRowsRecover
+    integration_test.go:121: broker stopped after first routed confirm: marked=1 pending=2; after restart marked=2 received=3 persistent
+--- PASS: TestIntegrationBrokerStopsMidBatchAndPendingRowsRecover (7.20s)
+=== RUN   TestIntegrationCrashAfterConfirmsReplaysWithoutRepeatingDurableWorkflow
+    integration_test.go:191: confirm-before-mark process loss: 3 events replayed as 6 deliveries, 3 durable retry handoffs, retryCount=1 each
+--- PASS: TestIntegrationCrashAfterConfirmsReplaysWithoutRepeatingDurableWorkflow (0.45s)
+=== RUN   TestRelayMarksOnlyRoutedConfirmsAndContinuesPastReturns
+--- PASS: TestRelayMarksOnlyRoutedConfirmsAndContinuesPastReturns (0.06s)
+=== RUN   TestRelayTransportLossMarksOnlyEarlierConfirms
+--- PASS: TestRelayTransportLossMarksOnlyEarlierConfirms (0.05s)
+=== RUN   TestRelayRetriesExactMarkAfterCommittedResponseIsLost
+--- PASS: TestRelayRetriesExactMarkAfterCommittedResponseIsLost (0.05s)
+=== RUN   TestRelayReadsAreStrongBoundedLongPollsAndErrorsAreNotEmpty
+--- PASS: TestRelayReadsAreStrongBoundedLongPollsAndErrorsAreNotEmpty (0.03s)
+=== RUN   TestRelayBatchesAtMost100AndKeepsOwningShard
+--- PASS: TestRelayBatchesAtMost100AndKeepsOwningShard (0.40s)
+=== RUN   TestRelayCancelledStepDoesNotPublish
+--- PASS: TestRelayCancelledStepDoesNotPublish (0.04s)
+=== RUN   TestRelayWorkersPollIndependentlyAndCloseOnCancellation
+--- PASS: TestRelayWorkersPollIndependentlyAndCloseOnCancellation (0.03s)
+=== RUN   TestRelayMarkBatchesStayOnEachOfThreeOwningShards
+--- PASS: TestRelayMarkBatchesStayOnEachOfThreeOwningShards (0.14s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	10.427s
+A1.4 VERIFY: ALL PASS
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a14-refresh'

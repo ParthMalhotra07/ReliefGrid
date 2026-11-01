@@ -1,0 +1,10 @@
+=== RUN   TestRelayReplicasDeriveIdenticalCanonicalBatchCommands
+--- PASS: TestRelayReplicasDeriveIdenticalCanonicalBatchCommands (0.06s)
+=== RUN   TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows
+=== RUN   TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/nack
+=== RUN   TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/invalid_urgency
+--- PASS: TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows (0.13s)
+    --- PASS: TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/nack (0.06s)
+    --- PASS: TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/invalid_urgency (0.06s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	1.236s
