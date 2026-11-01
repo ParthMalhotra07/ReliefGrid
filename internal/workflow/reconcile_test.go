@@ -33,7 +33,7 @@ func TestRecoverOldMatchingClosesUnknownClaimBeforeClearingIntent(t *testing.T) 
 	if _, err = m.ScheduleRetry(ctx, "old", store.ErrUnknownOutcome); err != nil {
 		t.Fatal(err)
 	}
-	clock = clock.Add(6 * time.Second)
+	clock = clock.Add(time.Second)
 	if err = m.Recover(ctx, "old", 30*time.Second); err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestRecoverCannotAbandonANewerIntentAfterConcurrentRetarget(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := read(t, ctx, s, old.Key)
-	if got.Request.Status != store.RequestMatching || got.Request.CurrentAttempt == nil || *got.Request.CurrentAttempt != replacement {
+	if got.Version != old.Version+1 || got.Request.NextAttemptAt != 0 || got.Request.Status != store.RequestMatching || got.Request.CurrentAttempt == nil || *got.Request.CurrentAttempt != replacement {
 		t.Fatalf("newer intent was abandoned: %+v", got.Request)
 	}
 	if _, err := s.ReadClosure(ctx, store.ResourceKey("r2"), replacement.AttemptID); !errors.Is(err, store.ErrNotFound) {
@@ -185,4 +185,138 @@ func TestResourceWakeFutureHintCannotPostponeAuthoritativeWork(t *testing.T) {
 	if after.Request.NextAttemptAt > clock.UnixMilli()+1 {
 		t.Fatalf("untrusted event time postponed work: next=%d now=%d", after.Request.NextAttemptAt, clock.UnixMilli())
 	}
+}
+
+func TestConcurrentHelperDoesNotInvalidateWinningIntentWithRetryMetadata(t *testing.T) {
+	ctx, s := testStore(t)
+	createResource(t, ctx, s, resource("winner-resource", 0))
+	createRequest(t, ctx, s, request("winner-request"))
+	trace := &traceStore{Store: s}
+	winner, err := New(testConfig(s, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	loser, err := New(testConfig(trace, 2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var winning store.Record
+	trace.beforeTransition = func(ctx context.Context, cmd store.TransitionRequest) {
+		if cmd.To != store.RequestMatching {
+			return
+		}
+		trace.beforeTransition = nil
+		rec := read(t, ctx, s, cmd.Key)
+		var done *Result
+		var err error
+		winning, done, err = winner.propose(ctx, rec)
+		if err != nil || done != nil {
+			t.Fatalf("winning intent failed: %+v %v", done, err)
+		}
+	}
+	if err := loser.Handle(ctx, "winner-request"); err != nil {
+		t.Fatal(err)
+	}
+	current := read(t, ctx, s, store.RequestKey("winner-request"))
+	if winning.Request == nil || current.Version != winning.Version || current.Request.NextAttemptAt != 0 {
+		t.Fatalf("losing helper invalidated winner with retry metadata: winning v%d current %+v", winning.Version, current)
+	}
+	_, done, err := winner.resolve(ctx, winning)
+	if err != nil || done == nil || done.Outcome != "MATCHED" {
+		t.Fatalf("winning confirmation stalled: %+v %v", done, err)
+	}
+}
+
+func TestConcurrentMatchingHelperPreservesCommittedCleanupHandoff(t *testing.T) {
+	ctx, s := testStore(t)
+	createResource(t, ctx, s, resource("cancel-race-resource", 0))
+	createRequest(t, ctx, s, request("cancel-race"))
+	trace := &traceStore{Store: s}
+	m, err := New(testConfig(trace, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var committed store.Record
+	trace.afterClaim = func(ctx context.Context, _ store.TryClaim, r store.Result, err error) (store.Result, error) {
+		trace.afterClaim = nil
+		if err != nil {
+			return r, err
+		}
+		rec := read(t, ctx, s, store.RequestKey("cancel-race"))
+		cmd := transition(rec, store.RequestCancelling, testNow.UnixMilli())
+		cmd.OperationID = "concurrent-cancellation"
+		cmd.Disposition = store.ResourceAvailable
+		cmd.Outbox, err = cleanupEvent(rec, cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := s.TransitionRequest(ctx, cmd)
+		mustOutcome(t, result, err, store.OutcomeOK)
+		committed = read(t, ctx, s, rec.Key)
+		return r, nil
+	}
+	if err := m.Handle(ctx, "cancel-race"); err != nil {
+		t.Fatal(err)
+	}
+	current := read(t, ctx, s, committed.Key)
+	if current.Version != committed.Version || current.Request.NextAttemptAt != 0 {
+		t.Fatalf("obsolete matcher postponed cleanup: committed v%d current %+v", committed.Version, current)
+	}
+	if _, err := m.Cleanup(ctx, "cancel-race"); err != nil {
+		t.Fatal(err)
+	}
+	if rec := read(t, ctx, s, committed.Key); rec.Request.Status != store.RequestCancelled {
+		t.Fatal("committed cleanup did not converge")
+	}
+}
+
+func TestConcurrentHelperPreservesImmediateDurableWakeSchedule(t *testing.T) {
+	ctx, s := testStore(t)
+	createRequest(t, ctx, s, request("wake-race"))
+	clock := testNow
+	cfg := testConfig(s, 0)
+	cfg.Now = func() time.Time { return clock }
+	m, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.Match(ctx, "wake-race"); err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(6 * time.Second)
+	createResource(t, ctx, s, resource("wake-race-resource", 0))
+	trace := &traceStore{Store: s}
+	cfg.Store = trace
+	loser, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var scheduled store.Record
+	trace.beforeTransition = func(ctx context.Context, cmd store.TransitionRequest) {
+		if cmd.To != store.RequestMatching {
+			return
+		}
+		trace.beforeTransition = nil
+		rec := read(t, ctx, s, cmd.Key)
+		wake := store.RetryWorkflow{Meta: store.Meta{OperationID: "concurrent-durable-wake", At: clock.UnixMilli()}, Key: rec.Key, ExpectedVersion: rec.Version, NextAttemptAt: clock.UnixMilli() + 1, LastError: "RESOURCE_AVAILABLE"}
+		wake.Outbox, err = events(rec, store.TransitionRequest{Meta: wake.Meta, NextAttemptAt: wake.NextAttemptAt}, "request.retry", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := s.RetryWorkflow(ctx, wake)
+		mustOutcome(t, res, err, store.OutcomeOK)
+		scheduled = read(t, ctx, s, rec.Key)
+		clock = clock.Add(2 * time.Millisecond)
+	}
+	if err := loser.Handle(ctx, "wake-race"); err != nil {
+		t.Fatal(err)
+	}
+	current := read(t, ctx, s, scheduled.Key)
+	if current.Version != scheduled.Version || current.Request.NextAttemptAt != scheduled.Request.NextAttemptAt {
+		t.Fatal("losing helper postponed committed immediate wake")
+	}
+	if err := m.Handle(ctx, "wake-race"); err != nil {
+		t.Fatal(err)
+	}
+	matched(t, ctx, s, "wake-race")
 }

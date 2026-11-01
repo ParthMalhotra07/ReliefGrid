@@ -63,15 +63,10 @@ ports are used by default. Broker absence is a failure, never a skipped test.
 CI's existing make check invokes this verifier via the shared Makefile when
 GITHUB_ACTIONS=true. Unit tests alone need no broker.
 
-Limits: one durable broker is one failure domain, not broker-node redundancy.
-State-aware business retries are implemented in A2.2; the outbox relay is A1.4,
-and matcher process/Helm application integration remains A1.5. matching.wakeups
-retains domain events for the A2.4 resource-registration wakeup handler; that
-handler is not implemented here. This queue has the same bounded backpressure
-and dead-letter safety as matching.requests, with no expiry or discard consumer.
-SSE still needs its own per-API temporary subscribers in A4.1. Unknown routing
-keys remain unroutable and must stay in the outbox. Poison inspection/replay
-tooling and periodic due-work repair remain later work.
+Limits: one durable broker is one failure domain. A2.4 now consumes
+matching.wakeups in the existing matcher pods; SSE still needs its own per-API
+temporary subscribers in A4.1. Unknown routing keys remain unroutable and stay
+in the outbox.
 
 ## Confirmed delayed transport recovery [A2.2]
 
@@ -96,5 +91,30 @@ make verify-A2.2 runs unit fault cases plus live tests on the pinned broker.
 The new integration,a22 tag isolates the 25-hop acceptance test (at least 125s
 at the fixed 5s TTL) from A1.3's existing integration tests. The shared CI Makefile
 runs both verifiers. Existing integration tests retain their 30s budget; the new
-25-hop test has a measured-path 180s budget. This is transport recovery; periodic
-durable workflow scans and wakeup consumption still belong to A2.4.
+25-hop test has a measured-path 180s budget. This is transport recovery; A2.4 adds periodic durable scans and wakeup consumption.
+
+## Wakeups and controlled dead-letter replay [A2.4]
+
+WakeupConsumer validates frozen event schemas and payload/entity identity, then
+rereads authoritative state through its handler. It uses manual ack and prefetch
+8. It acknowledges only after the handler establishes a durable work handoff or
+a replacement is persistently published with a routed confirm. When that
+publisher is unavailable, it holds the original unacknowledged with bounded
+backoff instead of reconnecting repeatedly through the delivery limit.
+
+The seventh quorum queue, wakeup.retry.5s, adds a fixed 5-second TTL route from
+relief.retry/wakeup.delay.5s back to matching.wakeups through
+relief.events/reconcile.retry. Runtime and Helm import the same declaration;
+existing queue arguments, delivery-limit20 and the request retry tiers remain.
+The live verifier proves 25 transient failures and confirmed deferrals recover
+with business retryCount1. Invalid input is rejected to matching.dead; logs show
+its reason. A periodic queue-depth warning identifies pending poison work.
+
+Inspect without consuming: `go run ./cmd/matcher/replay` (AMQP_URL required).
+After inspecting and correcting an event, replay one exact head message with:
+`go run ./cmd/matcher/replay --confirm --replacement corrected.json
+--message-id UUID`. Replacement validation happens before fetching the dead
+message, preserves event identity and derives its queue from the event type.
+The original is acknowledged only after the corrected copy receives a routed
+confirm. A different head ID, malformed correction or failed publish leaves the
+original unacknowledged; there is no automatic replay loop or queue purge.

@@ -248,3 +248,50 @@ func TestResourceWakeUsesCurrentEligibilityAndOnlyNearbyCompatibleWaiters(t *tes
 		t.Fatal("old registration treated as current availability")
 	}
 }
+
+// A transport hint may be lost. The periodic worker must still inspect immutable
+// intent age even when newer retry metadata has a future due time.
+type unknownClaim struct{ store.Store }
+
+func (s unknownClaim) TryClaim(context.Context, store.TryClaim) (store.Result, error) {
+	return store.Result{}, store.ErrUnknownOutcome
+}
+func TestPeriodicRecoveryFencesOldIntentDespiteFutureRetry(t *testing.T) {
+	ctx, s, _ := fixture(t)
+	rid := id("future-old-resource")
+	resource := store.Resource{ID: rid, Type: store.TypeWater, Name: "synthetic", Location: store.Location{}, Geohash: "s000000", Status: store.ResourceAvailable, Reusable: true, AvailableFrom: now.Add(-time.Hour).UnixMilli(), AvailableUntil: now.Add(time.Hour).UnixMilli(), LocationRevision: 1}
+	result, err := s.CreateEntity(ctx, store.CreateEntity{Meta: store.Meta{OperationID: id("create-future-old-resource"), At: now.UnixMilli()}, Key: store.ResourceKey(rid), Resource: &resource})
+	must(t, result, err)
+	qid := request(t, ctx, s, "future-old-request")
+	clock := now
+	m, err := workflow.New(workflow.Config{Store: unknownClaim{Store: s}, Now: func() time.Time { return clock }, ScanLimit: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Match(ctx, qid); !errors.Is(err, store.ErrUnknownOutcome) {
+		t.Fatalf("claim fault: %v", err)
+	}
+	before := read(t, ctx, s, store.RequestKey(qid))
+	attempt := *before.Request.CurrentAttempt
+	clock = now.Add(70 * time.Second)
+	if _, err = m.ScheduleRetry(ctx, qid, store.ErrUnknownOutcome); err != nil {
+		t.Fatal(err)
+	}
+	scheduled := read(t, ctx, s, before.Key)
+	if scheduled.Request.NextAttemptAt <= clock.UnixMilli() {
+		t.Fatal("fixture must have a future schedule")
+	}
+	e, err := reconcile.New(reconcile.Config{Store: s, Matcher: m, Now: func() time.Time { return clock }, PageSize: 2, BatchSize: 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cycle(t, ctx, e)
+	got := read(t, ctx, s, before.Key)
+	if got.Request.Status != store.RequestWaiting || got.Request.CurrentAttempt != nil {
+		t.Fatalf("periodic scan hid old intent behind retry metadata: %+v", got.Request)
+	}
+	closure, err := s.ReadClosure(ctx, store.ResourceKey(rid), attempt.AttemptID)
+	if err != nil || closure.RequestID != qid {
+		t.Fatalf("old intent cleared without closure: %+v %v", closure, err)
+	}
+}

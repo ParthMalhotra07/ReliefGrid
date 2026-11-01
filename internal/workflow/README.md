@@ -96,7 +96,7 @@ validation and API protections. make check runs it in CI via the shared Makefile
 
 ## State-aware retries [A2.2]
 
-Production consumers call Handle, which performs Match and, after an unresolved
+Production consumers use the A2.4 recovery entry point (and Handle for a bounded matching step), which performs Match and, after an unresolved
 error, attempts an exact-version RetryWorkflow. This commits nextAttemptAt and
 request.retry together without changing status, intent or cleanup disposition.
 The first business retry uses 5s, the second 30s, and subsequent retries 120s.
@@ -121,3 +121,14 @@ and broad real-cluster crash schedules remain A2.3/A2.4.
 
 Run make verify-A2.2. docs/evidence/A2.2 records fault/barrier tests, live recovery
 after 25 transport failures, unroutable publishing, and a lost-confirm duplicate.
+
+## Periodic recovery and resource wakeups [A2.4]
+
+Recover uses the immutable intent timestamp to fence old MATCHING work through
+RETRYING and exact closure, even when recent retry metadata has a future due time.
+Its abandonment CAS uses the original read snapshot, preserving a newer intent.
+Known concurrent changes do not overwrite a committed schedule or complete
+matching/cleanup intent with retry metadata: that would invalidate the worker's
+conditional version and stall progress. Unknown mutations still require a durable
+retry handoff. Current persisted work is scheduling proof, never ownership proof.
+Resource wakeups only shorten WAITING schedules; Match rereads and claims normally.

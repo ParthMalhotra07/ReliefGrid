@@ -170,7 +170,8 @@ func (e *Engine) Step(ctx context.Context) (Report, error) {
 		if rec.Deleted || rec.Request == nil {
 			continue
 		}
-		if rec.Request.NextAttemptAt > e.cfg.Now().UnixMilli() {
+		// MATCHING age comes from immutable intent time, even during backoff.
+		if rec.Request.Status != store.RequestMatching && rec.Request.NextAttemptAt > e.cfg.Now().UnixMilli() {
 			continue
 		}
 		report.Attempted++

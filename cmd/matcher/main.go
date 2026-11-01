@@ -99,7 +99,7 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) err
 
 // A failed handoff remains unacked. Closing its dedicated connection requeues
 // it, and bounded reconnect backoff avoids a tight redelivery loop. Successful
-// retry handoffs are acknowledged; periodic reconciliation remains A2.4.
+// retry handoffs are acknowledged; periodic recovery runs independently.
 func consume(ctx context.Context, address string, c mq.Consumer, state *healthState) error {
 	return superviseConsumer(ctx, address, mq.MatchingQueue, c.Consume, state.consumerConnected.Store)
 }

@@ -26,9 +26,6 @@ func (m *Matcher) Recover(ctx context.Context, id string, staleAfter time.Durati
 	if rec.Request == nil {
 		return fmt.Errorf("workflow: recovery requires a request")
 	}
-	if workState(rec.Request.Status) && rec.Request.NextAttemptAt > m.cfg.Now().UnixMilli() {
-		return nil
-	}
 	if rec.Request.Status == store.RequestMatching && rec.Request.CurrentAttempt != nil {
 		at, err := claimTime(rec)
 		if err != nil {
@@ -39,14 +36,11 @@ func (m *Matcher) Recover(ctx context.Context, id string, staleAfter time.Durati
 			if err == nil {
 				return nil
 			}
-			if ctx.Err() != nil {
-				return err
-			}
-			if _, retryErr := m.ScheduleRetry(ctx, id, err); retryErr != nil {
-				return errors.Join(err, retryErr)
-			}
-			return nil
+			return m.handoffError(ctx, id, err)
 		}
+	}
+	if workState(rec.Request.Status) && rec.Request.NextAttemptAt > m.cfg.Now().UnixMilli() {
+		return nil
 	}
 	return m.Handle(ctx, id)
 }

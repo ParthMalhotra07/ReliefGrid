@@ -49,11 +49,35 @@ func (m *Matcher) Handle(ctx context.Context, requestID string) error {
 	if err == nil {
 		return nil
 	}
+	return m.handoffError(ctx, requestID, err)
+}
+
+func (m *Matcher) handoffError(ctx context.Context, requestID string, cause error) error {
 	if ctx.Err() != nil {
-		return err
+		return cause
 	}
-	if _, retryErr := m.ScheduleRetry(ctx, requestID, err); retryErr != nil {
-		return errors.Join(err, retryErr)
+	if (errors.Is(cause, ErrConcurrentChange) || errors.Is(cause, ErrNeedsRecovery)) && !errors.Is(cause, store.ErrUnknownOutcome) {
+		current, err := m.read(ctx, store.RequestKey(requestID))
+		if err == nil && current.Request != nil {
+			q := current.Request
+			// A committed schedule or recovery intent is already a durable handoff.
+			// A losing helper must not overwrite it and invalidate the helper that
+			// is confirming or completing that exact version. Unknown mutations
+			// deliberately do not take this path.
+			if workState(q.Status) && q.NextAttemptAt > 0 {
+				return nil
+			}
+			switch q.Status {
+			case store.RequestMatching, store.RequestRetrying, store.RequestCancelling, store.RequestFulfilling:
+				a := q.CurrentAttempt
+				if a != nil && a.AttemptID != "" && a.ResourceID != "" && a.Fingerprint != "" {
+					return nil
+				}
+			}
+		}
+	}
+	if _, err := m.ScheduleRetry(ctx, requestID, cause); err != nil {
+		return errors.Join(cause, err)
 	}
 	return nil
 }
