@@ -62,6 +62,9 @@ resources() {
 	echo
 }
 
+# trim_eof <file>: drop trailing blank lines (evidence is committed; git diff --check refuses them)
+trim_eof() { awk '{ l[NR] = $0 } END { n = NR; while (n > 0 && l[n] == "") n--; for (i = 1; i <= n; i++) print l[i] }' "$1" >"$1.tmp" && mv "$1.tmp" "$1"; }
+
 # run_one <name> <script> <seed> <flags...>: one report, its log and its exit code
 run_one() {
 	local name="$1" script="$2" seed="$3"
@@ -158,4 +161,5 @@ for r in "${RUNS[@]}"; do
 	log "$name: $(row "$name" | jq -r 'if .pass then "PASS" else "FAIL: \(.failures // [.reason] | join("; "))" end')"
 done
 resources "after the runs" >>"$OUT/resources.txt"
+trim_eof "$OUT/resources.txt"
 summarize

@@ -52,7 +52,7 @@ write_evidence() {
 		echo
 		echo "## resources"
 		cat "$SUITE_DIR/resources.txt" 2>/dev/null || echo "(not measured)"
-	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE"
+	} 2>&1 | sed 's/[[:space:]]*$//' | awk '{ l[NR] = $0 } END { n = NR; while (n > 0 && l[n] == "") n--; for (i = 1; i <= n; i++) print l[i] }' >"$EVIDENCE"
 	echo "evidence: $EVIDENCE ($result)"
 }
 
