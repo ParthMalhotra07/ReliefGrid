@@ -439,8 +439,8 @@ write_evidence_s43() {
 		echo "## checks"
 		cat "$tmp/s43"
 		echo
-		echo "## kubectl get networkpolicy storage-coordinator -o yaml (spec)"
-		kn get networkpolicy storage-coordinator -o jsonpath='{.spec}' 2>&1 | jq . 2>/dev/null || echo "(none)"
+		echo "## networkpolicy storage-coordinator .spec, as installed during step 5a"
+		cat "$tmp/s43-policy.json" 2>/dev/null
 		echo
 		echo "## probe pod output"
 		cat "$tmp/s43-probes" 2>/dev/null
@@ -730,19 +730,22 @@ if [ -z "$cnp" ]; then
 	fail "coordinator networkpolicy: rendered"
 else
 	pass "coordinator networkpolicy: rendered"
-	[ "$(q "$cnp" -c '.spec.podSelector.matchLabels')" = '{"app.kubernetes.io/component":"coordinator","app.kubernetes.io/name":"storage"}' ] &&
+	# Compared in canonical form (-S sorts keys; jq's sort orders objects by content): a
+	# rendered object's key order is Helm's, not ours.
+	[ "$(q "$cnp" -cS '.spec.podSelector.matchLabels')" = '{"app.kubernetes.io/component":"coordinator","app.kubernetes.io/name":"storage"}' ] &&
 		pass "coordinator networkpolicy: selects the coordinator pod" || fail "coordinator networkpolicy: selects the coordinator pod" "$(q "$cnp" -c .spec.podSelector)"
 	[ "$(q "$cnp" -c '.spec.policyTypes | sort')" = '["Egress","Ingress"]' ] &&
 		pass "coordinator networkpolicy: policyTypes Ingress and Egress" || fail "coordinator networkpolicy: policyTypes Ingress and Egress" "$(q "$cnp" -c .spec.policyTypes)"
 	[ "$(q "$cnp" -c '[.spec.ingress[].ports[]] | unique')" = '[{"port":8080,"protocol":"TCP"}]' ] &&
 		pass "coordinator networkpolicy: ingress only to 8080/TCP" || fail "coordinator networkpolicy: ingress only to 8080/TCP" "$(q "$cnp" -c '.spec.ingress')"
 	want='[{"podSelector":{"matchLabels":{"app.kubernetes.io/component":"storagenode","app.kubernetes.io/name":"storage"}}},{"podSelector":{"matchLabels":{"reliefgrid.io/chaos":"true"}}},{"podSelector":{"matchLabels":{"reliefgrid.io/coordinator-client":"true"}}},{"podSelector":{"matchLabels":{"reliefgrid.io/storage-operator":"true"}}}]'
-	[ "$(q "$cnp" -c '[.spec.ingress[].from[]] | sort_by(tostring)')" = "$want" ] &&
+	[ "$(q "$cnp" -cS '[.spec.ingress[].from[]] | sort')" = "$(jq -cS sort <<<"$want")" ] &&
 		pass "coordinator networkpolicy: ingress only from storage pods and pods labelled coordinator-client, chaos or storage-operator (this namespace)" ||
 		fail "coordinator networkpolicy: ingress only from storage pods and pods labelled coordinator-client, chaos or storage-operator (this namespace)" "$(q "$cnp" -c '[.spec.ingress[].from[]]')"
-	eg="$(q "$cnp" -c '[.spec.egress[] | {to, ports: (.ports | sort_by(tostring))}] | sort_by(tostring)')"
+	norm='[.[] | {to, ports: (.ports | sort)}] | sort'
+	eg="$(q "$cnp" -cS ".spec.egress | $norm")"
 	want='[{"to":[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"kube-system"}},"podSelector":{"matchLabels":{"k8s-app":"kube-dns"}}}],"ports":[{"port":53,"protocol":"TCP"},{"port":53,"protocol":"UDP"}]},{"to":[{"podSelector":{"matchLabels":{"app.kubernetes.io/component":"storagenode","app.kubernetes.io/name":"storage"}}}],"ports":[{"port":8080,"protocol":"TCP"}]}]'
-	[ "$eg" = "$want" ] && pass "coordinator networkpolicy: egress only to storage pods on 8080/TCP and kube-dns on 53" ||
+	[ "$eg" = "$(jq -cS "$norm" <<<"$want")" ] && pass "coordinator networkpolicy: egress only to storage pods on 8080/TCP and kube-dns on 53" ||
 		fail "coordinator networkpolicy: egress only to storage pods on 8080/TCP and kube-dns on 53" "$eg"
 fi
 s43_results=""
@@ -915,7 +918,13 @@ acked() { grep -Eq ': [1-9][0-9]* acknowledged, 0 unknown' "$1"; } # acked <log>
 nacked() { grep -Eo '[0-9]+ acknowledged' "$1" | head -1; }
 load_cmd() { echo /invcheck load --coordinator "$COORD_URL" --ledger /tmp/l.json --prefix "s43-$1-$(date +%s)" --workers 1 --keys 1 --ops 2 --retries 1 --timeout 45s; }
 csvc="${COORD_URL#http://}"
-if kn get networkpolicy storage-coordinator >/dev/null 2>&1; then pass "coordinator networkpolicy: installed"; else fail "coordinator networkpolicy: installed"; fi
+# The spec as installed now, for the evidence (later steps reinstall the release).
+if kn get networkpolicy storage-coordinator -o json 2>/dev/null | jq .spec >"$tmp/s43-policy.json" 2>/dev/null && [ -s "$tmp/s43-policy.json" ]; then
+	pass "coordinator networkpolicy: installed"
+else
+	echo "(not installed)" >"$tmp/s43-policy.json"
+	fail "coordinator networkpolicy: installed"
+fi
 cnp_run cnp-open "$IMAGE" "" /storagectl dial --addr "$csvc" --timeout 3s
 rc=$?
 [ "$rc" = 1 ] && pass "coordinator networkpolicy: an unlabelled pod cannot connect to $csvc" ||
