@@ -50,6 +50,24 @@ class ClientTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 app.require_complete(bad)
 
+    def test_burst_audit_restores_admission_workers_after_failure(self):
+        demo = app.Demo.__new__(app.Demo)
+        demo.release = 'reliefgrid'
+        demo.kube = lambda *args: json.dumps({'items': [
+            {'metadata': {'name': 'reliefgrid-matcher', 'labels': {'app.kubernetes.io/component': 'matcher'}}, 'spec': {'replicas': 2}},
+            {'metadata': {'name': 'reliefgrid-reconciler', 'labels': {'app.kubernetes.io/component': 'reconciler'}}, 'spec': {'replicas': 1}},
+        ]})
+        changes = []
+        demo.scale = lambda component, replicas: changes.append((component, replicas))
+        demo.check = lambda condition, text: self.assertTrue(condition, text)
+        def audit():
+            changes.append(('audit', 0))
+            raise RuntimeError('audit failed')
+        demo.invariants = audit
+        with self.assertRaisesRegex(RuntimeError, 'audit failed'):
+            demo.audit_without_admission()
+        self.assertEqual(changes, [('matcher', 0), ('reconciler', 0), ('audit', 0), ('matcher', 2), ('reconciler', 1)])
+
     def test_missing_broker_counters_are_unknown_not_empty(self):
         self.assertIsNone(app.queue_counts({'name': 'matching.requests'}))
         self.assertEqual(app.queue_counts({'messages_ready': 0, 'messages_unacknowledged': 0}), (0, 0))

@@ -294,6 +294,25 @@ class Demo:
         authorization = base64.b64encode((username + ':' + password).encode()).decode()
         return Client(os.environ['DEMO_BROKER_URL'], self.out, budget=300, auth='Basic ' + authorization)
 
+    def audit_without_admission(self):
+        # C13: stop new retries before the final audit. Unconsumed hints remain
+        # durable in RabbitMQ; no delivery is acked just to quiet the workload.
+        workloads = json.loads(self.kube('get', 'deployments', '-l', 'app.kubernetes.io/instance=' + self.release, '-o', 'json'))['items']
+        saved = {}
+        for workload in workloads:
+            component = workload['metadata'].get('labels', {}).get('app.kubernetes.io/component')
+            if component in ('matcher', 'reconciler'):
+                assert workload['metadata']['name'] == self.release + '-' + component
+                saved[component] = workload['spec']['replicas']
+        self.check('matcher' in saved, 'retry admission workers are identified before pausing')
+        try:
+            for component in saved:
+                self.scale(component, 0)
+            self.invariants()
+        finally:
+            for component, replicas in saved.items():
+                self.scale(component, replicas)
+
     def demo5(self):
         broker = self.broker()
         samples, errors, stopped = [], [], threading.Event()
@@ -329,7 +348,15 @@ class Demo:
             thread.join(timeout=6)
             self.save('queue-samples', samples)
         self.check(not thread.is_alive() and not errors, 'all broker samples completed without hidden observation errors: ' + repr(errors))
-        self.invariants()
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            pages = [self.coordinator.call('GET', f'/internal/outbox?shard={shard}&limit=100&consistency=strong', {200})[0] for shard in range(3)]
+            assert all(page['shard'] == shard and isinstance(page['events'], list) for shard, page in enumerate(pages)), pages
+            if all(not page['events'] for page in pages):
+                break
+            time.sleep(.25)
+        self.check(all(not page['events'] for page in pages), 'all shard outboxes drained before retry admission is paused')
+        self.audit_without_admission()
 
     def demo8(self):
         for component in ('api', 'matcher'):
