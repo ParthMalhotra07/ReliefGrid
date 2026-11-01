@@ -1,0 +1,7 @@
+{"method": "GET", "path": "/", "status": 200}
+{"method": "POST", "path": "/api/v1/requests", "status": 201}
+{"method": "POST", "path": "/api/v1/resources", "status": 201}
+{"method": "GET", "path": "/api/v1/requests/dc64d618-b70f-511d-8eeb-acd611ab6ba5", "status": 200}
+{"method": "GET", "path": "/api/v1/requests/dc64d618-b70f-511d-8eeb-acd611ab6ba5", "status": 200}
+{"method": "GET", "path": "/api/v1/resources?type=MEDICINE&limit=100", "status": 200}
+{"method": "POST", "path": "/api/v1/requests", "status": 201}

@@ -1,0 +1,737 @@
+LAST SEEN   TYPE      REASON                  OBJECT                                         MESSAGE
+83m         Normal    Scheduled               pod/storage-shard-0-2                          Successfully assigned reliefgrid/storage-shard-0-2 to reliefgrid-worker2
+83m         Normal    Scheduled               pod/reliefgrid-api-86f66b78fc-km6g7            Successfully assigned reliefgrid/reliefgrid-api-86f66b78fc-km6g7 to reliefgrid-worker2
+75m         Normal    Scheduled               pod/storage-shard-1-2                          Successfully assigned reliefgrid/storage-shard-1-2 to reliefgrid-worker
+83m         Normal    Scheduled               pod/storage-shard-1-2                          Successfully assigned reliefgrid/storage-shard-1-2 to reliefgrid-worker
+83m         Normal    Scheduled               pod/reliefgrid-matcher-77c798f5-tvc5q          Successfully assigned reliefgrid/reliefgrid-matcher-77c798f5-tvc5q to reliefgrid-worker
+30m         Normal    Scheduled               pod/storage-shard-1-1                          Successfully assigned reliefgrid/storage-shard-1-1 to reliefgrid-worker2
+83m         Normal    Scheduled               pod/reliefgrid-matcher-77c798f5-rh768          Successfully assigned reliefgrid/reliefgrid-matcher-77c798f5-rh768 to reliefgrid-worker2
+29m         Normal    Scheduled               pod/reliefgrid-matcher-c5477dbcf-dww5n         Successfully assigned reliefgrid/reliefgrid-matcher-c5477dbcf-dww5n to reliefgrid-worker2
+60m         Normal    Scheduled               pod/storage-shard-1-1                          Successfully assigned reliefgrid/storage-shard-1-1 to reliefgrid-worker2
+75m         Normal    Scheduled               pod/storage-shard-1-1                          Successfully assigned reliefgrid/storage-shard-1-1 to reliefgrid-worker2
+75m         Normal    Scheduled               pod/reliefgrid-matcher-6dc7dcf9f7-zvqvh        Successfully assigned reliefgrid/reliefgrid-matcher-6dc7dcf9f7-zvqvh to reliefgrid-worker3
+83m         Normal    Scheduled               pod/storage-shard-1-1                          Successfully assigned reliefgrid/storage-shard-1-1 to reliefgrid-worker2
+30m         Normal    Scheduled               pod/storage-shard-1-0                          Successfully assigned reliefgrid/storage-shard-1-0 to reliefgrid-worker3
+60m         Normal    Scheduled               pod/storage-shard-1-0                          Successfully assigned reliefgrid/storage-shard-1-0 to reliefgrid-worker3
+75m         Normal    Scheduled               pod/reliefgrid-matcher-6dc7dcf9f7-j8rrd        Successfully assigned reliefgrid/reliefgrid-matcher-6dc7dcf9f7-j8rrd to reliefgrid-worker2
+30m         Normal    Scheduled               pod/storage-shard-1-2                          Successfully assigned reliefgrid/storage-shard-1-2 to reliefgrid-worker
+75m         Normal    Scheduled               pod/storage-shard-0-1                          Successfully assigned reliefgrid/storage-shard-0-1 to reliefgrid-worker
+83m         Normal    Scheduled               pod/reliefgrid-rabbitmq-0                      Successfully assigned reliefgrid/reliefgrid-rabbitmq-0 to reliefgrid-worker4
+83m         Normal    Scheduled               pod/storage-shard-2-0                          Successfully assigned reliefgrid/storage-shard-2-0 to reliefgrid-worker2
+60m         Normal    Scheduled               pod/reliefgrid-matcher-65cc794d5b-scmgv        Successfully assigned reliefgrid/reliefgrid-matcher-65cc794d5b-scmgv to reliefgrid-worker
+75m         Normal    Scheduled               pod/storage-shard-2-0                          Successfully assigned reliefgrid/storage-shard-2-0 to reliefgrid-worker2
+30m         Normal    Scheduled               pod/reliefgrid-rabbitmq-0                      Successfully assigned reliefgrid/reliefgrid-rabbitmq-0 to reliefgrid-worker4
+60m         Normal    Scheduled               pod/reliefgrid-matcher-65cc794d5b-br9sq        Successfully assigned reliefgrid/reliefgrid-matcher-65cc794d5b-br9sq to reliefgrid-worker2
+75m         Normal    Scheduled               pod/storage-shard-1-0                          Successfully assigned reliefgrid/storage-shard-1-0 to reliefgrid-worker3
+60m         Normal    Scheduled               pod/storage-shard-2-0                          Successfully assigned reliefgrid/storage-shard-2-0 to reliefgrid-worker2
+83m         Normal    Scheduled               pod/storage-shard-1-0                          Successfully assigned reliefgrid/storage-shard-1-0 to reliefgrid-worker3
+30m         Normal    Scheduled               pod/storage-shard-2-0                          Successfully assigned reliefgrid/storage-shard-2-0 to reliefgrid-worker2
+30m         Normal    Scheduled               pod/reliefgrid-api-7888cd457c-6bm7k            Successfully assigned reliefgrid/reliefgrid-api-7888cd457c-6bm7k to reliefgrid-worker3
+60m         Normal    Scheduled               pod/reliefgrid-ui-644dcd99f9-r2kzf             Successfully assigned reliefgrid/reliefgrid-ui-644dcd99f9-r2kzf to reliefgrid-worker2
+30m         Normal    Scheduled               pod/storage-shard-0-2                          Successfully assigned reliefgrid/storage-shard-0-2 to reliefgrid-worker2
+60m         Normal    Scheduled               pod/storage-shard-0-2                          Successfully assigned reliefgrid/storage-shard-0-2 to reliefgrid-worker2
+30m         Normal    Scheduled               pod/reliefgrid-ui-6f95ff677b-smb9q             Successfully assigned reliefgrid/reliefgrid-ui-6f95ff677b-smb9q to reliefgrid-worker
+75m         Normal    Scheduled               pod/storage-shard-0-2                          Successfully assigned reliefgrid/storage-shard-0-2 to reliefgrid-worker2
+83m         Normal    Scheduled               pod/storage-shard-2-1                          Successfully assigned reliefgrid/storage-shard-2-1 to reliefgrid-worker
+30m         Normal    Scheduled               pod/reliefgrid-matcher-c5477dbcf-466vb         Successfully assigned reliefgrid/reliefgrid-matcher-c5477dbcf-466vb to reliefgrid-worker3
+83m         Normal    Scheduled               pod/storage-bootstrap-8-w555x                  Successfully assigned reliefgrid/storage-bootstrap-8-w555x to reliefgrid-worker
+83m         Normal    Scheduled               pod/reliefgrid-api-86f66b78fc-s8hql            Successfully assigned reliefgrid/reliefgrid-api-86f66b78fc-s8hql to reliefgrid-worker
+83m         Normal    Scheduled               pod/reliefgrid-ui-77947df6fb-bsf64             Successfully assigned reliefgrid/reliefgrid-ui-77947df6fb-bsf64 to reliefgrid-worker3
+75m         Normal    Scheduled               pod/storage-shard-2-1                          Successfully assigned reliefgrid/storage-shard-2-1 to reliefgrid-worker
+60m         Normal    Scheduled               pod/reliefgrid-api-77687968f4-xvnrp            Successfully assigned reliefgrid/reliefgrid-api-77687968f4-xvnrp to reliefgrid-worker2
+30m         Normal    Scheduled               pod/storage-shard-2-2                          Successfully assigned reliefgrid/storage-shard-2-2 to reliefgrid-worker3
+60m         Normal    Scheduled               pod/storage-shard-1-2                          Successfully assigned reliefgrid/storage-shard-1-2 to reliefgrid-worker
+75m         Normal    Scheduled               pod/storage-coordinator-9664dc6dc-rf5kq        Successfully assigned reliefgrid/storage-coordinator-9664dc6dc-rf5kq to reliefgrid-worker4
+75m         Normal    Scheduled               pod/reliefgrid-ui-78754c48cd-dll79             Successfully assigned reliefgrid/reliefgrid-ui-78754c48cd-dll79 to reliefgrid-worker
+60m         Normal    Scheduled               pod/storage-shard-2-1                          Successfully assigned reliefgrid/storage-shard-2-1 to reliefgrid-worker
+60m         Normal    Scheduled               pod/storage-shard-2-2                          Successfully assigned reliefgrid/storage-shard-2-2 to reliefgrid-worker3
+75m         Normal    Scheduled               pod/reliefgrid-api-65869b85c9-2htsw            Successfully assigned reliefgrid/reliefgrid-api-65869b85c9-2htsw to reliefgrid-worker
+30m         Normal    Scheduled               pod/storage-shard-0-1                          Successfully assigned reliefgrid/storage-shard-0-1 to reliefgrid-worker
+30m         Normal    Scheduled               pod/reliefgrid-api-7888cd457c-mqsgj            Successfully assigned reliefgrid/reliefgrid-api-7888cd457c-mqsgj to reliefgrid-worker
+83m         Normal    Scheduled               pod/storage-coordinator-6f8b6dbff7-79gcd       Successfully assigned reliefgrid/storage-coordinator-6f8b6dbff7-79gcd to reliefgrid-worker4
+83m         Normal    Scheduled               pod/storage-shard-0-0                          Successfully assigned reliefgrid/storage-shard-0-0 to reliefgrid-worker3
+75m         Normal    Scheduled               pod/reliefgrid-api-65869b85c9-57tlf            Successfully assigned reliefgrid/reliefgrid-api-65869b85c9-57tlf to reliefgrid-worker3
+60m         Normal    Scheduled               pod/storage-bootstrap-10-29ptd                 Successfully assigned reliefgrid/storage-bootstrap-10-29ptd to reliefgrid-worker2
+30m         Normal    Scheduled               pod/storage-bootstrap-11-c89kx                 Successfully assigned reliefgrid/storage-bootstrap-11-c89kx to reliefgrid-worker
+30m         Normal    Scheduled               pod/storage-shard-2-1                          Successfully assigned reliefgrid/storage-shard-2-1 to reliefgrid-worker
+83m         Normal    Scheduled               pod/storage-shard-2-2                          Successfully assigned reliefgrid/storage-shard-2-2 to reliefgrid-worker3
+75m         Normal    Scheduled               pod/storage-shard-0-0                          Successfully assigned reliefgrid/storage-shard-0-0 to reliefgrid-worker3
+30m         Normal    Scheduled               pod/storage-coordinator-69c49b5997-5gdht       Successfully assigned reliefgrid/storage-coordinator-69c49b5997-5gdht to reliefgrid-worker4
+60m         Normal    Scheduled               pod/storage-shard-0-0                          Successfully assigned reliefgrid/storage-shard-0-0 to reliefgrid-worker3
+30m         Normal    Scheduled               pod/storage-shard-0-0                          Successfully assigned reliefgrid/storage-shard-0-0 to reliefgrid-worker3
+60m         Normal    Scheduled               pod/reliefgrid-api-77687968f4-s2kxn            Successfully assigned reliefgrid/reliefgrid-api-77687968f4-s2kxn to reliefgrid-worker
+83m         Normal    Scheduled               pod/storage-shard-0-1                          Successfully assigned reliefgrid/storage-shard-0-1 to reliefgrid-worker
+60m         Normal    Scheduled               pod/storage-shard-0-1                          Successfully assigned reliefgrid/storage-shard-0-1 to reliefgrid-worker
+60m         Normal    Scheduled               pod/storage-coordinator-546b5769fb-x2p9q       Successfully assigned reliefgrid/storage-coordinator-546b5769fb-x2p9q to reliefgrid-worker4
+75m         Normal    Scheduled               pod/storage-bootstrap-9-dt9hc                  Successfully assigned reliefgrid/storage-bootstrap-9-dt9hc to reliefgrid-worker
+75m         Normal    Scheduled               pod/storage-shard-2-2                          Successfully assigned reliefgrid/storage-shard-2-2 to reliefgrid-worker3
+83m         Normal    NoPods                  poddisruptionbudget/storage-shard-2            No matching pods found
+83m         Normal    NoPods                  poddisruptionbudget/storage-shard-0            No matching pods found
+83m         Normal    NoPods                  poddisruptionbudget/storage-shard-1            No matching pods found
+83m         Normal    Started                 pod/reliefgrid-ui-77947df6fb-bsf64             Container started
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Claim data-storage-shard-0-2 Pod storage-shard-0-2 in StatefulSet storage-shard-0 success
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-1-1   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-1-1"
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Claim data-storage-shard-1-2 Pod storage-shard-1-2 in StatefulSet storage-shard-1 success
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-0-0   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-0-0"
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Claim data-storage-shard-1-0 Pod storage-shard-1-0 in StatefulSet storage-shard-1 success
+83m         Normal    SuccessfulCreate        job/storage-bootstrap-8                        Created pod: storage-bootstrap-8-w555x
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-1-2   waiting for first consumer to be created before binding
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-1-2   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-1-2"
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-1-1   waiting for first consumer to be created before binding
+83m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-77c798f5         Created pod: reliefgrid-matcher-77c798f5-rh768
+83m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-77c798f5         Created pod: reliefgrid-matcher-77c798f5-tvc5q
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-2-0   waiting for first consumer to be created before binding
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-1-0   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-1-0"
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-0-1   waiting for first consumer to be created before binding
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Claim data-storage-shard-1-1 Pod storage-shard-1-1 in StatefulSet storage-shard-1 success
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Claim data-storage-shard-0-1 Pod storage-shard-0-1 in StatefulSet storage-shard-0 success
+83m         Normal    Pulled                  pod/storage-coordinator-6f8b6dbff7-79gcd       Container image "reliefgrid/coordinator:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Created                 pod/storage-coordinator-6f8b6dbff7-79gcd       Container created
+83m         Normal    Started                 pod/storage-coordinator-6f8b6dbff7-79gcd       Container started
+83m         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled up replica set reliefgrid-ui-77947df6fb from 0 to 1
+83m         Normal    SuccessfulCreate        replicaset/storage-coordinator-6f8b6dbff7      Created pod: storage-coordinator-6f8b6dbff7-79gcd
+83m         Normal    SuccessfulCreate        replicaset/reliefgrid-ui-77947df6fb            Created pod: reliefgrid-ui-77947df6fb-bsf64
+83m         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled up replica set storage-coordinator-6f8b6dbff7 from 0 to 1
+83m         Normal    Created                 pod/reliefgrid-ui-77947df6fb-bsf64             Container created
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Claim data-storage-shard-2-0 Pod storage-shard-2-0 in StatefulSet storage-shard-2 success
+83m         Normal    Pulled                  pod/reliefgrid-ui-77947df6fb-bsf64             Container image "reliefgrid/ui:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Claim data-storage-shard-2-1 Pod storage-shard-2-1 in StatefulSet storage-shard-2 success
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Claim data-storage-shard-0-0 Pod storage-shard-0-0 in StatefulSet storage-shard-0 success
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-0-0   waiting for first consumer to be created before binding
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-0-2   waiting for first consumer to be created before binding
+83m         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Claim data-storage-shard-2-2 Pod storage-shard-2-2 in StatefulSet storage-shard-2 success
+83m         Normal    Killing                 pod/reliefgrid-rabbitmq-0                      Stopping container rabbitmq
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-2-1   waiting for first consumer to be created before binding
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-1-0   waiting for first consumer to be created before binding
+83m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-86f66b78fc from 0 to 2
+83m         Normal    WaitForFirstConsumer    persistentvolumeclaim/data-storage-shard-2-2   waiting for first consumer to be created before binding
+83m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-77c798f5 from 0 to 2
+83m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-86f66b78fc           Created pod: reliefgrid-api-86f66b78fc-km6g7
+83m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-86f66b78fc           Created pod: reliefgrid-api-86f66b78fc-s8hql
+83m         Normal    Pulled                  pod/reliefgrid-api-86f66b78fc-km6g7            Container image "reliefgrid/api:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Started                 pod/reliefgrid-api-86f66b78fc-s8hql            Container started
+83m         Normal    Created                 pod/storage-bootstrap-8-w555x                  Container created
+83m         Normal    Pulled                  pod/reliefgrid-api-86f66b78fc-s8hql            Container image "reliefgrid/api:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Pulled                  pod/storage-bootstrap-8-w555x                  Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Created                 pod/reliefgrid-api-86f66b78fc-s8hql            Container created
+83m         Normal    Started                 pod/storage-bootstrap-8-w555x                  Container started
+83m         Normal    Started                 pod/reliefgrid-api-86f66b78fc-km6g7            Container started
+83m         Normal    Created                 pod/reliefgrid-api-86f66b78fc-km6g7            Container created
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-2-1   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Warning   Unhealthy               pod/reliefgrid-matcher-77c798f5-tvc5q          Startup probe failed: Get "http://10.244.2.2:8081/healthz": dial tcp 10.244.2.2:8081: connect: connection refused
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-1-0   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-0-2   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-1-1   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Warning   Unhealthy               pod/reliefgrid-matcher-77c798f5-rh768          Startup probe failed: Get "http://10.244.3.3:8081/healthz": dial tcp 10.244.3.3:8081: connect: connection refused
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-0-1   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-0-0   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-2-0   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-2-2   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Normal    ExternalProvisioning    persistentvolumeclaim/data-storage-shard-1-2   Waiting for a volume to be created either by the external provisioner 'rancher.io/local-path' or manually by the system administrator. If volume creation is delayed, please verify that the provisioner is running and correctly registered.
+83m         Normal    Pulled                  pod/reliefgrid-rabbitmq-0                      Container image "rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e" already present on machine and can be accessed by the pod
+83m         Normal    Created                 pod/reliefgrid-rabbitmq-0                      Container created
+83m         Normal    Started                 pod/reliefgrid-rabbitmq-0                      Container started
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-2-0   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-2-0"
+83m         Normal    Created                 pod/storage-shard-1-2                          Container created
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-1-2   Successfully provisioned volume pvc-e4fd5fe9-ba8f-4bac-b003-a8f905e80212
+83m         Normal    Pulled                  pod/storage-shard-1-2                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Started                 pod/storage-shard-1-2                          Container started
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-1-1   Successfully provisioned volume pvc-3d298316-88fc-4a6f-bfb4-8fd8c6404cf6
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-1-0   Successfully provisioned volume pvc-89826b24-9a51-4004-bbd6-39ceca744236
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-0-0   Successfully provisioned volume pvc-261d94ce-255f-4bfb-924a-e79fedcbad91
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-0-1   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-0-1"
+83m         Normal    Started                 pod/storage-shard-1-1                          Container started
+83m         Normal    Created                 pod/storage-shard-1-1                          Container created
+83m         Normal    Pulled                  pod/storage-shard-1-1                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Pulled                  pod/storage-shard-1-0                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-2-2   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-2-2"
+83m         Normal    Created                 pod/storage-shard-0-0                          Container created
+83m         Normal    Pulled                  pod/storage-shard-0-0                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Created                 pod/storage-shard-1-0                          Container created
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-0-2   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-0-2"
+83m         Normal    Started                 pod/storage-shard-1-0                          Container started
+83m         Normal    Started                 pod/storage-shard-0-0                          Container started
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-2-0   Successfully provisioned volume pvc-0f2c65ff-d4c3-4415-8cc3-69c9947e0323
+83m         Normal    Created                 pod/storage-shard-2-0                          Container created
+83m         Normal    Provisioning            persistentvolumeclaim/data-storage-shard-2-1   External provisioner is provisioning volume for claim "reliefgrid/data-storage-shard-2-1"
+83m         Normal    Pulled                  pod/storage-shard-2-0                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Started                 pod/storage-shard-2-0                          Container started
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-0-1   Successfully provisioned volume pvc-b1aca338-9111-44b8-848c-314ba4e570e4
+83m         Normal    Created                 pod/storage-shard-0-1                          Container created
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-0-2   Successfully provisioned volume pvc-c196784e-94a4-4ad0-8fa6-c2824b462afa
+83m         Normal    Pulled                  pod/storage-shard-0-1                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Created                 pod/storage-shard-2-2                          Container created
+83m         Normal    Pulled                  pod/storage-shard-0-2                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-2-2   Successfully provisioned volume pvc-e88384b6-375c-4399-9172-f1fd910c2553
+83m         Normal    Pulled                  pod/storage-shard-2-2                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Created                 pod/storage-shard-0-2                          Container created
+83m         Normal    Started                 pod/storage-shard-0-1                          Container started
+83m         Normal    Created                 pod/storage-shard-2-1                          Container created
+83m         Normal    Started                 pod/storage-shard-2-2                          Container started
+83m         Normal    ProvisioningSucceeded   persistentvolumeclaim/data-storage-shard-2-1   Successfully provisioned volume pvc-9d8f9a36-0285-4e8e-b1a4-2fc03e02c1c7
+83m         Normal    Pulled                  pod/storage-shard-2-1                          Container image "reliefgrid/storagenode:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Started                 pod/storage-shard-0-2                          Container started
+83m         Normal    Started                 pod/storage-shard-2-1                          Container started
+83m         Warning   Unhealthy               pod/storage-shard-1-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+83m         Warning   Unhealthy               pod/storage-shard-0-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+83m         Warning   BackOff                 pod/reliefgrid-matcher-77c798f5-tvc5q          Back-off restarting failed container matcher in pod reliefgrid-matcher-77c798f5-tvc5q_reliefgrid(75a75f0a-7864-48ba-80aa-35991c95e075)
+83m         Warning   BackOff                 pod/reliefgrid-matcher-77c798f5-rh768          Back-off restarting failed container matcher in pod reliefgrid-matcher-77c798f5-rh768_reliefgrid(f83c6eb2-d4ae-4f90-aaad-1025f3e0c6c2)
+83m         Warning   Unhealthy               pod/storage-shard-2-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+83m         Normal    Completed               job/storage-bootstrap-8                        Job completed
+83m         Normal    Started                 pod/reliefgrid-matcher-77c798f5-rh768          Container started
+83m         Normal    Created                 pod/reliefgrid-matcher-77c798f5-rh768          Container created
+83m         Normal    Pulled                  pod/reliefgrid-matcher-77c798f5-rh768          Container image "reliefgrid/matcher:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Pulled                  pod/reliefgrid-matcher-77c798f5-tvc5q          Container image "reliefgrid/matcher:a15-20261031055053" already present on machine and can be accessed by the pod
+83m         Normal    Started                 pod/reliefgrid-matcher-77c798f5-tvc5q          Container started
+83m         Normal    Created                 pod/reliefgrid-matcher-77c798f5-tvc5q          Container created
+82m         Warning   Unhealthy               pod/storage-shard-2-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+79m         Warning   Unhealthy               pod/storage-shard-2-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+78m         Warning   Unhealthy               pod/storage-shard-0-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+78m         Warning   Unhealthy               pod/storage-shard-1-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+77m         Warning   Unhealthy               pod/storage-shard-1-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+76m         Warning   Unhealthy               pod/storage-shard-0-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+75m         Normal    SuccessfulCreate        replicaset/storage-coordinator-9664dc6dc       Created pod: storage-coordinator-9664dc6dc-rf5kq
+75m         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled up replica set storage-coordinator-9664dc6dc from 0 to 1
+75m         Normal    Created                 pod/reliefgrid-matcher-6dc7dcf9f7-zvqvh        Container created
+75m         Normal    Started                 pod/reliefgrid-api-65869b85c9-57tlf            Container started
+75m         Warning   Unhealthy               pod/storage-shard-1-2                          Readiness probe failed: Get "http://10.244.2.6:8081/readyz": dial tcp 10.244.2.6:8081: connect: connection refused
+75m         Normal    Killing                 pod/storage-shard-1-2                          Stopping container storagenode
+75m         Normal    Pulled                  pod/storage-bootstrap-9-dt9hc                  Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-65869b85c9           Created pod: reliefgrid-api-65869b85c9-57tlf
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-65869b85c9 from 0 to 1
+75m         Normal    Created                 pod/storage-bootstrap-9-dt9hc                  Container created
+75m         Normal    Killing                 pod/storage-shard-2-2                          Stopping container storagenode
+75m         Normal    Killing                 pod/storage-shard-0-2                          Stopping container storagenode
+75m         Normal    SuccessfulDelete        replicaset/storage-coordinator-6f8b6dbff7      Deleted pod: storage-coordinator-6f8b6dbff7-79gcd
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled up replica set reliefgrid-ui-78754c48cd from 0 to 1
+75m         Normal    Killing                 pod/storage-coordinator-6f8b6dbff7-79gcd       Stopping container coordinator
+75m         Normal    Started                 pod/storage-coordinator-9664dc6dc-rf5kq        Container started
+75m         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled down replica set storage-coordinator-6f8b6dbff7 from 1 to 0
+75m         Normal    Pulled                  pod/reliefgrid-ui-78754c48cd-dll79             Container image "reliefgrid/ui:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-6dc7dcf9f7 from 0 to 1
+75m         Normal    Pulled                  pod/reliefgrid-api-65869b85c9-57tlf            Container image "reliefgrid/api:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Created                 pod/storage-coordinator-9664dc6dc-rf5kq        Container created
+75m         Normal    Created                 pod/reliefgrid-ui-78754c48cd-dll79             Container created
+75m         Normal    Pulled                  pod/storage-coordinator-9664dc6dc-rf5kq        Container image "reliefgrid/coordinator:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Started                 pod/reliefgrid-ui-78754c48cd-dll79             Container started
+75m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-6dc7dcf9f7       Created pod: reliefgrid-matcher-6dc7dcf9f7-zvqvh
+75m         Normal    SuccessfulCreate        replicaset/reliefgrid-ui-78754c48cd            Created pod: reliefgrid-ui-78754c48cd-dll79
+75m         Normal    Pulled                  pod/reliefgrid-matcher-6dc7dcf9f7-zvqvh        Container image "reliefgrid/matcher:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    SuccessfulCreate        job/storage-bootstrap-9                        Created pod: storage-bootstrap-9-dt9hc
+75m         Normal    Started                 pod/reliefgrid-matcher-6dc7dcf9f7-zvqvh        Container started
+75m         Normal    Created                 pod/reliefgrid-api-65869b85c9-57tlf            Container created
+75m         Normal    Pulled                  pod/storage-shard-1-2                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Started                 pod/storage-shard-1-2                          Container started
+75m         Warning   Unhealthy               pod/storage-coordinator-6f8b6dbff7-79gcd       Readiness probe failed: Get "http://10.244.1.12:8080/healthz": dial tcp 10.244.1.12:8080: connect: connection refused
+75m         Normal    Pulled                  pod/storage-shard-0-2                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Pulled                  pod/storage-shard-2-2                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Started                 pod/storage-bootstrap-9-dt9hc                  Container started
+75m         Normal    Created                 pod/storage-shard-0-2                          Container created
+75m         Normal    Created                 pod/storage-shard-2-2                          Container created
+75m         Normal    Created                 pod/storage-shard-1-2                          Container created
+75m         Normal    Pulled                  pod/reliefgrid-api-65869b85c9-2htsw            Container image "reliefgrid/api:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-86f66b78fc from 2 to 1
+75m         Normal    Started                 pod/storage-shard-2-2                          Container started
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-65869b85c9 from 1 to 2
+75m         Normal    Started                 pod/storage-shard-0-2                          Container started
+75m         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-77c798f5         Deleted pod: reliefgrid-matcher-77c798f5-tvc5q
+75m         Normal    Created                 pod/reliefgrid-matcher-6dc7dcf9f7-j8rrd        Container created
+75m         Normal    Killing                 pod/reliefgrid-matcher-77c798f5-tvc5q          Stopping container matcher
+75m         Normal    Pulled                  pod/reliefgrid-matcher-6dc7dcf9f7-j8rrd        Container image "reliefgrid/matcher:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Started                 pod/reliefgrid-matcher-6dc7dcf9f7-j8rrd        Container started
+75m         Normal    SuccessfulDelete        replicaset/reliefgrid-api-86f66b78fc           Deleted pod: reliefgrid-api-86f66b78fc-s8hql
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-6dc7dcf9f7 from 1 to 2
+75m         Normal    Killing                 pod/reliefgrid-api-86f66b78fc-s8hql            Stopping container api
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-77c798f5 from 2 to 1
+75m         Normal    Created                 pod/reliefgrid-api-65869b85c9-2htsw            Container created
+75m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-65869b85c9           Created pod: reliefgrid-api-65869b85c9-2htsw
+75m         Normal    Started                 pod/reliefgrid-api-65869b85c9-2htsw            Container started
+75m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-6dc7dcf9f7       Created pod: reliefgrid-matcher-6dc7dcf9f7-j8rrd
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled down replica set reliefgrid-ui-77947df6fb from 1 to 0
+75m         Normal    Killing                 pod/reliefgrid-ui-77947df6fb-bsf64             Stopping container ui
+75m         Normal    Completed               job/storage-bootstrap-9                        Job completed
+75m         Normal    SuccessfulDelete        replicaset/reliefgrid-ui-77947df6fb            Deleted pod: reliefgrid-ui-77947df6fb-bsf64
+75m         Normal    Killing                 pod/storage-shard-0-1                          Stopping container storagenode
+75m         Normal    Killing                 pod/reliefgrid-matcher-77c798f5-rh768          Stopping container matcher
+75m         Normal    Started                 pod/storage-shard-0-1                          Container started
+75m         Normal    Created                 pod/storage-shard-0-1                          Container created
+75m         Warning   Unhealthy               pod/reliefgrid-api-86f66b78fc-km6g7            Readiness probe failed: Get "http://10.244.3.2:8080/readyz": dial tcp 10.244.3.2:8080: connect: connection refused
+75m         Normal    SuccessfulDelete        replicaset/reliefgrid-api-86f66b78fc           Deleted pod: reliefgrid-api-86f66b78fc-km6g7
+75m         Normal    Pulled                  pod/storage-shard-0-1                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-86f66b78fc from 1 to 0
+75m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-77c798f5 from 1 to 0
+75m         Normal    Killing                 pod/reliefgrid-api-86f66b78fc-km6g7            Stopping container api
+75m         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-77c798f5         Deleted pod: reliefgrid-matcher-77c798f5-rh768
+75m         Warning   Unhealthy               pod/storage-shard-2-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+75m         Normal    Killing                 pod/storage-shard-2-1                          Stopping container storagenode
+75m         Normal    Killing                 pod/storage-shard-1-1                          Stopping container storagenode
+75m         Normal    Created                 pod/storage-shard-1-1                          Container created
+75m         Normal    Pulled                  pod/storage-shard-2-1                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Created                 pod/storage-shard-2-1                          Container created
+75m         Normal    Started                 pod/storage-shard-2-1                          Container started
+75m         Normal    Pulled                  pod/storage-shard-1-1                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Started                 pod/storage-shard-1-1                          Container started
+75m         Warning   Unhealthy               pod/storage-shard-0-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+75m         Warning   Unhealthy               pod/storage-shard-0-0                          Readiness probe failed: Get "http://10.244.4.6:8081/readyz": dial tcp 10.244.4.6:8081: connect: connection refused
+75m         Normal    Killing                 pod/storage-shard-0-0                          Stopping container storagenode
+75m         Normal    Killing                 pod/storage-shard-1-0                          Stopping container storagenode
+75m         Normal    Created                 pod/storage-shard-1-0                          Container created
+75m         Normal    Started                 pod/storage-shard-1-0                          Container started
+75m         Normal    Pulled                  pod/storage-shard-1-0                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Normal    Started                 pod/storage-shard-0-0                          Container started
+75m         Normal    Created                 pod/storage-shard-0-0                          Container created
+75m         Normal    Pulled                  pod/storage-shard-0-0                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+75m         Warning   Unhealthy               pod/storage-shard-1-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+75m         Warning   Unhealthy               pod/storage-shard-2-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+75m         Normal    Killing                 pod/storage-shard-2-0                          Stopping container storagenode
+75m         Normal    Created                 pod/storage-shard-2-0                          Container created
+75m         Normal    Started                 pod/storage-shard-2-0                          Container started
+75m         Normal    Pulled                  pod/storage-shard-2-0                          Container image "reliefgrid/storagenode:a15-20261031055910" already present on machine and can be accessed by the pod
+71m         Warning   Unhealthy               pod/storage-shard-1-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+71m         Warning   Unhealthy               pod/storage-shard-2-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+65m         Warning   Unhealthy               pod/storage-shard-1-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-65cc794d5b from 0 to 1
+60m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-77687968f4           Created pod: reliefgrid-api-77687968f4-xvnrp
+60m         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled up replica set storage-coordinator-546b5769fb from 0 to 1
+60m         Normal    SuccessfulCreate        replicaset/storage-coordinator-546b5769fb      Created pod: storage-coordinator-546b5769fb-x2p9q
+60m         Normal    SuccessfulCreate        replicaset/reliefgrid-ui-644dcd99f9            Created pod: reliefgrid-ui-644dcd99f9-r2kzf
+60m         Normal    Killing                 pod/storage-shard-0-2                          Stopping container storagenode
+60m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-65cc794d5b       Created pod: reliefgrid-matcher-65cc794d5b-scmgv
+60m         Normal    Killing                 pod/storage-shard-1-2                          Stopping container storagenode
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled up replica set reliefgrid-ui-644dcd99f9 from 0 to 1
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-77687968f4 from 0 to 1
+60m         Normal    Pulled                  pod/reliefgrid-ui-644dcd99f9-r2kzf             Container image "reliefgrid/ui:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Created                 pod/storage-coordinator-546b5769fb-x2p9q       Container created
+60m         Normal    Started                 pod/reliefgrid-ui-644dcd99f9-r2kzf             Container started
+60m         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled down replica set storage-coordinator-9664dc6dc from 1 to 0
+60m         Normal    Started                 pod/storage-coordinator-546b5769fb-x2p9q       Container started
+60m         Normal    Pulled                  pod/storage-bootstrap-10-29ptd                 Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Created                 pod/storage-bootstrap-10-29ptd                 Container created
+60m         Normal    Started                 pod/storage-bootstrap-10-29ptd                 Container started
+60m         Normal    SuccessfulCreate        job/storage-bootstrap-10                       Created pod: storage-bootstrap-10-29ptd
+60m         Normal    Created                 pod/reliefgrid-ui-644dcd99f9-r2kzf             Container created
+60m         Normal    Pulled                  pod/storage-coordinator-546b5769fb-x2p9q       Container image "reliefgrid/coordinator:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Killing                 pod/storage-coordinator-9664dc6dc-rf5kq        Stopping container coordinator
+60m         Normal    Killing                 pod/storage-shard-2-2                          Stopping container storagenode
+60m         Normal    Pulled                  pod/reliefgrid-api-77687968f4-xvnrp            Container image "reliefgrid/api:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    SuccessfulDelete        replicaset/storage-coordinator-9664dc6dc       Deleted pod: storage-coordinator-9664dc6dc-rf5kq
+60m         Normal    Created                 pod/reliefgrid-api-77687968f4-xvnrp            Container created
+60m         Normal    Started                 pod/reliefgrid-api-77687968f4-xvnrp            Container started
+60m         Normal    Created                 pod/storage-shard-0-2                          Container created
+60m         Normal    Pulled                  pod/storage-shard-0-2                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Warning   Unhealthy               pod/storage-coordinator-9664dc6dc-rf5kq        Readiness probe failed: Get "http://10.244.1.14:8080/healthz": dial tcp 10.244.1.14:8080: connect: connection refused
+60m         Normal    Created                 pod/storage-shard-1-2                          Container created
+60m         Normal    Started                 pod/storage-shard-1-2                          Container started
+60m         Normal    Started                 pod/storage-shard-2-2                          Container started
+60m         Normal    Created                 pod/storage-shard-2-2                          Container created
+60m         Normal    Pulled                  pod/storage-shard-2-2                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Pulled                  pod/storage-shard-1-2                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-6dc7dcf9f7       Deleted pod: reliefgrid-matcher-6dc7dcf9f7-zvqvh
+60m         Normal    Started                 pod/storage-shard-0-2                          Container started
+60m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-77687968f4           Created pod: reliefgrid-api-77687968f4-s2kxn
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-65cc794d5b from 1 to 2
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-6dc7dcf9f7 from 2 to 1
+60m         Normal    Killing                 pod/reliefgrid-ui-78754c48cd-dll79             Stopping container ui
+60m         Normal    Killing                 pod/reliefgrid-matcher-6dc7dcf9f7-zvqvh        Stopping container matcher
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-65869b85c9 from 2 to 1
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled down replica set reliefgrid-ui-78754c48cd from 1 to 0
+60m         Normal    SuccessfulDelete        replicaset/reliefgrid-api-65869b85c9           Deleted pod: reliefgrid-api-65869b85c9-57tlf
+60m         Normal    SuccessfulDelete        replicaset/reliefgrid-ui-78754c48cd            Deleted pod: reliefgrid-ui-78754c48cd-dll79
+60m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-65cc794d5b       Created pod: reliefgrid-matcher-65cc794d5b-br9sq
+60m         Normal    Created                 pod/reliefgrid-api-77687968f4-s2kxn            Container created
+60m         Normal    Pulled                  pod/reliefgrid-api-77687968f4-s2kxn            Container image "reliefgrid/api:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Killing                 pod/reliefgrid-api-65869b85c9-57tlf            Stopping container api
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-77687968f4 from 1 to 2
+60m         Normal    Completed               job/storage-bootstrap-10                       Job completed
+60m         Normal    Started                 pod/reliefgrid-api-77687968f4-s2kxn            Container started
+60m         Normal    SuccessfulDelete        replicaset/reliefgrid-api-65869b85c9           Deleted pod: reliefgrid-api-65869b85c9-2htsw
+60m         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-6dc7dcf9f7       Deleted pod: reliefgrid-matcher-6dc7dcf9f7-j8rrd
+60m         Normal    Killing                 pod/reliefgrid-matcher-6dc7dcf9f7-j8rrd        Stopping container matcher
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-65869b85c9 from 1 to 0
+60m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-6dc7dcf9f7 from 1 to 0
+60m         Normal    Killing                 pod/reliefgrid-api-65869b85c9-2htsw            Stopping container api
+60m         Warning   Unhealthy               pod/storage-shard-2-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+60m         Warning   Unhealthy               pod/storage-shard-1-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+60m         Normal    Killing                 pod/storage-shard-1-1                          Stopping container storagenode
+60m         Warning   Unhealthy               pod/storage-shard-0-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+60m         Normal    Killing                 pod/storage-shard-2-1                          Stopping container storagenode
+60m         Warning   Unhealthy               pod/storage-shard-1-1                          Readiness probe failed: Get "http://10.244.3.12:8081/readyz": dial tcp 10.244.3.12:8081: connect: connection refused
+60m         Normal    Pulled                  pod/storage-shard-1-1                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Created                 pod/storage-shard-1-1                          Container created
+60m         Normal    Killing                 pod/storage-shard-0-1                          Stopping container storagenode
+60m         Normal    Created                 pod/storage-shard-2-1                          Container created
+60m         Normal    Started                 pod/storage-shard-1-1                          Container started
+60m         Normal    Started                 pod/storage-shard-2-1                          Container started
+60m         Normal    Pulled                  pod/storage-shard-2-1                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Started                 pod/storage-shard-0-1                          Container started
+60m         Normal    Killing                 pod/storage-shard-2-0                          Stopping container storagenode
+60m         Normal    Pulled                  pod/storage-shard-0-1                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Created                 pod/storage-shard-0-1                          Container created
+60m         Normal    Killing                 pod/storage-shard-1-0                          Stopping container storagenode
+60m         Normal    Killing                 pod/storage-shard-0-0                          Stopping container storagenode
+60m         Normal    Pulled                  pod/storage-shard-1-0                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Started                 pod/storage-shard-2-0                          Container started
+60m         Normal    Created                 pod/storage-shard-1-0                          Container created
+60m         Normal    Started                 pod/storage-shard-1-0                          Container started
+60m         Normal    Created                 pod/storage-shard-2-0                          Container created
+60m         Normal    Pulled                  pod/storage-shard-2-0                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Created                 pod/storage-shard-0-0                          Container created
+60m         Normal    Pulled                  pod/storage-shard-0-0                          Container image "reliefgrid/storagenode:a15-20261031061420" already present on machine and can be accessed by the pod
+60m         Normal    Started                 pod/storage-shard-0-0                          Container started
+34m         Warning   Unhealthy               pod/storage-shard-1-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+32m         Warning   Unhealthy               pod/storage-shard-1-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+31m         Warning   Unhealthy               pod/storage-shard-0-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+30m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-c5477dbcf        Created pod: reliefgrid-matcher-c5477dbcf-466vb
+30m         Normal    SuccessfulDelete        statefulset/reliefgrid-rabbitmq                Delete Pod reliefgrid-rabbitmq-0 in StatefulSet reliefgrid-rabbitmq successful
+30m         Normal    Killing                 pod/storage-shard-2-2                          Stopping container storagenode
+30m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-7888cd457c from 0 to 1
+30m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-c5477dbcf from 0 to 1
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-2                    Delete Pod storage-shard-2-2 in StatefulSet storage-shard-2 successful
+30m         Normal    Killing                 pod/storage-shard-1-2                          Stopping container storagenode
+30m         Normal    SuccessfulCreate        job/storage-bootstrap-11                       Created pod: storage-bootstrap-11-c89kx
+30m         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled up replica set storage-coordinator-69c49b5997 from 0 to 1
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-1                    Delete Pod storage-shard-1-2 in StatefulSet storage-shard-1 successful
+30m         Normal    Killing                 pod/reliefgrid-rabbitmq-0                      Stopping container rabbitmq
+30m         Normal    SuccessfulCreate        replicaset/storage-coordinator-69c49b5997      Created pod: storage-coordinator-69c49b5997-5gdht
+30m         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled up replica set reliefgrid-ui-6f95ff677b from 0 to 1
+30m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-7888cd457c           Created pod: reliefgrid-api-7888cd457c-6bm7k
+30m         Normal    SuccessfulCreate        replicaset/reliefgrid-ui-6f95ff677b            Created pod: reliefgrid-ui-6f95ff677b-smb9q
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-0                    Delete Pod storage-shard-0-2 in StatefulSet storage-shard-0 successful
+30m         Normal    Killing                 pod/storage-shard-0-2                          Stopping container storagenode
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Pod storage-shard-2-2 in StatefulSet storage-shard-2 successful
+30m         Normal    Created                 pod/reliefgrid-ui-6f95ff677b-smb9q             Container created
+30m         Normal    Started                 pod/reliefgrid-ui-6f95ff677b-smb9q             Container started
+30m         Normal    Pulled                  pod/reliefgrid-ui-6f95ff677b-smb9q             Container image "reliefgrid/ui:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Pulled                  pod/storage-coordinator-69c49b5997-5gdht       Container image "reliefgrid/coordinator:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Created                 pod/storage-coordinator-69c49b5997-5gdht       Container created
+30m         Normal    SuccessfulDelete        replicaset/storage-coordinator-546b5769fb      Deleted pod: storage-coordinator-546b5769fb-x2p9q
+30m         Normal    Started                 pod/storage-coordinator-69c49b5997-5gdht       Container started
+30m         Warning   Unhealthy               pod/storage-coordinator-69c49b5997-5gdht       Readiness probe failed: Get "http://10.244.1.16:8080/healthz": dial tcp 10.244.1.16:8080: connect: connection refused
+30m         Normal    Pulled                  pod/storage-bootstrap-11-c89kx                 Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Created                 pod/storage-bootstrap-11-c89kx                 Container created
+30m         Normal    Started                 pod/storage-bootstrap-11-c89kx                 Container started
+30m         Normal    Pulled                  pod/reliefgrid-api-7888cd457c-6bm7k            Container image "reliefgrid/api:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Started                 pod/reliefgrid-api-7888cd457c-6bm7k            Container started
+30m         Normal    Created                 pod/reliefgrid-api-7888cd457c-6bm7k            Container created
+30m         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled down replica set storage-coordinator-546b5769fb from 1 to 0
+30m         Normal    Killing                 pod/storage-coordinator-546b5769fb-x2p9q       Stopping container coordinator
+30m         Warning   Unhealthy               pod/storage-shard-2-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Pod storage-shard-1-2 in StatefulSet storage-shard-1 successful
+30m         Normal    Created                 pod/storage-shard-0-2                          Container created
+30m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-77687968f4 from 2 to 1
+30m         Normal    Started                 pod/storage-shard-0-2                          Container started
+30m         Warning   Unhealthy               pod/storage-coordinator-546b5769fb-x2p9q       Readiness probe failed: Get "http://10.244.1.15:8080/healthz": dial tcp 10.244.1.15:8080: connect: connection refused
+30m         Warning   Unhealthy               pod/reliefgrid-rabbitmq-0                      Readiness probe failed:
+30m         Normal    Pulled                  pod/storage-shard-2-2                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Created                 pod/storage-shard-2-2                          Container created
+30m         Normal    Started                 pod/storage-shard-1-2                          Container started
+30m         Normal    Created                 pod/storage-shard-1-2                          Container created
+30m         Normal    Pulled                  pod/storage-shard-1-2                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Started                 pod/storage-shard-2-2                          Container started
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Pod storage-shard-0-2 in StatefulSet storage-shard-0 successful
+30m         Normal    Pulled                  pod/storage-shard-0-2                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    SuccessfulCreate        statefulset/reliefgrid-rabbitmq                Create Pod reliefgrid-rabbitmq-0 in StatefulSet reliefgrid-rabbitmq successful
+30m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-7888cd457c from 1 to 2
+30m         Normal    SuccessfulDelete        replicaset/reliefgrid-api-77687968f4           Deleted pod: reliefgrid-api-77687968f4-s2kxn
+30m         Normal    SuccessfulCreate        replicaset/reliefgrid-api-7888cd457c           Created pod: reliefgrid-api-7888cd457c-mqsgj
+30m         Normal    Killing                 pod/reliefgrid-ui-644dcd99f9-r2kzf             Stopping container ui
+30m         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled down replica set reliefgrid-ui-644dcd99f9 from 1 to 0
+30m         Normal    Started                 pod/reliefgrid-rabbitmq-0                      Container started
+30m         Normal    Created                 pod/reliefgrid-rabbitmq-0                      Container created
+30m         Normal    Pulled                  pod/reliefgrid-api-7888cd457c-mqsgj            Container image "reliefgrid/api:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    SuccessfulDelete        replicaset/reliefgrid-ui-644dcd99f9            Deleted pod: reliefgrid-ui-644dcd99f9-r2kzf
+30m         Normal    Pulled                  pod/reliefgrid-rabbitmq-0                      Container image "rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e" already present on machine and can be accessed by the pod
+30m         Normal    Killing                 pod/reliefgrid-api-77687968f4-s2kxn            Stopping container api
+30m         Warning   Unhealthy               pod/reliefgrid-api-77687968f4-s2kxn            Readiness probe failed: Get "http://10.244.2.19:8080/readyz": dial tcp 10.244.2.19:8080: connect: connection refused
+30m         Normal    Started                 pod/reliefgrid-api-7888cd457c-mqsgj            Container started
+30m         Normal    Created                 pod/reliefgrid-api-7888cd457c-mqsgj            Container created
+30m         Warning   Unhealthy               pod/reliefgrid-matcher-65cc794d5b-br9sq        Startup probe failed: Get "http://10.244.3.18:8081/healthz": dial tcp 10.244.3.18:8081: connect: connection refused
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-2                    Delete Pod storage-shard-2-1 in StatefulSet storage-shard-2 successful
+30m         Normal    Killing                 pod/storage-shard-2-1                          Stopping container storagenode
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-1                    Delete Pod storage-shard-1-1 in StatefulSet storage-shard-1 successful
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-0                    Delete Pod storage-shard-0-1 in StatefulSet storage-shard-0 successful
+30m         Normal    SuccessfulDelete        replicaset/reliefgrid-api-77687968f4           Deleted pod: reliefgrid-api-77687968f4-xvnrp
+30m         Normal    Killing                 pod/storage-shard-0-1                          Stopping container storagenode
+30m         Normal    Killing                 pod/storage-shard-1-1                          Stopping container storagenode
+30m         Normal    Killing                 pod/reliefgrid-api-77687968f4-xvnrp            Stopping container api
+30m         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-77687968f4 from 1 to 0
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Pod storage-shard-2-1 in StatefulSet storage-shard-2 successful
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Pod storage-shard-0-1 in StatefulSet storage-shard-0 successful
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Pod storage-shard-1-1 in StatefulSet storage-shard-1 successful
+30m         Normal    Pulled                  pod/storage-shard-2-1                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Created                 pod/storage-shard-1-1                          Container created
+30m         Normal    Pulled                  pod/storage-shard-1-1                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Created                 pod/storage-shard-2-1                          Container created
+30m         Warning   Unhealthy               pod/storage-shard-0-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+30m         Warning   Unhealthy               pod/storage-shard-1-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+30m         Normal    Started                 pod/storage-shard-2-1                          Container started
+30m         Normal    Completed               job/storage-bootstrap-11                       Job completed
+30m         Normal    Started                 pod/storage-shard-1-1                          Container started
+30m         Normal    Pulled                  pod/storage-shard-0-1                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Created                 pod/storage-shard-0-1                          Container created
+30m         Normal    Started                 pod/storage-shard-0-1                          Container started
+30m         Normal    Killing                 pod/storage-shard-0-0                          Stopping container storagenode
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-1                    Delete Pod storage-shard-1-0 in StatefulSet storage-shard-1 successful
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-0                    Delete Pod storage-shard-0-0 in StatefulSet storage-shard-0 successful
+30m         Normal    Killing                 pod/storage-shard-1-0                          Stopping container storagenode
+30m         Warning   Unhealthy               pod/storage-shard-0-0                          Readiness probe failed: Get "http://10.244.4.16:8081/readyz": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+30m         Normal    Created                 pod/storage-shard-0-0                          Container created
+30m         Normal    Pulled                  pod/storage-shard-1-0                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Created                 pod/storage-shard-1-0                          Container created
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Pod storage-shard-0-0 in StatefulSet storage-shard-0 successful
+30m         Normal    Started                 pod/storage-shard-1-0                          Container started
+30m         Normal    Started                 pod/storage-shard-0-0                          Container started
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Pod storage-shard-1-0 in StatefulSet storage-shard-1 successful
+30m         Normal    Pulled                  pod/storage-shard-0-0                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Warning   Unhealthy               pod/reliefgrid-matcher-c5477dbcf-466vb         Startup probe failed: Get "http://10.244.4.18:8081/healthz": dial tcp 10.244.4.18:8081: connect: connection refused
+30m         Warning   Unhealthy               pod/reliefgrid-matcher-65cc794d5b-scmgv        Startup probe failed: Get "http://10.244.2.17:8081/healthz": read tcp 10.244.2.1:54038->10.244.2.17:8081: read: connection reset by peer
+30m         Warning   Unhealthy               pod/storage-shard-2-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+30m         Normal    Killing                 pod/storage-shard-2-0                          Stopping container storagenode
+30m         Normal    SuccessfulDelete        statefulset/storage-shard-2                    Delete Pod storage-shard-2-0 in StatefulSet storage-shard-2 successful
+30m         Warning   Unhealthy               pod/storage-shard-0-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+30m         Normal    Created                 pod/storage-shard-2-0                          Container created
+30m         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Pod storage-shard-2-0 in StatefulSet storage-shard-2 successful
+30m         Warning   Unhealthy               pod/storage-shard-2-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+30m         Normal    Pulled                  pod/storage-shard-2-0                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+30m         Normal    Started                 pod/storage-shard-2-0                          Container started
+30m         Warning   BackOff                 pod/reliefgrid-matcher-65cc794d5b-scmgv        Back-off restarting failed container matcher in pod reliefgrid-matcher-65cc794d5b-scmgv_reliefgrid(dba130de-d17b-4fb6-9b81-a4647ba11e07)
+30m         Warning   BackOff                 pod/reliefgrid-matcher-c5477dbcf-466vb         Back-off restarting failed container matcher in pod reliefgrid-matcher-c5477dbcf-466vb_reliefgrid(9d629f80-4fe9-41d3-9cad-41684630e671)
+30m         Warning   BackOff                 pod/reliefgrid-matcher-65cc794d5b-br9sq        Back-off restarting failed container matcher in pod reliefgrid-matcher-65cc794d5b-br9sq_reliefgrid(0b2312cd-d40d-43ce-a4e4-ca03b8ab3d08)
+30m         Normal    Pulled                  pod/reliefgrid-matcher-65cc794d5b-scmgv        Container image "reliefgrid/matcher:a15-20261031061420" already present on machine and can be accessed by the pod
+30m         Normal    Started                 pod/reliefgrid-matcher-65cc794d5b-scmgv        Container started
+30m         Normal    Created                 pod/reliefgrid-matcher-65cc794d5b-scmgv        Container created
+29m         Normal    Pulled                  pod/reliefgrid-matcher-65cc794d5b-br9sq        Container image "reliefgrid/matcher:a15-20261031061420" already present on machine and can be accessed by the pod
+29m         Normal    Created                 pod/reliefgrid-matcher-65cc794d5b-br9sq        Container created
+29m         Normal    Started                 pod/reliefgrid-matcher-65cc794d5b-br9sq        Container started
+29m         Normal    Started                 pod/reliefgrid-matcher-c5477dbcf-466vb         Container started
+29m         Normal    Pulled                  pod/reliefgrid-matcher-c5477dbcf-466vb         Container image "reliefgrid/matcher:a15-20261031064413" already present on machine and can be accessed by the pod
+29m         Normal    Created                 pod/reliefgrid-matcher-c5477dbcf-466vb         Container created
+29m         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-c5477dbcf        Created pod: reliefgrid-matcher-c5477dbcf-dww5n
+29m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-65cc794d5b from 2 to 1
+29m         Normal    Pulled                  pod/reliefgrid-matcher-c5477dbcf-dww5n         Container image "reliefgrid/matcher:a15-20261031064413" already present on machine and can be accessed by the pod
+29m         Normal    Created                 pod/reliefgrid-matcher-c5477dbcf-dww5n         Container created
+29m         Normal    Started                 pod/reliefgrid-matcher-c5477dbcf-dww5n         Container started
+29m         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-65cc794d5b       Deleted pod: reliefgrid-matcher-65cc794d5b-br9sq
+29m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-c5477dbcf from 1 to 2
+29m         Normal    Killing                 pod/reliefgrid-matcher-65cc794d5b-br9sq        Stopping container matcher
+29m         Normal    Killing                 pod/reliefgrid-matcher-65cc794d5b-scmgv        Stopping container matcher
+29m         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-65cc794d5b       Deleted pod: reliefgrid-matcher-65cc794d5b-scmgv
+29m         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-65cc794d5b from 1 to 0
+28m         Warning   Unhealthy               pod/storage-shard-2-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+28m         Warning   Unhealthy               pod/storage-shard-0-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+12m         Normal    Pulled                  pod/reliefgrid-ui-6f95ff677b-smb9q             Container image "reliefgrid/ui:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    SandboxChanged          pod/storage-shard-2-0                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Created                 pod/storage-shard-2-2                          Container created
+12m         Normal    Pulled                  pod/storage-shard-2-2                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    SandboxChanged          pod/storage-shard-1-1                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/storage-shard-1-0                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Pulled                  pod/storage-coordinator-69c49b5997-5gdht       Container image "reliefgrid/coordinator:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    SandboxChanged          pod/reliefgrid-rabbitmq-0                      Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Created                 pod/storage-shard-1-0                          Container created
+12m         Normal    SandboxChanged          pod/storage-shard-2-2                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Created                 pod/reliefgrid-ui-6f95ff677b-smb9q             Container created
+12m         Normal    Pulled                  pod/storage-shard-0-2                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    SandboxChanged          pod/storage-shard-1-2                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Pulled                  pod/reliefgrid-rabbitmq-0                      Container image "rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e" already present on machine and can be accessed by the pod
+12m         Normal    Pulled                  pod/storage-shard-1-2                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    SandboxChanged          pod/storage-shard-0-2                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/storage-coordinator-69c49b5997-5gdht       Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/reliefgrid-api-7888cd457c-mqsgj            Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Pulled                  pod/storage-shard-1-0                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    SandboxChanged          pod/storage-shard-0-1                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Created                 pod/storage-coordinator-69c49b5997-5gdht       Container created
+12m         Normal    SandboxChanged          pod/reliefgrid-matcher-c5477dbcf-466vb         Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/reliefgrid-ui-6f95ff677b-smb9q             Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/storage-shard-0-0                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/storage-shard-2-1                          Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/reliefgrid-api-7888cd457c-6bm7k            Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/reliefgrid-matcher-c5477dbcf-dww5n         Pod sandbox changed, it will be killed and re-created.
+12m         Normal    SandboxChanged          pod/reliefgrid-traefik-84c8448448-2fzb7        Pod sandbox changed, it will be killed and re-created.
+12m         Normal    Pulled                  pod/reliefgrid-traefik-84c8448448-2fzb7        Container image "docker.io/traefik@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65" already present on machine and can be accessed by the pod
+12m         Normal    Created                 pod/reliefgrid-traefik-84c8448448-2fzb7        Container created
+12m         Normal    Started                 pod/storage-shard-2-0                          Container started
+12m         Normal    Pulled                  pod/storage-shard-0-1                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    Created                 pod/storage-shard-1-2                          Container created
+12m         Normal    Started                 pod/storage-coordinator-69c49b5997-5gdht       Container started
+12m         Normal    Started                 pod/storage-shard-1-2                          Container started
+12m         Normal    Started                 pod/storage-shard-2-2                          Container started
+12m         Normal    Pulled                  pod/storage-shard-0-0                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    Created                 pod/storage-shard-0-0                          Container created
+12m         Normal    Created                 pod/reliefgrid-rabbitmq-0                      Container created
+12m         Normal    Pulled                  pod/storage-shard-1-1                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    Created                 pod/storage-shard-1-1                          Container created
+12m         Normal    Started                 pod/storage-shard-1-1                          Container started
+12m         Normal    Started                 pod/storage-shard-0-0                          Container started
+12m         Normal    Started                 pod/storage-shard-2-1                          Container started
+12m         Normal    Created                 pod/storage-shard-2-1                          Container created
+12m         Normal    Pulled                  pod/storage-shard-2-1                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    Started                 pod/reliefgrid-rabbitmq-0                      Container started
+12m         Normal    Started                 pod/storage-shard-1-0                          Container started
+12m         Normal    Started                 pod/reliefgrid-traefik-84c8448448-2fzb7        Container started
+12m         Normal    Created                 pod/storage-shard-0-1                          Container created
+12m         Normal    Started                 pod/storage-shard-0-1                          Container started
+12m         Normal    Started                 pod/storage-shard-0-2                          Container started
+12m         Normal    Created                 pod/storage-shard-0-2                          Container created
+12m         Normal    Started                 pod/reliefgrid-ui-6f95ff677b-smb9q             Container started
+12m         Normal    Pulled                  pod/storage-shard-2-0                          Container image "reliefgrid/storagenode:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    Created                 pod/storage-shard-2-0                          Container created
+12m         Warning   Unhealthy               pod/reliefgrid-api-7888cd457c-mqsgj            Startup probe failed: Get "http://10.244.2.4:8080/healthz": dial tcp 10.244.2.4:8080: connect: connection refused
+12m         Warning   Unhealthy               pod/reliefgrid-api-7888cd457c-6bm7k            Startup probe failed: Get "http://10.244.4.2:8080/healthz": dial tcp 10.244.4.2:8080: connect: connection refused
+12m         Warning   Unhealthy               pod/reliefgrid-matcher-c5477dbcf-dww5n         Startup probe failed: Get "http://10.244.3.2:8081/healthz": dial tcp 10.244.3.2:8081: connect: connection refused
+12m         Warning   Unhealthy               pod/reliefgrid-matcher-c5477dbcf-466vb         Startup probe failed: Get "http://10.244.4.3:8081/healthz": dial tcp 10.244.4.3:8081: connect: connection refused
+12m         Warning   BackOff                 pod/reliefgrid-api-7888cd457c-mqsgj            Back-off restarting failed container api in pod reliefgrid-api-7888cd457c-mqsgj_reliefgrid(75a89a5a-8922-4cbc-822f-544824ba7183)
+12m         Warning   BackOff                 pod/reliefgrid-matcher-c5477dbcf-dww5n         Back-off restarting failed container matcher in pod reliefgrid-matcher-c5477dbcf-dww5n_reliefgrid(d95aa504-2f4e-437c-be33-9ce5da684c80)
+12m         Warning   BackOff                 pod/reliefgrid-matcher-c5477dbcf-466vb         Back-off restarting failed container matcher in pod reliefgrid-matcher-c5477dbcf-466vb_reliefgrid(9d629f80-4fe9-41d3-9cad-41684630e671)
+12m         Warning   BackOff                 pod/reliefgrid-api-7888cd457c-6bm7k            Back-off restarting failed container api in pod reliefgrid-api-7888cd457c-6bm7k_reliefgrid(3823028a-caa9-4bec-95c8-1eb671f5e110)
+12m         Warning   Unhealthy               pod/storage-shard-2-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+12m         Warning   Unhealthy               pod/storage-shard-2-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+12m         Warning   Unhealthy               pod/storage-shard-1-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+12m         Warning   Unhealthy               pod/storage-shard-1-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+12m         Warning   Unhealthy               pod/storage-shard-0-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+12m         Warning   Unhealthy               pod/storage-shard-0-0                          Readiness probe failed: HTTP probe failed with statuscode: 503
+12m         Normal    Created                 pod/reliefgrid-matcher-c5477dbcf-466vb         Container created
+12m         Normal    Started                 pod/reliefgrid-matcher-c5477dbcf-466vb         Container started
+12m         Normal    Pulled                  pod/reliefgrid-matcher-c5477dbcf-466vb         Container image "reliefgrid/matcher:a15-20261031064413" already present on machine and can be accessed by the pod
+12m         Normal    Started                 pod/reliefgrid-api-7888cd457c-mqsgj            Container started
+12m         Normal    Created                 pod/reliefgrid-api-7888cd457c-mqsgj            Container created
+12m         Normal    Pulled                  pod/reliefgrid-api-7888cd457c-mqsgj            Container image "reliefgrid/api:a15-20261031064413" already present on machine and can be accessed by the pod
+11m         Normal    Pulled                  pod/reliefgrid-api-7888cd457c-6bm7k            Container image "reliefgrid/api:a15-20261031064413" already present on machine and can be accessed by the pod
+11m         Normal    Started                 pod/reliefgrid-api-7888cd457c-6bm7k            Container started
+11m         Normal    Created                 pod/reliefgrid-api-7888cd457c-6bm7k            Container created
+11m         Normal    Started                 pod/reliefgrid-matcher-c5477dbcf-dww5n         Container started
+11m         Normal    Created                 pod/reliefgrid-matcher-c5477dbcf-dww5n         Container created
+11m         Normal    Pulled                  pod/reliefgrid-matcher-c5477dbcf-dww5n         Container image "reliefgrid/matcher:a15-20261031064413" already present on machine and can be accessed by the pod
+10m         Warning   Unhealthy               pod/storage-shard-2-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+9m14s       Warning   Unhealthy               pod/storage-shard-0-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+7m34s       Warning   Unhealthy               pod/storage-shard-1-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+33s         Normal    Scheduled               pod/storage-shard-0-2                          Successfully assigned reliefgrid/storage-shard-0-2 to reliefgrid-worker2
+33s         Normal    Scheduled               pod/reliefgrid-ui-6dc88776b5-tj7tn             Successfully assigned reliefgrid/reliefgrid-ui-6dc88776b5-tj7tn to reliefgrid-worker2
+33s         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Pod storage-shard-2-2 in StatefulSet storage-shard-2 successful
+33s         Normal    SuccessfulDelete        statefulset/storage-shard-2                    Delete Pod storage-shard-2-2 in StatefulSet storage-shard-2 successful
+33s         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled up replica set storage-coordinator-586b9c7d98 from 0 to 1
+33s         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Pod storage-shard-0-2 in StatefulSet storage-shard-0 successful
+33s         Normal    SuccessfulDelete        statefulset/storage-shard-0                    Delete Pod storage-shard-0-2 in StatefulSet storage-shard-0 successful
+33s         Normal    Created                 pod/reliefgrid-matcher-86897fb666-wsskv        Container created
+33s         Normal    SuccessfulDelete        statefulset/storage-shard-1                    Delete Pod storage-shard-1-2 in StatefulSet storage-shard-1 successful
+33s         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Pod storage-shard-1-2 in StatefulSet storage-shard-1 successful
+33s         Normal    Scheduled               pod/storage-shard-1-2                          Successfully assigned reliefgrid/storage-shard-1-2 to reliefgrid-worker
+33s         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled up replica set reliefgrid-ui-6dc88776b5 from 0 to 1
+33s         Normal    Scheduled               pod/storage-bootstrap-12-kdb2z                 Successfully assigned reliefgrid/storage-bootstrap-12-kdb2z to reliefgrid-worker
+33s         Normal    Scheduled               pod/reliefgrid-api-57cf44c76-bhcjv             Successfully assigned reliefgrid/reliefgrid-api-57cf44c76-bhcjv to reliefgrid-worker2
+33s         Normal    Pulled                  pod/reliefgrid-api-57cf44c76-bhcjv             Container image "reliefgrid/api:a15-20261031071434" already present on machine and can be accessed by the pod
+33s         Normal    Pulled                  pod/storage-bootstrap-12-kdb2z                 Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+33s         Normal    Created                 pod/storage-bootstrap-12-kdb2z                 Container created
+33s         Normal    Killing                 pod/storage-shard-1-2                          Stopping container storagenode
+33s         Normal    SuccessfulCreate        replicaset/storage-coordinator-586b9c7d98      Created pod: storage-coordinator-586b9c7d98-x9qf7
+33s         Normal    Killing                 pod/storage-shard-0-2                          Stopping container storagenode
+33s         Normal    Pulled                  pod/reliefgrid-matcher-86897fb666-wsskv        Container image "reliefgrid/matcher:a15-20261031071434" already present on machine and can be accessed by the pod
+33s         Normal    Started                 pod/reliefgrid-matcher-86897fb666-wsskv        Container started
+33s         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-86897fb666       Created pod: reliefgrid-matcher-86897fb666-wsskv
+33s         Normal    Created                 pod/reliefgrid-api-57cf44c76-bhcjv             Container created
+33s         Normal    Started                 pod/reliefgrid-api-57cf44c76-bhcjv             Container started
+33s         Normal    SuccessfulCreate        job/storage-bootstrap-12                       Created pod: storage-bootstrap-12-kdb2z
+33s         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-57cf44c76 from 0 to 1
+33s         Normal    Scheduled               pod/reliefgrid-matcher-86897fb666-wsskv        Successfully assigned reliefgrid/reliefgrid-matcher-86897fb666-wsskv to reliefgrid-worker
+33s         Normal    Pulled                  pod/reliefgrid-ui-6dc88776b5-tj7tn             Container image "reliefgrid/ui:a15-20261031071434" already present on machine and can be accessed by the pod
+33s         Normal    Created                 pod/reliefgrid-ui-6dc88776b5-tj7tn             Container created
+33s         Normal    Started                 pod/reliefgrid-ui-6dc88776b5-tj7tn             Container started
+33s         Normal    SuccessfulCreate        replicaset/reliefgrid-ui-6dc88776b5            Created pod: reliefgrid-ui-6dc88776b5-tj7tn
+33s         Normal    SuccessfulCreate        replicaset/reliefgrid-api-57cf44c76            Created pod: reliefgrid-api-57cf44c76-bhcjv
+33s         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-86897fb666 from 0 to 1
+33s         Normal    Scheduled               pod/storage-shard-2-2                          Successfully assigned reliefgrid/storage-shard-2-2 to reliefgrid-worker3
+33s         Normal    Killing                 pod/storage-shard-2-2                          Stopping container storagenode
+33s         Warning   Unhealthy               pod/storage-coordinator-586b9c7d98-x9qf7       Readiness probe failed: Get "http://10.244.1.5:8080/healthz": dial tcp 10.244.1.5:8080: connect: connection refused
+33s         Normal    Started                 pod/storage-coordinator-586b9c7d98-x9qf7       Container started
+33s         Normal    Created                 pod/storage-coordinator-586b9c7d98-x9qf7       Container created
+33s         Normal    Pulled                  pod/storage-coordinator-586b9c7d98-x9qf7       Container image "reliefgrid/coordinator:a15-20261031071434" already present on machine and can be accessed by the pod
+33s         Normal    Scheduled               pod/storage-coordinator-586b9c7d98-x9qf7       Successfully assigned reliefgrid/storage-coordinator-586b9c7d98-x9qf7 to reliefgrid-worker4
+32s         Normal    SuccessfulDelete        replicaset/storage-coordinator-69c49b5997      Deleted pod: storage-coordinator-69c49b5997-5gdht
+32s         Normal    Pulled                  pod/storage-shard-2-2                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+32s         Normal    Created                 pod/storage-shard-2-2                          Container created
+32s         Normal    Started                 pod/storage-shard-2-2                          Container started
+32s         Normal    Started                 pod/storage-bootstrap-12-kdb2z                 Container started
+32s         Normal    Pulled                  pod/storage-shard-0-2                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+32s         Normal    Created                 pod/storage-shard-0-2                          Container created
+32s         Normal    Started                 pod/storage-shard-0-2                          Container started
+32s         Normal    Killing                 pod/storage-coordinator-69c49b5997-5gdht       Stopping container coordinator
+32s         Warning   Unhealthy               pod/storage-coordinator-69c49b5997-5gdht       Readiness probe failed: Get "http://10.244.1.2:8080/healthz": dial tcp 10.244.1.2:8080: connect: connection refused
+32s         Normal    ScalingReplicaSet       deployment/storage-coordinator                 Scaled down replica set storage-coordinator-69c49b5997 from 1 to 0
+32s         Normal    Pulled                  pod/storage-shard-1-2                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+32s         Normal    Created                 pod/storage-shard-1-2                          Container created
+32s         Normal    Started                 pod/storage-shard-1-2                          Container started
+31s         Normal    Pulled                  pod/reliefgrid-api-57cf44c76-zmq2v             Container image "reliefgrid/api:a15-20261031071434" already present on machine and can be accessed by the pod
+31s         Normal    Killing                 pod/reliefgrid-ui-6f95ff677b-smb9q             Stopping container ui
+31s         Normal    Killing                 pod/reliefgrid-matcher-c5477dbcf-466vb         Stopping container matcher
+31s         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled up replica set reliefgrid-api-57cf44c76 from 1 to 2
+31s         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-c5477dbcf        Deleted pod: reliefgrid-matcher-c5477dbcf-466vb
+31s         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-7888cd457c from 2 to 1
+31s         Normal    SuccessfulCreate        replicaset/reliefgrid-matcher-86897fb666       Created pod: reliefgrid-matcher-86897fb666-kqqxv
+31s         Normal    Killing                 pod/reliefgrid-api-7888cd457c-6bm7k            Stopping container api
+31s         Normal    SuccessfulDelete        replicaset/reliefgrid-ui-6f95ff677b            Deleted pod: reliefgrid-ui-6f95ff677b-smb9q
+31s         Normal    Scheduled               pod/reliefgrid-matcher-86897fb666-kqqxv        Successfully assigned reliefgrid/reliefgrid-matcher-86897fb666-kqqxv to reliefgrid-worker2
+31s         Normal    Scheduled               pod/reliefgrid-api-57cf44c76-zmq2v             Successfully assigned reliefgrid/reliefgrid-api-57cf44c76-zmq2v to reliefgrid-worker
+31s         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-c5477dbcf from 2 to 1
+31s         Normal    ScalingReplicaSet       deployment/reliefgrid-ui                       Scaled down replica set reliefgrid-ui-6f95ff677b from 1 to 0
+31s         Normal    SuccessfulDelete        replicaset/reliefgrid-api-7888cd457c           Deleted pod: reliefgrid-api-7888cd457c-6bm7k
+31s         Normal    Created                 pod/reliefgrid-api-57cf44c76-zmq2v             Container created
+31s         Normal    SuccessfulCreate        replicaset/reliefgrid-api-57cf44c76            Created pod: reliefgrid-api-57cf44c76-zmq2v
+31s         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled up replica set reliefgrid-matcher-86897fb666 from 1 to 2
+31s         Normal    Pulled                  pod/reliefgrid-matcher-86897fb666-kqqxv        Container image "reliefgrid/matcher:a15-20261031071434" already present on machine and can be accessed by the pod
+31s         Normal    Created                 pod/reliefgrid-matcher-86897fb666-kqqxv        Container created
+30s         Normal    Started                 pod/reliefgrid-matcher-86897fb666-kqqxv        Container started
+30s         Normal    Started                 pod/reliefgrid-api-57cf44c76-zmq2v             Container started
+30s         Normal    Killing                 pod/storage-shard-1-1                          Stopping container storagenode
+30s         Normal    SuccessfulDelete        statefulset/storage-shard-1                    Delete Pod storage-shard-1-1 in StatefulSet storage-shard-1 successful
+29s         Normal    SuccessfulDelete        replicaset/reliefgrid-matcher-c5477dbcf        Deleted pod: reliefgrid-matcher-c5477dbcf-dww5n
+29s         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Pod storage-shard-1-1 in StatefulSet storage-shard-1 successful
+29s         Normal    Scheduled               pod/storage-shard-1-1                          Successfully assigned reliefgrid/storage-shard-1-1 to reliefgrid-worker2
+29s         Normal    Killing                 pod/reliefgrid-matcher-c5477dbcf-dww5n         Stopping container matcher
+29s         Normal    Completed               job/storage-bootstrap-12                       Job completed
+29s         Normal    ScalingReplicaSet       deployment/reliefgrid-matcher                  Scaled down replica set reliefgrid-matcher-c5477dbcf from 1 to 0
+28s         Normal    Started                 pod/storage-shard-1-1                          Container started
+28s         Normal    SuccessfulDelete        replicaset/reliefgrid-api-7888cd457c           Deleted pod: reliefgrid-api-7888cd457c-mqsgj
+28s         Normal    Pulled                  pod/storage-shard-1-1                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+28s         Normal    ScalingReplicaSet       deployment/reliefgrid-api                      Scaled down replica set reliefgrid-api-7888cd457c from 1 to 0
+28s         Normal    Killing                 pod/reliefgrid-api-7888cd457c-mqsgj            Stopping container api
+28s         Normal    Created                 pod/storage-shard-1-1                          Container created
+25s         Warning   Unhealthy               pod/storage-shard-2-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+24s         Warning   Unhealthy               pod/storage-shard-0-2                          Readiness probe failed: HTTP probe failed with statuscode: 503
+23s         Normal    Killing                 pod/storage-shard-2-1                          Stopping container storagenode
+23s         Normal    SuccessfulDelete        statefulset/storage-shard-2                    Delete Pod storage-shard-2-1 in StatefulSet storage-shard-2 successful
+22s         Normal    Killing                 pod/storage-shard-0-1                          Stopping container storagenode
+22s         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Pod storage-shard-2-1 in StatefulSet storage-shard-2 successful
+22s         Normal    Scheduled               pod/storage-shard-2-1                          Successfully assigned reliefgrid/storage-shard-2-1 to reliefgrid-worker
+22s         Normal    SuccessfulDelete        statefulset/storage-shard-0                    Delete Pod storage-shard-0-1 in StatefulSet storage-shard-0 successful
+21s         Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Pod storage-shard-0-1 in StatefulSet storage-shard-0 successful
+21s         Normal    Pulled                  pod/storage-shard-2-1                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+21s         Normal    Created                 pod/storage-shard-2-1                          Container created
+21s         Normal    Scheduled               pod/storage-shard-0-1                          Successfully assigned reliefgrid/storage-shard-0-1 to reliefgrid-worker
+21s         Normal    Started                 pod/storage-shard-2-1                          Container started
+20s         Warning   Unhealthy               pod/storage-shard-1-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+20s         Normal    Pulled                  pod/storage-shard-0-1                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+20s         Normal    Created                 pod/storage-shard-0-1                          Container created
+20s         Normal    Started                 pod/storage-shard-0-1                          Container started
+18s         Normal    SuccessfulDelete        statefulset/storage-shard-1                    Delete Pod storage-shard-1-0 in StatefulSet storage-shard-1 successful
+18s         Normal    Killing                 pod/storage-shard-1-0                          Stopping container storagenode
+16s         Normal    Scheduled               pod/storage-shard-1-0                          Successfully assigned reliefgrid/storage-shard-1-0 to reliefgrid-worker3
+16s         Normal    SuccessfulCreate        statefulset/storage-shard-1                    Create Pod storage-shard-1-0 in StatefulSet storage-shard-1 successful
+15s         Normal    Created                 pod/storage-shard-1-0                          Container created
+15s         Normal    Pulled                  pod/storage-shard-1-0                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+15s         Normal    Started                 pod/storage-shard-1-0                          Container started
+13s         Warning   Unhealthy               pod/storage-shard-2-1                          Readiness probe failed: HTTP probe failed with statuscode: 503
+11s         Normal    SuccessfulDelete        statefulset/storage-shard-2                    Delete Pod storage-shard-2-0 in StatefulSet storage-shard-2 successful
+11s         Normal    Killing                 pod/storage-shard-2-0                          Stopping container storagenode
+10s         Normal    Scheduled               pod/storage-shard-2-0                          Successfully assigned reliefgrid/storage-shard-2-0 to reliefgrid-worker2
+10s         Normal    Killing                 pod/storage-shard-0-0                          Stopping container storagenode
+10s         Normal    SuccessfulCreate        statefulset/storage-shard-2                    Create Pod storage-shard-2-0 in StatefulSet storage-shard-2 successful
+10s         Normal    SuccessfulDelete        statefulset/storage-shard-0                    Delete Pod storage-shard-0-0 in StatefulSet storage-shard-0 successful
+9s          Warning   Unhealthy               pod/storage-shard-2-0                          Readiness probe failed: Get "http://10.244.3.5:8081/readyz": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+9s          Normal    Scheduled               pod/storage-shard-0-0                          Successfully assigned reliefgrid/storage-shard-0-0 to reliefgrid-worker3
+9s          Normal    Pulled                  pod/storage-shard-2-0                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+9s          Normal    Created                 pod/storage-shard-2-0                          Container created
+9s          Normal    SuccessfulCreate        statefulset/storage-shard-0                    Create Pod storage-shard-0-0 in StatefulSet storage-shard-0 successful
+9s          Normal    Started                 pod/storage-shard-2-0                          Container started
+8s          Normal    Pulled                  pod/storage-shard-0-0                          Container image "reliefgrid/storagenode:a15-20261031071434" already present on machine and can be accessed by the pod
+8s          Normal    Created                 pod/storage-shard-0-0                          Container created
+8s          Normal    Started                 pod/storage-shard-0-0                          Container started
+8s          Warning   Unhealthy               pod/storage-shard-0-1                          Readiness probe failed: HTTP probe failed with statuscode: 503

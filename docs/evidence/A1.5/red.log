@@ -1,0 +1,8 @@
+=== RUN   TestAppHelmFullDeployment
+    app_deploy_test.go:26: A1.5 app profile is missing: stat ../deploy/helm/reliefgrid/values-app-kind.yaml: no such file or directory
+--- FAIL: TestAppHelmFullDeployment (0.00s)
+=== RUN   TestAppBrokerOnlyProfileRemainsIndependent
+--- PASS: TestAppBrokerOnlyProfileRemainsIndependent (2.16s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.172s
+FAIL

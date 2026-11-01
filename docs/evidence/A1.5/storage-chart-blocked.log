@@ -1,0 +1,11 @@
+go test -race -count=1 -tags integration -run '^TestApp' -v ./scripts/...
+=== RUN   TestAppHelmFullDeployment
+    app_deploy_test.go:28: yaml: unmarshal errors:
+          line 1602: mapping key "app.kubernetes.io/name" already defined at line 1599
+--- FAIL: TestAppHelmFullDeployment (1.58s)
+=== RUN   TestAppBrokerOnlyProfileRemainsIndependent
+--- PASS: TestAppBrokerOnlyProfileRemainsIndependent (0.36s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	1.956s
+FAIL
+make: *** [Makefile:77: verify-A1.5-static] Error 1

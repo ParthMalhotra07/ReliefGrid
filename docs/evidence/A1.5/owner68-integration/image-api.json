@@ -1,0 +1,9 @@
+{
+  "image": "reliefgrid/api:a15-20261031061420",
+  "imageId": "sha256:49a357c46dd504d66cdfb4e6f06b3d092a90dfbea650711cff5d256cf6ad6b74",
+  "user": "65532:65532",
+  "entrypoint": [
+    "/api"
+  ],
+  "architecture": "amd64"
+}

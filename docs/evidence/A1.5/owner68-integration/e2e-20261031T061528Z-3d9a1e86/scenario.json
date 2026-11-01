@@ -1,0 +1,25 @@
+{
+  "requestKey": "07502924-288c-47eb-b15d-7f486ab38345",
+  "resourceKey": "a9147969-0c13-4b30-bdf9-d16fefdd1033",
+  "requestPayload": {
+    "requestType": "MEDICINE",
+    "details": "Synthetic A1.5 smoke request",
+    "peopleAffected": 1,
+    "urgency": "HIGH",
+    "location": {
+      "lat": 28.6139,
+      "lng": 77.209
+    }
+  },
+  "resourcePayload": {
+    "resourceType": "MEDICINE",
+    "name": "Synthetic A1.5 medical resource",
+    "location": {
+      "lat": 28.6139,
+      "lng": 77.209
+    },
+    "windowStart": "2026-10-31T06:14:28.635Z",
+    "windowEnd": "2026-10-31T08:15:28.635Z",
+    "reusable": true
+  }
+}

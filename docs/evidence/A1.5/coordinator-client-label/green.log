@@ -1,0 +1,8 @@
+=== RUN   TestAppCoordinatorClientsCarryNetworkPolicyLabel
+=== RUN   TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=true
+=== RUN   TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=false
+--- PASS: TestAppCoordinatorClientsCarryNetworkPolicyLabel (3.06s)
+    --- PASS: TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=true (2.61s)
+    --- PASS: TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=false (0.45s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	4.072s

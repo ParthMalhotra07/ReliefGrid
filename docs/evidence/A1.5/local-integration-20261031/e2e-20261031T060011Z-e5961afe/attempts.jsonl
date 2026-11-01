@@ -1,0 +1,12 @@
+{"method": "GET", "path": "/", "status": 200}
+{"method": "POST", "path": "/api/v1/requests", "status": 201}
+{"method": "POST", "path": "/api/v1/resources", "status": 201}
+{"method": "GET", "path": "/api/v1/requests/ed64a9eb-0dee-5722-a27b-d97e57832a5f", "status": 200}
+{"method": "GET", "path": "/api/v1/requests/ed64a9eb-0dee-5722-a27b-d97e57832a5f", "status": 200}
+{"method": "GET", "path": "/api/v1/resources/65a62d8b-20ea-5adf-a79b-2a374db31b20", "status": 404}
+{"method": "GET", "path": "/", "status": 200}
+{"method": "POST", "path": "/api/v1/requests", "status": 201}
+{"method": "POST", "path": "/api/v1/resources", "status": 201}
+{"method": "GET", "path": "/api/v1/requests/ed64a9eb-0dee-5722-a27b-d97e57832a5f", "status": 200}
+{"method": "GET", "path": "/api/v1/resources?type=MEDICINE&limit=100", "status": 200}
+{"method": "POST", "path": "/api/v1/requests", "status": 201}

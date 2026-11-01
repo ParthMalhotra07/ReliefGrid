@@ -5,6 +5,10 @@ type: application
 version: 0.1.0
 appVersion: "0.1.0"
 dependencies:
+  - name: storage
+    version: 0.1.0
+    repository: file://../storage
+    condition: storage.enabled
   - name: traefik
     version: 42.1.2
     repository: https://traefik.github.io/charts

@@ -1,6 +1,9 @@
 dependencies:
+- name: storage
+  repository: file://../storage
+  version: 0.1.0
 - name: traefik
   repository: https://traefik.github.io/charts
   version: 42.1.2
-digest: sha256:4ba1a5093e063e52164e5ba6cded51cb143b2d96193122b666c1af18a2cdd29c
-generated: "2026-10-22T14:05:49.460929491Z"
+digest: sha256:de0ce32a0a31143c695adb5c014bf2ad5dd350cea72abf721d41542a86e7c4cd
+generated: "2026-10-31T04:53:05.89662401Z"

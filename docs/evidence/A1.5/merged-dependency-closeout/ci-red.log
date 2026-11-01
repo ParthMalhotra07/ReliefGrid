@@ -1,0 +1,22 @@
+=== RUN   TestAppCIEntryPointRunsAfterStorage
+    app_ci_smoke_test.go:19: CI must verify prebuilt storage before the app:
+        make: Entering directory '/home/parthmalhotra/reliefgrid-a15-readiness'
+        go test -race -count=1 -tags integration -run '^TestApp' -v ./scripts/...
+        bash scripts/ci-smoke.sh
+        make: Leaving directory '/home/parthmalhotra/reliefgrid-a15-readiness'
+--- FAIL: TestAppCIEntryPointRunsAfterStorage (0.01s)
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=
+    app_ci_smoke_test.go:45: failure="" err=exit status 127
+        bash: app-ci-smoke.sh: No such file or directory
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=app-deploy
+    app_ci_smoke_test.go:49: open /tmp/TestAppCISmokePropagatesFailuresAndRetainsEvidencefailure=app-d317200576/003/calls: no such file or directory
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=e2e-smoke
+    app_ci_smoke_test.go:49: open /tmp/TestAppCISmokePropagatesFailuresAndRetainsEvidencefailure=e2e-s1178842195/003/calls: no such file or directory
+--- FAIL: TestAppCISmokePropagatesFailuresAndRetainsEvidence (0.18s)
+    --- FAIL: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure= (0.06s)
+    --- FAIL: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=app-deploy (0.06s)
+    --- FAIL: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=e2e-smoke (0.06s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.199s
+FAIL
