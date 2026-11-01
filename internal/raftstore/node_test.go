@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -42,31 +41,28 @@ type testCluster struct {
 
 // newTestCluster opens n nodes on loopback, each advertising a name
 // (localhost:<port>) that the transport resolves on every dial. It does not
-// bootstrap them.
+// bootstrap them. Each node's port is reserved for the whole test, so a
+// restart reuses the same port and name, as a pod keeps its DNS name, and
+// nothing else can take the port while the node is down (issue #58).
 func newTestCluster(t testing.TB, n int, p Profile) *testCluster {
 	t.Helper()
 	c := &testCluster{t: t, cfgs: make([]Config, n), nodes: make([]*Node, n)}
 	for i := range n {
 		root := t.TempDir()
+		port, listen := reservePort(t)
 		c.cfgs[i] = Config{
 			PodName:       fmt.Sprintf("storage-1-%d", i),
 			GroupID:       "shard-1",
 			Shard:         1,
 			DataDir:       filepath.Join(root, "pvc"),
 			FSMDir:        filepath.Join(root, "emptydir"),
-			BindAddr:      "127.0.0.1:0",
-			AdvertiseAddr: "localhost:0",
+			BindAddr:      "127.0.0.1:" + port,
+			AdvertiseAddr: "localhost:" + port,
 			Profile:       p,
 			Logger:        hclog.New(&hclog.LoggerOptions{Name: fmt.Sprintf("raft-%d", i), Level: hclog.Warn, Output: os.Stderr}),
+			listen:        listen,
 		}
 		c.open(i)
-		// Restarts reuse the same port and name, as a pod keeps its DNS name.
-		_, port, err := net.SplitHostPort(string(c.nodes[i].Addr()))
-		if err != nil {
-			t.Fatalf("node %d address %q: %v", i, c.nodes[i].Addr(), err)
-		}
-		c.cfgs[i].BindAddr = "127.0.0.1:" + port
-		c.cfgs[i].AdvertiseAddr = "localhost:" + port
 	}
 	t.Cleanup(func() {
 		for i := range c.nodes {

@@ -14,7 +14,7 @@ import (
 
 func TestDNSTransportAdvertisesName(t *testing.T) {
 	const name = "storage-1-0.storage-1.reliefgrid.svc.cluster.local:7000"
-	trans, err := newDNSTransport("127.0.0.1:0", name, hclog.NewNullLogger())
+	trans, err := newDNSTransport("127.0.0.1:0", name, nil, hclog.NewNullLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestDNSTransportAdvertisesName(t *testing.T) {
 }
 
 func TestDNSTransportAdvertisesBoundPortForZero(t *testing.T) {
-	trans, err := newDNSTransport("127.0.0.1:0", "localhost:0", hclog.NewNullLogger())
+	trans, err := newDNSTransport("127.0.0.1:0", "localhost:0", nil, hclog.NewNullLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
