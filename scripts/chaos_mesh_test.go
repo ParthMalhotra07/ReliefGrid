@@ -104,7 +104,7 @@ func meshFakeTools(t *testing.T) (env []string, calls string) {
 
 func runInstall(t *testing.T, env []string, args ...string) (string, int) {
 	t.Helper()
-	cmd := exec.Command("bash", append([]string{"../chaos/mesh/install.sh"}, args...)...)
+	cmd := exec.CommandContext(t.Context(), "bash", append([]string{"../chaos/mesh/install.sh"}, args...)...)
 	cmd.Env = env
 	out, _ := cmd.CombinedOutput()
 	return string(out), cmd.ProcessState.ExitCode()

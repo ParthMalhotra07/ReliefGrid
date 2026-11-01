@@ -34,11 +34,15 @@ func judgeCmd(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		defer func() { _ = f.Close() }()
 		r = f
 	}
+	// Fields judge doesn't use are ignored: verify and check JSON are passed
+	// whole. A fact that is missing fails its criterion rather than passing.
 	var in judge.Input
-	dec := json.NewDecoder(r)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&in); err != nil {
+	if err := json.NewDecoder(r).Decode(&in); err != nil {
 		_, _ = fmt.Fprintf(stderr, "invcheck: judge input: %v\n", err)
+		return exitIncomplete
+	}
+	if in.Experiment == "" {
+		_, _ = fmt.Fprintln(stderr, "invcheck: judge input names no experiment")
 		return exitIncomplete
 	}
 	res := judge.Judge(in)

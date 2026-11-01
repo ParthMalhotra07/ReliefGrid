@@ -37,7 +37,9 @@ func TestJudgeCommand(t *testing.T) {
 	}{
 		{"passing", passing, exitClean, true},
 		{"failing", failing, exitViolations, false},
-		{"unknown field", `{"experiment":"kill-leader","surprise":1}`, exitIncomplete, false},
+		{"not JSON", `{"experiment":`, exitIncomplete, false},
+		{"no experiment", `{"verifyExit":0}`, exitIncomplete, false},
+		{"facts missing", `{"experiment":"kill-leader"}`, exitIncomplete, false}, // no verify: no verdict, never a pass
 	} {
 		var stdout, stderr bytes.Buffer
 		code := run(t.Context(), []string{"judge", "--input", write(tc.name+".json", tc.body)}, &stdout, &stderr)

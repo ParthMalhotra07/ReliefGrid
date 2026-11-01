@@ -1,15 +1,22 @@
 # shellcheck shell=bash
-# Failure harness (S2.3), shared by kill-leader.sh, kill-follower.sh, restart-shard.sh and
-# isolate-replica.sh: each sets EXPERIMENT and calls chaos_main "$@".
+# Failure harness (S2.3, S4.3), shared by every chaos/scripts/<experiment>.sh: each sets
+# EXPERIMENT and calls chaos_main "$@". S2.3: kill-leader, kill-follower, restart-shard,
+# isolate-replica (NetworkPolicy). S4.3 (faults.sh): isolate-leader, lose-quorum,
+# delay-follower, delay-isolate-leader (Chaos Mesh), stop-worker, restart-coordinator.
 #
 # One run (v3.1 §26): a seeded plan; the load as an in-cluster Job (invcheck load against the
 # coordinator Service, ledger on PVC chaos-ledger); after the seeded delay the fault on one
 # shard; its heal; a bounded settle phase; then invcheck verify and invcheck check as Jobs.
-# Everything observed goes into one JSON report. Exit 0: every assertion passed; 1: one
-# failed (the report's failures say which); 2: no verdict (the harness itself failed).
+# The load runs READERS linearizable readers through the coordinator and a direct probe at the
+# faulted replica(s), all recorded in the ledger. Everything observed goes into one JSON report,
+# and chaos/judge (invcheck judge, from the tools image) applies the pass criteria to it.
+# Exit 0: every assertion passed; 1: one failed (the report's failures say which); 2: no
+# verdict (the harness itself failed).
 #
 # Environment: CHAOS_CONTEXT (kind-reliefgrid), CHAOS_NAMESPACE (reliefgrid), TOOLS_IMAGE
-# (reliefgrid/tools:dev), ELECTION_MAX_SECONDS (10), ISOLATE_SECONDS (20), CUT_CHECK_SECONDS (8).
+# (reliefgrid/tools:dev), ELECTION_MAX_SECONDS (10), ISOLATE_SECONDS (20), CUT_CHECK_SECONDS (8),
+# READERS (2), READ_INTERVAL_MS (50), READ_CONSISTENCY (linearizable), GRACE_SECONDS (2); and
+# faults.sh's.
 
 set -uo pipefail
 
@@ -26,11 +33,17 @@ ISOLATE_SECONDS="${ISOLATE_SECONDS:-20}"
 CUT_CHECK_SECONDS="${CUT_CHECK_SECONDS:-8}"
 RECOVERY_MAX_SECONDS=60 # any experiment: fault start -> an agreed leader
 WORKERS=4 KEYS=4 INTERVAL_MS=50
+READERS="${READERS:-2}"
+READ_INTERVAL_MS="${READ_INTERVAL_MS:-50}"
+READ_CONSISTENCY="${READ_CONSISTENCY:-linearizable}"
+GRACE_SECONDS="${GRACE_SECONDS:-2}"
+# shellcheck source=chaos/scripts/faults.sh
+. "$(dirname "${BASH_SOURCE[0]}")/faults.sh"
 
 chaos_usage() {
 	cat <<EOF
 usage: chaos/scripts/$EXPERIMENT.sh --seed N [--out FILE] [--shard N] [--settle-max SECONDS]
-                                 [--inject lost-write]${ROLE_FLAG:+ [--role leader|follower]} [--plan]
+                                 [--inject lost-write] [--stale-readers]${ROLE_FLAG:+ [--role leader|follower]} [--plan]
 
 $DESCRIPTION
 
@@ -39,6 +52,8 @@ $DESCRIPTION
   --shard N           the shard to fault (default: chosen by the seed)
   --settle-max S      bound on the settle phase after the heal (default 120)
   --inject lost-write overwrite one acknowledged write before verifying: the run must fail
+  --stale-readers     negative control: the readers and probe read stale (delay-follower only);
+                      the run must fail with stale reads and nothing lost
   --plan              print the plan as JSON and touch nothing
 Exit 0: passed; 1: an assertion failed; 2: no verdict.
 EOF
@@ -71,7 +86,7 @@ failed() { # failed <assertion that did not hold>
 }
 
 parse_args() {
-	seed="" out="" shard_flag="" settle_max=120 plan_only=0 inject="" role_flag=""
+	seed="" out="" shard_flag="" settle_max=120 plan_only=0 inject="" role_flag="" stale_readers=0
 	while [ $# -gt 0 ]; do
 		case "$1" in
 		--seed) seed="${2:-}"; shift 2 ;;
@@ -79,6 +94,7 @@ parse_args() {
 		--shard) shard_flag="${2:-}"; shift 2 ;;
 		--settle-max) settle_max="${2:-}"; shift 2 ;;
 		--inject) inject="${2:-}"; shift 2 ;;
+		--stale-readers) stale_readers=1; shift ;;
 		--role) role_flag="${2:-}"; shift 2 ;;
 		--plan) plan_only=1; shift ;;
 		-h | --help) chaos_usage; exit 0 ;;
@@ -89,6 +105,7 @@ parse_args() {
 	[ -z "$shard_flag" ] || [[ "$shard_flag" =~ ^[0-2]$ ]] || { echo "$EXPERIMENT: --shard must be 0..2" >&2; exit 2; }
 	[[ "$settle_max" =~ ^[0-9]+$ ]] && [ "$settle_max" -gt 0 ] || { echo "$EXPERIMENT: --settle-max must be a positive number of seconds" >&2; exit 2; }
 	[ -z "$inject" ] || [ "$inject" = lost-write ] || { echo "$EXPERIMENT: --inject takes lost-write" >&2; exit 2; }
+	[ "$stale_readers" = 0 ] || [ "$EXPERIMENT" = delay-follower ] || { echo "$EXPERIMENT: --stale-readers is for delay-follower only" >&2; exit 2; }
 	[ -z "$role_flag" ] || { [ -n "${ROLE_FLAG:-}" ] && [[ "$role_flag" =~ ^(leader|follower)$ ]]; } ||
 		{ echo "$EXPERIMENT: --role is leader or follower, for isolate-replica only" >&2; exit 2; }
 	out="${out:-chaos-$EXPERIMENT-$seed.json}"
@@ -99,6 +116,12 @@ make_plan() {
 	shard="${shard_flag:-$(($(seeded shard) % SHARDS))}"
 	case "$EXPERIMENT" in
 	kill-leader) role=leader budget=75 ;;
+	isolate-leader) role=leader budget=$((ISOLATE_SECONDS + 75)) ;;
+	delay-isolate-leader) role=leader budget=$((DELAY_LEAD_SECONDS + ISOLATE_SECONDS + 75)) ;;
+	lose-quorum) role=all budget=$((QUORUM_SECONDS + 90)) ;;
+	delay-follower) role=follower budget=$((DELAY_SECONDS + 75)) ;;
+	stop-worker) role=follower budget=$((WORKER_SECONDS + WORKER_BACK_SECONDS + 30)) ;;
+	restart-coordinator) role=coordinator budget=90 ;;
 	kill-follower) role=follower budget=75 ;;
 	restart-shard) role=all budget=150 ;;
 	isolate-replica)
@@ -333,6 +356,50 @@ fault_isolate() {
 		'{peerToTargetRaft: $a, targetToPeerRaft: $b, peerToTargetData: $c, targetCommitAdvanced: $d, majorityCommitAdvanced: $e, method: $m}')"
 }
 
+# harness_facts: what the harness measured, for chaos/judge (judge.Harness)
+harness_facts() {
+	local rec=null secs
+	if [ -n "${recovery_ms:-}" ] && [ -n "${fault_started_at:-}" ]; then
+		secs="$(awk -v a="$fault_started_at" -v b="$recovery_ms" 'BEGIN { printf "%.1f", (b - a) / 1000 }')"
+		rec="$(jq -cn --argjson s "$secs" --argjson t "${recovery_term:-0}" --argjson tb "${target_term:-0}" --arg l "${recovery_leader:-}" \
+			'{seconds: $s, term: $t, termBefore: $tb, leader: $l}')"
+	fi
+	jq -cn --argjson ok "${settle_ok:-false}" --arg d "${settle_detail:-}" --argjson rec "$rec" --argjson iso "${harness_isolation:-null}" \
+		--argjson dl "${harness_delay:-null}" --argjson w "${harness_worker:-null}" --argjson c "${harness_coordinator:-null}" \
+		'{settleOk: $ok, settleDetail: $d, recovery: $rec, isolation: $iso, delay: $dl, worker: $w, coordinator: $c}'
+}
+# run_judge <negative|"">: chaos/judge over this run, from the tools image (no Go needed here)
+run_judge() {
+	jq -n --arg e "$EXPERIMENT" --argjson shard "$shard" --arg t "${target_pod:-}" --arg neg "$1" \
+		--argjson em "$ELECTION_MAX_SECONDS" --argjson rm "$RECOVERY_MAX_SECONDS" --argjson v "$verify_json" --argjson vx "${verify_exit:-2}" \
+		--argjson c "$check_json" --argjson cx "${check_exit:-2}" --argjson h "$(harness_facts)" \
+		'{experiment: $e, shard: $shard, target: $t, negative: $neg, bounds: {electionMaxSeconds: $em, recoveryMaxSeconds: $rm},
+		  verify: $v, verifyExit: $vx, check: $c, checkExit: $cx, harness: $h}' |
+		docker run --rm -i "$TOOLS_IMAGE" judge --input -
+}
+
+# apply_judge: chaos/judge over the run (verify_json, check_json, harness_facts). Its failures
+# become the report's; no verdict exits 2 (no_verdict). For a negative control (--inject
+# lost-write, --stale-readers) it also judges whether the injected fault was caught: control_json.
+apply_judge() {
+	local judge_exit f negative=""
+	judge_json="$(run_judge "")"
+	judge_exit=$?
+	jq -e 'has("pass")' <<<"$judge_json" >/dev/null 2>&1 || no_verdict "invcheck judge gave no result (exit $judge_exit): $(head -c 300 <<<"$judge_json")"
+	judge_json="$(jq -c . <<<"$judge_json")"
+	case "$judge_exit" in
+	0) ;;
+	1) while IFS= read -r f; do failed "$f"; done < <(jq -r '.failures[]' <<<"$judge_json") ;;
+	*) no_verdict "$(jq -r '.failures | join("; ")' <<<"$judge_json")" ;;
+	esac
+	[ "$inject" = lost-write ] && negative=lost-write
+	[ "$stale_readers" = 1 ] && negative=stale-reader
+	if [ -n "$negative" ]; then
+		control_json="$(run_judge "$negative" | jq -c '. + {negative: "'"$negative"'"}' 2>/dev/null)"
+		log "negative control $negative: $(jq -r 'if . == null then "no result" elif .pass then "caught" else "NOT caught: \(.failures | join("; "))" end' <<<"${control_json:-null}")"
+	fi
+}
+
 write_report() { # write_report <pass true|false>
 	local errors
 	errors="$(
@@ -341,7 +408,7 @@ write_report() { # write_report <pass true|false>
 			cat "$work/notes" 2>/dev/null
 		} | jq -cs 'sort_by(.at)'
 	)"
-	jq -n --arg e "$EXPERIMENT" --argjson seed "$seed" --arg run "$run_id" --argjson pass "$1" \
+	jq -n --arg e "$EXPERIMENT" --argjson seed "$seed" --arg run "$run_id" --argjson pass "$1" --argjson v "$verify_json" \
 		--argjson failures "$(printf '%s\n' "${failures[@]+"${failures[@]}"}" | jq -Rsc 'split("\n") | map(select(. != ""))')" \
 		--argjson plan "$plan" \
 		--argjson target "$(jq -cn --argjson s "$shard" --arg p "${target_pod:-}" --arg id "${target_id:-}" --arg r "$role" --argjson t "${target_term:-0}" \
@@ -367,11 +434,18 @@ write_report() { # write_report <pass true|false>
 			'{job: $j, exitCode: $x, verdict: ($c.verdict // null), quiescent: ($c.report.quiescent // false),
 			  violations: ($c.report.violations // []), incomplete: ($c.incomplete // null)}')" \
 		--argjson isolation "${isolation:-null}" --argjson injected "${injected:-null}" \
+		--argjson judge "${judge_json:-null}" --argjson control "${control_json:-null}" --argjson harness "$(harness_facts)" \
+		--argjson readers "$(jq -cn --argjson n "$READERS" --arg m "${read_mode:-}" --argjson iv "$READ_INTERVAL_MS" --argjson g "$GRACE_SECONDS" \
+			--argjson p "$(printf '%s\n' "${probe_args[@]+"${probe_args[@]}"}" | grep -v '^--probe$' | jq -Rsc 'split("\n") | map(select(. != ""))')" \
+			'{readers: $n, consistency: $m, intervalMs: $iv, graceSeconds: $g, probes: $p}')" \
 		'{experiment: $e, seed: $seed, runId: $run, pass: $pass, failures: $failures, plan: $plan, target: $target,
 		  fault: $fault, recovery: $recovery, settle: $settle, timings: $timings, load: $load, errorsObserved: $errors,
-		  ledger: $ledger, invcheck: $invcheck}
+		  ledger: $ledger, invcheck: $invcheck, harness: $harness,
+		  reads: ($readers + {verdict: ($v.verdict.reads // null), stale: ($v.verdict.staleReads // [])}),
+		  availability: ($v.availability // null), judge: $judge}
 		  + (if $isolation then {isolation: $isolation} else {} end)
-		  + (if $injected then {injected: $injected} else {} end)' >"$out.tmp" && mv "$out.tmp" "$out"
+		  + (if $injected then {injected: $injected} else {} end)
+		  + (if $control then {control: $control} else {} end)' >"$out.tmp" && mv "$out.tmp" "$out"
 }
 
 # no_verdict <why>: the harness could not finish; write what it has and exit 2
@@ -394,18 +468,25 @@ chaos_main() {
 	work="$(mktemp -d)"
 	load_job=""
 	# Never leave the load writing: a run that stops early deletes its load Job.
-	trap '[ -n "$load_job" ] && ! job_done "$load_job" && kn delete job "$load_job" --wait=false >/dev/null 2>&1; rm -rf "$work"' EXIT
+	trap 'cleanup_faults; [ -n "$load_job" ] && ! job_done "$load_job" && kn delete job "$load_job" --wait=false >/dev/null 2>&1; rm -rf "$work"' EXIT
 	: >"$work/notes"
 	run_id="$EXPERIMENT-s$seed-$(date +%s)"
 	load_job="chaos-load-$run_id" verify_job="" check_job=""
 	ledger_path="/ledger/$run_id.json"
 	fault_kind="" fault_mechanism="" target_pod="" target_id="" target_term=0
+	harness_isolation="" harness_delay="" harness_worker="" harness_coordinator="" judge_json="" control_json=""
 	verify_json="{}" check_json="{}" isolation="" injected="" recovery_leader="" recovery_term="" recovery_ms=""
 	load_started_at="" settle_started_at="" fault_started_at="" fault_healed_at="" settled_at="" load_finished_at="" load_exit="" verify_exit="" check_exit=""
 	case "$EXPERIMENT" in
 	kill-leader | kill-follower) fault_kind=pod-delete fault_mechanism="kubectl delete pod (graceful)" ;;
 	restart-shard) fault_kind=shard-restart fault_mechanism="kubectl delete pod of all three replicas (graceful)" ;;
 	isolate-replica) fault_kind=raft-isolation fault_mechanism="label $ISOLATED_LABEL=true, excluded by NetworkPolicy storage-shard-$shard-raft" ;;
+	isolate-leader) fault_kind=partition fault_mechanism="Chaos Mesh NetworkChaos partition: the leader against both peers, both directions" ;;
+	delay-isolate-leader) fault_kind=delay+partition fault_mechanism="Chaos Mesh NetworkChaos: one peer delayed ${DELAY_MS}ms, then the leader partitioned from both" ;;
+	lose-quorum) fault_kind=quorum-loss fault_mechanism="Chaos Mesh NetworkChaos: every replica of the shard partitioned from the other two" ;;
+	delay-follower) fault_kind=delay fault_mechanism="Chaos Mesh NetworkChaos delay ${DELAY_MS}ms +-${DELAY_JITTER_MS}ms, the follower with both peers, both directions" ;;
+	stop-worker) fault_kind=node-stop fault_mechanism="docker stop of the data worker's kind node (one replica of every shard), then docker start" ;;
+	restart-coordinator) fault_kind=coordinator-restart fault_mechanism="kubectl delete pod of the coordinator (Deployment recreates it)" ;;
 	esac
 	log "$EXPERIMENT: plan $plan"
 
@@ -428,16 +509,28 @@ chaos_main() {
 	case "$role" in
 	leader | all) target_pod="$leader" ;;
 	follower) target_pod="${followers[$((pick % ${#followers[@]}))]}" ;;
+	coordinator) target_pod="$(kn get pods -l app.kubernetes.io/component=coordinator -o jsonpath='{.items[0].metadata.name}')" ;;
 	esac
-	target_id="$(field "$(st "$target_pod")" .serverId)"
+	[ "$role" = coordinator ] || target_id="$(field "$(st "$target_pod")" .serverId)"
 	peers=()
 	for p in $(shard_pods "$shard"); do [ "$p" = "$target_pod" ] || peers+=("$p"); done
 	log "target $target_pod ($role, term $target_term)"
 
 	# The load.
 	ensure_pvc || no_verdict "could not create PVC $PVC"
+	# Readers through the coordinator, and a probe straight at the faulted replica(s): the
+	# isolated or minority leader must refuse every fenced read once the fault holds.
+	read_mode="$READ_CONSISTENCY"
+	[ "$stale_readers" = 1 ] && read_mode=stale
+	local probe_args=() pp
+	case "$role" in
+	all) for pp in $(shard_pods "$shard"); do probe_args+=(--probe "$shard=http://$pp.storage-shard-$shard.$NS.svc.cluster.local:8080"); done ;;
+	coordinator) ;;
+	*) probe_args+=(--probe "$shard=http://$target_pod.storage-shard-$shard.$NS.svc.cluster.local:8080") ;;
+	esac
 	start_job "$load_job" load --coordinator "$COORD_URL" --ledger "$ledger_path" --prefix "$prefix-$(date +%s)" \
 		--workers "$WORKERS" --keys "$KEYS" --ops 0 --duration "${load_seconds}s" --interval "${INTERVAL_MS}ms" \
+		--readers "$READERS" --read-interval "${READ_INTERVAL_MS}ms" --consistency "$read_mode" "${probe_args[@]}" \
 		--timeout "$((load_seconds + 120))s" || no_verdict "could not create the load Job"
 	local started=""
 	for ((i = 0; i < 240; i++)); do
@@ -456,6 +549,12 @@ chaos_main() {
 	kill-leader | kill-follower) fault_pod_delete "$target_pod" ;;
 	restart-shard) fault_pod_delete $(shard_pods "$shard") ;;
 	isolate-replica) fault_isolate ;;
+	isolate-leader) fault_mesh_isolate ;;
+	delay-isolate-leader) fault_mesh_isolate delay-first ;;
+	lose-quorum) fault_lose_quorum ;;
+	delay-follower) fault_delay_follower ;;
+	stop-worker) fault_stop_worker ;;
+	restart-coordinator) fault_restart_coordinator ;;
 	esac
 	log "fault $fault_kind on $target_pod: $(((fault_healed_at - fault_started_at) / 1000))s; recovery ${recovery_leader:-none} term ${recovery_term:-?}"
 	[ "$EXPERIMENT" = kill-leader ] && [ -n "${recovery_ms:-}" ] && [ $((recovery_ms - fault_started_at)) -gt $((ELECTION_MAX_SECONDS * 1000)) ] &&
@@ -481,6 +580,7 @@ chaos_main() {
 	settled_at="$(now_ms)"
 	settle_seconds="$(awk -v a="$settle_started_at" -v b="$settled_at" 'BEGIN { printf "%.1f", (b - a) / 1000 }')"
 	$settle_ok || failed "settle: not settled within ${settle_max}s: $settle_detail"
+	[ "$EXPERIMENT" = delay-follower ] && delay_final_lag
 	load_exit="$(job_exit "$load_job")"
 	load_finished_at="$(iso_ms "$(kn get pods -l "job-name=$load_job" -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.finishedAt}')")"
 	[ "${load_exit:-1}" = 0 ] || failed "load: invcheck load exited ${load_exit:-?}"
@@ -494,29 +594,22 @@ chaos_main() {
 		log "injected: $injected"
 	fi
 
-	# The verdicts.
+	# The verdicts: verify and check read through the fence (READ_CONSISTENCY's default,
+	# linearizable; never stale), then chaos/judge applies the pass criteria.
+	local vmode="$READ_CONSISTENCY"
+	[ "$vmode" = stale ] && vmode=linearizable
 	verify_job="chaos-verify-$run_id"
 	verify_json="$(run_job "$verify_job" verify --coordinator "$COORD_URL" --ledger "$ledger_path" --json \
-		--window "$fault_started_at:$fault_healed_at")"
+		--consistency "$vmode" --window "$fault_started_at:$fault_healed_at" --grace "${GRACE_SECONDS}s")"
 	verify_exit=$?
 	jq -e . <<<"$verify_json" >/dev/null 2>&1 || { verify_json="{}"; }
 	verify_json="$(jq -c . <<<"$verify_json")"
 	check_job="chaos-check-$run_id"
-	check_json="$(run_job "$check_job" check --coordinator "$COORD_URL" --json)"
+	check_json="$(run_job "$check_job" check --coordinator "$COORD_URL" --json --consistency "$vmode")"
 	check_exit=$?
 	jq -e . <<<"$check_json" >/dev/null 2>&1 || { check_json="{}"; }
 	check_json="$(jq -c . <<<"$check_json")"
-	case "$verify_exit" in
-	0) ;;
-	1) failed "ledger: $(jq '.verdict.lost | length' <<<"$verify_json") acknowledged write(s) lost" ;;
-	*) no_verdict "invcheck verify reached no verdict (exit $verify_exit): $(jq -r '.incomplete // "no output"' <<<"$verify_json")" ;;
-	esac
-	case "$check_exit" in
-	0) ;;
-	1 | 3) failed "invcheck: $(jq -r '.verdict // "no verdict"' <<<"$check_json") (exit $check_exit)" ;;
-	*) no_verdict "invcheck check reached no verdict (exit $check_exit): $(jq -r '.incomplete // "no output"' <<<"$check_json")" ;;
-	esac
-	[ "$(jq '.ledger.ackedInWindow // 0' <<<"$verify_json")" -gt 0 ] || failed "load: no write was acknowledged during the fault"
+	apply_judge
 
 	if [ "${#failures[@]}" = 0 ]; then
 		write_report true
