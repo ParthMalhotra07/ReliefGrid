@@ -1,0 +1,43 @@
+{
+  "ok": false,
+  "verdict": "violations",
+  "report": {
+    "requests": 0,
+    "resources": 1,
+    "pages": 2,
+    "partialPages": 0,
+    "violations": [
+      {
+        "rule": "outbox-backlog",
+        "key": "outbox:shard-2",
+        "detail": "2 unpublished events, at most 0 allowed"
+      }
+    ],
+    "outbox": [
+      {
+        "shard": 0,
+        "pending": 0
+      },
+      {
+        "shard": 1,
+        "pending": 0
+      },
+      {
+        "shard": 2,
+        "pending": 2,
+        "oldestAt": 1793516161263
+      }
+    ],
+    "appliedBefore": {
+      "0": 26,
+      "1": 0,
+      "2": 48
+    },
+    "appliedAfter": {
+      "0": 26,
+      "1": 0,
+      "2": 48
+    },
+    "quiescent": true
+  }
+}

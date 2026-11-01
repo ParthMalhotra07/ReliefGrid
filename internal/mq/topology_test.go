@@ -80,6 +80,7 @@ func TestTopologyDefinitionsAndHelmStayIdentical(t *testing.T) {
 		{"relief.retry", "retry.5s", "delay.5s"}, {"relief.retry", "retry.30s", "delay.30s"},
 		{"relief.retry", "retry.120s", "delay.120s"}, {"relief.dlx", "matching.dead", ""},
 		{"relief.events", mq.WakeupQueue, "resource.registered.*"},
+		{"relief.events", mq.WakeupQueue, "resource.state_changed"},
 		{"relief.events", mq.WakeupQueue, "match.*"},
 		{"relief.events", mq.WakeupQueue, "request.status.*"},
 	} {

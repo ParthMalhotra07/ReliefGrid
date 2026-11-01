@@ -1,0 +1,5 @@
+--- FAIL: TestTopologyDefinitionsAndHelmStayIdentical (0.01s)
+    topology_test.go:94: missing binding: [relief.events matching.wakeups resource.state_changed]
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.089s
+FAIL

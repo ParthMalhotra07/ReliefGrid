@@ -146,7 +146,7 @@ func TestIntegrationDomainEventsRouteToDurableWakeups(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = ch.Close() }()
-	for _, key := range []string{"resource.registered.medicine", "match.confirmed", "request.status.cancelled"} {
+	for _, key := range []string{"resource.registered.medicine", "resource.state_changed", "match.confirmed", "request.status.cancelled"} {
 		body := []byte("durable wakeup " + key)
 		publishConfirmed(t, ctx, ch, "relief.events", key, body, 2)
 		d := awaitDelivery(t, ctx, ch, "matching.wakeups")
@@ -158,7 +158,7 @@ func TestIntegrationDomainEventsRouteToDurableWakeups(t *testing.T) {
 		}
 	}
 	assertLivePolicies(t, ctx, admin)
-	t.Log("all three relief.events patterns: mandatory routed confirm -> durable quorum matching.wakeups")
+	t.Log("all four relief.events patterns: mandatory routed confirm -> durable quorum matching.wakeups")
 }
 
 func TestIntegrationManualAckPrefetchAndInterruptedHandoff(t *testing.T) {
