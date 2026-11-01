@@ -1,0 +1,14 @@
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/workflow [build failed]
+# github.com/ParthMalhotra07/ReliefGrid/internal/workflow [github.com/ParthMalhotra07/ReliefGrid/internal/workflow.test]
+internal/workflow/cleanup_test.go:148:18: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:198:19: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:236:20: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:273:19: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:289:27: restarted.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:316:17: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:324:17: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:357:27: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+FAIL
+internal/workflow/cleanup_test.go:396:17: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:416:19: m.Cleanup undefined (type *Matcher has no field or method Cleanup)
+internal/workflow/cleanup_test.go:416:19: too many errors

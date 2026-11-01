@@ -32,7 +32,7 @@ DIFF_BASE ?= origin/main
 
 .PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-replace storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
-.PHONY: verify-A1.3 verify-A1.4
+.PHONY: verify-A1.3 verify-A1.4 verify-A2.1
 .PHONY: app-images app-deploy e2e-smoke verify-A1.5-static
 
 help: ## List targets
@@ -63,6 +63,10 @@ test: ## go test -race ./... (and cmd/invcheck with the chaos tag)
 	@# CI also proves the real pinned-broker TTL/DLX/consumer path (A1.3).
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.3; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.4; fi
+	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.1; fi
+
+verify-A2.1: ## Verify cancellation/completion and frozen terminal event schemas
+	bash scripts/verify-A2.1.sh
 
 verify-A1.3: ## Verify live messaging against the pinned disposable broker
 	bash scripts/verify-A1.3.sh

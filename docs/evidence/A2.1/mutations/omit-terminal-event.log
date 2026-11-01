@@ -1,0 +1,12 @@
+--- FAIL: TestCleanupDispositionsAndAtomicTerminalEvents (0.32s)
+    --- FAIL: TestCleanupDispositionsAndAtomicTerminalEvents/cancel (0.08s)
+        cleanup_test.go:223: want one atomic terminal event, got []
+    --- FAIL: TestCleanupDispositionsAndAtomicTerminalEvents/reusable (0.08s)
+        cleanup_test.go:223: want one atomic terminal event, got []
+    --- FAIL: TestCleanupDispositionsAndAtomicTerminalEvents/consumable (0.08s)
+        cleanup_test.go:223: want one atomic terminal event, got []
+    --- FAIL: TestCleanupDispositionsAndAtomicTerminalEvents/expired (0.08s)
+        cleanup_test.go:223: want one atomic terminal event, got []
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	0.363s
+FAIL
