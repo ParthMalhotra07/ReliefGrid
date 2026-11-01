@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Verify check for S1.5 (storage on Kubernetes), S1.5b (the coordinator in the chart) and
-# S3.1 (readiness and placement).
+# Verify check for S1.5 (storage on Kubernetes), S1.5b (the coordinator in the chart),
+# S3.1 (readiness and placement) and S4.3 #40 (the coordinator NetworkPolicy).
 # Run from the repo root:
 #   scripts/verify-storage-k8s.sh
 #   ELECTION_MAX_SECONDS=15 KEEP_CLUSTER=0 scripts/verify-storage-k8s.sh
@@ -11,7 +11,8 @@
 # fingerprint of the code under test and a dirty flag, every PASS/FAIL line and the
 # result, once the result is known (a failed run is written, marked FAILED); the S2.1 checks
 # (step 6b2) also go to docs/evidence/S2.1/snapshot-restore-<host>.txt, and the S3.1 checks
-# (step 6e) to docs/evidence/S3.1/readiness-placement-<host>.txt. Exits non-zero
+# (step 6e) to docs/evidence/S3.1/readiness-placement-<host>.txt, and the #40 checks (step
+# 5a) to docs/evidence/S4.3/coordinator-netpol-<host>.txt. Exits non-zero
 # if any check fails; prints one PASS/FAIL line per check. Its last check: no kubectl
 # port-forward started from this repository is left running (scripts/port-forwards.sh, #50);
 # every forward it starts is killed on exit, interrupts included.
@@ -24,6 +25,8 @@
 #                                distroless, non-root; builds ./cmd/coordinator as /coordinator
 #   make coordinator-image       docker build of that Dockerfile as reliefgrid/coordinator:dev,
 #                                then kind load docker-image into the reliefgrid cluster
+#   make tools-image             (#40) reliefgrid/tools:dev (/invcheck), kind-loaded: the routed
+#                                writes of step 5a run it in-cluster
 #   make storage-image           docker build of that Dockerfile as reliefgrid/storagenode:dev,
 #                                then kind load docker-image into the reliefgrid cluster
 #   make storage-reset           asks for the namespace on stdin; only if it is typed exactly,
@@ -55,6 +58,14 @@
 #     NetworkPolicy storage-shard-N: ingress to 8081 only from pods labelled
 #       reliefgrid.io/storage-operator=true; storage-shard-N-raft (S2.3): to 7000 only from
 #       shard N's own pods, neither side labelled reliefgrid.io/chaos-isolated=true
+#     NetworkPolicy storage-coordinator (#40): selects the coordinator pod; Ingress and Egress.
+#       Ingress to 8080 only (TCP) from pods in the namespace that are storage pods
+#       (app.kubernetes.io/component=storagenode: register, heartbeat) or labelled
+#       reliefgrid.io/coordinator-client=true (API, matcher), reliefgrid.io/chaos=true
+#       (chaos and demo Jobs) or reliefgrid.io/storage-operator=true. Egress only to the
+#       storage pods on 8080 and to kube-dns (kube-system, k8s-app=kube-dns) on 53 UDP/TCP.
+#       The kubelet's probes and kubectl port-forward don't pass through it (node-local
+#       and loopback); step 5a proves both on kind.
 #     no manifest ConfigMap: the chart renders none (Helm must never own or replay it)
 #     Job storage-bootstrap-<revision>: an ordinary Job (no helm.sh/hook), labelled
 #       reliefgrid.io/storage-operator=true, runs /storagectl bootstrap with MANIFESTS (JSON
@@ -113,6 +124,7 @@ DOCKERFILE=cmd/storagenode/Dockerfile
 IMAGE=reliefgrid/storagenode:dev
 COORD_DOCKERFILE=cmd/coordinator/Dockerfile
 COORD_IMAGE=reliefgrid/coordinator:dev
+TOOLS_IMAGE=reliefgrid/tools:dev
 SHARDS=(0 1 2)
 WRITE_SHARD="${WRITE_SHARD:-1}"
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-5m}"
@@ -125,6 +137,7 @@ KEEP_CLUSTER="${KEEP_CLUSTER:-1}"
 EVIDENCE="docs/evidence/S1.5/storage-k8s-$(hostname -s).txt"
 EVIDENCE_S21="docs/evidence/S2.1/snapshot-restore-$(hostname -s).txt"
 EVIDENCE_S31="docs/evidence/S3.1/readiness-placement-$(hostname -s).txt"
+EVIDENCE_S43="docs/evidence/S4.3/coordinator-netpol-$(hostname -s).txt"
 TRANSFER_MAX_SECONDS="${TRANSFER_MAX_SECONDS:-5}" # storagectl transfer-leader -> a new leader (S3.1)
 TRANSFERS="${TRANSFERS:-3}"
 FAILOVERS="${FAILOVERS:-20}"                      # consecutive leader deletes, each within ELECTION_MAX_SECONDS (S3.1)
@@ -134,15 +147,16 @@ failures=0 passes=0
 results="" # every PASS/FAIL line, for the evidence; set to a file once $tmp exists
 s21_results="" # step 6b2's PASS/FAIL lines too, while it runs
 s31_results="" # step 6e's, likewise
+s43_results="" # step 5a's (#40), likewise
 pass() {
-	printf 'PASS  %s\n' "$1" | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}" "${s31_results:-/dev/null}"
+	printf 'PASS  %s\n' "$1" | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}" "${s31_results:-/dev/null}" "${s43_results:-/dev/null}"
 	passes=$((passes + 1))
 }
 fail() { # fail <description> [detail]: a multi-line detail is indented line by line
 	{
 		printf 'FAIL  %s\n' "$1"
 		[ -n "${2:-}" ] && sed 's/^/      /' <<<"$2"
-	} | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}" "${s31_results:-/dev/null}"
+	} | tee -a "${results:-/dev/null}" "${s21_results:-/dev/null}" "${s31_results:-/dev/null}" "${s43_results:-/dev/null}"
 	failures=$((failures + 1))
 }
 check() { # check <description> <command...>
@@ -372,7 +386,7 @@ exec_dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --time
 # make it stale, so only these paths are fingerprinted.
 write_evidence() {
 	local code_paths code_tree code_dirty result s p
-	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator internal deploy/helm/storage scripts/verify-storage-k8s.sh scripts/placement-check.sh scripts/port-forwards.sh)
+	code_paths=(go.mod go.sum Makefile contracts/ring.yaml cmd/storagenode cmd/storagectl cmd/coordinator cmd/invcheck loadtest internal deploy/helm/storage scripts/verify-storage-k8s.sh scripts/placement-check.sh scripts/port-forwards.sh)
 	code_tree="$(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin)"
 	code_dirty="$(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
 	if [ "$failures" -eq 0 ]; then result="PASSED ($passes/$passes checks)"; else result="FAILED ($failures of $((passes + failures)) checks failed)"; fi
@@ -406,6 +420,32 @@ write_evidence() {
 	echo "evidence: $EVIDENCE ($result)"
 	[ -s "${tmp:-}/s21" ] && write_evidence_s21 "$code_tree" "$code_dirty"
 	[ -s "${tmp:-}/s31" ] && write_evidence_s31 "$code_tree" "$code_dirty"
+	[ -s "${tmp:-}/s43" ] && write_evidence_s43 "$code_tree" "$code_dirty"
+}
+# write_evidence_s43 <code tree> <code dirty>: step 5a's checks (#40) and the policy as installed
+write_evidence_s43() {
+	local result n_fail n_all
+	n_fail="$(grep -c '^FAIL' "$tmp/s43")" n_all="$(grep -Ec '^(PASS|FAIL)' "$tmp/s43")"
+	if [ "$n_fail" -eq 0 ]; then result="PASSED ($n_all/$n_all checks)"; else result="FAILED ($n_fail of $n_all checks failed)"; fi
+	mkdir -p "$(dirname "$EVIDENCE_S43")"
+	{
+		echo "# S4.3 #40 coordinator NetworkPolicy (verify-storage-k8s.sh steps 2 and 5a)"
+		echo "result:     $result"
+		echo "host:       $(hostname -s)"
+		echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+		echo "code tree:  ${1:0:12} (same fingerprint as the S1.5 evidence)"
+		echo "code dirty: $2"
+		echo
+		echo "## checks"
+		cat "$tmp/s43"
+		echo
+		echo "## kubectl get networkpolicy storage-coordinator -o yaml (spec)"
+		kn get networkpolicy storage-coordinator -o jsonpath='{.spec}' 2>&1 | jq . 2>/dev/null || echo "(none)"
+		echo
+		echo "## probe pod output"
+		cat "$tmp/s43-probes" 2>/dev/null
+	} 2>&1 | sed 's/[[:space:]]*$//' >"$EVIDENCE_S43"
+	echo "evidence: $EVIDENCE_S43 ($result)"
 }
 # write_evidence_s31 <code tree> <code dirty>: step 6e's checks, the measured timings and the
 # placement-check outputs, live and doctored
@@ -682,6 +722,31 @@ else
 		pass "coordinator: Service $COORD on 8080 selects the coordinator pod" || fail "coordinator: Service $COORD on 8080 selects the coordinator pod" "$csvc"
 fi
 
+# --- 2a. Coordinator NetworkPolicy, rendered (#40) ---------------------------------------
+s43_results="$tmp/s43"
+: >"$s43_results"
+cnp="$(obj NetworkPolicy storage-coordinator)"
+if [ -z "$cnp" ]; then
+	fail "coordinator networkpolicy: rendered"
+else
+	pass "coordinator networkpolicy: rendered"
+	[ "$(q "$cnp" -c '.spec.podSelector.matchLabels')" = '{"app.kubernetes.io/component":"coordinator","app.kubernetes.io/name":"storage"}' ] &&
+		pass "coordinator networkpolicy: selects the coordinator pod" || fail "coordinator networkpolicy: selects the coordinator pod" "$(q "$cnp" -c .spec.podSelector)"
+	[ "$(q "$cnp" -c '.spec.policyTypes | sort')" = '["Egress","Ingress"]' ] &&
+		pass "coordinator networkpolicy: policyTypes Ingress and Egress" || fail "coordinator networkpolicy: policyTypes Ingress and Egress" "$(q "$cnp" -c .spec.policyTypes)"
+	[ "$(q "$cnp" -c '[.spec.ingress[].ports[]] | unique')" = '[{"port":8080,"protocol":"TCP"}]' ] &&
+		pass "coordinator networkpolicy: ingress only to 8080/TCP" || fail "coordinator networkpolicy: ingress only to 8080/TCP" "$(q "$cnp" -c '.spec.ingress')"
+	want='[{"podSelector":{"matchLabels":{"app.kubernetes.io/component":"storagenode","app.kubernetes.io/name":"storage"}}},{"podSelector":{"matchLabels":{"reliefgrid.io/chaos":"true"}}},{"podSelector":{"matchLabels":{"reliefgrid.io/coordinator-client":"true"}}},{"podSelector":{"matchLabels":{"reliefgrid.io/storage-operator":"true"}}}]'
+	[ "$(q "$cnp" -c '[.spec.ingress[].from[]] | sort_by(tostring)')" = "$want" ] &&
+		pass "coordinator networkpolicy: ingress only from storage pods and pods labelled coordinator-client, chaos or storage-operator (this namespace)" ||
+		fail "coordinator networkpolicy: ingress only from storage pods and pods labelled coordinator-client, chaos or storage-operator (this namespace)" "$(q "$cnp" -c '[.spec.ingress[].from[]]')"
+	eg="$(q "$cnp" -c '[.spec.egress[] | {to, ports: (.ports | sort_by(tostring))}] | sort_by(tostring)')"
+	want='[{"to":[{"namespaceSelector":{"matchLabels":{"kubernetes.io/metadata.name":"kube-system"}},"podSelector":{"matchLabels":{"k8s-app":"kube-dns"}}}],"ports":[{"port":53,"protocol":"TCP"},{"port":53,"protocol":"UDP"}]},{"to":[{"podSelector":{"matchLabels":{"app.kubernetes.io/component":"storagenode","app.kubernetes.io/name":"storage"}}}],"ports":[{"port":8080,"protocol":"TCP"}]}]'
+	[ "$eg" = "$want" ] && pass "coordinator networkpolicy: egress only to storage pods on 8080/TCP and kube-dns on 53" ||
+		fail "coordinator networkpolicy: egress only to storage pods on 8080/TCP and kube-dns on 53" "$eg"
+fi
+s43_results=""
+
 # --- 3. Fresh cluster, image, install ------------------------------------------------
 make -s cluster-down >/dev/null 2>&1
 if make -s cluster-up >"$tmp/up.out" 2>&1; then pass "cluster: fresh reliefgrid cluster"; else abort "cluster: fresh reliefgrid cluster" "$(tail -3 "$tmp/up.out" | tr '\n' '|')"; fi
@@ -697,6 +762,7 @@ docker create --name s15-probe "$IMAGE" >/dev/null 2>&1 && docker cp "s15-probe:
 	fail "image: $IMAGE does not contain /coordinator" || pass "image: $IMAGE does not contain /coordinator"
 docker rm -f s15-probe >/dev/null 2>&1
 if make -s coordinator-image >"$tmp/cimage.out" 2>&1; then pass "make coordinator-image: succeeds"; else abort "make coordinator-image: succeeds" "$(tail -5 "$tmp/cimage.out" | tr '\n' '|')"; fi
+if make -s tools-image >"$tmp/timage.out" 2>&1; then pass "make tools-image: succeeds (#40's routed writes)"; else abort "make tools-image: succeeds" "$(tail -5 "$tmp/timage.out" | tr '\n' '|')"; fi
 uid="$(docker image inspect "$COORD_IMAGE" --format '{{.Config.User}}' 2>/dev/null)"
 [[ -n "$uid" && "$uid" != 0 && "$uid" != root ]] && pass "coordinator image: $COORD_IMAGE runs as user '$uid'" ||
 	fail "coordinator image: $COORD_IMAGE runs as a non-root user" "Config.User '$uid'"
@@ -820,6 +886,92 @@ exec_dial storage-shard-1-0 "${raft0%:7000}:8080" && pass "networkpolicy: storag
 	fail "networkpolicy: storage-shard-1-0 reaches storage-shard-0-0:8080 (data, control)"
 exec_dial storage-shard-1-0 "$raft0" && fail "networkpolicy: storage-shard-1-0 cannot reach $raft0 (other shard)" ||
 	pass "networkpolicy: storage-shard-1-0 cannot reach $raft0 (other shard)"
+
+# --- 5a. Coordinator NetworkPolicy, live (#40) --------------------------------------------
+# Each probe is a fresh pod (or Job) in the namespace; only its labels differ. kindnet enforces
+# NetworkPolicy, so a refused connection times out: storagectl dial exits 1, invcheck load
+# cannot load the ring and exits 2.
+s43_results="$tmp/s43"
+: >"$tmp/s43-probes"
+# cnp_run <name> <image> <labels k=v,...|""> <cmd...>: run cmd in a fresh pod; 0 Succeeded,
+# 1 Failed, 2 never finished. Its own log is $tmp/s43-<name>.log (checks read only that one),
+# also appended to $tmp/s43-probes for the evidence.
+cnp_run() {
+	local name="$1" image="$2" labels="$3" phase rc=2
+	shift 3
+	kn delete pod "$name" --ignore-not-found --wait=true >/dev/null 2>&1
+	kn run "$name" --image "$image" --image-pull-policy Never --restart Never ${labels:+--labels "$labels"} --command -- "$@" >/dev/null 2>&1
+	for _ in $(seq 90); do
+		phase="$(kn get pod "$name" -o jsonpath='{.status.phase}' 2>/dev/null)"
+		case "$phase" in Succeeded) rc=0; break ;; Failed) rc=1; break ;; esac
+		sleep 1
+	done
+	kn logs "$name" >"$tmp/s43-$name.log" 2>&1
+	{ echo "### $name (labels '${labels:-none}', exit class $rc)"; tail -5 "$tmp/s43-$name.log"; } >>"$tmp/s43-probes"
+	kn delete pod "$name" --wait=false >/dev/null 2>&1
+	return "$rc"
+}
+acked() { grep -Eq ': [1-9][0-9]* acknowledged, 0 unknown' "$1"; } # acked <log>: that load acknowledged writes, none unknown
+nacked() { grep -Eo '[0-9]+ acknowledged' "$1" | head -1; }
+load_cmd() { echo /invcheck load --coordinator "$COORD_URL" --ledger /tmp/l.json --prefix "s43-$1-$(date +%s)" --workers 1 --keys 1 --ops 2 --retries 1 --timeout 45s; }
+csvc="${COORD_URL#http://}"
+if kn get networkpolicy storage-coordinator >/dev/null 2>&1; then pass "coordinator networkpolicy: installed"; else fail "coordinator networkpolicy: installed"; fi
+cnp_run cnp-open "$IMAGE" "" /storagectl dial --addr "$csvc" --timeout 3s
+rc=$?
+[ "$rc" = 1 ] && pass "coordinator networkpolicy: an unlabelled pod cannot connect to $csvc" ||
+	fail "coordinator networkpolicy: an unlabelled pod cannot connect to $csvc" "exit class $rc (0: connected)"
+cnp_run cnp-client-dial "$IMAGE" reliefgrid.io/coordinator-client=true /storagectl dial --addr "$csvc" --timeout 3s &&
+	pass "coordinator networkpolicy: a coordinator-client pod connects to $csvc" || fail "coordinator networkpolicy: a coordinator-client pod connects to $csvc" "$(tail -3 "$tmp/s43-cnp-client-dial.log")"
+# shellcheck disable=SC2046
+cnp_run cnp-open-load "$TOOLS_IMAGE" "" $(load_cmd open)
+rc=$?
+[ "$rc" = 1 ] && pass "coordinator networkpolicy: an unlabelled pod's routed write fails (no ring)" ||
+	fail "coordinator networkpolicy: an unlabelled pod's routed write fails (no ring)" "exit class $rc: $(tail -3 "$tmp/s43-cnp-open-load.log")"
+# shellcheck disable=SC2046
+cnp_run cnp-client-load "$TOOLS_IMAGE" reliefgrid.io/coordinator-client=true $(load_cmd client)
+rc=$?
+log="$tmp/s43-cnp-client-load.log"
+[ "$rc" = 0 ] && acked "$log" && pass "coordinator networkpolicy: a coordinator-client pod's routed writes are acknowledged ($(nacked "$log"))" ||
+	fail "coordinator networkpolicy: a coordinator-client pod's routed writes are acknowledged" "exit class $rc: $(tail -3 "$log")"
+# A chaos-labelled Job, shaped like the harness's (chaos/scripts/lib.sh start_job): the label on
+# the pod template, which is what the policy matches.
+kn delete job cnp-chaos --ignore-not-found --wait=true >/dev/null 2>&1
+# shellcheck disable=SC2046
+printf '%s\n' $(load_cmd chaos) | jq -Rs 'split("\n")[:-1]' | jq --arg image "$TOOLS_IMAGE" '{
+	apiVersion: "batch/v1", kind: "Job", metadata: {name: "cnp-chaos", labels: {"reliefgrid.io/chaos": "true"}},
+	spec: {backoffLimit: 0, ttlSecondsAfterFinished: 600, template: {metadata: {labels: {"reliefgrid.io/chaos": "true"}},
+		spec: {restartPolicy: "Never", securityContext: {runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532},
+			containers: [{name: "invcheck", image: $image, imagePullPolicy: "Never", command: .}]}}}}' | kn apply -f - >/dev/null 2>&1
+if kn wait --for=condition=complete job/cnp-chaos --timeout=90s >/dev/null 2>&1; then
+	log="$tmp/s43-cnp-chaos.log"
+	kn logs job/cnp-chaos >"$log" 2>&1
+	{ echo "### Job cnp-chaos (reliefgrid.io/chaos=true)"; tail -5 "$log"; } >>"$tmp/s43-probes"
+	acked "$log" && pass "coordinator networkpolicy: a chaos-labelled Job's routed writes are acknowledged ($(nacked "$log"))" ||
+		fail "coordinator networkpolicy: a chaos-labelled Job's routed writes are acknowledged" "$(tail -3 "$log")"
+else
+	{ echo "### Job cnp-chaos (did not complete)"; kn logs job/cnp-chaos 2>&1 | tail -5; } >>"$tmp/s43-probes"
+	fail "coordinator networkpolicy: a chaos-labelled Job's routed writes are acknowledged" "the Job did not complete in 90 s: $(kn logs job/cnp-chaos 2>&1 | tail -3)"
+fi
+kn delete job cnp-chaos --wait=false >/dev/null 2>&1
+# Heartbeats: a node is DOWN 5 s after its last one, so 9 UP now means they still arrive.
+if coord_forward; then
+	pass "coordinator networkpolicy: kubectl port-forward to Service $COORD still connects"
+	code="$(curl -s -m 5 -o "$tmp/cring.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/ring")"
+	[ "$code" = 200 ] && [ "$(jq -r .ringVersion "$tmp/cring.json" 2>/dev/null)" = "$ring_version" ] &&
+		pass "coordinator networkpolicy: GET /internal/ring through the port-forward answers 200" ||
+		fail "coordinator networkpolicy: GET /internal/ring through the port-forward answers 200" "HTTP $code"
+	why="not checked"
+	nodes="$(cadmin /admin/nodes)" && why="$(nodes_ok "$nodes")"
+	[ -z "$why" ] && pass "coordinator networkpolicy: storage heartbeats still arrive (all 9 nodes UP)" ||
+		fail "coordinator networkpolicy: storage heartbeats still arrive (all 9 nodes UP)" "${why:-$(head -c 300 <<<"$nodes")}"
+else
+	fail "coordinator networkpolicy: kubectl port-forward to Service $COORD still connects" "$(cat "$tmp/cpf.out" 2>/dev/null)"
+fi
+cpod="$(kn get pods -l app.kubernetes.io/component=coordinator -o jsonpath='{.items[0].metadata.name}')"
+[ "$(kn get pod "$cpod" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status} {.status.containerStatuses[0].restartCount}')" = "True 0" ] &&
+	pass "coordinator networkpolicy: $cpod Ready with 0 restarts (kubelet probes on /healthz pass)" ||
+	fail "coordinator networkpolicy: $cpod Ready with 0 restarts (kubelet probes on /healthz pass)" "$(kn get pod "$cpod" -o jsonpath='{.status.conditions[?(@.type=="Ready")].status} restarts {.status.containerStatuses[0].restartCount}')"
+s43_results=""
 
 # --- 6. A write through the leader survives deleting that leader -------------------------
 wpods=($(pod_names "$WRITE_SHARD"))
