@@ -215,6 +215,14 @@
       "destination_type": "queue",
       "routing_key": "request.status.*",
       "arguments": {}
+    },
+    {
+      "source": "relief.events",
+      "vhost": "/",
+      "destination": "matching.wakeups",
+      "destination_type": "queue",
+      "routing_key": "resource.state_changed",
+      "arguments": {}
     }
   ],
   "policies": [
