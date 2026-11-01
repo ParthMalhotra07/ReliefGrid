@@ -317,8 +317,9 @@ func TestFailureMapping(t *testing.T) {
 	})
 }
 
-// Strong by default (M5); linearizable is served strong until S4.1; stale
-// only on request, marked stalePossible.
+// Strong by default (M5); linearizable goes to the node's read fence (S4.1),
+// which reports how it served the read; stale only on request, marked
+// stalePossible.
 func TestReadConsistency(t *testing.T) {
 	rg := loadRing(t)
 	kvKey, _ := keyOn(t, rg, testShard, "", "kv:cfg")
@@ -330,7 +331,7 @@ func TestReadConsistency(t *testing.T) {
 	}{
 		{"?", raftstore.ReadStrong, internalapi.ReadInfoConsistencyStrong, false},
 		{"?consistency=strong", raftstore.ReadStrong, internalapi.ReadInfoConsistencyStrong, false},
-		{"?consistency=linearizable", raftstore.ReadStrong, internalapi.ReadInfoConsistencyStrong, false},
+		{"?consistency=linearizable", raftstore.ReadLinearizable, internalapi.ReadInfoConsistencyLinearizable, false},
 		{"?consistency=stale", raftstore.ReadStale, internalapi.ReadInfoConsistencyStale, true},
 	}
 	for _, tc := range cases {
@@ -458,6 +459,10 @@ func TestOtherReadRoutes(t *testing.T) {
 			resp.Consistency != "strong" || resp.RingVersion != 1 {
 			t.Fatalf("%d %+v", rec.Code, resp)
 		}
+		rec = do(t, h, call{method: http.MethodGet, path: "/internal/scan?kind=resource&limit=5&consistency=linearizable"})
+		if resp := decodeJSON[internalapi.ScanResponse](t, rec); rec.Code != http.StatusOK || resp.Consistency != internalapi.ScanResponseConsistencyLinearizable {
+			t.Fatalf("linearizable scan: %d %+v", rec.Code, resp)
+		}
 		expectError(t, do(t, h, call{method: http.MethodGet, path: "/internal/scan"}), http.StatusBadRequest, internalapi.INVALID)
 		expectError(t, do(t, h, call{method: http.MethodGet, path: "/internal/scan?kind=planet"}), http.StatusBadRequest, internalapi.INVALID)
 	})
@@ -565,7 +570,7 @@ func TestOutboxConsistencyAndLongPoll(t *testing.T) {
 		read  internalapi.ReadInfoConsistency
 	}{
 		{"", raftstore.ReadStrong, internalapi.ReadInfoConsistencyStrong},
-		{"&consistency=linearizable", raftstore.ReadStrong, internalapi.ReadInfoConsistencyStrong},
+		{"&consistency=linearizable", raftstore.ReadLinearizable, internalapi.ReadInfoConsistencyLinearizable},
 		{"&consistency=stale", raftstore.ReadStale, internalapi.ReadInfoConsistencyStale},
 	} {
 		t.Run("consistency"+tc.query, func(t *testing.T) {

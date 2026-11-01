@@ -69,6 +69,44 @@ func TestLoadConfig(t *testing.T) {
 	}
 }
 
+// STRONG_READ_FENCE chooses how ?consistency=linearizable is served: the
+// read fence (default) or a barrier through the log (S4.1).
+func TestLoadConfigReadFence(t *testing.T) {
+	base := map[string]string{
+		"POD_NAME": "storage-1-2", "SHARD": "1", "DATA_DIR": "/data", "FSM_DIR": "/fsm",
+		"RAFT_ADVERTISE": "storage-1-2.storage-1.reliefgrid.svc.cluster.local:7000", "ADMISSION": "off",
+	}
+	for _, tc := range []struct {
+		env  string
+		want raftstore.ReadFence
+		ok   bool
+	}{
+		{"", raftstore.ReadFenceIndex, true},
+		{"fence", raftstore.ReadFenceIndex, true},
+		{"barrier", raftstore.ReadFenceBarrier, true},
+		{"lease", "", false},
+		{"Fence", "", false},
+	} {
+		m := map[string]string{"STRONG_READ_FENCE": tc.env}
+		for k, v := range base {
+			m[k] = v
+		}
+		cfg, err := loadConfig(func(k string) string { return m[k] })
+		if !tc.ok {
+			if err == nil {
+				t.Errorf("STRONG_READ_FENCE=%q accepted", tc.env)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("STRONG_READ_FENCE=%q: %v", tc.env, err)
+		}
+		if cfg.Raft.ReadFence != tc.want {
+			t.Errorf("STRONG_READ_FENCE=%q: ReadFence = %q, want %q", tc.env, cfg.Raft.ReadFence, tc.want)
+		}
+	}
+}
+
 // Heartbeats go to COORDINATOR_URL; the address the coordinator routes to
 // is HTTP_ADVERTISE, by default RAFT_ADVERTISE's host on the HTTP port.
 func TestLoadConfigHeartbeats(t *testing.T) {

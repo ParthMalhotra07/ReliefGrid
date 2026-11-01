@@ -26,6 +26,9 @@ coordinator:
 
 # Raft snapshot profile (M4): demo (1024 / 512 / 30 s) or load (library defaults).
 profile: demo
+# ?consistency=linearizable: fence (quorum check + FSM wait, no log entry) or
+# barrier (served as strong, through the log). barrier is the fallback (S4.1).
+strongReadFence: fence
 # Deadline on every Apply and read inside a storage node.
 requestTimeoutMs: 3000
 

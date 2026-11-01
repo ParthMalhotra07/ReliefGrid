@@ -78,6 +78,11 @@ type stateMachine struct {
 	appliedMu sync.Mutex
 	appliedCh chan struct{} // closed and replaced whenever the applied index moves
 
+	// closing is closed when the node starts to close: the applied index
+	// will not move again, so waitApplied stops waiting.
+	closing     chan struct{}
+	closingOnce sync.Once
+
 	snapSeq     atomic.Uint64
 	beforeApply atomic.Pointer[func(index uint64)] // tests only: runs before each command
 	beforeSwap  func()                             // tests only: runs in Restore before the swap; set before Raft starts
@@ -113,7 +118,7 @@ func newStateMachine(ctx context.Context, dir, group string, shard int) (*stateM
 			}
 		}
 	}
-	s := &stateMachine{dir: dir, group: group, shard: shard, appliedCh: make(chan struct{})}
+	s := &stateMachine{dir: dir, group: group, shard: shard, appliedCh: make(chan struct{}), closing: make(chan struct{})}
 	f, err := fsm.Open(ctx, "file:"+s.dbPath(0))
 	if err != nil {
 		return nil, err
@@ -324,7 +329,11 @@ func (s *stateMachine) appliedChanged() <-chan struct{} {
 	return s.appliedCh
 }
 
-// waitApplied blocks until appliedIndex() >= index or ctx ends.
+// errClosing is waitApplied's answer once the node has begun to close.
+var errClosing = errors.New("raftstore: node closing")
+
+// waitApplied blocks until appliedIndex() >= index, ctx ends or the node
+// begins to close.
 func (s *stateMachine) waitApplied(ctx context.Context, index uint64) error {
 	for {
 		ch := s.appliedChanged()
@@ -333,11 +342,16 @@ func (s *stateMachine) waitApplied(ctx context.Context, index uint64) error {
 		}
 		select {
 		case <-ch:
+		case <-s.closing:
+			return fmt.Errorf("raftstore: fsm at %d, waiting for %d: %w", s.appliedIndex(), index, errClosing)
 		case <-ctx.Done():
 			return fmt.Errorf("raftstore: fsm at %d, waiting for %d: %w", s.appliedIndex(), index, ctx.Err())
 		}
 	}
 }
+
+// beginClose wakes every waitApplied; the node is closing. Idempotent.
+func (s *stateMachine) beginClose() { s.closingOnce.Do(func() { close(s.closing) }) }
 
 // read runs fn against the current database, holding off Restore until fn returns.
 func (s *stateMachine) read(fn func(f *fsm.FSM) error) error {
@@ -349,6 +363,7 @@ func (s *stateMachine) read(fn func(f *fsm.FSM) error) error {
 func (s *stateMachine) setBeforeApply(fn func(index uint64)) { s.beforeApply.Store(&fn) }
 
 func (s *stateMachine) close() error {
+	s.beginClose()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.f.Close()

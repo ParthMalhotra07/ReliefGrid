@@ -2,7 +2,9 @@ package raftstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"sync"
@@ -108,6 +110,10 @@ type fenceTransport struct {
 	done      chan struct{}
 	closeOnce sync.Once
 	before    func(raft.RPC) // tests only
+	acks      ackTracker
+	// Tests only (Config.dropSend, Config.afterSend); set before Raft starts.
+	dropSend  func(target raft.ServerAddress, req any) bool
+	afterSend func(target raft.ServerAddress, req any)
 }
 
 func newFenceTransport(t *raft.NetworkTransport, fence *commitFence, before func(raft.RPC)) *fenceTransport {
@@ -152,4 +158,102 @@ func (t *fenceTransport) Consumer() <-chan raft.RPC { return t.consumeCh }
 func (t *fenceTransport) Close() error {
 	t.closeOnce.Do(func() { close(t.done) })
 	return t.NetworkTransport.Close()
+}
+
+// errDropped is what a test's dropSend makes an outgoing RPC fail with.
+var errDropped = errors.New("raftstore: rpc dropped by test")
+
+// send runs one outgoing RPC through the test hooks, if any.
+func (t *fenceTransport) send(target raft.ServerAddress, req any, rpc func() error) error {
+	if t.dropSend != nil && t.dropSend(target, req) {
+		return errDropped
+	}
+	if err := rpc(); err != nil {
+		return err
+	}
+	if t.afterSend != nil {
+		t.afterSend(target, req)
+	}
+	return nil
+}
+
+// AppendEntries carries heartbeats as well as appends (replication.go in
+// v1.8.0 calls it for both). A successful answer is recorded with the time
+// the request was sent, for the read fence.
+func (t *fenceTransport) AppendEntries(id raft.ServerID, target raft.ServerAddress, args *raft.AppendEntriesRequest, resp *raft.AppendEntriesResponse) error {
+	sent := time.Now()
+	err := t.send(target, args, func() error { return t.NetworkTransport.AppendEntries(id, target, args, resp) })
+	if err == nil && resp.Success {
+		t.acks.record(id, args.Term, sent)
+	}
+	return err
+}
+
+// ackTracker keeps, per peer, the newest AppendEntries request that peer
+// accepted: its term and when it was sent (S4.1).
+//
+// raft v1.8.0's VerifyLeader counts any successful response that arrives
+// after it is registered (replication.go:437, future.go:274-293), even one
+// to a request sent before the read began; a response delayed past an
+// election could confirm a deposed leader. The fence therefore also needs
+// a quorum of acceptances of requests sent after the read began. A
+// follower that accepted a request of term T has not voted in a later
+// term, so no later leader can have committed anything before that.
+// Pipelined appends are not recorded: missing acknowledgements only make
+// the check stricter, and VerifyLeader's heartbeats always come here.
+type ackTracker struct {
+	mu   sync.Mutex
+	acks map[raft.ServerID]ack
+}
+
+type ack struct {
+	term uint64
+	sent time.Time // local monotonic clock; only ever compared locally
+}
+
+func (a *ackTracker) record(id raft.ServerID, term uint64, sent time.Time) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.acks == nil {
+		a.acks = map[raft.ServerID]ack{}
+	}
+	if old, ok := a.acks[id]; ok && (old.term > term || old.term == term && !sent.After(old.sent)) {
+		return
+	}
+	a.acks[id] = ack{term: term, sent: sent}
+}
+
+// acceptedSince reports whether peer id accepted a request of term that
+// was sent at or after since.
+func (a *ackTracker) acceptedSince(id raft.ServerID, term uint64, since time.Time) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	k, ok := a.acks[id]
+	return ok && k.term == term && !k.sent.Before(since)
+}
+
+// AppendEntriesPipeline is off while a test drops RPCs, so that every
+// append goes through AppendEntries; Raft falls back on this error
+// (replication.go in v1.8.0).
+func (t *fenceTransport) AppendEntriesPipeline(id raft.ServerID, target raft.ServerAddress) (raft.AppendPipeline, error) {
+	if t.dropSend != nil {
+		return nil, raft.ErrPipelineReplicationNotSupported
+	}
+	return t.NetworkTransport.AppendEntriesPipeline(id, target)
+}
+
+func (t *fenceTransport) RequestVote(id raft.ServerID, target raft.ServerAddress, args *raft.RequestVoteRequest, resp *raft.RequestVoteResponse) error {
+	return t.send(target, args, func() error { return t.NetworkTransport.RequestVote(id, target, args, resp) })
+}
+
+func (t *fenceTransport) RequestPreVote(id raft.ServerID, target raft.ServerAddress, args *raft.RequestPreVoteRequest, resp *raft.RequestPreVoteResponse) error {
+	return t.send(target, args, func() error { return t.NetworkTransport.RequestPreVote(id, target, args, resp) })
+}
+
+func (t *fenceTransport) InstallSnapshot(id raft.ServerID, target raft.ServerAddress, args *raft.InstallSnapshotRequest, resp *raft.InstallSnapshotResponse, data io.Reader) error {
+	return t.send(target, args, func() error { return t.NetworkTransport.InstallSnapshot(id, target, args, resp, data) })
+}
+
+func (t *fenceTransport) TimeoutNow(id raft.ServerID, target raft.ServerAddress, args *raft.TimeoutNowRequest, resp *raft.TimeoutNowResponse) error {
+	return t.send(target, args, func() error { return t.NetworkTransport.TimeoutNow(id, target, args, resp) })
 }

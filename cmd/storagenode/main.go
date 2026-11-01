@@ -77,8 +77,9 @@ type config struct {
 
 // loadConfig reads POD_NAME, SHARD, GROUP_ID (default shard-<SHARD>),
 // DATA_DIR, FSM_DIR, RAFT_BIND (default :7000), RAFT_ADVERTISE (required,
-// stable DNS host:port), PROFILE (demo or load, default demo) and the fields
-// above.
+// stable DNS host:port), PROFILE (demo or load, default demo),
+// STRONG_READ_FENCE (fence or barrier, default fence: how
+// ?consistency=linearizable is served) and the fields above.
 func loadConfig(getenv func(string) string) (config, error) {
 	get := func(k, def string) string {
 		if v := getenv(k); v != "" {
@@ -103,6 +104,10 @@ func loadConfig(getenv func(string) string) (config, error) {
 	if err != nil {
 		return config{}, err
 	}
+	fence := raftstore.ReadFence(get("STRONG_READ_FENCE", string(raftstore.ReadFenceIndex)))
+	if fence != raftstore.ReadFenceIndex && fence != raftstore.ReadFenceBarrier {
+		return config{}, fmt.Errorf("STRONG_READ_FENCE %q: want %s or %s", fence, raftstore.ReadFenceIndex, raftstore.ReadFenceBarrier)
+	}
 	timeoutMS, err := strconv.Atoi(get("REQUEST_TIMEOUT_MS", "3000"))
 	if err != nil || timeoutMS <= 0 {
 		return config{}, fmt.Errorf("REQUEST_TIMEOUT_MS %q must be a positive integer", getenv("REQUEST_TIMEOUT_MS"))
@@ -111,7 +116,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 		Raft: raftstore.Config{
 			PodName: getenv("POD_NAME"), GroupID: get("GROUP_ID", fmt.Sprintf("shard-%d", shard)), Shard: shard,
 			DataDir: getenv("DATA_DIR"), FSMDir: getenv("FSM_DIR"),
-			BindAddr: get("RAFT_BIND", ":7000"), AdvertiseAddr: getenv("RAFT_ADVERTISE"), Profile: profile,
+			BindAddr: get("RAFT_BIND", ":7000"), AdvertiseAddr: getenv("RAFT_ADVERTISE"), Profile: profile, ReadFence: fence,
 		},
 		HTTPAddr:       get("HTTP_ADDR", ":8080"),
 		MgmtAddr:       get("MGMT_ADDR", ":8081"),

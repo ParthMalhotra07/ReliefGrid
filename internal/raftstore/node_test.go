@@ -35,7 +35,7 @@ var testProfile = Profile{
 const waitFor = 10 * time.Second
 
 type testCluster struct {
-	t     *testing.T
+	t     testing.TB
 	cfgs  []Config
 	nodes []*Node // nil while killed
 }
@@ -43,7 +43,7 @@ type testCluster struct {
 // newTestCluster opens n nodes on loopback, each advertising a name
 // (localhost:<port>) that the transport resolves on every dial. It does not
 // bootstrap them.
-func newTestCluster(t *testing.T, n int, p Profile) *testCluster {
+func newTestCluster(t testing.TB, n int, p Profile) *testCluster {
 	t.Helper()
 	c := &testCluster{t: t, cfgs: make([]Config, n), nodes: make([]*Node, n)}
 	for i := range n {
@@ -77,7 +77,7 @@ func newTestCluster(t *testing.T, n int, p Profile) *testCluster {
 }
 
 // newBootstrappedCluster is a three-node group bootstrapped through node 0.
-func newBootstrappedCluster(t *testing.T, p Profile) *testCluster {
+func newBootstrappedCluster(t testing.TB, p Profile) *testCluster {
 	t.Helper()
 	c := newTestCluster(t, 3, p)
 	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
@@ -171,13 +171,13 @@ func (c *testCluster) follower(leader int) (int, *Node) {
 	return -1, nil
 }
 
-func testCtx(t *testing.T) context.Context {
+func testCtx(t testing.TB) context.Context {
 	ctx, cancel := context.WithTimeout(context.Background(), waitFor)
 	t.Cleanup(cancel)
 	return ctx
 }
 
-func mustApply(t *testing.T, n *Node, cmd any) store.Result {
+func mustApply(t testing.TB, n *Node, cmd any) store.Result {
 	t.Helper()
 	res, err := n.Apply(testCtx(t), cmd)
 	if err != nil {

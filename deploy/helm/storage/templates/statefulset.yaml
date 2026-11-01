@@ -77,6 +77,8 @@ spec:
               value: ":8081"
             - name: PROFILE
               value: {{ $.Values.profile | quote }}
+            - name: STRONG_READ_FENCE # how ?consistency=linearizable is served (S4.1)
+              value: {{ $.Values.strongReadFence | quote }}
             - name: RING_PATH
               value: /etc/reliefgrid/ring.yaml
             - name: REQUEST_TIMEOUT_MS

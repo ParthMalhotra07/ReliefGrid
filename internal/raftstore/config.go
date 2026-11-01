@@ -40,6 +40,19 @@ func ProfileByName(name string) (Profile, error) {
 	return Profile{}, fmt.Errorf("raftstore: unknown profile %q (want demo or load)", name)
 }
 
+// ReadFence selects how a ReadLinearizable read is served
+// (STRONG_READ_FENCE).
+type ReadFence string
+
+const (
+	// ReadFenceIndex is the read fence: a quorum check and a wait for the
+	// FSM, no log entry. The zero value means this.
+	ReadFenceIndex ReadFence = "fence"
+	// ReadFenceBarrier serves linearizable reads as strong (a barrier in
+	// the log), for comparison and as a fallback.
+	ReadFenceBarrier ReadFence = "barrier"
+)
+
 // Config describes one replica of one shard's Raft group.
 type Config struct {
 	PodName string // StatefulSet pod name, e.g. storage-1-0
@@ -58,6 +71,8 @@ type Config struct {
 	AdvertiseAddr string
 
 	Profile Profile
+	// ReadFence chooses how ReadLinearizable is served; "" is ReadFenceIndex.
+	ReadFence ReadFence
 	// Logger receives Raft's own logs; nil logs at info to stderr.
 	Logger hclog.Logger
 
@@ -75,6 +90,15 @@ type Config struct {
 	// through the transport's consumer (not heartbeats), after the commit
 	// fence has observed it and before Raft sees it.
 	beforeRPC func(raft.RPC)
+
+	// dropSend, tests only, decides whether an outgoing RPC (req is the
+	// *raft.AppendEntriesRequest, *raft.RequestVoteRequest, ... to target)
+	// fails before it is sent. While it is set, pipelined replication is
+	// off so that every append passes through it.
+	dropSend func(target raft.ServerAddress, req any) bool
+	// afterSend, tests only, runs after an outgoing RPC has succeeded and
+	// before Raft sees the response; blocking in it delays the response.
+	afterSend func(target raft.ServerAddress, req any)
 }
 
 // raftConfig builds the library config for this node from the profile.
