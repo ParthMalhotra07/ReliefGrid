@@ -121,7 +121,7 @@ make_plan() {
 	lose-quorum) role=all budget=$((QUORUM_SECONDS + 90)) ;;
 	delay-follower) role=follower budget=$((DELAY_SECONDS + 75)) ;;
 	stop-worker) role=follower budget=$((WORKER_SECONDS + WORKER_BACK_SECONDS + 30)) ;;
-	restart-coordinator) role=coordinator budget=90 ;;
+	restart-coordinator) role=coordinator budget=$((GRACE_SECONDS + COORDINATOR_DOWN_SECONDS + 90)) ;;
 	kill-follower) role=follower budget=75 ;;
 	restart-shard) role=all budget=150 ;;
 	isolate-replica)
@@ -502,7 +502,7 @@ chaos_main() {
 	lose-quorum) fault_kind=quorum-loss fault_mechanism="Chaos Mesh NetworkChaos: every replica of the shard partitioned from the other two" ;;
 	delay-follower) fault_kind=delay fault_mechanism="Chaos Mesh NetworkChaos delay ${DELAY_MS}ms +-${DELAY_JITTER_MS}ms, the follower with both peers, both directions" ;;
 	stop-worker) fault_kind=node-stop fault_mechanism="docker stop of the data worker's kind node (one replica of every shard), then docker start" ;;
-	restart-coordinator) fault_kind=coordinator-restart fault_mechanism="kubectl delete pod of the coordinator (Deployment recreates it)" ;;
+	restart-coordinator) fault_kind=coordinator-restart fault_mechanism="kubectl scale of the coordinator to 0, held for the grace plus ${COORDINATOR_DOWN_SECONDS}s, then back" ;;
 	esac
 	log "$EXPERIMENT: plan $plan"
 

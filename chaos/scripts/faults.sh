@@ -12,7 +12,7 @@
 #
 # Environment: DELAY_MS (300), DELAY_JITTER_MS (50), DELAY_SECONDS (25), DELAY_LEAD_SECONDS (5),
 # DELAY_ISOLATE_MS (150), DELAY_ISOLATE_JITTER_MS (30),
-# QUORUM_SECONDS (20), WORKER_SECONDS (30), WORKER_BACK_SECONDS (240).
+# QUORUM_SECONDS (20), WORKER_SECONDS (30), WORKER_BACK_SECONDS (240), COORDINATOR_DOWN_SECONDS (10).
 
 DELAY_MS="${DELAY_MS:-300}"
 DELAY_JITTER_MS="${DELAY_JITTER_MS:-50}"
@@ -28,7 +28,12 @@ DELAY_ISOLATE_JITTER_MS="${DELAY_ISOLATE_JITTER_MS:-30}"
 QUORUM_SECONDS="${QUORUM_SECONDS:-20}"
 WORKER_SECONDS="${WORKER_SECONDS:-30}"
 WORKER_BACK_SECONDS="${WORKER_BACK_SECONDS:-240}"
-stopped_node="" # a kind node this run stopped and has not started again
+# restart-coordinator holds the coordinator at zero replicas for GRACE_SECONDS plus this, so
+# the judge has an interval after the grace to observe (a bare pod delete healed in 859 ms,
+# inside the 2 s grace, and was judged on nothing).
+COORDINATOR_DOWN_SECONDS="${COORDINATOR_DOWN_SECONDS:-10}"
+stopped_node=""        # a kind node this run stopped and has not started again
+scaled_coordinator=""  # the coordinator's replica count, while this run holds it at zero
 
 # mesh_apply <name> <spec JSON>: create NetworkChaos <name> for this run and wait until it is
 # injected into every selected pod
@@ -57,6 +62,10 @@ cleanup_faults() {
 	if [ -n "$stopped_node" ]; then
 		docker start "$stopped_node" >/dev/null 2>&1
 		stopped_node=""
+	fi
+	if [ -n "$scaled_coordinator" ]; then
+		kn scale deployment/storage-coordinator --replicas="$scaled_coordinator" >/dev/null 2>&1
+		scaled_coordinator=""
 	fi
 }
 
@@ -192,14 +201,26 @@ shard_terms() {
 ring_id() { run_job "chaos-ring-$run_id-$1" ring --coordinator "$COORD_URL" | jq -r '"\(.ringVersion)/\(.checksum)"' 2>/dev/null; }
 bootstrap_jobs() { kn get jobs -o name 2>/dev/null | grep -c '^job.batch/storage-bootstrap-'; }
 
-# fault_restart_coordinator: delete the coordinator pod; healed once a new one is Ready
+# fault_restart_coordinator: scale the coordinator to zero, wait for its pod to go, hold it
+# down until GRACE_SECONDS + COORDINATOR_DOWN_SECONDS after the fault began, then scale it
+# back. Healed when the scale-up begins (as for every fault); recovered once a new pod is Ready.
 fault_restart_coordinator() {
-	local ring_before terms_before jobs_before old uid back=false deadline
+	local ring_before terms_before jobs_before old uid replicas back=false deadline hold_until
 	ring_before="$(ring_id before)" terms_before="$(shard_terms)" jobs_before="$(bootstrap_jobs)"
 	old="$(kn get pods -l app.kubernetes.io/component=coordinator -o jsonpath='{.items[0].metadata.name}')"
 	uid="$(kn get pod "$old" -o jsonpath='{.metadata.uid}')"
+	replicas="$(kn get deployment/storage-coordinator -o jsonpath='{.spec.replicas}')"
+	[ -n "$old" ] && [ -n "$uid" ] && [ "${replicas:-0}" -ge 1 ] || no_verdict "coordinator: no running coordinator to restart"
 	fault_started_at="$(now_ms)"
-	kn delete pod "$old" --wait=false >/dev/null || no_verdict "kubectl delete pod $old"
+	scaled_coordinator="$replicas"
+	kn scale deployment/storage-coordinator --replicas=0 >/dev/null || no_verdict "kubectl scale storage-coordinator to 0"
+	kn wait --for=delete pod/"$old" --timeout="${RECOVERY_MAX_SECONDS}s" >/dev/null 2>&1 ||
+		failed "coordinator: $old still present ${RECOVERY_MAX_SECONDS}s after scaling to 0"
+	hold_until=$((fault_started_at + (GRACE_SECONDS + COORDINATOR_DOWN_SECONDS) * 1000))
+	while [ "$(now_ms)" -lt "$hold_until" ]; do sleep 0.5; done
+	fault_healed_at="$(now_ms)"
+	kn scale deployment/storage-coordinator --replicas="$replicas" >/dev/null || no_verdict "kubectl scale storage-coordinator to $replicas"
+	scaled_coordinator=""
 	deadline=$(($(now_ms) + RECOVERY_MAX_SECONDS * 1000))
 	while [ "$(now_ms)" -lt "$deadline" ]; do
 		if kn get pods -l app.kubernetes.io/component=coordinator -o json 2>/dev/null | jq -e --arg u "$uid" \
@@ -209,8 +230,7 @@ fault_restart_coordinator() {
 		fi
 		sleep 0.5
 	done
-	fault_healed_at="$(now_ms)"
-	recovery_ms="$fault_healed_at"
+	recovery_ms="$(now_ms)"
 	$back || failed "coordinator: no new coordinator Ready within ${RECOVERY_MAX_SECONDS}s"
 	sleep 5 # heartbeats repopulate the node table (UP after one heartbeat)
 	harness_coordinator="$(jq -cn --arg rb "$ring_before" --arg ra "$(ring_id after)" --argjson tb "$terms_before" \
