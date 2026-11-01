@@ -3,6 +3,7 @@
 // command reads and writes through coordclient.
 //
 //	invcheck check --coordinator URL [--json] [--max-backlog N] [--page-limit N]
+//	               [--consistency strong|linearizable]
 //	                       walk every request and resource, check the claim
 //	                       invariants and report the outbox backlog. Exit 0:
 //	                       complete, clean and quiescent; 1: violations; 2:
@@ -11,15 +12,22 @@
 //	                       was found.
 //	invcheck load --coordinator URL --ledger FILE [--prefix P] [--workers N]
 //	                       [--keys N] [--ops N] [--duration D] [--interval D]
-//	                       [--retries N]
+//	                       [--retries N] [--readers N] [--read-interval D]
+//	                       [--consistency strong|linearizable|stale]
 //	                       drive writes and save the acknowledged-write ledger
 //	                       to FILE: --ops writes per worker, or with --ops 0
-//	                       until --duration has passed. Exit 2 if interrupted
-//	                       (the ledger so far is still saved).
+//	                       until --duration has passed. --readers read the
+//	                       update keys in --consistency mode while the writers
+//	                       run, and their reads go into the ledger (stale is
+//	                       the negative control: verify must catch it). Exit
+//	                       2 if interrupted (the ledger so far is still saved).
 //	invcheck verify --coordinator URL --ledger FILE [--json] [--window FROM:TO]
+//	                [--consistency strong|linearizable]
 //	                       after writers stop: resolve unknown outcomes by
 //	                       operation lookup, then check every acknowledged
-//	                       write. Exit 0: none lost; 1: some lost; 2: a read
+//	                       write, and every reader's read against the writes
+//	                       acknowledged before it began. Exit 0: none lost
+//	                       and no stale read; 1: some lost or stale; 2: a read
 //	                       or lookup failed, so no verdict. --json also gives
 //	                       the ledger as written (counts, failed attempts and
 //	                       the writes acknowledged between FROM and TO, unix ms).
@@ -28,7 +36,10 @@
 //	                       image): overwrite one acknowledged write so that a
 //	                       harness can show it catches a loss.
 //
-// --timeout (default 5m) bounds the whole command.
+// --timeout (default 5m) bounds the whole command. --consistency (default
+// strong) is how every read is made, and an answer served weaker than that
+// is refused (#72). check and verify refuse stale: a lagging replica could
+// report a violation or a loss that is not there.
 package main
 
 import (
@@ -129,7 +140,25 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		extra.flags(fs)
 	}
 	fs.IntVar(&d.Retries, "retries", 3, "same-operation retries of an unknown outcome (load)")
+	mode := fs.String("consistency", "strong", "read mode: strong or linearizable; stale for load's readers only")
+	fs.IntVar(&d.Readers, "readers", 0, "concurrent readers of the update keys while the writers run (load)")
+	fs.DurationVar(&d.ReadInterval, "read-interval", 20*time.Millisecond, "pause between one reader's reads (load)")
 	if err := fs.Parse(args[1:]); err != nil {
+		return exitUsage
+	}
+	switch store.Consistency(*mode) {
+	case store.ConsistencyStrong, store.ConsistencyLinearizable:
+	case store.ConsistencyStale:
+		if args[0] != "load" {
+			_, _ = fmt.Fprintf(stderr, "invcheck: --consistency stale is refused for %s: a lagging replica could report a violation or a loss that is not there\n", args[0])
+			return exitUsage
+		}
+	default:
+		_, _ = fmt.Fprintf(stderr, "invcheck: --consistency %q: want strong or linearizable (or stale, for load)\n", *mode)
+		return exitUsage
+	}
+	if d.Readers < 0 {
+		_, _ = fmt.Fprintln(stderr, "invcheck: --readers must be 0 or more")
 		return exitUsage
 	}
 	if args[0] != "check" && *path == "" {
@@ -146,7 +175,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 	ctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
-	client, err := coordclient.New(ctx, *coord)
+	client, err := coordclient.New(ctx, *coord, coordclient.WithReadConsistency(store.Consistency(*mode)))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "invcheck: coordinator %s: %v\n", *coord, err)
 		return exitIncomplete
@@ -156,6 +185,13 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return check(ctx, client, opt, *asJSON, stdout)
 	case "load":
 		d.Store, d.At = client, time.Now().UnixMilli()
+		if d.Readers > 0 {
+			d.ReadConsistency = *mode
+			d.Read = func(ctx context.Context, key string) (store.Record, string, error) {
+				rec, info, err := client.ReadRecordInfo(ctx, key)
+				return rec, string(info.Consistency), err
+			}
+		}
 		return load(ctx, d, *path, stdout)
 	case "verify":
 		return verify(ctx, client, *path, *asJSON, win, stdout)
@@ -238,7 +274,7 @@ func load(ctx context.Context, d ledger.Driver, path string, out io.Writer) int 
 		_, _ = fmt.Fprintf(out, "invcheck: %v\n", err)
 		return exitIncomplete
 	}
-	_, _ = fmt.Fprintf(out, "ledger %s: %d acknowledged, %d unknown, %d rejected\n", path, len(l.Acked), len(l.Unknown), len(l.Rejected))
+	_, _ = fmt.Fprintf(out, "ledger %s: %d acknowledged, %d unknown, %d rejected, %d reads\n", path, len(l.Acked), len(l.Unknown), len(l.Rejected), len(l.Reads))
 	if runErr != nil {
 		_, _ = fmt.Fprintf(out, "interrupted: %v\n", runErr)
 		return exitIncomplete
@@ -325,8 +361,21 @@ func verify(ctx context.Context, s store.Store, path string, asJSON bool, w wind
 	for _, loss := range v.Lost {
 		_, _ = fmt.Fprintf(out, "lost %s %s: %s\n", loss.Entry.OperationID, loss.Entry.Key, loss.Reason)
 	}
+	r := v.Reads
+	_, _ = fmt.Fprintf(out, "checked %d of %d reads (%d before any acknowledgement, %d failed; served %v): %d stale\n",
+		r.Checked, r.Total, r.Unchecked, r.Failed, r.Served, len(v.StaleReads))
+	for i, sr := range v.StaleReads {
+		if i == maxStaleListed {
+			_, _ = fmt.Fprintf(out, "... and %d more stale reads\n", len(v.StaleReads)-i)
+			break
+		}
+		_, _ = fmt.Fprintf(out, "stale read %s: %s\n", sr.Read.Key, sr.Reason)
+	}
 	return code
 }
+
+// maxStaleListed bounds the stale reads verify prints; --json has them all.
+const maxStaleListed = 50
 
 func writeJSON(out io.Writer, v any) {
 	enc := json.NewEncoder(out)

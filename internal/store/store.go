@@ -367,6 +367,9 @@ type Consistency string
 
 const (
 	ConsistencyStrong Consistency = "strong"
+	// ConsistencyLinearizable is served by the read fence (v3.1 §13, S4.1):
+	// linearizable like strong, without a log entry per read.
+	ConsistencyLinearizable Consistency = "linearizable"
 	// ConsistencyStale reads one replica's applied state without a leader
 	// round trip. It can miss recent writes: a hint, never proof of absence.
 	ConsistencyStale Consistency = "stale"

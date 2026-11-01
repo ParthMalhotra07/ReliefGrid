@@ -53,6 +53,98 @@ type Entry struct {
 	// At is when the outcome was known (unix ms, the driver's clock): the
 	// acknowledgement, the rejection, or the last failed attempt.
 	At int64 `json:"at"`
+	// AckNs is when the driver had the acknowledgement, in nanoseconds on
+	// the run's monotonic clock (Driver); 0 if it has none. CheckReads
+	// orders reads against it, never against At.
+	AckNs int64 `json:"ackNs,omitempty"`
+	// Resolved: Resolve found the write committed after the run. It was
+	// never acknowledged while readers ran, so no read is held to it.
+	Resolved bool `json:"resolved,omitempty"`
+}
+
+// Read is one reader's read of an update key. StartNs and EndNs are on the
+// run's monotonic clock, like Entry.AckNs. Exactly one of Error, NotFound or
+// a Version (with PayloadHash) describes what it got.
+type Read struct {
+	Key         string `json:"key"`
+	StartNs     int64  `json:"startNs"`
+	EndNs       int64  `json:"endNs"`
+	Version     uint64 `json:"version,omitempty"`
+	PayloadHash string `json:"payloadHash,omitempty"`
+	NotFound    bool   `json:"notFound,omitempty"`
+	Served      string `json:"served,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+// StaleRead is a read that missed an acknowledged write: Want is the last
+// write acknowledged before the read began.
+type StaleRead struct {
+	Read   Read   `json:"read"`
+	Want   Entry  `json:"want"`
+	Reason string `json:"reason"`
+}
+
+// ReadStats counts the reads CheckReads looked at.
+type ReadStats struct {
+	Total     int            `json:"total"`
+	Checked   int            `json:"checked"`   // a write was acknowledged before the read began
+	Unchecked int            `json:"unchecked"` // none was: nothing to hold the read to
+	Failed    int            `json:"failed"`    // the read returned an error (recorded, not a violation)
+	Served    map[string]int `json:"served"`    // reads by the mode the answer reported
+}
+
+// CheckReads holds every read to the writes acknowledged before it began
+// (#72): it must return the last of them or a later write. One writer owns
+// each update key, so its versions only grow and "later" is a higher
+// version. A read that began at or before an acknowledgement is concurrent
+// with that write and is held only to the ones before. A read returning
+// the acknowledged version with another payload is wrong too.
+func (l *Ledger) CheckReads() (ReadStats, []StaleRead) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	acks := map[string][]Entry{}
+	for _, e := range l.Acked {
+		if !e.Resolved && e.AckNs > 0 && e.Result != nil {
+			acks[e.Key] = append(acks[e.Key], e)
+		}
+	}
+	st := ReadStats{Served: map[string]int{}}
+	stale := []StaleRead{}
+	for _, r := range l.Reads {
+		st.Total++
+		if r.Served != "" {
+			st.Served[r.Served]++
+		}
+		if r.Error != "" {
+			st.Failed++
+			continue
+		}
+		var want Entry
+		found := false
+		for _, e := range acks[r.Key] {
+			if e.AckNs < r.StartNs && (!found || e.Seq > want.Seq) {
+				want, found = e, true
+			}
+		}
+		if !found {
+			st.Unchecked++
+			continue
+		}
+		st.Checked++
+		reason := ""
+		switch {
+		case r.NotFound:
+			reason = fmt.Sprintf("key %s missing, but seq %d at v%d was acknowledged before the read began", r.Key, want.Seq, want.Result.Version)
+		case r.Version < want.Result.Version:
+			reason = fmt.Sprintf("read v%d of %s, but seq %d at v%d was acknowledged before the read began", r.Version, r.Key, want.Seq, want.Result.Version)
+		case r.Version == want.Result.Version && r.PayloadHash != want.PayloadHash:
+			reason = fmt.Sprintf("read v%d of %s with payload %.12s, acknowledged payload %.12s", r.Version, r.Key, r.PayloadHash, want.PayloadHash)
+		}
+		if reason != "" {
+			stale = append(stale, StaleRead{Read: r, Want: want, Reason: reason})
+		}
+	}
+	return st, stale
 }
 
 // AttemptError is one failed attempt of a write, kept even when a retry
@@ -80,6 +172,10 @@ type Ledger struct {
 	NotApplied []Entry `json:"notApplied"`
 	// Errors are every failed attempt, in the order they happened.
 	Errors []AttemptError `json:"errors"`
+	// Reads are the readers' reads, in the order they finished.
+	Reads []Read `json:"reads,omitempty"`
+	// ReadConsistency is the mode the readers asked for.
+	ReadConsistency string `json:"readConsistency,omitempty"`
 }
 
 // PayloadHash is the hex SHA-256 of v in compact JSON form, so that it
@@ -112,6 +208,13 @@ func (l *Ledger) Record(e Entry, res store.Result, err error) {
 	}
 }
 
+// RecordRead keeps one reader's read.
+func (l *Ledger) RecordRead(r Read) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.Reads = append(l.Reads, r)
+}
+
 // RecordError keeps one failed attempt.
 func (l *Ledger) RecordError(e AttemptError) {
 	l.mu.Lock()
@@ -127,6 +230,7 @@ type Stats struct {
 	Acked    int `json:"acked"`
 	Unknown  int `json:"unknown"`
 	Rejected int `json:"rejected"`
+	Reads    int `json:"reads"`
 	// AckedInWindow counts acknowledged writes with At in [from, to].
 	AckedInWindow int            `json:"ackedInWindow"`
 	ErrorCount    int            `json:"errorCount"`
@@ -138,7 +242,7 @@ type Stats struct {
 func (l *Ledger) Stats(from, to int64) Stats {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	st := Stats{Acked: len(l.Acked), Unknown: len(l.Unknown), Rejected: len(l.Rejected), ErrorCount: len(l.Errors),
+	st := Stats{Acked: len(l.Acked), Unknown: len(l.Unknown), Rejected: len(l.Rejected), Reads: len(l.Reads), ErrorCount: len(l.Errors),
 		Errors: slices.Clone(l.Errors[:min(len(l.Errors), MaxStatErrors)])}
 	if st.Errors == nil {
 		st.Errors = []AttemptError{}
@@ -209,6 +313,7 @@ func (l *Ledger) Resolve(ctx context.Context, s store.Store) (Resolution, error)
 			l.mu.Unlock()
 		default:
 			res.Resolved++
+			e.Resolved = true
 			l.Record(e, got, nil)
 		}
 	}
@@ -229,12 +334,17 @@ type Verdict struct {
 	// Unknown is the number of writes still unknown; a key whose latest
 	// write is unknown may hold that write or the one before it.
 	Unknown int `json:"unknown"`
+	// Reads counts the readers' reads; StaleReads are those CheckReads
+	// found missing an acknowledged write.
+	Reads      ReadStats   `json:"reads"`
+	StaleReads []StaleRead `json:"staleReads"`
 }
 
-// OK reports whether no acknowledged write was lost.
-func (v Verdict) OK() bool { return len(v.Lost) == 0 }
+// OK reports whether no acknowledged write was lost and no read was stale.
+func (v Verdict) OK() bool { return len(v.Lost) == 0 && len(v.StaleReads) == 0 }
 
-// Verify reads every key and operation in the ledger. Each acknowledged
+// Verify reads every key and operation in the ledger, then checks the
+// readers' reads (CheckReads). Each acknowledged
 // operation's stored result must match what was acknowledged, and each
 // key must hold the payload and version of its last acknowledged write (or
 // of a later write whose outcome is still unknown). A read that fails,
@@ -310,5 +420,6 @@ func (l *Ledger) Verify(ctx context.Context, s store.Store) (Verdict, error) {
 			delete(reasons, e.OperationID)
 		}
 	}
+	v.Reads, v.StaleReads = l.CheckReads()
 	return v, nil
 }
