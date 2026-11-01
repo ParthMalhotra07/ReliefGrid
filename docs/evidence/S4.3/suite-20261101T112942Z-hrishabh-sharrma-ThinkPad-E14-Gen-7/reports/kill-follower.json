@@ -1,0 +1,312 @@
+{
+  "experiment": "kill-follower",
+  "seed": 432,
+  "runId": "kill-follower-s432-1793532757",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "kill-follower",
+    "seed": 432,
+    "shard": 2,
+    "role": "follower",
+    "pick": 1,
+    "faultDelayMs": 9742,
+    "loadSeconds": 85,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-kill-follower-s432",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 2,
+    "pod": "storage-shard-2-2",
+    "serverId": "storage-shard-2-2/38c0f88a-db68-40a8-99c3-85e31b66a6eb",
+    "role": "follower",
+    "term": 5
+  },
+  "fault": {
+    "kind": "pod-delete",
+    "mechanism": "kubectl delete pod (graceful)",
+    "startedAt": 1793532770048,
+    "healedAt": 1793532781705
+  },
+  "recovery": {
+    "leader": "storage-shard-2-1",
+    "term": 5,
+    "seconds": 0.6
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793532848098,
+    "seconds": 0.8,
+    "ok": true,
+    "detail": "shard 2 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793532760000,
+    "faultStartedAt": 1793532770048,
+    "faultHealedAt": 1793532781705,
+    "settledAt": 1793532848946,
+    "loadFinishedAt": 1793532845000
+  },
+  "load": {
+    "job": "chaos-load-kill-follower-s432-1793532757",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 6164,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 840
+  },
+  "errorsObserved": [],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/kill-follower-s432-1793532757.json",
+    "job": "chaos-verify-kill-follower-s432-1793532757",
+    "exitCode": 0,
+    "checked": 6164,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-kill-follower-s432-1793532757",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 2 is one caught-up group",
+    "recovery": {
+      "seconds": 0.6,
+      "term": 5,
+      "termBefore": 5,
+      "leader": "storage-shard-2-1"
+    },
+    "isolation": null,
+    "delay": null,
+    "worker": null,
+    "coordinator": null
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "linearizable",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [
+      "2=http://storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080"
+    ],
+    "verdict": {
+      "total": 4767,
+      "checked": 3189,
+      "unchecked": 2,
+      "failed": 1576,
+      "served": {
+        "linearizable": 3189
+      }
+    },
+    "staleCount": 0,
+    "stale": []
+  },
+  "availability": {
+    "fromMs": 1793532770048,
+    "toMs": 1793532781705,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 234,
+        "acksDuring": 286,
+        "acksAfter": 1587,
+        "acksInsideFault": 244,
+        "readsDuring": 135,
+        "readsServedDuring": 135,
+        "readsServedInsideFault": 113,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 74,
+        "firstAckAfterHealMs": 12,
+        "writeLatencyMs": {
+          "n": 286,
+          "p50": 4.511309,
+          "p99": 8.562502,
+          "max": 44.524459
+        },
+        "readLatencyMs": {
+          "n": 135,
+          "p50": 2.460786,
+          "p99": 6.641854,
+          "max": 6.694953
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 1,
+        "acksBefore": 290,
+        "acksDuring": 338,
+        "acksAfter": 1808,
+        "acksInsideFault": 274,
+        "readsDuring": 217,
+        "readsServedDuring": 217,
+        "readsServedInsideFault": 179,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 19,
+        "firstAckAfterHealMs": 66,
+        "writeLatencyMs": {
+          "n": 338,
+          "p50": 4.461714,
+          "p99": 24.908513,
+          "max": 44.528051
+        },
+        "readLatencyMs": {
+          "n": 217,
+          "p50": 2.479772,
+          "p99": 7.679841,
+          "max": 41.726022
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 2,
+        "acksBefore": 196,
+        "acksDuring": 216,
+        "acksAfter": 1209,
+        "acksInsideFault": 178,
+        "readsDuring": 250,
+        "readsServedDuring": 82,
+        "readsServedInsideFault": 68,
+        "probeReadsDuring": {
+          "storage-shard-2-2": 168
+        },
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 18,
+        "firstAckAfterHealMs": 18,
+        "writeLatencyMs": {
+          "n": 216,
+          "p50": 4.812611,
+          "p99": 8.134745,
+          "max": 11.164692
+        },
+        "readLatencyMs": {
+          "n": 250,
+          "p50": 1.063667,
+          "p99": 7.990491,
+          "max": 3000.705134
+        },
+        "errorsDuring": 0
+      }
+    ]
+  },
+  "judge": {
+    "pass": true,
+    "noVerdict": false,
+    "failures": [],
+    "summary": {
+      "acked": 6164,
+      "unknownRaw": 0,
+      "resolved": 0,
+      "notApplied": 0,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 0,
+      "readsTotal": 4767,
+      "readsChecked": 3189,
+      "readsFailed": 1576,
+      "errorCount": 0,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 234,
+          "acksDuring": 286,
+          "acksAfter": 1587,
+          "acksInsideFault": 244,
+          "readsDuring": 135,
+          "readsServedDuring": 135,
+          "readsServedInsideFault": 113,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 74,
+          "firstAckAfterHealMs": 12,
+          "writeLatencyMs": {
+            "n": 286,
+            "p50": 4.511309,
+            "p99": 8.562502,
+            "max": 44.524459
+          },
+          "readLatencyMs": {
+            "n": 135,
+            "p50": 2.460786,
+            "p99": 6.641854,
+            "max": 6.694953
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 1,
+          "acksBefore": 290,
+          "acksDuring": 338,
+          "acksAfter": 1808,
+          "acksInsideFault": 274,
+          "readsDuring": 217,
+          "readsServedDuring": 217,
+          "readsServedInsideFault": 179,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 19,
+          "firstAckAfterHealMs": 66,
+          "writeLatencyMs": {
+            "n": 338,
+            "p50": 4.461714,
+            "p99": 24.908513,
+            "max": 44.528051
+          },
+          "readLatencyMs": {
+            "n": 217,
+            "p50": 2.479772,
+            "p99": 7.679841,
+            "max": 41.726022
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 2,
+          "acksBefore": 196,
+          "acksDuring": 216,
+          "acksAfter": 1209,
+          "acksInsideFault": 178,
+          "readsDuring": 250,
+          "readsServedDuring": 82,
+          "readsServedInsideFault": 68,
+          "probeReadsDuring": {
+            "storage-shard-2-2": 168
+          },
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 18,
+          "firstAckAfterHealMs": 18,
+          "writeLatencyMs": {
+            "n": 216,
+            "p50": 4.812611,
+            "p99": 8.134745,
+            "max": 11.164692
+          },
+          "readLatencyMs": {
+            "n": 250,
+            "p50": 1.063667,
+            "p99": 7.990491,
+            "max": 3000.705134
+          },
+          "errorsDuring": 0
+        }
+      ]
+    }
+  }
+}

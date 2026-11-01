@@ -1,0 +1,6 @@
+17:00:01 chaos-mesh: chart 2.8.7 sha256 c963e0f4ed2e30c1c7e236477f1c31fcf988b171991801bbe392546948436d38 (pinned)
+17:00:01 chaos-mesh: reliefgrid-worker4: chaos-mesh at sha256:e972b7d995c117f8728ed9b792685b4e45ab9c6eb2e92d766a3040aa5987428d (verified)
+17:00:02 chaos-mesh: reliefgrid-worker: chaos-daemon at sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174ae58a5b0bb8dc31465d55 (verified)
+17:00:02 chaos-mesh: reliefgrid-worker2: chaos-daemon at sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174ae58a5b0bb8dc31465d55 (verified)
+17:00:02 chaos-mesh: reliefgrid-worker3: chaos-daemon at sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174ae58a5b0bb8dc31465d55 (verified)
+17:00:10 chaos-mesh: installed (namespace-scoped to reliefgrid)

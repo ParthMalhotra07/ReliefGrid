@@ -1,0 +1,6 @@
+17:19:38 stop-worker: plan {"experiment":"stop-worker","seed":439,"shard":2,"role":"follower","pick":0,"faultDelayMs":11075,"loadSeconds":312,"settleMaxSeconds":120,"prefix":"chaos-stop-worker-s439","workers":4,"keys":4,"intervalMs":50}
+17:19:39 target storage-shard-2-0 (follower, term 6)
+17:19:40 load running since 2026-11-01T11:49:40Z; fault in 11075ms
+17:19:51 note: stopped data worker reliefgrid-worker (its storage replicas went with it)
+17:20:22 fault node-stop on storage-shard-2-0: 30s; recovery none term ?
+17:25:42 PASSED: report docs/evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/stop-worker.json

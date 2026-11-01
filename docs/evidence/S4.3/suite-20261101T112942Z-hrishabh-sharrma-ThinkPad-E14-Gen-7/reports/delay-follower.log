@@ -1,0 +1,5 @@
+17:17:14 delay-follower: plan {"experiment":"delay-follower","seed":438,"shard":2,"role":"follower","pick":1,"faultDelayMs":12003,"loadSeconds":113,"settleMaxSeconds":120,"prefix":"chaos-delay-follower-s438","workers":4,"keys":4,"intervalMs":50}
+17:17:15 target storage-shard-2-1 (follower, term 6)
+17:17:16 load running since 2026-11-01T11:47:16Z; fault in 12003ms
+17:17:54 fault delay on storage-shard-2-1: 26s; recovery none term ?
+17:19:37 PASSED: report docs/evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/delay-follower.json

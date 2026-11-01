@@ -1,0 +1,403 @@
+{
+  "experiment": "restart-coordinator",
+  "seed": 440,
+  "runId": "restart-coordinator-s440-1793534142",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "restart-coordinator",
+    "seed": 440,
+    "shard": 1,
+    "role": "coordinator",
+    "pick": 1,
+    "faultDelayMs": 14764,
+    "loadSeconds": 105,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-restart-coordinator-s440",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 1,
+    "pod": "storage-coordinator-76f478cbcf-96n4v",
+    "serverId": "",
+    "role": "coordinator",
+    "term": 17
+  },
+  "fault": {
+    "kind": "coordinator-restart",
+    "mechanism": "kubectl delete pod of the coordinator (Deployment recreates it)",
+    "startedAt": 1793534165864,
+    "healedAt": 1793534166723
+  },
+  "recovery": {
+    "leader": "",
+    "term": 0,
+    "seconds": 0.9
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793534254225,
+    "seconds": 0.9,
+    "ok": true,
+    "detail": "shard 1 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793534145000,
+    "faultStartedAt": 1793534165864,
+    "faultHealedAt": 1793534166723,
+    "settledAt": 1793534255086,
+    "loadFinishedAt": 1793534250000
+  },
+  "load": {
+    "job": "chaos-load-restart-coordinator-s440-1793534142",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 7196,
+    "unknown": 4,
+    "rejected": 0,
+    "ackedDuringFault": 12
+  },
+  "errorsObserved": [
+    {
+      "at": 1793534166036,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w2-op369 chaos-restart-coordinator-s440-1793534144-w2-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w2-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166036,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w0-op369 chaos-restart-coordinator-s440-1793534144-w0-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w0-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166049,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w3-op369 chaos-restart-coordinator-s440-1793534144-w3-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w3-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166049,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w1-op369 chaos-restart-coordinator-s440-1793534144-w1-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w1-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166061,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w2-op369 chaos-restart-coordinator-s440-1793534144-w2-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w2-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166061,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w0-op369 chaos-restart-coordinator-s440-1793534144-w0-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w0-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166075,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w3-op369 chaos-restart-coordinator-s440-1793534144-w3-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w3-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166076,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w1-op369 chaos-restart-coordinator-s440-1793534144-w1-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w1-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166103,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w0-op369 chaos-restart-coordinator-s440-1793534144-w0-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w0-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166103,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w2-op369 chaos-restart-coordinator-s440-1793534144-w2-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w2-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166118,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w3-op369 chaos-restart-coordinator-s440-1793534144-w3-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w3-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534166118,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w1-op369 chaos-restart-coordinator-s440-1793534144-w1-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w1-c182\": dial tcp 10.96.27.236:8080: connect: connection refused"
+    },
+    {
+      "at": 1793534171168,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w2-op369 chaos-restart-coordinator-s440-1793534144-w2-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w2-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793534171168,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w0-op369 chaos-restart-coordinator-s440-1793534144-w0-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w0-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793534171179,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w1-op369 chaos-restart-coordinator-s440-1793534144-w1-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w1-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793534171179,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793534144-w3-op369 chaos-restart-coordinator-s440-1793534144-w3-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793534144-w3-c182\": context deadline exceeded"
+    }
+  ],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/restart-coordinator-s440-1793534142.json",
+    "job": "chaos-verify-restart-coordinator-s440-1793534142",
+    "exitCode": 0,
+    "checked": 7196,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 4,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-restart-coordinator-s440-1793534142",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 1 is one caught-up group",
+    "recovery": {
+      "seconds": 0.9,
+      "term": 0,
+      "termBefore": 17,
+      "leader": ""
+    },
+    "isolation": null,
+    "delay": null,
+    "worker": null,
+    "coordinator": {
+      "ringBefore": "1/sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360",
+      "ringAfter": "1/sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360",
+      "termsBefore": {
+        "0": 5,
+        "1": 17,
+        "2": 6
+      },
+      "termsAfter": {
+        "0": 5,
+        "1": 17,
+        "2": 6
+      },
+      "bootstrapJobsBefore": 1,
+      "bootstrapJobsAfter": 1,
+      "back": true
+    }
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "linearizable",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [],
+    "verdict": {
+      "total": 3741,
+      "checked": 3731,
+      "unchecked": 2,
+      "failed": 8,
+      "served": {
+        "linearizable": 3731
+      }
+    },
+    "staleCount": 0,
+    "stale": []
+  },
+  "availability": {
+    "fromMs": 1793534165864,
+    "toMs": 1793534166723,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 528,
+        "acksDuring": 3,
+        "acksAfter": 2067,
+        "acksInsideFault": 0,
+        "readsDuring": 5,
+        "readsServedDuring": 1,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 4,
+        "firstAckAfterHealMs": 4506,
+        "writeLatencyMs": {
+          "n": 3,
+          "p50": 15.351116,
+          "p99": 17.63305,
+          "max": 17.63305
+        },
+        "readLatencyMs": {
+          "n": 5,
+          "p50": 2.421439,
+          "p99": 5000.970916,
+          "max": 5000.970916
+        },
+        "errorsDuring": 3
+      },
+      {
+        "shard": 1,
+        "acksBefore": 403,
+        "acksDuring": 4,
+        "acksAfter": 1622,
+        "acksInsideFault": 0,
+        "readsDuring": 3,
+        "readsServedDuring": 1,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 55,
+        "firstAckAfterHealMs": 4507,
+        "writeLatencyMs": {
+          "n": 4,
+          "p50": 3.592433,
+          "p99": 4.711979,
+          "max": 4.711979
+        },
+        "readLatencyMs": {
+          "n": 3,
+          "p50": 4.765983,
+          "p99": 5000.987913,
+          "max": 5000.987913
+        },
+        "errorsDuring": 6
+      },
+      {
+        "shard": 2,
+        "acksBefore": 529,
+        "acksDuring": 5,
+        "acksAfter": 2035,
+        "acksInsideFault": 0,
+        "readsDuring": 4,
+        "readsServedDuring": 2,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 3,
+        "firstAckAfterHealMs": 4512,
+        "writeLatencyMs": {
+          "n": 5,
+          "p50": 4.055239,
+          "p99": 12.911827,
+          "max": 12.911827
+        },
+        "readLatencyMs": {
+          "n": 4,
+          "p50": 3.361053,
+          "p99": 13.986552,
+          "max": 13.986552
+        },
+        "errorsDuring": 3
+      }
+    ]
+  },
+  "judge": {
+    "pass": true,
+    "noVerdict": false,
+    "failures": [],
+    "summary": {
+      "acked": 7196,
+      "unknownRaw": 4,
+      "resolved": 0,
+      "notApplied": 4,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 0,
+      "readsTotal": 3741,
+      "readsChecked": 3731,
+      "readsFailed": 8,
+      "errorCount": 16,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 528,
+          "acksDuring": 3,
+          "acksAfter": 2067,
+          "acksInsideFault": 0,
+          "readsDuring": 5,
+          "readsServedDuring": 1,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 4,
+          "firstAckAfterHealMs": 4506,
+          "writeLatencyMs": {
+            "n": 3,
+            "p50": 15.351116,
+            "p99": 17.63305,
+            "max": 17.63305
+          },
+          "readLatencyMs": {
+            "n": 5,
+            "p50": 2.421439,
+            "p99": 5000.970916,
+            "max": 5000.970916
+          },
+          "errorsDuring": 3
+        },
+        {
+          "shard": 1,
+          "acksBefore": 403,
+          "acksDuring": 4,
+          "acksAfter": 1622,
+          "acksInsideFault": 0,
+          "readsDuring": 3,
+          "readsServedDuring": 1,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 55,
+          "firstAckAfterHealMs": 4507,
+          "writeLatencyMs": {
+            "n": 4,
+            "p50": 3.592433,
+            "p99": 4.711979,
+            "max": 4.711979
+          },
+          "readLatencyMs": {
+            "n": 3,
+            "p50": 4.765983,
+            "p99": 5000.987913,
+            "max": 5000.987913
+          },
+          "errorsDuring": 6
+        },
+        {
+          "shard": 2,
+          "acksBefore": 529,
+          "acksDuring": 5,
+          "acksAfter": 2035,
+          "acksInsideFault": 0,
+          "readsDuring": 4,
+          "readsServedDuring": 2,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 3,
+          "firstAckAfterHealMs": 4512,
+          "writeLatencyMs": {
+            "n": 5,
+            "p50": 4.055239,
+            "p99": 12.911827,
+            "max": 12.911827
+          },
+          "readLatencyMs": {
+            "n": 4,
+            "p50": 3.361053,
+            "p99": 13.986552,
+            "max": 13.986552
+          },
+          "errorsDuring": 3
+        }
+      ]
+    }
+  }
+}
