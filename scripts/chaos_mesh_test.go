@@ -99,7 +99,13 @@ func meshFakeTools(t *testing.T) (env []string, calls string) {
 			t.Fatal(err)
 		}
 	}
-	return append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"), "CHAOS_CACHE="+filepath.Join(dir, "cache")), calls
+	// Only the pins a test passes: none inherited (make verify-S4.3 exports them).
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, "CHAOS_") {
+			env = append(env, e)
+		}
+	}
+	return append(env, "PATH="+dir+":"+os.Getenv("PATH"), "CHAOS_CACHE="+filepath.Join(dir, "cache")), calls
 }
 
 func runInstall(t *testing.T, env []string, args ...string) (string, int) {

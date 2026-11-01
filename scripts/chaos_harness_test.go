@@ -232,3 +232,73 @@ func TestChaosExperimentPlans(t *testing.T) {
 		}
 	}
 }
+
+// suite.sh --summarize builds the suite's verdict from its reports: every
+// experiment must pass, and each control must have caught its fault with no
+// other failure; a missing report is a failure, never a skip.
+func TestSuiteSummary(t *testing.T) {
+	report := func(experiment string, pass bool, failures []string, control map[string]any) map[string]any {
+		r := map[string]any{"experiment": experiment, "seed": 431, "pass": pass, "failures": failures,
+			"recovery": map[string]any{"seconds": 2.4}, "settle": map[string]any{"seconds": 3.0},
+			"target": map[string]any{"shard": 1},
+			"fault":  map[string]any{"startedAt": 1000, "healedAt": 21000},
+			"judge":  map[string]any{"summary": map[string]any{"acked": 300, "unknownRaw": 4, "unresolvedUnknown": 0, "lost": 0, "staleReads": 0}},
+			"availability": map[string]any{"shards": []any{map[string]any{"shard": 1, "acksDuring": 2, "acksInsideFault": 0,
+				"probeServedInsideFault": map[string]any{"storage-shard-1-0": 0}, "firstAckAfterHealMs": 310}}}}
+		if control != nil {
+			r["control"] = control
+		}
+		return r
+	}
+	write := func(dir string, reports map[string]map[string]any) {
+		if err := os.MkdirAll(filepath.Join(dir, "reports"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for name, r := range reports {
+			b, _ := json.Marshal(r)
+			if err := os.WriteFile(filepath.Join(dir, "reports", name+".json"), b, 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	summarize := func(dir string) (int, string) {
+		cmd := exec.CommandContext(t.Context(), "bash", "../chaos/scripts/suite.sh", "--summarize", dir)
+		cmd.Env = append(os.Environ(), "ONLY=lose-quorum,control-lost-write,control-stale-reader")
+		out, _ := cmd.CombinedOutput()
+		return cmd.ProcessState.ExitCode(), string(out)
+	}
+	good := map[string]map[string]any{
+		"lose-quorum": report("lose-quorum", true, []string{}, nil),
+		"control-lost-write": report("kill-follower", false, []string{"ledger: 1 acknowledged write(s) lost"},
+			map[string]any{"negative": "lost-write", "pass": true}),
+		"control-stale-reader": report("delay-follower", false, []string{"reads: 3 stale read(s): a read missed a write acknowledged before it began"},
+			map[string]any{"negative": "stale-reader", "pass": true}),
+	}
+	dir := t.TempDir()
+	write(dir, good)
+	code, out := summarize(dir)
+	if code != 0 || !strings.Contains(out, "PASSED (3/3 runs)") || !strings.Contains(out, "lose-quorum") {
+		t.Fatalf("all good: exit %d\n%s", code, out)
+	}
+
+	// A control that was caught but also broke something else is not a pass.
+	bad := map[string]map[string]any{}
+	for k, v := range good {
+		bad[k] = v
+	}
+	bad["control-stale-reader"] = report("delay-follower", false,
+		[]string{"reads: 3 stale read(s): x", "invcheck: violations (1 violation(s))"}, map[string]any{"negative": "stale-reader", "pass": true})
+	dir = t.TempDir()
+	write(dir, bad)
+	if code, out := summarize(dir); code != 1 || !strings.Contains(out, "control-stale-reader") || !strings.Contains(out, "FAILED (2/3 runs)") {
+		t.Fatalf("control with another failure: exit %d\n%s", code, out)
+	}
+
+	// A missing report fails the suite.
+	dir = t.TempDir()
+	delete(good, "lose-quorum")
+	write(dir, good)
+	if code, out := summarize(dir); code != 1 || !strings.Contains(out, "lose-quorum: no report") {
+		t.Fatalf("missing report: exit %d\n%s", code, out)
+	}
+}
