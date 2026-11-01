@@ -3,6 +3,7 @@ package ledger
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -20,6 +21,12 @@ import (
 // stays unknown the write goes to Ledger.Unknown and that key gets no
 // further updates, since its version is no longer known. Every failed
 // attempt goes to Ledger.Errors.
+//
+// Readers, if set, read the writers' update keys in turn with Read until
+// the writers stop, each pausing ReadInterval between reads; every read goes
+// to Ledger.Reads for Ledger.CheckReads. Readers and writers share one
+// clock: nanoseconds since Run began, from Now's monotonic reading, so an
+// acknowledgement and a read's start are ordered without clock skew.
 type Driver struct {
 	Store    store.Store
 	Prefix   string        // key and operation ID prefix; unique per run
@@ -34,8 +41,18 @@ type Driver struct {
 	// reaches a command: Meta.At is At.
 	Now func() time.Time
 
+	Readers      int           // concurrent readers; 0: none
+	ReadInterval time.Duration // pause between one reader's reads
+	Read         ReadFunc      // required when Readers > 0
+	// ReadConsistency is the mode Read asks for, recorded in the ledger.
+	ReadConsistency string
+
 	deadline time.Time // set by Run from Duration
+	base     time.Time // Run's start: the zero of every *Ns instant
 }
+
+// ReadFunc reads one key and says how the read was served.
+type ReadFunc func(ctx context.Context, key string) (store.Record, string, error)
 
 // Run drives the load until every worker is done or ctx ends, and returns
 // the ledger so far.
@@ -43,9 +60,13 @@ func (d Driver) Run(ctx context.Context) (*Ledger, error) {
 	if d.Ops <= 0 && d.Duration <= 0 {
 		return nil, fmt.Errorf("ledger: driver needs Ops or Duration")
 	}
+	if d.Readers < 0 || (d.Readers > 0 && d.Read == nil) {
+		return nil, fmt.Errorf("ledger: %d readers need Readers >= 0 and a Read function", d.Readers)
+	}
 	if d.Now == nil {
 		d.Now = time.Now
 	}
+	d.base = d.Now()
 	if d.Duration > 0 {
 		d.deadline = d.Now().Add(d.Duration)
 	}
@@ -59,7 +80,10 @@ func (d Driver) Run(ctx context.Context) (*Ledger, error) {
 		d.Retries = 3
 	}
 	l := &Ledger{}
-	var wg sync.WaitGroup
+	if d.Readers > 0 {
+		l.ReadConsistency = d.ReadConsistency
+	}
+	var wg, readers sync.WaitGroup
 	for w := range d.Workers {
 		wg.Add(1)
 		go func() {
@@ -67,8 +91,65 @@ func (d Driver) Run(ctx context.Context) (*Ledger, error) {
 			d.worker(ctx, l, w)
 		}()
 	}
+	stop := make(chan struct{})
+	for r := range d.Readers {
+		readers.Add(1)
+		go func() {
+			defer readers.Done()
+			d.reader(ctx, l, r, stop)
+		}()
+	}
 	wg.Wait()
+	close(stop)
+	readers.Wait()
 	return l, ctx.Err()
+}
+
+// since is now on the run's monotonic clock, in nanoseconds.
+func (d Driver) since() int64 { return int64(d.Now().Sub(d.base)) }
+
+// reader reads the update keys, reader r starting at key r and stepping by
+// Readers, until stop closes or ctx ends.
+func (d Driver) reader(ctx context.Context, l *Ledger, r int, stop <-chan struct{}) {
+	keys := make([]string, 0, d.Workers*d.Keys)
+	for w := range d.Workers {
+		for k := range d.Keys {
+			keys = append(keys, fmt.Sprintf("%s-w%d-k%d", d.Prefix, w, k))
+		}
+	}
+	for i := r; ; i += d.Readers {
+		select {
+		case <-stop:
+			return
+		case <-ctx.Done():
+			return
+		default:
+		}
+		key := keys[i%len(keys)]
+		rd := Read{Key: key, StartNs: d.since()}
+		rec, served, err := d.Read(ctx, key)
+		rd.EndNs, rd.Served = d.since(), served
+		switch {
+		case errors.Is(err, store.ErrNotFound):
+			rd.NotFound = true
+		case err != nil:
+			rd.Error = err.Error()
+		case rec.Deleted:
+			rd.NotFound, rd.Version = true, rec.Version
+		default:
+			rd.Version, rd.PayloadHash = rec.Version, PayloadHash(rec.Value)
+		}
+		l.RecordRead(rd)
+		if d.ReadInterval > 0 {
+			t := time.NewTimer(d.ReadInterval)
+			select {
+			case <-t.C:
+			case <-stop:
+			case <-ctx.Done():
+			}
+			t.Stop()
+		}
+	}
 }
 
 type worker struct {
@@ -153,7 +234,7 @@ func (wk *worker) write(ctx context.Context, e Entry, call func(context.Context)
 		var res store.Result
 		res, err = call(ctx)
 		if err == nil {
-			e.At = wk.d.Now().UnixMilli()
+			e.At, e.AckNs = wk.d.Now().UnixMilli(), wk.d.since()
 			wk.l.Record(e, res, nil)
 			return res, res.Outcome == store.OutcomeOK
 		}
