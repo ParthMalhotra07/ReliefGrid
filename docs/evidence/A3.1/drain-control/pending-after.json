@@ -1,0 +1,35 @@
+[
+  {
+    "events": [],
+    "read": {
+      "appliedIndex": 16072,
+      "consistency": "strong",
+      "servedBy": "storage-shard-0-0",
+      "stalePossible": false
+    },
+    "ringVersion": 1,
+    "shard": 0
+  },
+  {
+    "events": [],
+    "read": {
+      "appliedIndex": 14226,
+      "consistency": "strong",
+      "servedBy": "storage-shard-1-0",
+      "stalePossible": false
+    },
+    "ringVersion": 1,
+    "shard": 1
+  },
+  {
+    "events": [],
+    "read": {
+      "appliedIndex": 16209,
+      "consistency": "strong",
+      "servedBy": "storage-shard-2-0",
+      "stalePossible": false
+    },
+    "ringVersion": 1,
+    "shard": 2
+  }
+]

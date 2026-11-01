@@ -1,0 +1,42 @@
+{
+  "sourceCommit": "781495c13f4c2c1dea94305e0a10cffc26e3c919",
+  "requestStatusCounts": {
+    "MATCHED": 50,
+    "WAITING": 449,
+    "PENDING": 1
+  },
+  "httpStatusCounts": {
+    "201": 550,
+    "200": 20416
+  },
+  "workloadCreateSeconds": 4.941842794418335,
+  "observationSeconds": 125.2154860496521,
+  "lastQueueSamples": [
+    {
+      "at": 1793518558.5058358,
+      "ready": 887,
+      "unacked": 0
+    },
+    {
+      "at": 1793518558.7749455,
+      "ready": 887,
+      "unacked": 0
+    },
+    {
+      "at": 1793518559.048021,
+      "ready": 887,
+      "unacked": 0
+    },
+    {
+      "at": 1793518559.3557403,
+      "ready": 887,
+      "unacked": 0
+    },
+    {
+      "at": 1793518560.0389829,
+      "ready": 887,
+      "unacked": 0
+    }
+  ],
+  "rootCause": "Before merged #74: due WAITING used illegal WAITING -> WAITING; durable handoff repeatedly failed and matching queue stalled. No HTTP failures occurred; this is not a client budget adjustment."
+}

@@ -1,0 +1,14 @@
+NAME                                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                       AGE   SELECTOR
+service/reliefgrid-api                 ClusterIP   10.96.172.61    <none>        8080/TCP                      52s   app.kubernetes.io/component=api,app.kubernetes.io/instance=reliefgrid
+service/reliefgrid-matcher             ClusterIP   10.96.18.149    <none>        8080/TCP                      52s   app.kubernetes.io/component=matcher,app.kubernetes.io/instance=reliefgrid
+service/reliefgrid-rabbitmq            ClusterIP   10.96.1.202     <none>        5672/TCP,15672/TCP            52s   app.kubernetes.io/component=rabbitmq,app.kubernetes.io/instance=reliefgrid
+service/reliefgrid-rabbitmq-headless   ClusterIP   None            <none>        5672/TCP,4369/TCP,25672/TCP   52s   app.kubernetes.io/component=rabbitmq,app.kubernetes.io/instance=reliefgrid
+service/reliefgrid-traefik             NodePort    10.96.112.107   <none>        80:30080/TCP,443:30443/TCP    52s   app.kubernetes.io/instance=reliefgrid-reliefgrid,app.kubernetes.io/name=traefik
+service/reliefgrid-ui                  ClusterIP   10.96.182.179   <none>        8080/TCP                      52s   app.kubernetes.io/component=ui,app.kubernetes.io/instance=reliefgrid
+service/storage-coordinator            ClusterIP   10.96.42.112    <none>        8080/TCP                      92s   app.kubernetes.io/component=coordinator,app.kubernetes.io/name=storage
+service/storage-shard-0                ClusterIP   None            <none>        7000/TCP,8080/TCP,8081/TCP    92s   app.kubernetes.io/component=storagenode,app.kubernetes.io/name=storage,reliefgrid.io/shard=0
+service/storage-shard-1                ClusterIP   None            <none>        7000/TCP,8080/TCP,8081/TCP    92s   app.kubernetes.io/component=storagenode,app.kubernetes.io/name=storage,reliefgrid.io/shard=1
+service/storage-shard-2                ClusterIP   None            <none>        7000/TCP,8080/TCP,8081/TCP    92s   app.kubernetes.io/component=storagenode,app.kubernetes.io/name=storage,reliefgrid.io/shard=2
+
+NAME                                       CLASS     HOSTS   ADDRESS   PORTS   AGE
+ingress.networking.k8s.io/reliefgrid-app   traefik   *                 80      52s

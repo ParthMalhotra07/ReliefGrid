@@ -1,0 +1,35 @@
+# demo-5: Controlled pending-handoff regression (separate from burst fixture)
+result:     PASS (2/2 checks)
+runId:      A3.1-20261101-drain-control
+host:       DESKTOP-EG9G7UI
+started:    2026-11-01T11:50:58Z
+finished:   2026-11-01T11:51:19Z
+duration:   20.6 s
+code tree:  2fb719c74696 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: (not documented)
+
+## versions
+git head: 19ad0cbb58d2
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.7.2
+image reliefgrid/storagenode:dev: sha256:35ac3302c569ffdee4ca82ba69784cdaf8d6fa0a176545fa7520662abb213eb8
+image reliefgrid/coordinator:dev: sha256:b11e3f8e693bfca7cd69e6e6fa8d04e68ec9a11fb42e42e900cde4f45d1f4c96
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  pending event drained and invariants pass; workers restored
+
+## commands
+
+# seed one pending event with workers stopped, drain and audit
+$ python3 /mnt/c/Users/am/Desktop/CC/.tools/resume-nov1/drain-control.py /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1/drain-control
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  one committed event published with a routed confirm and marked after all admission workers stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 15.7 s]

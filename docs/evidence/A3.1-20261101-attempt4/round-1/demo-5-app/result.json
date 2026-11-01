@@ -1,0 +1,5 @@
+{
+  "result": "FAIL",
+  "error": "outbox did not drain within 30s; refusing a quiescent audit",
+  "checks": 8
+}

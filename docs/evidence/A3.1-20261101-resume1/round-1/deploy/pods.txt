@@ -1,0 +1,19 @@
+NAME                                   READY   STATUS      RESTARTS      AGE   IP            NODE                 NOMINATED NODE   READINESS GATES
+reliefgrid-api-9cbc6c846-ccdsv         1/1     Running     0             51s   10.244.3.9    reliefgrid-worker2   <none>           <none>
+reliefgrid-api-9cbc6c846-xwhbg         1/1     Running     0             51s   10.244.2.9    reliefgrid-worker3   <none>           <none>
+reliefgrid-matcher-64cb676868-9dfcn    1/1     Running     0             51s   10.244.2.10   reliefgrid-worker3   <none>           <none>
+reliefgrid-matcher-64cb676868-lng64    1/1     Running     0             51s   10.244.3.8    reliefgrid-worker2   <none>           <none>
+reliefgrid-rabbitmq-0                  1/1     Running     1 (18s ago)   51s   10.244.1.5    reliefgrid-worker4   <none>           <none>
+reliefgrid-traefik-84c8448448-rd45z    1/1     Running     0             51s   10.244.1.3    reliefgrid-worker4   <none>           <none>
+reliefgrid-ui-7c6878bf6f-ddtxc         1/1     Running     0             51s   10.244.4.8    reliefgrid-worker    <none>           <none>
+storage-bootstrap-1-b8sdd              0/1     Completed   0             91s   10.244.2.2    reliefgrid-worker3   <none>           <none>
+storage-coordinator-76f478cbcf-lwcwr   1/1     Running     0             91s   10.244.1.2    reliefgrid-worker4   <none>           <none>
+storage-shard-0-0                      1/1     Running     0             91s   10.244.2.7    reliefgrid-worker3   <none>           <none>
+storage-shard-0-1                      1/1     Running     0             91s   10.244.3.7    reliefgrid-worker2   <none>           <none>
+storage-shard-0-2                      1/1     Running     0             91s   10.244.4.5    reliefgrid-worker    <none>           <none>
+storage-shard-1-0                      1/1     Running     0             91s   10.244.3.5    reliefgrid-worker2   <none>           <none>
+storage-shard-1-1                      1/1     Running     0             91s   10.244.4.7    reliefgrid-worker    <none>           <none>
+storage-shard-1-2                      1/1     Running     0             91s   10.244.2.8    reliefgrid-worker3   <none>           <none>
+storage-shard-2-0                      1/1     Running     0             91s   10.244.2.5    reliefgrid-worker3   <none>           <none>
+storage-shard-2-1                      1/1     Running     0             91s   10.244.3.4    reliefgrid-worker2   <none>           <none>
+storage-shard-2-2                      1/1     Running     0             91s   10.244.4.6    reliefgrid-worker    <none>           <none>

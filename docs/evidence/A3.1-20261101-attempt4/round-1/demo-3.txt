@@ -1,0 +1,41 @@
+# demo-3: Async and explicit API matching with compatible and incompatible resources
+result:     PASS (2/2 checks)
+runId:      A3.1-20261101-attempt4/round-1
+host:       DESKTOP-EG9G7UI
+started:    2026-11-01T07:55:21Z
+finished:   2026-11-01T07:55:51Z
+duration:   30.1 s
+code tree:  afd135805249 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: 69505df9358f
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.7.2
+image reliefgrid/storagenode:dev: sha256:def95bf24834068d2b8463bfd98c49f101a19f6649d72ba39f21f3541a069fc2
+image reliefgrid/coordinator:dev: sha256:e5981731ba38a52cb2b1ca3539b0d486fe1fba96bd2b772761b521d2db460a09
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-attempt4/round-1/demo-3-app
+
+## commands
+
+# public API assertions and recorded observations
+$ python3 /home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py 3 --out /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-attempt4/round-1/demo-3-app
+PASS  no resource assigned to two requests
+PASS  async match respects type, 50 km radius and current availability window
+PASS  async incompatible resources remain unclaimed
+PASS  explicit match completes while matcher Deployment is stopped
+PASS  no resource assigned to two requests
+PASS  explicit match respects type, 50 km radius and current availability window
+PASS  explicit incompatible resources remain unclaimed
+PASS  no resource assigned to two requests
+PASS  two requests competing for one resource produce one match and one waiting request
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 23.4 s]

@@ -1,0 +1,1096 @@
+bash scripts/verify-A3.1.sh --live
+A3.1 round 1: clean reset of kind-reliefgrid
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+bash scripts/demos/reset.sh
+reset: delete the kind cluster
+Deleting cluster "reliefgrid" ...
+Deleted nodes: ["reliefgrid-worker4" "reliefgrid-worker2" "reliefgrid-worker3" "reliefgrid-control-plane" "reliefgrid-worker"]
+reset: create the kind cluster
+Creating cluster "reliefgrid" ...
+ • Ensuring node image (kindest/node:v1.37.0) 🖼️  ...
+ ✓ Ensuring node image (kindest/node:v1.37.0) 🖼️
+ • Preparing nodes 📦 📦 📦 📦 📦   ...
+ ✓ Preparing nodes 📦 📦 📦 📦 📦
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Joining worker nodes 🚜  ...
+ ✓ Joining worker nodes 🚜
+ • Waiting ≤ 3m0s for control-plane = Ready ⏳  ...
+ ✓ Waiting ≤ 3m0s for control-plane = Ready ⏳
+ • Ready after 9s 💚
+Set kubectl context to "kind-reliefgrid"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-reliefgrid
+
+Have a nice day! 👋
+Switched to context "kind-reliefgrid".
+reset: build and load the storage image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.18kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 1.5s
+
+#4 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#4 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#4 DONE 0.0s
+
+#5 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 637.89kB 0.0s done
+#6 DONE 0.0s
+
+#7 [build 2/7] WORKDIR /src
+#7 CACHED
+
+#8 [build 5/7] COPY cmd/ cmd/
+#8 CACHED
+
+#9 [build 6/7] COPY internal/ internal/
+#9 CACHED
+
+#10 [build 3/7] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#11 CACHED
+
+#12 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/storagenode ./cmd/storagectl
+#12 CACHED
+
+#13 [stage-1 2/2] COPY --from=build /out/storagenode /out/storagectl /
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 exporting manifest sha256:601a75bcb81b529deb0e9602e7f8ad2b6a16344256d26626db13dcae9473e211 done
+#14 exporting config sha256:e7e671a02e5d6074f618091919df22f4d0799a7d08d582b2b57cfab0243aa45f done
+#14 exporting attestation manifest sha256:90bbd95a967fb47d44d7d8b247e7636910b2f642cf673dd57b7f262192b91357 0.0s done
+#14 exporting manifest list sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb
+#14 exporting manifest list sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb 0.0s done
+#14 naming to docker.io/reliefgrid/storagenode:dev done
+#14 unpacking to docker.io/reliefgrid/storagenode:dev 0.0s done
+#14 DONE 0.1s
+Image: "reliefgrid/storagenode:dev" with ID "sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb" not yet present on node "reliefgrid-worker3", loading...
+reset: build and load the coordinator image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.06kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#4 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#4 DONE 0.0s
+
+#5 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 8.95kB 0.0s done
+#6 DONE 0.0s
+
+#7 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#7 CACHED
+
+#8 [build 5/7] COPY cmd/ cmd/
+#8 CACHED
+
+#9 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/coordinator
+#9 CACHED
+
+#10 [build 3/7] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [build 2/7] WORKDIR /src
+#11 CACHED
+
+#12 [build 6/7] COPY internal/ internal/
+#12 CACHED
+
+#13 [stage-1 2/2] COPY --from=build /out/coordinator /
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers
+#14 exporting layers done
+#14 exporting manifest sha256:d48662c38371515c46be89effd9ac2357bc0d0b7148fd74aca1b9dc6b82efefe done
+#14 exporting config sha256:32e4bdce5cfc811c070ae0579e8001e762ef2dcae9f52926d6ebef24d409d5f0 done
+#14 exporting attestation manifest sha256:4742236777c57c3668da7ecbf0ba3ab2c07aa6b71d822547755f455caceac927 0.0s done
+#14 exporting manifest list sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101 0.0s done
+#14 naming to docker.io/reliefgrid/coordinator:dev done
+#14 unpacking to docker.io/reliefgrid/coordinator:dev 0.0s done
+#14 DONE 0.1s
+Image: "reliefgrid/coordinator:dev" with ID "sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101" not yet present on node "reliefgrid-worker3", loading...
+reset: build and load the tools image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.01kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [build 1/8] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#6 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 123.48kB 0.0s done
+#7 DONE 0.0s
+
+#8 [build 7/8] COPY loadtest/ loadtest/
+#8 CACHED
+
+#9 [build 6/8] COPY internal/ internal/
+#9 CACHED
+
+#10 [build 8/8] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -tags chaos -o /out/ ./cmd/invcheck
+#10 CACHED
+
+#11 [build 2/8] WORKDIR /src
+#11 CACHED
+
+#12 [build 5/8] COPY cmd/ cmd/
+#12 CACHED
+
+#13 [build 3/8] COPY go.mod go.sum ./
+#13 CACHED
+
+#14 [build 4/8] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#14 CACHED
+
+#15 [stage-1 2/2] COPY --from=build /out/invcheck /
+#15 CACHED
+
+#16 exporting to image
+#16 exporting layers done
+#16 exporting manifest sha256:0f5afbc6692e98424b56668d291ebee95e23dea624d8b4463d1dec93989a4a6c done
+#16 exporting config sha256:e40e9a41fdea11b57ef91dbf5efcb5ea5e8b93710f2589238b3777d14a83c44d done
+#16 exporting attestation manifest sha256:237e648137935246f71743ba9add05165be1d04f282212b8d4936e9681e1e64d 0.0s done
+#16 exporting manifest list sha256:9d554b9c31143cafbc20425ad5be6956762f2bd9647d5c1650ec621b08b02bff 0.0s done
+#16 naming to docker.io/reliefgrid/tools:dev done
+#16 unpacking to docker.io/reliefgrid/tools:dev 0.0s done
+#16 DONE 0.1s
+Image: "reliefgrid/tools:dev" with ID "sha256:9d554b9c31143cafbc20425ad5be6956762f2bd9647d5c1650ec621b08b02bff" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:9d554b9c31143cafbc20425ad5be6956762f2bd9647d5c1650ec621b08b02bff" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:9d554b9c31143cafbc20425ad5be6956762f2bd9647d5c1650ec621b08b02bff" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:9d554b9c31143cafbc20425ad5be6956762f2bd9647d5c1650ec621b08b02bff" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:9d554b9c31143cafbc20425ad5be6956762f2bd9647d5c1650ec621b08b02bff" not yet present on node "reliefgrid-worker3", loading...
+reset: install deploy/helm/storage
+walk.go:75: found symbolic link in path: /home/parthmalhotra/reliefgrid-a31/deploy/helm/storage/files/ring.yaml resolves to /home/parthmalhotra/reliefgrid-a31/contracts/ring.yaml. Contents of linked file included and used
+NAME: storage
+LAST DEPLOYED: Sun Nov  1 11:40:21 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+reset: wait until the coordinator reports nine storage nodes UP
+reset: install app against existing storage (including chart dependencies)
+cluster-up: reliefgrid already exists
+Switched to context "kind-reliefgrid".
+kind placement inputs: three Ready data workers and one Ready infra worker
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 624B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#6 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 5.87kB done
+#7 DONE 0.0s
+
+#8 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#8 CACHED
+
+#9 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/api ./cmd/api
+#9 CACHED
+
+#10 [build 5/7] COPY cmd/ cmd/
+#10 CACHED
+
+#11 [build 3/7] COPY go.mod go.sum ./
+#11 CACHED
+
+#12 [build 6/7] COPY internal/ internal/
+#12 CACHED
+
+#13 [build 2/7] WORKDIR /src
+#13 CACHED
+
+#14 [stage-1 2/2] COPY --from=build /out/api /api
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd done
+#15 exporting config sha256:6e50000a41e29c512e932f8129c9f0be36e988cb5c55553da8c5c3f2bc603cdf done
+#15 naming to docker.io/reliefgrid/api:a15-20261101114047 done
+#15 unpacking to docker.io/reliefgrid/api:a15-20261101114047 done
+#15 DONE 0.0s
+verified image: reliefgrid/api:a15-20261101114047 sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd user=65532:65532
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 644B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#6 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 5.87kB 0.0s done
+#7 DONE 0.0s
+
+#8 [build 2/7] WORKDIR /src
+#8 CACHED
+
+#9 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#9 CACHED
+
+#10 [build 5/7] COPY cmd/ cmd/
+#10 CACHED
+
+#11 [build 6/7] COPY internal/ internal/
+#11 CACHED
+
+#12 [build 3/7] COPY go.mod go.sum ./
+#12 CACHED
+
+#13 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/matcher ./cmd/matcher
+#13 CACHED
+
+#14 [stage-1 2/2] COPY --from=build /out/matcher /matcher
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139 done
+#15 exporting config sha256:c324918332edc5f0292d5900a6881a788c01d39cb4e8ed5d505b3f0d6e99688e done
+#15 naming to docker.io/reliefgrid/matcher:a15-20261101114047 done
+#15 unpacking to docker.io/reliefgrid/matcher:a15-20261101114047 0.0s done
+#15 DONE 0.0s
+verified image: reliefgrid/matcher:a15-20261101114047 sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139 user=65532:65532
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 492B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [build 1/5] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#6 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 3.48kB done
+#7 DONE 0.0s
+
+#8 [build 2/5] WORKDIR /src
+#8 CACHED
+
+#9 [build 3/5] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [build 4/5] COPY ui/ ui/
+#10 CACHED
+
+#11 [build 5/5] RUN --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/ui ./ui
+#11 CACHED
+
+#12 [stage-1 2/2] COPY --from=build /out/ui /ui
+#12 CACHED
+
+#13 exporting to image
+#13 exporting layers done
+#13 exporting manifest sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660 done
+#13 exporting config sha256:a177788532c7f220fc9bc3be84cc6315fca4d3f7d2a9845a573da766780f7db9 done
+#13 naming to docker.io/reliefgrid/ui:a15-20261101114047 done
+#13 unpacking to docker.io/reliefgrid/ui:a15-20261101114047 0.0s done
+#13 DONE 0.0s
+verified image: reliefgrid/ui:a15-20261101114047 sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660 user=65532:65532
+A1.5 APPLICATION IMAGES: PASS
+Image: "reliefgrid/api:a15-20261101114047" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/api:a15-20261101114047" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/api:a15-20261101114047" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/api:a15-20261101114047" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/api:a15-20261101114047" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/matcher:a15-20261101114047" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/matcher:a15-20261101114047" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/matcher:a15-20261101114047" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/matcher:a15-20261101114047" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/matcher:a15-20261101114047" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/ui:a15-20261101114047" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/ui:a15-20261101114047" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/ui:a15-20261101114047" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/ui:a15-20261101114047" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/ui:a15-20261101114047" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker3", loading...
+"reliefgrid-traefik" already exists with the same configuration, skipping
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "traefik" chart repository
+...Successfully got an update from the "reliefgrid-traefik" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 2 charts
+walk.go:75: found symbolic link in path: /home/parthmalhotra/reliefgrid-a31/deploy/helm/storage/files/ring.yaml resolves to /home/parthmalhotra/reliefgrid-a31/contracts/ring.yaml. Contents of linked file included and used
+Downloading traefik from repo https://traefik.github.io/charts
+Deleting outdated charts
+Release "reliefgrid" does not exist. Installing it now.
+NAME: reliefgrid
+LAST DEPLOYED: Sun Nov  1 11:41:01 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+broker_pvc_uid=c1000b23-5f89-4c9a-8525-a925883212ff preserved=new
+shard 0: OK storage-shard-0-0@reliefgrid-worker3 storage-shard-0-1@reliefgrid-worker2 storage-shard-0-2@reliefgrid-worker
+shard 1: OK storage-shard-1-0@reliefgrid-worker2 storage-shard-1-1@reliefgrid-worker storage-shard-1-2@reliefgrid-worker3
+shard 2: OK storage-shard-2-0@reliefgrid-worker3 storage-shard-2-1@reliefgrid-worker2 storage-shard-2-2@reliefgrid-worker
+placement-check: every shard has 3 replicas on distinct data workers
+shard 0: three replicas, one agreed leader
+shard 1: three replicas, one agreed leader
+shard 2: three replicas, one agreed leader
+A1.5 APP DEPLOY: PASS
+reset: check that no worker is cordoned
+reset: clean deployment in 141 s
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-1' bash scripts/demos/demo-2.sh
+== demo-2: Register a resource, list it, update its availability and status (run A3.1-20261101-resume1/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  201 resource retains validated type, location, availability and unclaimed state
+PASS  creation timestamps are UTC
+PASS  complete authoritative resource list contains the created resource exactly once
+PASS  invalid registration 0 is a definite 400 refusal
+PASS  invalid registration 1 is a definite 400 refusal
+PASS  invalid registration 2 is a definite 400 refusal
+PASS  invalid registrations create no resources
+PASS  status update persists at a different opaque version
+PASS  partial availability update persists
+PASS  public claim-managed status is a definite 409 refusal
+PASS  public claim-managed status is a definite 409 refusal
+PASS  all refused updates preserve the complete stored record and version
+PASS  strong stored record preserves location and refuses public claim mutations
+PASS  resource create replay retains original body and Location after updates
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-2-app
+== demo-2: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-2.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-1' bash scripts/demos/demo-3.sh
+== demo-3: Async and explicit API matching with compatible and incompatible resources (run A3.1-20261101-resume1/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  no resource assigned to two requests
+PASS  async match respects type, 50 km radius and current availability window
+PASS  async incompatible resources remain unclaimed
+PASS  explicit match completes while matcher Deployment is stopped
+PASS  no resource assigned to two requests
+PASS  explicit match respects type, 50 km radius and current availability window
+PASS  explicit incompatible resources remain unclaimed
+PASS  no resource assigned to two requests
+PASS  two requests competing for one resource produce one match and one waiting request
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-3-app
+== demo-3: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-3.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-1' bash scripts/demos/demo-5.sh
+== demo-5: Submit a burst; show RabbitMQ queue counts, matching and waiting results (run A3.1-20261101-resume1/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  500 distinct request creates acknowledged against 50 seeded resources
+PASS  no resource assigned to two requests
+PASS  burst settles to 50 reciprocal matches and 450 waiting requests
+PASS  matching queue ready/unacked returns to zero within bounded quiescence
+PASS  broker observations show asynchronous work in flight
+PASS  all broker samples completed without hidden observation errors: []
+PASS  all shard outboxes drained before retry admission is paused
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-5-app
+== demo-5: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-5.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-1' bash scripts/demos/demo-8.sh
+== demo-8: Delete one API or matcher pod while traffic and work continue (run A3.1-20261101-resume1/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  api: two Ready pods before deletion
+PASS  api: a new UID becomes Ready within 90s
+PASS  api: traffic completed with no lost create outcome: []
+PASS  api: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  api: all interrupted-call retries/replays preserve the same key, payload and original create result
+PASS  matcher: two Ready pods before deletion
+PASS  matcher: a new UID becomes Ready within 90s
+PASS  matcher: traffic completed with no lost create outcome: []
+PASS  matcher: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  matcher: all interrupted-call retries/replays preserve the same key, payload and original create result
+PASS  interrupted calls counted and retained: 1; zero is reported honestly when redundant pods avoided interruption
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-8-app
+== demo-8: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-8.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-1' bash scripts/demos/demo-9.sh
+== demo-9: Scale the API from 2 to 6 replicas under traffic (run A3.1-20261101-resume1/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  manual API scale demo has no competing HPA
+PASS  API starts at two replicas
+PASS  all six API pods become Ready under traffic
+PASS  every API pod, including all four new pods, serves through the Service
+PASS  Service traffic completed without hidden failures: []
+PASS  API restored to two replicas
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-9-app
+== demo-9: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-9.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+A3.1 round 2: clean reset of kind-reliefgrid
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+bash scripts/demos/reset.sh
+reset: delete the kind cluster
+Deleting cluster "reliefgrid" ...
+Deleted nodes: ["reliefgrid-worker2" "reliefgrid-worker" "reliefgrid-worker4" "reliefgrid-control-plane" "reliefgrid-worker3"]
+reset: create the kind cluster
+Creating cluster "reliefgrid" ...
+ • Ensuring node image (kindest/node:v1.37.0) 🖼️  ...
+ ✓ Ensuring node image (kindest/node:v1.37.0) 🖼️
+ • Preparing nodes 📦 📦 📦 📦 📦   ...
+ ✓ Preparing nodes 📦 📦 📦 📦 📦
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Joining worker nodes 🚜  ...
+ ✓ Joining worker nodes 🚜
+ • Waiting ≤ 3m0s for control-plane = Ready ⏳  ...
+ ✓ Waiting ≤ 3m0s for control-plane = Ready ⏳
+ • Ready after 10s 💚
+Set kubectl context to "kind-reliefgrid"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-reliefgrid
+
+Have a nice day! 👋
+Switched to context "kind-reliefgrid".
+reset: build and load the storage image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.18kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 0.5s
+
+#4 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#4 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#4 DONE 0.0s
+
+#5 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 637.89kB 0.0s done
+#6 DONE 0.0s
+
+#7 [build 2/7] WORKDIR /src
+#7 CACHED
+
+#8 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#8 CACHED
+
+#9 [build 3/7] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [build 5/7] COPY cmd/ cmd/
+#10 CACHED
+
+#11 [build 6/7] COPY internal/ internal/
+#11 CACHED
+
+#12 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/storagenode ./cmd/storagectl
+#12 CACHED
+
+#13 [stage-1 2/2] COPY --from=build /out/storagenode /out/storagectl /
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 exporting manifest sha256:601a75bcb81b529deb0e9602e7f8ad2b6a16344256d26626db13dcae9473e211 done
+#14 exporting config sha256:e7e671a02e5d6074f618091919df22f4d0799a7d08d582b2b57cfab0243aa45f done
+#14 exporting attestation manifest sha256:72ff611c54cdaa0255508755aa6987e3b1407768882b420f00499744a7527d19 0.0s done
+#14 exporting manifest list sha256:35ac3302c569ffdee4ca82ba69784cdaf8d6fa0a176545fa7520662abb213eb8 done
+#14 naming to docker.io/reliefgrid/storagenode:dev
+#14 naming to docker.io/reliefgrid/storagenode:dev done
+#14 unpacking to docker.io/reliefgrid/storagenode:dev 0.0s done
+#14 DONE 0.1s
+Image: "reliefgrid/storagenode:dev" with ID "sha256:35ac3302c569ffdee4ca82ba69784cdaf8d6fa0a176545fa7520662abb213eb8" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:35ac3302c569ffdee4ca82ba69784cdaf8d6fa0a176545fa7520662abb213eb8" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:35ac3302c569ffdee4ca82ba69784cdaf8d6fa0a176545fa7520662abb213eb8" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:35ac3302c569ffdee4ca82ba69784cdaf8d6fa0a176545fa7520662abb213eb8" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:35ac3302c569ffdee4ca82ba69784cdaf8d6fa0a176545fa7520662abb213eb8" not yet present on node "reliefgrid-worker4", loading...
+reset: build and load the coordinator image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.06kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 0.0s
+
+#4 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#4 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#4 DONE 0.0s
+
+#5 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 8.95kB 0.0s done
+#6 DONE 0.0s
+
+#7 [build 2/7] WORKDIR /src
+#7 CACHED
+
+#8 [build 5/7] COPY cmd/ cmd/
+#8 CACHED
+
+#9 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/coordinator
+#9 CACHED
+
+#10 [build 6/7] COPY internal/ internal/
+#10 CACHED
+
+#11 [build 3/7] COPY go.mod go.sum ./
+#11 CACHED
+
+#12 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#12 CACHED
+
+#13 [stage-1 2/2] COPY --from=build /out/coordinator /
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 exporting manifest sha256:d48662c38371515c46be89effd9ac2357bc0d0b7148fd74aca1b9dc6b82efefe done
+#14 exporting config sha256:32e4bdce5cfc811c070ae0579e8001e762ef2dcae9f52926d6ebef24d409d5f0 done
+#14 exporting attestation manifest sha256:3d52d464ac0f79f1a9ea8dbf8a9a9804167d99bddda9cd1d8355105871f442bd
+#14 exporting attestation manifest sha256:3d52d464ac0f79f1a9ea8dbf8a9a9804167d99bddda9cd1d8355105871f442bd 0.0s done
+#14 exporting manifest list sha256:b11e3f8e693bfca7cd69e6e6fa8d04e68ec9a11fb42e42e900cde4f45d1f4c96 0.0s done
+#14 naming to docker.io/reliefgrid/coordinator:dev done
+#14 unpacking to docker.io/reliefgrid/coordinator:dev 0.0s done
+#14 DONE 0.1s
+Image: "reliefgrid/coordinator:dev" with ID "sha256:b11e3f8e693bfca7cd69e6e6fa8d04e68ec9a11fb42e42e900cde4f45d1f4c96" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:b11e3f8e693bfca7cd69e6e6fa8d04e68ec9a11fb42e42e900cde4f45d1f4c96" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:b11e3f8e693bfca7cd69e6e6fa8d04e68ec9a11fb42e42e900cde4f45d1f4c96" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:b11e3f8e693bfca7cd69e6e6fa8d04e68ec9a11fb42e42e900cde4f45d1f4c96" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:b11e3f8e693bfca7cd69e6e6fa8d04e68ec9a11fb42e42e900cde4f45d1f4c96" not yet present on node "reliefgrid-worker4", loading...
+reset: build and load the tools image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.01kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [build 1/8] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#6 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 123.48kB 0.0s done
+#7 DONE 0.0s
+
+#8 [build 4/8] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#8 CACHED
+
+#9 [build 5/8] COPY cmd/ cmd/
+#9 CACHED
+
+#10 [build 3/8] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [build 7/8] COPY loadtest/ loadtest/
+#11 CACHED
+
+#12 [build 8/8] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -tags chaos -o /out/ ./cmd/invcheck
+#12 CACHED
+
+#13 [build 2/8] WORKDIR /src
+#13 CACHED
+
+#14 [build 6/8] COPY internal/ internal/
+#14 CACHED
+
+#15 [stage-1 2/2] COPY --from=build /out/invcheck /
+#15 CACHED
+
+#16 exporting to image
+#16 exporting layers done
+#16 exporting manifest sha256:0f5afbc6692e98424b56668d291ebee95e23dea624d8b4463d1dec93989a4a6c done
+#16 exporting config sha256:e40e9a41fdea11b57ef91dbf5efcb5ea5e8b93710f2589238b3777d14a83c44d done
+#16 exporting attestation manifest sha256:351e0054f255da2450f0543fe1cdd8b93833f753f1a9fb8570e7bf2fad70ba2a 0.0s done
+#16 exporting manifest list sha256:aa106b3e34da2e5fecbd4f432bba2b7ab1274761c90913077462e8a1f81da9d4 0.0s done
+#16 naming to docker.io/reliefgrid/tools:dev done
+#16 unpacking to docker.io/reliefgrid/tools:dev 0.0s done
+#16 DONE 0.1s
+Image: "reliefgrid/tools:dev" with ID "sha256:aa106b3e34da2e5fecbd4f432bba2b7ab1274761c90913077462e8a1f81da9d4" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:aa106b3e34da2e5fecbd4f432bba2b7ab1274761c90913077462e8a1f81da9d4" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:aa106b3e34da2e5fecbd4f432bba2b7ab1274761c90913077462e8a1f81da9d4" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:aa106b3e34da2e5fecbd4f432bba2b7ab1274761c90913077462e8a1f81da9d4" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:aa106b3e34da2e5fecbd4f432bba2b7ab1274761c90913077462e8a1f81da9d4" not yet present on node "reliefgrid-worker4", loading...
+reset: install deploy/helm/storage
+walk.go:75: found symbolic link in path: /home/parthmalhotra/reliefgrid-a31/deploy/helm/storage/files/ring.yaml resolves to /home/parthmalhotra/reliefgrid-a31/contracts/ring.yaml. Contents of linked file included and used
+NAME: storage
+LAST DEPLOYED: Sun Nov  1 11:45:09 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+reset: wait until the coordinator reports nine storage nodes UP
+reset: install app against existing storage (including chart dependencies)
+cluster-up: reliefgrid already exists
+Switched to context "kind-reliefgrid".
+kind placement inputs: three Ready data workers and one Ready infra worker
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 624B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#6 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 5.87kB done
+#7 DONE 0.0s
+
+#8 [build 5/7] COPY cmd/ cmd/
+#8 CACHED
+
+#9 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/api ./cmd/api
+#9 CACHED
+
+#10 [build 2/7] WORKDIR /src
+#10 CACHED
+
+#11 [build 3/7] COPY go.mod go.sum ./
+#11 CACHED
+
+#12 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#12 CACHED
+
+#13 [build 6/7] COPY internal/ internal/
+#13 CACHED
+
+#14 [stage-1 2/2] COPY --from=build /out/api /api
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd done
+#15 exporting config sha256:6e50000a41e29c512e932f8129c9f0be36e988cb5c55553da8c5c3f2bc603cdf done
+#15 naming to docker.io/reliefgrid/api:a15-20261101114534 done
+#15 unpacking to docker.io/reliefgrid/api:a15-20261101114534 0.0s done
+#15 DONE 0.0s
+verified image: reliefgrid/api:a15-20261101114534 sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd user=65532:65532
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 644B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#6 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#6 DONE 0.0s
+
+#7 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#7 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#7 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#7 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 5.87kB 0.0s done
+#5 DONE 0.0s
+
+#8 [build 5/7] COPY cmd/ cmd/
+#8 CACHED
+
+#9 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/matcher ./cmd/matcher
+#9 CACHED
+
+#10 [build 3/7] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#11 CACHED
+
+#12 [build 6/7] COPY internal/ internal/
+#12 CACHED
+
+#13 [build 2/7] WORKDIR /src
+#13 CACHED
+
+#14 [stage-1 2/2] COPY --from=build /out/matcher /matcher
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139 done
+#15 exporting config sha256:c324918332edc5f0292d5900a6881a788c01d39cb4e8ed5d505b3f0d6e99688e done
+#15 naming to docker.io/reliefgrid/matcher:a15-20261101114534 done
+#15 unpacking to docker.io/reliefgrid/matcher:a15-20261101114534 0.0s done
+#15 DONE 0.0s
+verified image: reliefgrid/matcher:a15-20261101114534 sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139 user=65532:65532
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 492B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 173B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [build 1/5] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#6 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 3.48kB done
+#7 DONE 0.0s
+
+#8 [build 5/5] RUN --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/ui ./ui
+#8 CACHED
+
+#9 [build 3/5] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [build 4/5] COPY ui/ ui/
+#10 CACHED
+
+#11 [build 2/5] WORKDIR /src
+#11 CACHED
+
+#12 [stage-1 2/2] COPY --from=build /out/ui /ui
+#12 CACHED
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers done
+#13 exporting manifest sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660 done
+#13 exporting config sha256:a177788532c7f220fc9bc3be84cc6315fca4d3f7d2a9845a573da766780f7db9 done
+#13 naming to docker.io/reliefgrid/ui:a15-20261101114534 done
+#13 unpacking to docker.io/reliefgrid/ui:a15-20261101114534 0.0s done
+#13 DONE 0.1s
+verified image: reliefgrid/ui:a15-20261101114534 sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660 user=65532:65532
+A1.5 APPLICATION IMAGES: PASS
+Image: "reliefgrid/api:a15-20261101114534" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/api:a15-20261101114534" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/api:a15-20261101114534" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/api:a15-20261101114534" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/api:a15-20261101114534" with ID "sha256:07bb9c99746090bb98167806a3124f9c372f45cd3ebe01f8f0e16bc54d74abbd" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/matcher:a15-20261101114534" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/matcher:a15-20261101114534" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/matcher:a15-20261101114534" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/matcher:a15-20261101114534" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/matcher:a15-20261101114534" with ID "sha256:0c832b8caa14a82f459d99fab3aadf97bed042a22aed9f44939689748df6b139" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/ui:a15-20261101114534" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/ui:a15-20261101114534" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/ui:a15-20261101114534" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/ui:a15-20261101114534" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/ui:a15-20261101114534" with ID "sha256:48b7da007718dacc76bfa74965996e4ee4284860d252df111f847902db183660" not yet present on node "reliefgrid-worker4", loading...
+"reliefgrid-traefik" already exists with the same configuration, skipping
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "traefik" chart repository
+...Successfully got an update from the "reliefgrid-traefik" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 2 charts
+walk.go:75: found symbolic link in path: /home/parthmalhotra/reliefgrid-a31/deploy/helm/storage/files/ring.yaml resolves to /home/parthmalhotra/reliefgrid-a31/contracts/ring.yaml. Contents of linked file included and used
+Downloading traefik from repo https://traefik.github.io/charts
+Deleting outdated charts
+Release "reliefgrid" does not exist. Installing it now.
+NAME: reliefgrid
+LAST DEPLOYED: Sun Nov  1 11:45:49 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+broker_pvc_uid=d1d95b1b-340a-45c8-8b4d-3d1848893c59 preserved=new
+shard 0: OK storage-shard-0-0@reliefgrid-worker3 storage-shard-0-1@reliefgrid-worker storage-shard-0-2@reliefgrid-worker2
+shard 1: OK storage-shard-1-0@reliefgrid-worker2 storage-shard-1-1@reliefgrid-worker3 storage-shard-1-2@reliefgrid-worker
+shard 2: OK storage-shard-2-0@reliefgrid-worker3 storage-shard-2-1@reliefgrid-worker2 storage-shard-2-2@reliefgrid-worker
+placement-check: every shard has 3 replicas on distinct data workers
+shard 0: three replicas, one agreed leader
+shard 1: three replicas, one agreed leader
+shard 2: three replicas, one agreed leader
+A1.5 APP DEPLOY: PASS
+reset: check that no worker is cordoned
+reset: clean deployment in 145 s
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-2' bash scripts/demos/demo-2.sh
+== demo-2: Register a resource, list it, update its availability and status (run A3.1-20261101-resume1/round-2)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  201 resource retains validated type, location, availability and unclaimed state
+PASS  creation timestamps are UTC
+PASS  complete authoritative resource list contains the created resource exactly once
+PASS  invalid registration 0 is a definite 400 refusal
+PASS  invalid registration 1 is a definite 400 refusal
+PASS  invalid registration 2 is a definite 400 refusal
+PASS  invalid registrations create no resources
+PASS  status update persists at a different opaque version
+PASS  partial availability update persists
+PASS  public claim-managed status is a definite 409 refusal
+PASS  public claim-managed status is a definite 409 refusal
+PASS  all refused updates preserve the complete stored record and version
+PASS  strong stored record preserves location and refuses public claim mutations
+PASS  resource create replay retains original body and Location after updates
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-2-app
+== demo-2: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-2.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-2' bash scripts/demos/demo-3.sh
+== demo-3: Async and explicit API matching with compatible and incompatible resources (run A3.1-20261101-resume1/round-2)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  no resource assigned to two requests
+PASS  async match respects type, 50 km radius and current availability window
+PASS  async incompatible resources remain unclaimed
+PASS  explicit match completes while matcher Deployment is stopped
+PASS  no resource assigned to two requests
+PASS  explicit match respects type, 50 km radius and current availability window
+PASS  explicit incompatible resources remain unclaimed
+PASS  no resource assigned to two requests
+PASS  two requests competing for one resource produce one match and one waiting request
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-3-app
+== demo-3: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-3.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-2' bash scripts/demos/demo-5.sh
+== demo-5: Submit a burst; show RabbitMQ queue counts, matching and waiting results (run A3.1-20261101-resume1/round-2)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  500 distinct request creates acknowledged against 50 seeded resources
+PASS  no resource assigned to two requests
+PASS  burst settles to 50 reciprocal matches and 450 waiting requests
+PASS  matching queue ready/unacked returns to zero within bounded quiescence
+PASS  broker observations show asynchronous work in flight
+PASS  all broker samples completed without hidden observation errors: []
+PASS  all shard outboxes drained before retry admission is paused
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-5-app
+== demo-5: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-5.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-2' bash scripts/demos/demo-8.sh
+== demo-8: Delete one API or matcher pod while traffic and work continue (run A3.1-20261101-resume1/round-2)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  api: two Ready pods before deletion
+PASS  api: a new UID becomes Ready within 90s
+PASS  api: traffic completed with no lost create outcome: []
+PASS  api: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  api: all interrupted-call retries/replays preserve the same key, payload and original create result
+PASS  matcher: two Ready pods before deletion
+PASS  matcher: a new UID becomes Ready within 90s
+PASS  matcher: traffic completed with no lost create outcome: []
+PASS  matcher: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  matcher: all interrupted-call retries/replays preserve the same key, payload and original create result
+PASS  interrupted calls counted and retained: 0; zero is reported honestly when redundant pods avoided interruption
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-8-app
+== demo-8: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-8.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+make[1]: Entering directory '/home/parthmalhotra/reliefgrid-a31'
+DEMO_RUN_ID='A3.1-20261101-resume1/round-2' bash scripts/demos/demo-9.sh
+== demo-9: Scale the API from 2 to 6 replicas under traffic (run A3.1-20261101-resume1/round-2)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  manual API scale demo has no competing HPA
+PASS  API starts at two replicas
+PASS  all six API pods become Ready under traffic
+PASS  every API pod, including all four new pods, serves through the Service
+PASS  Service traffic completed without hidden failures: []
+PASS  API restored to two replicas
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-9-app
+== demo-9: PASS (2/2 checks)
+evidence: /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-2/demo-9.txt
+make[1]: Leaving directory '/home/parthmalhotra/reliefgrid-a31'
+A3.1 VERIFY: ALL PASS

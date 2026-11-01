@@ -1,0 +1,6 @@
+[
+  {
+    "passed": true,
+    "assertion": "500 distinct request creates acknowledged against 50 seeded resources"
+  }
+]

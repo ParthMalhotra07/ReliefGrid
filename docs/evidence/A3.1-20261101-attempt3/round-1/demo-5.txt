@@ -1,0 +1,69 @@
+# demo-5: Submit a burst; show RabbitMQ queue counts, matching and waiting results
+result:     FAIL (1 of 2 checks failed)
+runId:      A3.1-20261101-attempt3/round-1
+host:       DESKTOP-EG9G7UI
+started:    2026-11-01T07:33:47Z
+finished:   2026-11-01T07:36:00Z
+duration:   132.9 s
+code tree:  81edad954b2b (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: 781495c13f4c
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.7.2
+image reliefgrid/storagenode:dev: sha256:c1c8aafde2a3e83905056774eb2490bf5c9d0c46a2e44115d34983efed0d607f
+image reliefgrid/coordinator:dev: sha256:4b27780e6d3bf8895c7b57b49c4fb45a3ab80f7b0306a6049fb0bd139602562e
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+FAIL  application assertions; first failure recorded in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-attempt3/round-1/demo-5-app
+
+## commands
+
+# public API assertions and recorded observations
+$ python3 /home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py 5 --out /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-attempt3/round-1/demo-5-app
+PASS  500 distinct request creates acknowledged against 50 seeded resources
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 490, in <module>
+    main()
+    ~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 482, in main
+    getattr(demo, 'demo' + str(args.number))()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 348, in demo5
+    rows = self.settle(ids, 50)
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 166, in settle
+    rows = self.parallel(ids, lambda entity_id: self.get_request(entity_id, deadline))
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 161, in parallel
+    return list(pool.map(fn, values))
+  File "/usr/lib/python3.14/concurrent/futures/_base.py", line 639, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/usr/lib/python3.14/concurrent/futures/_base.py", line 311, in _result_or_cancel
+    return fut.result(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "/usr/lib/python3.14/concurrent/futures/_base.py", line 443, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/concurrent/futures/_base.py", line 395, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.14/concurrent/futures/thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "/usr/lib/python3.14/concurrent/futures/thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 166, in <lambda>
+    rows = self.parallel(ids, lambda entity_id: self.get_request(entity_id, deadline))
+                                                ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 157, in get_request
+    return self.api.call('GET', '/requests/' + entity_id, {200}, deadline=deadline)[0]
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 84, in call
+    raise TimeoutError(f'{method} {path}: fixed demo deadline expired; retry inputs retained in {self.out}')
+TimeoutError: GET /requests/d0f35e67-8a52-57fa-b4e6-6c4271772ce2: fixed demo deadline expired; retry inputs retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-attempt3/round-1/demo-5-app
+[exit 1, 126.6 s]
