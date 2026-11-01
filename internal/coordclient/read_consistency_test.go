@@ -179,3 +179,12 @@ func TestReadRecordInfo(t *testing.T) {
 		t.Fatalf("missing key: err = %v, want store.ErrNotFound", err)
 	}
 }
+
+// Ring is the ring the client loaded, as served.
+func TestRingIsTheLoadedRing(t *testing.T) {
+	f := newFake(t)
+	c := newClient(t, f)
+	if got := c.Ring(); got != ringV1 {
+		t.Fatalf("Ring() = %+v, want %+v", got, ringV1)
+	}
+}

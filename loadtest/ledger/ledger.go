@@ -57,6 +57,8 @@ type Entry struct {
 	// the run's monotonic clock (Driver); 0 if it has none. CheckReads
 	// orders reads against it, never against At.
 	AckNs int64 `json:"ackNs,omitempty"`
+	// StartNs is when the write's first attempt began, on the same clock.
+	StartNs int64 `json:"startNs,omitempty"`
 	// Resolved: Resolve found the write committed after the run. It was
 	// never acknowledged while readers ran, so no read is held to it.
 	Resolved bool `json:"resolved,omitempty"`
@@ -66,7 +68,10 @@ type Entry struct {
 // run's monotonic clock, like Entry.AckNs. Exactly one of Error, NotFound or
 // a Version (with PayloadHash) describes what it got.
 type Read struct {
-	Key         string `json:"key"`
+	Key string `json:"key"`
+	// Target is "" for a reader (through the coordinator), else the probe's
+	// Name (Driver.Probes).
+	Target      string `json:"target,omitempty"`
 	StartNs     int64  `json:"startNs"`
 	EndNs       int64  `json:"endNs"`
 	Version     uint64 `json:"version,omitempty"`
@@ -176,6 +181,10 @@ type Ledger struct {
 	Reads []Read `json:"reads,omitempty"`
 	// ReadConsistency is the mode the readers asked for.
 	ReadConsistency string `json:"readConsistency,omitempty"`
+	// StartedAtMs is the wall clock (unix ms) at the zero of every *Ns
+	// instant: wall ms = StartedAtMs + ns/1e6, to line the run up with a
+	// harness's fault times (Window). 0 in a ledger written before it.
+	StartedAtMs int64 `json:"startedAtMs,omitempty"`
 }
 
 // PayloadHash is the hex SHA-256 of v in compact JSON form, so that it

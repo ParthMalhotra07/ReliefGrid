@@ -133,6 +133,14 @@ func (c *Client) ringVersion() uint64 {
 	return c.ring.RingVersion
 }
 
+// Ring returns the ring the client loaded from GET /internal/ring (its last
+// refresh). ring.New over it verifies the checksum and maps keys to shards.
+func (c *Client) Ring() internalapi.Ring {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.ring
+}
+
 // Shards returns the ring's shard count.
 func (c *Client) Shards() int {
 	c.mu.Lock()
