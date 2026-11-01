@@ -49,7 +49,8 @@ class Client:
         self.deadline = time.monotonic() + budget
         self.lock = threading.Lock()
 
-    def call(self, method, path, expected, payload=None, key=None):
+    def call(self, method, path, expected, payload=None, key=None, deadline=None):
+        end = min(self.deadline, deadline) if deadline is not None else self.deadline
         body = None if payload is None else json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
         headers = {'Content-Type': 'application/json', 'Connection': 'close'}
         if key:
@@ -57,11 +58,11 @@ class Client:
         if self.auth:
             headers['Authorization'] = self.auth
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-        while time.monotonic() < self.deadline:
+        while time.monotonic() < end:
             stamp = time.time()
             request = urllib.request.Request(self.base + path, body, headers, method=method)
             try:
-                with opener.open(request, timeout=min(5, max(.1, self.deadline - time.monotonic()))) as response:
+                with opener.open(request, timeout=min(5, max(.1, end - time.monotonic()))) as response:
                     status, raw, response_headers = response.status, response.read(), dict(response.headers.items())
             except urllib.error.HTTPError as error:
                 with error:
@@ -79,7 +80,7 @@ class Client:
             if status not in (0, 502, 503, 504):
                 raise AssertionError(f'{method} {path}: expected {sorted(expected)}, got {status}: {raw[:500]!r}')
             # Preserve key and byte-identical body on an unknown create result.
-            time.sleep(min(.2, max(0, self.deadline - time.monotonic())))
+            time.sleep(min(.2, max(0, end - time.monotonic())))
         raise TimeoutError(f'{method} {path}: fixed demo deadline expired; retry inputs retained in {self.out}')
 
 
@@ -152,8 +153,8 @@ class Demo:
         assert not record.get('deleted'), record
         return record
 
-    def get_request(self, entity_id):
-        return self.api.call('GET', '/requests/' + entity_id, {200})[0]
+    def get_request(self, entity_id, deadline=None):
+        return self.api.call('GET', '/requests/' + entity_id, {200}, deadline=deadline)[0]
 
     def parallel(self, values, fn, workers=8):
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
@@ -162,7 +163,7 @@ class Demo:
     def settle(self, ids, matches, seconds=120):
         deadline = min(self.api.deadline, time.monotonic() + seconds)
         while time.monotonic() < deadline:
-            rows = self.parallel(ids, self.get_request)
+            rows = self.parallel(ids, lambda entity_id: self.get_request(entity_id, deadline))
             states = [row['status'] for row in rows]
             self.save('settled-requests', rows)
             if all(state in ('MATCHED', 'WAITING') for state in states) and states.count('MATCHED') == matches:
@@ -200,7 +201,19 @@ class Demo:
                 time.sleep(.25)
             assert not self.pods(component), 'workers did not stop before explicit matching'
 
+    def wait_outbox_empty(self):
+        deadline = min(self.coordinator.deadline, time.monotonic() + 30)
+        pages = []
+        while time.monotonic() < deadline:
+            pages = [self.coordinator.call('GET', f'/internal/outbox?shard={shard}&limit=100&consistency=strong', {200}, deadline=deadline)[0] for shard in range(3)]
+            assert all(page['shard'] == shard and isinstance(page['events'], list) for shard, page in enumerate(pages)), pages
+            if all(not page['events'] for page in pages):
+                return
+            time.sleep(min(.25, max(0, deadline - time.monotonic())))
+        raise TimeoutError('outbox did not drain within 30s; refusing a quiescent audit')
+
     def invariants(self):
+        self.wait_outbox_empty()
         name = f'demo{self.number}-check-{self.seed.hex[:10]}'
         pod = dict(metadata=dict(labels={'reliefgrid.io/coordinator-client': 'true'}),
                    spec=dict(restartPolicy='Never', automountServiceAccountToken=False,

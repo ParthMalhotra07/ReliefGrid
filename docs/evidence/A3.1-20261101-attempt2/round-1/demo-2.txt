@@ -1,0 +1,63 @@
+# demo-2: Register a resource, list it, update its availability and status
+result:     FAIL (1 of 2 checks failed)
+runId:      A3.1-20261101-attempt2/round-1
+host:       DESKTOP-EG9G7UI
+started:    2026-11-01T06:55:56Z
+finished:   2026-11-01T06:56:05Z
+duration:   8.9 s
+code tree:  af02b5dfe5df (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: a102058f04d1
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.7.2
+image reliefgrid/storagenode:dev: sha256:f6792758d21dffb42bb5c46a53d0afe9853a26ea965881e57600ff1f3d85548a
+image reliefgrid/coordinator:dev: sha256:b247431b7d12609baff7b491bbdc41449373c9d2c1121eff0174cd6d30115a7c
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+FAIL  application assertions; first failure recorded in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-attempt2/round-1/demo-2-app
+
+## commands
+
+# public API assertions and recorded observations
+$ python3 /home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py 2 --out /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-attempt2/round-1/demo-2-app
+PASS  201 resource retains validated type, location, availability and unclaimed state
+PASS  creation timestamps are UTC
+PASS  complete authoritative resource list contains the created resource exactly once
+PASS  invalid registration 0 is a definite 400 refusal
+PASS  invalid registration 1 is a definite 400 refusal
+PASS  invalid registration 2 is a definite 400 refusal
+PASS  invalid registrations create no resources
+PASS  status update persists at a different opaque version
+PASS  partial availability update persists
+PASS  public claim-managed status is a definite 409 refusal
+PASS  public claim-managed status is a definite 409 refusal
+PASS  all refused updates preserve the complete stored record and version
+PASS  strong stored record preserves location and refuses public claim mutations
+PASS  resource create replay retains original body and Location after updates
+FAIL  invcheck: complete, reciprocal, no terminal claim and outbox drained
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 477, in <module>
+    main()
+    ~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 469, in main
+    getattr(demo, 'demo' + str(args.number))()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 260, in demo2
+    self.invariants()
+    ~~~~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 222, in invariants
+    self.check(job.get('status', {}).get('succeeded') == 1, 'invcheck: complete, reciprocal, no terminal claim and outbox drained')
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 112, in check
+    assert condition, text
+           ^^^^^^^^^
+AssertionError: invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 1, 4.7 s]

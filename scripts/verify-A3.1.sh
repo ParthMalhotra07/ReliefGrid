@@ -4,10 +4,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 case "${1:---static}" in
  --static)
-  go test -race -count=1 -run '^(TestAppDemoClient|TestAppDemosRequireDeployment|TestRunServesRealFSMAndStops)' ./scripts/... ./cmd/api/...
+  go test -race -count=1 -run '^(TestAppDemoClient|TestAppDemosRequireDeployment|TestAppDemoLiveVerifyRefusesUnroutedTopologyBeforeReset|TestRunServesRealFSMAndStops)' ./scripts/... ./cmd/api/...
   go test -race -count=1 -tags integration -run '^TestAppDemoProfileHasThirtySecondEvictionTolerations$' ./scripts/...
   ;;
  --live)
+  python3 - <<'PY'
+import json, sys
+with open('internal/mq/definitions.json') as source:
+    bindings = json.load(source)['bindings']
+if not any(b['source'] == 'relief.events' and b['destination'] == 'matching.wakeups' and b['routing_key'] == 'resource.state_changed' for b in bindings):
+    sys.exit('A3.1 precondition: resource.state_changed has no durable binding; integrate PR #81 before a clean reset')
+PY
   cluster="$(make -s print-CLUSTER)"
   if [ "${KUBE_CONTEXT:-kind-$cluster}" != "kind-$cluster" ]; then echo "Verify refuses a context other than kind-$cluster" >&2; exit 1; fi
   run="${A31_RUN_ID:-A3.1-$(date -u +%Y%m%dT%H%M%SZ)}"

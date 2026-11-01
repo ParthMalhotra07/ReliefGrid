@@ -1,0 +1,23 @@
+{
+  "shard": 0,
+  "replicas": [
+    {
+      "serverId": "storage-shard-0-0/848c7b99-dbb8-47db-a1bb-c1106ff71eb7",
+      "state": "Leader",
+      "leaderId": "storage-shard-0-0/848c7b99-dbb8-47db-a1bb-c1106ff71eb7",
+      "appliedIndex": 0
+    },
+    {
+      "serverId": "storage-shard-0-1/5ce8ab27-e7bb-450c-bf1c-ea9594f5bb11",
+      "state": "Follower",
+      "leaderId": "storage-shard-0-0/848c7b99-dbb8-47db-a1bb-c1106ff71eb7",
+      "appliedIndex": 0
+    },
+    {
+      "serverId": "storage-shard-0-2/0edd3269-5884-461b-88b8-9d448a5aa712",
+      "state": "Follower",
+      "leaderId": "storage-shard-0-0/848c7b99-dbb8-47db-a1bb-c1106ff71eb7",
+      "appliedIndex": 0
+    }
+  ]
+}
