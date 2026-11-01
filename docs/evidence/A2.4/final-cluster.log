@@ -1,0 +1,20 @@
+Using the just-deployed current A2.4 application on kind-reliefgrid
+deployment "reliefgrid-matcher" successfully rolled out
+PASS public public-cancel -> CANCELLED without manual match
+PASS public public-fulfil -> FULFILLED without manual match
+PASS resource registration wakes 120-second future waiter before due time
+PASS crash/restart pending -> MATCHED
+PASS crash/restart intent -> MATCHED
+PASS crash/restart claim -> MATCHED
+PASS crash/restart confirm -> MATCHED
+PASS crash/restart cancel-intent -> CANCELLED
+PASS crash/restart cancel-close -> CANCELLED
+PASS crash/restart cancel-terminal -> CANCELLED
+PASS crash/restart fulfil-intent -> FULFILLED
+PASS crash/restart fulfil-close -> FULFILLED
+PASS crash/restart fulfil-terminal -> FULFILLED
+PASS crash/restart retry-intent -> MATCHED
+PASS crash/restart retry-close -> MATCHED
+PASS crash/restart old-claim -> MATCHED
+PASS complete age audit, exact closures/current claims and strict zero-backlog invcheck
+A2.4 CLUSTER VERIFY: ALL PASS

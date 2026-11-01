@@ -1,0 +1,30 @@
+{
+  "key": "req:fecbe162-aea3-5b42-bd20-28cf80295530",
+  "kind": "request",
+  "version": 6,
+  "request": {
+    "id": "fecbe162-aea3-5b42-bd20-28cf80295530",
+    "type": "TRANSPORTATION",
+    "location": {
+      "lat": 56,
+      "lng": 0
+    },
+    "geohash": "u1bn842",
+    "peopleAffected": 1,
+    "urgency": 1,
+    "details": "Synthetic reconciliation verification",
+    "status": "MATCHED",
+    "workflowGeneration": 1,
+    "currentAttempt": {
+      "attemptId": "e91f4993-9442-4353-bc2f-09c6c64cda59",
+      "resourceId": "f6a4179c-4fa7-583f-b741-3bed04632ee4",
+      "fingerprint": "rg1:1793539566987:0:0e6411916896fdcb05acaa2073f97613e238c54e2904562ed6dc50c15cd8c366"
+    },
+    "assignedResourceId": "f6a4179c-4fa7-583f-b741-3bed04632ee4",
+    "retryCount": 3,
+    "lastError": "RESOURCE_AVAILABLE",
+    "createdAt": 1793539566284,
+    "updatedAt": 1793539566987
+  },
+  "updatedAt": 1793539566987
+}

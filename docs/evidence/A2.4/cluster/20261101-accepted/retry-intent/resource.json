@@ -1,0 +1,28 @@
+{
+  "key": "res:1e040e90-153b-5ae9-9235-5d96af76d98d",
+  "kind": "resource",
+  "version": 2,
+  "resource": {
+    "id": "1e040e90-153b-5ae9-9235-5d96af76d98d",
+    "type": "WATER",
+    "name": "Synthetic recovery fixture",
+    "location": {
+      "lat": 18,
+      "lng": 45
+    },
+    "geohash": "t50n2hb",
+    "availableFrom": 1793536053643,
+    "availableUntil": 1793543253643,
+    "status": "ASSIGNED",
+    "reusable": true,
+    "activeClaim": {
+      "requestId": "73171cba-438c-53bb-8a26-b89760426592",
+      "attemptId": "7f6b418b-5a76-49c1-8e8d-4c2938737547",
+      "fingerprint": "rg1:1793539661381:0:9bb3e22a742765a19c1c7c8733745985c0537d688cbe8b514af748b231869689"
+    },
+    "locationRevision": 1,
+    "createdAt": 1793539653643,
+    "updatedAt": 1793539661381
+  },
+  "updatedAt": 1793539661381
+}

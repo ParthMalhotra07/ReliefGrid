@@ -1,0 +1,6 @@
+{
+  "result": "PASS",
+  "crashCases": 13,
+  "publicCleanupCases": 2,
+  "resourceWakeup": true
+}

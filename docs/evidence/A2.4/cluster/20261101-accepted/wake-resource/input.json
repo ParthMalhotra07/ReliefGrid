@@ -1,0 +1,14 @@
+{
+  "key": "9625e163-9da8-5578-a881-475365ba793a",
+  "body": {
+    "resourceType": "TRANSPORTATION",
+    "name": "Synthetic wake-resource",
+    "location": {
+      "lat": 56,
+      "lng": 0
+    },
+    "windowStart": "2026-11-01T13:25:06Z",
+    "windowEnd": "2026-11-01T15:26:06Z",
+    "reusable": true
+  }
+}

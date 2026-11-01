@@ -1,0 +1,19 @@
+{
+  "createdAt": "2026-11-01T13:26:05.13Z",
+  "details": "Synthetic reconciliation verification",
+  "location": {
+    "lat": 68,
+    "lng": 0
+  },
+  "peopleAffected": 1,
+  "requestId": "6381c6ae-1fb7-52c2-ae8b-8229fc1de1a1",
+  "requestType": "TRANSPORTATION",
+  "status": "CANCELLING",
+  "updatedAt": "2026-11-01T13:26:05.418Z",
+  "urgency": "NORMAL",
+  "version": "v4",
+  "assignedResourceId": "3ab99a44-7f91-5a41-80c5-70dc01ea5f9b",
+  "nextAttemptAt": null,
+  "retryCount": 0,
+  "lastError": ""
+}

@@ -1,0 +1,19 @@
+{
+  "createdAt": "2026-11-01T13:26:05.723Z",
+  "details": "Synthetic reconciliation verification",
+  "location": {
+    "lat": 62,
+    "lng": 0
+  },
+  "peopleAffected": 1,
+  "requestId": "bf8c84a3-8a22-54d8-8e3b-a6a75c87344d",
+  "requestType": "TRANSPORTATION",
+  "status": "FULFILLING",
+  "updatedAt": "2026-11-01T13:26:05.992Z",
+  "urgency": "NORMAL",
+  "version": "v4",
+  "assignedResourceId": "1d1d422c-c16a-5fda-a01e-39923cd02fcd",
+  "nextAttemptAt": null,
+  "retryCount": 0,
+  "lastError": ""
+}

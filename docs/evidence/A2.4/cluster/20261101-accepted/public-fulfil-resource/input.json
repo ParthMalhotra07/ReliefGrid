@@ -1,0 +1,14 @@
+{
+  "key": "1e32c9ec-44f4-5b43-93f2-46492fbbf872",
+  "body": {
+    "resourceType": "TRANSPORTATION",
+    "name": "Synthetic public-fulfil",
+    "location": {
+      "lat": 62,
+      "lng": 0
+    },
+    "windowStart": "2026-11-01T13:25:05Z",
+    "windowEnd": "2026-11-01T15:26:05Z",
+    "reusable": false
+  }
+}

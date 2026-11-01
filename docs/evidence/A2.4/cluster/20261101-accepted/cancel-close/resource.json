@@ -1,0 +1,23 @@
+{
+  "key": "res:71756303-efda-552b-a40d-285babafff13",
+  "kind": "resource",
+  "version": 5,
+  "resource": {
+    "id": "71756303-efda-552b-a40d-285babafff13",
+    "type": "WATER",
+    "name": "Synthetic recovery fixture",
+    "location": {
+      "lat": -27,
+      "lng": 45
+    },
+    "geohash": "m50n2hb",
+    "availableFrom": 1793535090007,
+    "availableUntil": 1793542290007,
+    "status": "AVAILABLE",
+    "reusable": true,
+    "locationRevision": 1,
+    "createdAt": 1793538690007,
+    "updatedAt": 1793539612367
+  },
+  "updatedAt": 1793539612367
+}

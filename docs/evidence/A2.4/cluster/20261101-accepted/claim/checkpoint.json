@@ -1,0 +1,20 @@
+{
+  "phase": "READY",
+  "stage": "claim",
+  "requestId": "30b9d5c2-82da-5590-b6e0-5b898d5ab006",
+  "resourceId": "dd79014f-45b2-59b6-833f-1114b712ffa1",
+  "attemptId": "7be94370-4210-4512-afb4-5e20928321ef",
+  "claim": {
+    "operationId": "ea54272a-ebfb-5322-96cf-45f11ff72bda",
+    "at": 1793539587251,
+    "resourceKey": "res:dd79014f-45b2-59b6-833f-1114b712ffa1",
+    "requestId": "30b9d5c2-82da-5590-b6e0-5b898d5ab006",
+    "attempt": {
+      "attemptId": "7be94370-4210-4512-afb4-5e20928321ef",
+      "resourceId": "dd79014f-45b2-59b6-833f-1114b712ffa1",
+      "fingerprint": "rg1:1793539587251:0:d856ae815b1046d4cae060d834a1e2ce40e25619e257f84017986dee351da28f"
+    },
+    "type": "WATER"
+  },
+  "podUID": "ef9f91ad-15b0-40eb-8036-4778d830368a"
+}

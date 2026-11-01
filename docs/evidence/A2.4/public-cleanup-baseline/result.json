@@ -1,0 +1,43 @@
+{
+  "resourceId": "2a016ce2-94cc-5dc5-934f-e94c63c57010",
+  "requestId": "c4f385a4-7806-5d3c-b9d3-d75b09c28929",
+  "intermediate": {
+    "createdAt": "2026-11-01T12:46:42.508Z",
+    "details": "Synthetic recovery baseline",
+    "location": {
+      "lat": 74,
+      "lng": 90
+    },
+    "peopleAffected": 1,
+    "requestId": "c4f385a4-7806-5d3c-b9d3-d75b09c28929",
+    "requestType": "TRANSPORTATION",
+    "status": "CANCELLING",
+    "updatedAt": "2026-11-01T12:46:47.829Z",
+    "urgency": "NORMAL",
+    "version": "v5",
+    "assignedResourceId": "2a016ce2-94cc-5dc5-934f-e94c63c57010",
+    "nextAttemptAt": "2026-11-01T12:46:47.698Z",
+    "retryCount": 1,
+    "lastError": "CONCURRENT_CHANGE"
+  },
+  "observed": {
+    "createdAt": "2026-11-01T12:46:42.508Z",
+    "details": "Synthetic recovery baseline",
+    "location": {
+      "lat": 74,
+      "lng": 90
+    },
+    "peopleAffected": 1,
+    "requestId": "c4f385a4-7806-5d3c-b9d3-d75b09c28929",
+    "requestType": "TRANSPORTATION",
+    "status": "CANCELLING",
+    "updatedAt": "2026-11-01T12:46:47.829Z",
+    "urgency": "NORMAL",
+    "version": "v5",
+    "assignedResourceId": "2a016ce2-94cc-5dc5-934f-e94c63c57010",
+    "nextAttemptAt": "2026-11-01T12:46:47.698Z",
+    "retryCount": 1,
+    "lastError": "CONCURRENT_CHANGE"
+  },
+  "expected": "CANCELLED"
+}

@@ -1,0 +1,29 @@
+{
+  "key": "req:f5006fc0-ffcd-5a2f-92e8-cd8d0179bcf6",
+  "kind": "request",
+  "version": 3,
+  "request": {
+    "id": "f5006fc0-ffcd-5a2f-92e8-cd8d0179bcf6",
+    "type": "WATER",
+    "location": {
+      "lat": -45,
+      "lng": 45
+    },
+    "geohash": "m000000",
+    "peopleAffected": 1,
+    "urgency": 1,
+    "details": "Synthetic recovery fixture",
+    "status": "MATCHED",
+    "workflowGeneration": 1,
+    "currentAttempt": {
+      "attemptId": "054eeee2-64e3-4f31-9bed-09b7f83cfcfc",
+      "resourceId": "4487253e-c367-576b-bde4-134ddac67e8e",
+      "fingerprint": "rg1:1793539595219:0:d9753fe2dc764772c3b7988094f4e0d7347eec4e410915bb815c7df7a35dff5e"
+    },
+    "assignedResourceId": "4487253e-c367-576b-bde4-134ddac67e8e",
+    "retryCount": 0,
+    "createdAt": 1793539595219,
+    "updatedAt": 1793539595219
+  },
+  "updatedAt": 1793539595219
+}
