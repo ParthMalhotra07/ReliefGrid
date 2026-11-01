@@ -39,6 +39,7 @@ func Run(t *testing.T, newStore func(t *testing.T) store.Store) {
 		{"CompareAndSet", testCompareAndSet},
 		{"Tombstone", testTombstone},
 		{"OperationReplayAndReuse", testOperationReplayAndReuse},
+		{"ReplayIgnoresOutboxTraceparent", testReplayIgnoresOutboxTraceparent},
 		{"TransitionRequestConflicts", testTransitionRequestConflicts},
 		{"ClaimAndCloseLifecycle", testClaimAndCloseLifecycle},
 		{"TransitionResourceAndRetry", testTransitionResourceAndRetry},
@@ -212,6 +213,54 @@ func testOperationReplayAndReuse(t *testing.T, s store.Store, n ns) {
 	expect(t, "stale", store.OutcomeVersionConflict)(s.CompareAndSet(ctx, stale))
 	if res := expect(t, "stale replay", store.OutcomeVersionConflict)(s.CompareAndSet(ctx, stale)); !res.Replayed {
 		t.Fatalf("rejection replay = %+v, want replayed", res)
+	}
+}
+
+// testReplayIgnoresOutboxTraceparent: an outbox envelope's traceparent is
+// not part of an operation's identity. A retry that changes only that value
+// replays the committed result, and the stored event keeps the first
+// committed traceparent; any other change is still OPERATION_ID_REUSED.
+func testReplayIgnoresOutboxTraceparent(t *testing.T, s store.Store, n ns) {
+	ctx := ctxFor(t)
+	const (
+		first  = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+		second = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+	)
+	key := store.RequestKey(n.id("q-trace"))
+	eventID := n.id("ev-trace")
+	cmd := func(trace string, people int) store.CreateEntity {
+		body, err := json.Marshal(map[string]any{"schemaVersion": 1, "eventId": eventID, "entityId": n.id("q-trace"),
+			"entityVersion": 1, "eventType": "request.created", "occurredAt": "2026-10-30T00:00:00Z", "traceparent": trace,
+			"payload": map[string]any{"requestId": n.id("q-trace"), "status": "PENDING"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := n.request("q-trace")
+		req.PeopleAffected = people
+		return store.CreateEntity{Meta: n.op("create-trace"), Key: key, Request: req,
+			Outbox: []store.OutboxEvent{{EventID: eventID, EventType: "request.created", SchemaVersion: 1,
+				Exchange: "relief.events", RoutingKey: "request.created", Payload: body}}}
+	}
+	orig := expect(t, "first", store.OutcomeOK)(s.CreateEntity(ctx, cmd(first, 3)))
+	again := expect(t, "trace-only retry", store.OutcomeOK)(s.CreateEntity(ctx, cmd(second, 3)))
+	if !again.Replayed || again.Version != orig.Version || again.AppliedIndex != orig.AppliedIndex {
+		t.Fatalf("trace-only retry = %+v, want replay of %+v", again, orig)
+	}
+	expect(t, "trace and payload changed", store.OutcomeOperationIDReuse)(s.CreateEntity(ctx, cmd(second, 4)))
+
+	pending, err := s.PendingOutbox(ctx, store.OutboxQuery{Shard: orig.Shard, Limit: 100})
+	if err != nil {
+		t.Fatalf("pending: %v", err)
+	}
+	ev := find(pending, eventID)
+	if ev == nil {
+		t.Fatalf("event %s not pending", eventID)
+	}
+	var env struct {
+		Traceparent string `json:"traceparent"`
+	}
+	if err := json.Unmarshal(ev.Payload, &env); err != nil || env.Traceparent != first {
+		t.Fatalf("stored traceparent = %q (%v), want the first committed %q", env.Traceparent, err, first)
 	}
 }
 
