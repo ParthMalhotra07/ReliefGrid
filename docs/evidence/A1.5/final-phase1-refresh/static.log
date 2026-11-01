@@ -1,0 +1,7 @@
+go test -race -count=1 -tags integration -run '^TestApp' -v ./scripts/...
+=== RUN   TestAppHelmFullDeployment
+--- PASS: TestAppHelmFullDeployment (2.33s)
+=== RUN   TestAppBrokerOnlyProfileRemainsIndependent
+--- PASS: TestAppBrokerOnlyProfileRemainsIndependent (0.84s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	4.197s

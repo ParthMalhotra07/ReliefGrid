@@ -1,0 +1,19 @@
+go test -race -count=1 -tags integration -run '^TestApp' -v ./scripts/...
+=== RUN   TestAppCIEntryPointRunsAfterStorage
+--- PASS: TestAppCIEntryPointRunsAfterStorage (0.01s)
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=app-deploy
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=e2e-smoke
+--- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence (0.08s)
+    --- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure= (0.03s)
+    --- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=app-deploy (0.02s)
+    --- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=e2e-smoke (0.03s)
+=== RUN   TestAppHelmFullDeployment
+--- PASS: TestAppHelmFullDeployment (2.10s)
+=== RUN   TestAppBrokerOnlyProfileRemainsIndependent
+--- PASS: TestAppBrokerOnlyProfileRemainsIndependent (0.23s)
+=== RUN   TestAppChartDependenciesFromEmptyHelmHome
+--- PASS: TestAppChartDependenciesFromEmptyHelmHome (1.51s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	4.957s

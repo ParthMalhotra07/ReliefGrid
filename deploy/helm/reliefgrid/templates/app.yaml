@@ -1,0 +1,137 @@
+{{- if .Values.app.enabled }}
+{{- range $name := list "api" "matcher" "ui" }}
+{{- $app := index $.Values.app $name }}
+{{- $full := printf "%s-%s" (include "reliefgrid.fullname" $) $name }}
+{{- $port := ternary 8081 8080 (eq $name "matcher") }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "reliefgrid.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  replicas: {{ $app.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      app.kubernetes.io/component: {{ $name }}
+  template:
+    metadata:
+      labels:
+        {{- include "reliefgrid.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+        {{- if ne $name "ui" }}
+        # API and matcher call storage-coordinator; matcher hosts the relay.
+        reliefgrid.io/coordinator-client: "true"
+        {{- end }}
+    spec:
+      nodeSelector:
+        {{- toYaml $.Values.app.nodeSelector | nindent 8 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: {{ $.Release.Name }}
+                    app.kubernetes.io/component: {{ $name }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: {{ $name }}
+          image: {{ printf "%s:%s" $app.image.repository $app.image.tag | quote }}
+          imagePullPolicy: {{ $app.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          ports:
+            - name: http
+              containerPort: {{ $port }}
+          env:
+            - name: HTTP_ADDR
+              value: {{ printf ":%d" ($port | int) | quote }}
+            {{- if ne $name "ui" }}
+            - name: COORDINATOR_URL
+              value: {{ $.Values.app.coordinatorURL | quote }}
+            {{- end }}
+            {{- if eq $name "api" }}
+            - name: CALLER_NAMESPACE
+              value: {{ $.Values.app.callerNamespace | quote }}
+            {{- end }}
+            {{- if eq $name "matcher" }}
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "reliefgrid.fullname" $ }}-rabbitmq
+                  key: amqp-url
+            {{- end }}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 2
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml $app.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $full }}
+  labels:
+    {{- include "reliefgrid.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $name }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-app
+  labels:
+    {{- include "reliefgrid.labels" . | nindent 4 }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - http:
+        paths:
+          - path: /api/v1
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "reliefgrid.fullname" . }}-api
+                port: {number: 8080}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "reliefgrid.fullname" . }}-ui
+                port: {number: 8080}
+{{- end }}

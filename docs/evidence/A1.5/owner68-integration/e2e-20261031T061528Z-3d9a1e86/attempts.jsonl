@@ -1,0 +1,10 @@
+{"method": "GET", "path": "/", "status": 200}
+{"method": "POST", "path": "/api/v1/requests", "status": 201}
+{"method": "POST", "path": "/api/v1/resources", "status": 201}
+{"method": "GET", "path": "/api/v1/requests/61a4d067-396b-5842-ae66-f6f10403390c", "status": 200}
+{"method": "GET", "path": "/api/v1/requests/61a4d067-396b-5842-ae66-f6f10403390c", "status": 200}
+{"method": "GET", "path": "/api/v1/requests/61a4d067-396b-5842-ae66-f6f10403390c", "status": 200}
+{"method": "GET", "path": "/api/v1/requests/61a4d067-396b-5842-ae66-f6f10403390c", "status": 200}
+{"method": "GET", "path": "/api/v1/requests/61a4d067-396b-5842-ae66-f6f10403390c", "status": 200}
+{"method": "GET", "path": "/api/v1/resources?type=MEDICINE&limit=100", "status": 200}
+{"method": "POST", "path": "/api/v1/requests", "status": 201}

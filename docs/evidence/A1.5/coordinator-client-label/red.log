@@ -1,0 +1,13 @@
+=== RUN   TestAppCoordinatorClientsCarryNetworkPolicyLabel
+=== RUN   TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=true
+    app_coordinator_label_test.go:23: reliefgrid-api coordinator policy admission: got <nil> want true
+    app_coordinator_label_test.go:23: reliefgrid-matcher coordinator policy admission: got <nil> want true
+=== RUN   TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=false
+    app_coordinator_label_test.go:23: reliefgrid-api coordinator policy admission: got <nil> want true
+    app_coordinator_label_test.go:23: reliefgrid-matcher coordinator policy admission: got <nil> want true
+--- FAIL: TestAppCoordinatorClientsCarryNetworkPolicyLabel (3.62s)
+    --- FAIL: TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=true (3.14s)
+    --- FAIL: TestAppCoordinatorClientsCarryNetworkPolicyLabel/storage=false (0.48s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	3.633s
+FAIL

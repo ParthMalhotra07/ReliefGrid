@@ -1,0 +1,5 @@
+api: static ELF verified (no PT_INTERP/PT_DYNAMIC)
+matcher: static ELF verified (no PT_INTERP/PT_DYNAMIC)
+ui: static ELF verified (no PT_INTERP/PT_DYNAMIC)
+UI image: readonly filesystem, no privileges/capabilities, ready=200, root=200, internal=404
+A1.5 IMAGE RUNTIME: PASS

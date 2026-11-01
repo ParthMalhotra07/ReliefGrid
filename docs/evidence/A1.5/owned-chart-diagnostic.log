@@ -1,0 +1,4 @@
+reliefgrid-api replicas=2
+reliefgrid-matcher replicas=2
+reliefgrid-ui replicas=1
+OWNED APP CHART DIAGNOSTIC: PASS (storage excluded; full goal remains blocked)

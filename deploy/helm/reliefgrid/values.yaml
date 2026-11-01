@@ -28,3 +28,33 @@ traefik:
       operator: Equal
       value: infra
       effect: NoSchedule
+
+# Default remains the broker-only spike. The explicit app kind profile enables
+# application workloads and the existing local storage subchart together.
+storage:
+  enabled: false
+
+app:
+  enabled: false
+  coordinatorURL: http://storage-coordinator:8080
+  callerNamespace: local-dispatcher
+  nodeSelector:
+    role: data
+  api:
+    replicas: 2
+    image: {repository: reliefgrid/api, tag: dev, pullPolicy: Never}
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: "1", memory: 512Mi}
+  matcher:
+    replicas: 2
+    image: {repository: reliefgrid/matcher, tag: dev, pullPolicy: Never}
+    resources:
+      requests: {cpu: 100m, memory: 128Mi}
+      limits: {cpu: "1", memory: 512Mi}
+  ui:
+    replicas: 1
+    image: {repository: reliefgrid/ui, tag: dev, pullPolicy: Never}
+    resources:
+      requests: {cpu: 25m, memory: 32Mi}
+      limits: {cpu: 250m, memory: 128Mi}

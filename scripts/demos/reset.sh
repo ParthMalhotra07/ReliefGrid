@@ -9,7 +9,7 @@
 # the failure harness's invcheck Jobs), installs deploy/helm/storage with --wait --wait-for-jobs (the
 # bootstrap Job forms the three Raft groups), and waits until the coordinator reports all nine
 # storage nodes UP. If deploy/helm/reliefgrid has a Chart.yaml (A's application chart), it is
-# installed too, with --wait. Checks that no worker is cordoned. Prints the measured reset time (v3.1 §28 demo hygiene: measure
+# installed through app-deploy with storage.enabled=false and dependency preparation. Checks that no worker is cordoned. Prints the measured reset time (v3.1 §28 demo hygiene: measure
 # reset time rather than promise it).
 #
 # It destroys whatever runs on the cluster, so it asks for the cluster name first unless
@@ -68,8 +68,8 @@ nine_up() {
 }
 step "wait until the coordinator reports nine storage nodes UP" nine_up
 if [ -f deploy/helm/reliefgrid/Chart.yaml ]; then
-	step "install deploy/helm/reliefgrid" helm --kube-context "$CTX" install reliefgrid deploy/helm/reliefgrid -n "$NS" \
-		--wait --timeout "$INSTALL_TIMEOUT"
+	step "install app against existing storage (including chart dependencies)" env \
+		CLUSTER="$CLUSTER" NAMESPACE="$NS" APP_WITH_STORAGE=false make -s app-deploy
 fi
 no_cordons() { [ -z "$(cordoned_nodes)" ]; }
 step "check that no worker is cordoned" no_cordons

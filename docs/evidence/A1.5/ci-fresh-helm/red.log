@@ -1,0 +1,7 @@
+=== RUN   TestAppChartDependenciesFromEmptyHelmHome
+    app_deploy_test.go:222: fresh Helm dependencies: exit status 127
+        bash: app-chart-deps.sh: No such file or directory
+--- FAIL: TestAppChartDependenciesFromEmptyHelmHome (0.07s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.076s
+FAIL

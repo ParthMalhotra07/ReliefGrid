@@ -1,0 +1,10 @@
+go test -race -count=1 -tags integration -run '^TestApp' -v ./scripts/...
+=== RUN   TestAppHelmFullDeployment
+    app_deploy_test.go:86: missing IngressClass traefik
+--- FAIL: TestAppHelmFullDeployment (1.52s)
+=== RUN   TestAppBrokerOnlyProfileRemainsIndependent
+--- PASS: TestAppBrokerOnlyProfileRemainsIndependent (0.35s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	1.888s
+FAIL
+make: *** [Makefile:77: verify-A1.5-static] Error 1

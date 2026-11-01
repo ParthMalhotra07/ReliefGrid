@@ -1,0 +1,16 @@
+=== RUN   TestAppDemoResetUsesOneStorageOwnerAndAppDependencyBuild
+    app_owner_review_test.go:56: reset from unpackaged checkout: exit status 1
+        reset: delete the kind cluster
+        reset: create the kind cluster
+        reset: build and load the storage image
+        reset: build and load the coordinator image
+        reset: build and load the tools image
+        reset: install deploy/helm/storage
+        reset: wait until the coordinator reports nine storage nodes UP
+        reset: install deploy/helm/reliefgrid
+        missing chart dependencies
+        reset: FAILED: install deploy/helm/reliefgrid (after 0 s)
+--- FAIL: TestAppDemoResetUsesOneStorageOwnerAndAppDependencyBuild (0.12s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.130s
+FAIL

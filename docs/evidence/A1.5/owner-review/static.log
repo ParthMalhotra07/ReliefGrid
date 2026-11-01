@@ -1,0 +1,33 @@
+go test -race -count=1 -tags integration -run '^TestApp' -v ./scripts/...
+=== RUN   TestAppCIEntryPointRunsAfterStorage
+--- PASS: TestAppCIEntryPointRunsAfterStorage (0.01s)
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=app-deploy
+=== RUN   TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=e2e-smoke
+--- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence (0.09s)
+    --- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure= (0.04s)
+    --- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=app-deploy (0.02s)
+    --- PASS: TestAppCISmokePropagatesFailuresAndRetainsEvidence/failure=e2e-smoke (0.03s)
+=== RUN   TestAppDemoResetUsesOneStorageOwnerAndAppDependencyBuild
+--- PASS: TestAppDemoResetUsesOneStorageOwnerAndAppDependencyBuild (0.13s)
+=== RUN   TestAppDeployStorageOwnershipModes
+=== RUN   TestAppDeployStorageOwnershipModes/standalone
+=== RUN   TestAppDeployStorageOwnershipModes/embedded
+=== RUN   TestAppDeployStorageOwnershipModes/already-owned
+=== RUN   TestAppDeployStorageOwnershipModes/missing-service
+--- PASS: TestAppDeployStorageOwnershipModes (2.74s)
+    --- PASS: TestAppDeployStorageOwnershipModes/standalone (1.33s)
+    --- PASS: TestAppDeployStorageOwnershipModes/embedded (1.23s)
+    --- PASS: TestAppDeployStorageOwnershipModes/already-owned (0.12s)
+    --- PASS: TestAppDeployStorageOwnershipModes/missing-service (0.06s)
+=== RUN   TestAppHelmFullDeployment
+--- PASS: TestAppHelmFullDeployment (2.96s)
+=== RUN   TestAppBrokerOnlyProfileRemainsIndependent
+--- PASS: TestAppBrokerOnlyProfileRemainsIndependent (0.54s)
+=== RUN   TestAppChartDependenciesFromEmptyHelmHome
+--- PASS: TestAppChartDependenciesFromEmptyHelmHome (2.02s)
+=== RUN   TestAppStandaloneStorageProfileDoesNotRenderStorage
+--- PASS: TestAppStandaloneStorageProfileDoesNotRenderStorage (0.49s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	10.000s

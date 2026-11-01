@@ -33,6 +33,7 @@ DIFF_BASE ?= origin/main
 .PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-replace storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
 .PHONY: verify-A1.3 verify-A1.4
+.PHONY: app-images app-deploy e2e-smoke verify-A1.5-static
 
 help: ## List targets
 	@grep -E '^[a-z0-9 -]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -68,6 +69,21 @@ verify-A1.3: ## Verify live messaging against the pinned disposable broker
 
 verify-A1.4: ## Verify live outbox recovery against its own pinned broker
 	bash scripts/verify-A1.4.sh
+
+app-images: ## Build/inspect non-root API, matcher and UI images (does not deploy)
+	bash scripts/app-images.sh
+
+verify-A1.5-static: ## Verify application and broker-only Helm manifests
+	go test -race -count=1 -tags integration -run '^TestApp' -v ./scripts/...
+
+app-deploy: cluster-up ## Build/load images and install the full app on local kind
+	bash scripts/app-deploy.sh
+
+e2e-smoke: ## Create/register/match through Traefik and verify reciprocal ownership
+	python3 scripts/e2e-smoke.py
+
+# The smoke job already installs Helm/Go; preserve its image-build separation.
+ci-smoke: verify-A1.5-static
 
 gen: gen-public gen-internal ## Regenerate code from contracts/ (must leave no diff)
 
@@ -155,6 +171,7 @@ demo-reset: ## Clean deployment for the demos: recreate the kind cluster, images
 
 ci-smoke: ## CI's smoke test on a fresh runner: kind, the storage chart from prebuilt image archives, three leaders, demo 4
 	bash scripts/ci-smoke.sh
+	bash scripts/app-ci-smoke.sh
 
 gate: ## All nine demos from a clean deployment, twice, with a summary table (asks first)
 	bash scripts/demos/gate.sh
