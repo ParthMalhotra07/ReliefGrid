@@ -18,6 +18,8 @@ type healthState struct {
 	initialized       atomic.Bool
 	relayRunning      atomic.Bool
 	consumerConnected atomic.Bool
+	reconcilerRunning atomic.Bool
+	wakeupConnected   atomic.Bool
 }
 
 func (h *healthState) handler() http.Handler {
@@ -29,7 +31,7 @@ func (h *healthState) handler() http.Handler {
 			if r.URL.Path == "/readyz" && (!h.initialized.Load() || !h.relayRunning.Load()) {
 				w.WriteHeader(http.StatusServiceUnavailable)
 			}
-			_ = json.NewEncoder(w).Encode(map[string]bool{"initialized": h.initialized.Load(), "relayRunning": h.relayRunning.Load(), "consumerConnected": h.consumerConnected.Load()})
+			_ = json.NewEncoder(w).Encode(map[string]bool{"initialized": h.initialized.Load(), "relayRunning": h.relayRunning.Load(), "consumerConnected": h.consumerConnected.Load(), "reconcilerRunning": h.reconcilerRunning.Load(), "wakeupConnected": h.wakeupConnected.Load()})
 		})
 	}
 	return mux

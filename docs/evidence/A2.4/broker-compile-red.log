@@ -1,0 +1,8 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	0.087s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	0.420s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.089s
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+# github.com/ParthMalhotra07/ReliefGrid/internal/mq_test [github.com/ParthMalhotra07/ReliefGrid/internal/mq.test]
+internal/mq/wakeup_integration_test.go:183:9: undefined: errors
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq [build failed]
+FAIL

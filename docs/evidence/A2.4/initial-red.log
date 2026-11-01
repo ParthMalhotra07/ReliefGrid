@@ -1,0 +1,12 @@
+--- FAIL: TestReconcilerFinishesCleanupWithoutManualMatch (0.01s)
+    --- FAIL: TestReconcilerFinishesCleanupWithoutManualMatch/CANCELLING (0.01s)
+        reconcile_test.go:106: reconciler left CANCELLING, want CANCELLED without manual Match
+    --- FAIL: TestReconcilerFinishesCleanupWithoutManualMatch/FULFILLING (0.00s)
+        reconcile_test.go:106: reconciler left FULFILLING, want FULFILLED without manual Match
+--- FAIL: TestReconcilerPagesEveryShardAndRetainsBoundedBatches (0.01s)
+    reconcile_test.go:162: paging missed aa19c122-7ae4-54ab-af95-45c38e88ed83: PENDING
+--- FAIL: TestReconcilerRejectsPartialScanWithoutMutatingRequests (0.00s)
+    reconcile_test.go:186: partial page treated as complete: {Attempted:0 Complete:true} <nil>
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	0.021s
+FAIL

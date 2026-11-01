@@ -1,0 +1,11 @@
+--- FAIL: TestRecoverOldMatchingClosesUnknownClaimBeforeClearingIntent (0.01s)
+    reconcile_test.go:42: old attempt not fenced/closed: &{ID:old Type:WATER Location:{Lat:0 Lng:0} Geohash:s000000 PeopleAffected:1 Urgency:1 Details:null Status:MATCHING WorkflowGeneration:1 CurrentAttempt:0xcc32f0fddd0 AssignedResourceID: Disposition: NextAttemptAt:1793016106000 RetryCount:2 LastError:OUTCOME_UNKNOWN CreatedAt:1793016000000 UpdatedAt:1793016076000}
+--- FAIL: TestRecoverCannotAbandonANewerIntentAfterConcurrentRetarget (0.00s)
+    reconcile_test.go:92: newer intent was abandoned: &{ID:race Type:WATER Location:{Lat:0 Lng:0} Geohash:s000000 PeopleAffected:1 Urgency:1 Details:null Status:MATCHING WorkflowGeneration:1 CurrentAttempt:0xcc32f239cb0 AssignedResourceID: Disposition: NextAttemptAt:1793016065000 RetryCount:1 LastError:OUTCOME_UNKNOWN CreatedAt:1793016000000 UpdatedAt:1793016060000}
+--- FAIL: TestResourceWakeShortensBackoffWithOneDurableHandoff (0.00s)
+    reconcile_test.go:119: resource wake did not shorten durable schedule: before=&{ID:waiting Type:WATER Location:{Lat:0 Lng:0} Geohash:s000000 PeopleAffected:1 Urgency:1 Details:null Status:WAITING WorkflowGeneration:0 CurrentAttempt:<nil> AssignedResourceID: Disposition: NextAttemptAt:1793016005000 RetryCount:1 LastError:NO_CANDIDATE CreatedAt:1793016000000 UpdatedAt:1793016000000} after=&{ID:waiting Type:WATER Location:{Lat:0 Lng:0} Geohash:s000000 PeopleAffected:1 Urgency:1 Details:null Status:WAITING WorkflowGeneration:0 CurrentAttempt:<nil> AssignedResourceID: Disposition: NextAttemptAt:1793016005000 RetryCount:1 LastError:NO_CANDIDATE CreatedAt:1793016000000 UpdatedAt:1793016000000}
+--- FAIL: TestResourceWakeUnknownResultRetriesIdenticalCommand (0.00s)
+    reconcile_test.go:157: wake unknown=<nil>
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	0.026s
+FAIL

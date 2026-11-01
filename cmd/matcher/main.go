@@ -16,8 +16,10 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/mq"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/outbox"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/reconcile"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/workflow"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
@@ -53,6 +55,13 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) err
 	}
 	transportRetry := mq.TransportRetry{PublisherFactory: func(ctx context.Context) (mq.RetryPublisher, error) { return mq.NewPublisher(ctx, amqpURL) }}
 	c := mq.Consumer{Store: s, Handle: func(ctx context.Context, rec store.Record) error { return m.Handle(ctx, rec.Request.ID) }, Retry: transportRetry.Retry}
+	recovery, err := reconcile.New(reconcile.Config{Store: s, Matcher: m})
+	if err != nil {
+		return err
+	}
+	wakeups := mq.WakeupConsumer{Handle: func(ctx context.Context, w mq.Wakeup) error {
+		return recovery.Wake(ctx, w.EntityID, w.EventID, w.EventType, w.At)
+	}, Retry: transportRetry.RetryWakeup}
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", healthAddress)
 	if err != nil {
 		return fmt.Errorf("matcher health listen: %w", err)
@@ -61,7 +70,7 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) err
 	state.initialized.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	done := make(chan error, 3)
+	done := make(chan error, 5)
 	go func() {
 		state.relayRunning.Store(true)
 		err := r.Run(ctx)
@@ -69,19 +78,33 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) err
 		done <- err
 	}()
 	go func() { done <- consume(ctx, amqpURL, c, state) }()
+	go func() {
+		done <- superviseConsumer(ctx, amqpURL, mq.WakeupQueue, wakeups.Consume, state.wakeupConnected.Store)
+	}()
+	go func() {
+		state.reconcilerRunning.Store(true)
+		err := recovery.Run(ctx)
+		state.reconcilerRunning.Store(false)
+		done <- err
+	}()
 	go func() { done <- serveHealth(ctx, listener, state) }()
 	first := <-done
 	cancel()
-	second := <-done
-	third := <-done
-	return errors.Join(first, second, third)
+	results := []error{first}
+	for range 4 {
+		results = append(results, <-done)
+	}
+	return errors.Join(results...)
 }
 
 // A failed handoff remains unacked. Closing its dedicated connection requeues
 // it, and bounded reconnect backoff avoids a tight redelivery loop. Successful
 // retry handoffs are acknowledged; periodic reconciliation remains A2.4.
 func consume(ctx context.Context, address string, c mq.Consumer, state *healthState) error {
-	defer state.consumerConnected.Store(false)
+	return superviseConsumer(ctx, address, mq.MatchingQueue, c.Consume, state.consumerConnected.Store)
+}
+func superviseConsumer(ctx context.Context, address, queue string, consumeRun func(context.Context, *amqp.Connection) error, connected func(bool)) error {
+	defer connected(false)
 	backoff := 100 * time.Millisecond
 	for ctx.Err() == nil {
 		started := time.Now()
@@ -89,10 +112,10 @@ func consume(ctx context.Context, address string, c mq.Consumer, state *healthSt
 		if err == nil {
 			err = mq.Declare(ctx, conn)
 			if err == nil {
-				state.consumerConnected.Store(true)
-				err = c.Consume(ctx, conn)
+				connected(true)
+				err = consumeRun(ctx, conn)
 			}
-			state.consumerConnected.Store(false)
+			connected(false)
 			_ = conn.CloseDeadline(time.Now().Add(5 * time.Second))
 		}
 		if ctx.Err() != nil {
@@ -101,7 +124,7 @@ func consume(ctx context.Context, address string, c mq.Consumer, state *healthSt
 		if time.Since(started) >= 5*time.Second {
 			backoff = 100 * time.Millisecond
 		}
-		slog.WarnContext(ctx, "matching consumer reconnect", "error", err, "backoff", backoff)
+		slog.WarnContext(ctx, "consumer reconnect", "queue", queue, "error", err, "backoff", backoff)
 		timer := time.NewTimer(backoff)
 		select {
 		case <-ctx.Done():

@@ -34,6 +34,24 @@ func (r TransportRetry) Retry(ctx context.Context, d amqp.Delivery) error {
 	if err != nil {
 		return fmt.Errorf("transport retry event: %w", err)
 	}
+	return r.publishRetry(ctx, d, e, "delay.5s")
+}
+
+// RetryWakeup uses its own fixed-TTL path back to matching.wakeups. Resource and
+// cleanup hints must never be dead-lettered into the request-created consumer.
+func (r TransportRetry) RetryWakeup(ctx context.Context, d amqp.Delivery) error {
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	if r.PublisherFactory == nil {
+		return fmt.Errorf("wakeup retry requires confirmed publisher factory")
+	}
+	e, err := parseWakeEvent(d.Body)
+	if err != nil {
+		return fmt.Errorf("wakeup retry event: %w", err)
+	}
+	return r.publishRetry(ctx, d, e, "wakeup.delay.5s")
+}
+func (r TransportRetry) publishRetry(ctx context.Context, d amqp.Delivery, e event, route string) error {
 	p, err := r.PublisherFactory(ctx)
 	if err != nil {
 		return fmt.Errorf("transport retry publisher: %w", err)
@@ -43,7 +61,7 @@ func (r TransportRetry) Retry(ctx context.Context, d amqp.Delivery) error {
 	}
 	defer func() { _ = p.Close() }()
 	if err := p.Publish(ctx, store.OutboxEvent{EventID: e.EventID, EventType: e.EventType, SchemaVersion: e.SchemaVersion,
-		Exchange: "relief.retry", RoutingKey: "delay.5s", Payload: bytes.Clone(d.Body)}); err != nil {
+		Exchange: "relief.retry", RoutingKey: route, Payload: bytes.Clone(d.Body)}); err != nil {
 		return fmt.Errorf("transport retry routed confirm: %w", err)
 	}
 	slog.InfoContext(ctx, "matching delivery deferred", "eventId", e.EventID,

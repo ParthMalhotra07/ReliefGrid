@@ -110,6 +110,12 @@ func (m *Matcher) Abandon(ctx context.Context, requestID string) (Result, error)
 	if err != nil {
 		return Result{}, err
 	}
+	return m.abandon(ctx, rec)
+}
+
+// abandon uses the caller's exact snapshot; a newer intent must win its CAS.
+func (m *Matcher) abandon(ctx context.Context, rec store.Record) (Result, error) {
+	var err error
 	if rec.Request == nil {
 		return Result{}, ErrConcurrentChange
 	}
