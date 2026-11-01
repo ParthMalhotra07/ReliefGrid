@@ -26,7 +26,7 @@ func TestJudgeCommand(t *testing.T) {
 		"verify":{"ok":true,"ledger":{"acked":5,"unknown":1,"rejected":0,"reads":9,"ackedInWindow":2,"errorCount":1,"errors":[]},
 			"resolution":{"resolved":1,"notApplied":0,"stillUnknown":0},
 			"verdict":{"checked":5,"keys":2,"lost":[],"unknown":0,"reads":{"total":9,"checked":7,"unchecked":2,"failed":0,"served":{}},"staleReads":[]},
-			"availability":{"fromMs":1,"toMs":2,"graceMs":0,"shards":[{"shard":1,"acksDuring":2,"firstAckAfterFaultMs":5,"firstAckAfterHealMs":5}]}},
+			"availability":{"fromMs":1,"toMs":2,"graceMs":0,"shards":[{"shard":1,"acksDuring":2,"writeAttemptsInsideFault":3,"readsInsideFault":3,"firstAckAfterFaultMs":5,"firstAckAfterHealMs":5}]}},
 		"verifyExit":0,"check":{"ok":true,"verdict":"clean","report":{"quiescent":true,"violations":[]}},"checkExit":0,
 		"harness":{"settleOk":true}}`
 	failing := strings.Replace(passing, `"stillUnknown":0`, `"stillUnknown":1`, 1)

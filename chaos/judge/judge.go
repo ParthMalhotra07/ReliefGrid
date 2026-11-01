@@ -16,7 +16,10 @@ package judge
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger"
 )
@@ -26,6 +29,33 @@ const (
 	NegativeLostWrite   = "lost-write"   // an acknowledged write overwritten before verify
 	NegativeStaleReader = "stale-reader" // readers in stale mode on a lagging replica
 )
+
+// MinCoverage is the fewest write attempts, reads, and direct reads per
+// probe a run must have on the faulted shard after the grace, in
+// [from+grace, to]. Below it the fault was not observed while it fully
+// held, and the zero counts that would pass it (no ack, no read served
+// without a majority) mean nothing.
+//
+// The binding case in the saved S4.3 runs is lose-quorum's writes: every
+// write to the cut-off shard waits out a call timeout, and its 18 s after
+// the grace held 16 failed attempts (all of them its errorsObserved). The
+// other shard faults had 23 or more acknowledged writes, and 32 or more
+// served reads, after the grace; probes read every 50 ms. Three is about a
+// fifth of the binding case, yet more than one or two stray samples.
+const MinCoverage = 3
+
+// ReplicasPerShard is each shard's Raft group size; its pods are the
+// StatefulSet's storage-shard-<shard>-0..2.
+const ReplicasPerShard = 3
+
+// Replicas are shard's pods.
+func Replicas(shard int) []string {
+	pods := make([]string, ReplicasPerShard)
+	for i := range pods {
+		pods[i] = fmt.Sprintf("storage-shard-%d-%d", shard, i)
+	}
+	return pods
+}
 
 // Input is everything the harness observed in one run.
 type Input struct {
@@ -205,6 +235,10 @@ func Judge(in Input) Result {
 	if during == 0 {
 		fail("load: no write was acknowledged during the fault on any shard")
 	}
+	if !coverage(in, *v.Availability, fail) {
+		r.Pass = false
+		return r
+	}
 	experiment(in, s, fail)
 	r.Pass = len(r.Failures) == 0
 	return r
@@ -215,6 +249,36 @@ func incomplete(v *Verify) string {
 		return ""
 	}
 	return ": " + v.Incomplete
+}
+
+// coverage fails a run whose interval after the grace, [from+grace, to],
+// is empty, or holds fewer than MinCoverage write attempts or reads on the
+// faulted shard (every shard for a node or coordinator fault, which touch
+// them all). With no interval at all the experiment's criteria are not
+// applied: each would be judged on nothing. It reports whether they are.
+func coverage(in Input, a ledger.WindowStats, fail func(string, ...any)) bool {
+	if a.ToMs-a.FromMs <= a.GraceMs {
+		fail("coverage: no observation window after the grace: the fault lasted %dms, the grace is %dms", a.ToMs-a.FromMs, a.GraceMs)
+		return false
+	}
+	want := []int{in.Shard}
+	if in.Experiment == "stop-worker" || in.Experiment == "restart-coordinator" {
+		want = []int{0, 1, 2}
+	}
+	for _, id := range want {
+		i := slices.IndexFunc(a.Shards, func(w ledger.ShardWindow) bool { return w.Shard == id })
+		if i < 0 {
+			fail("coverage: no write attempt or read on shard %d", id)
+			continue
+		}
+		if n := a.Shards[i].WriteAttemptsInsideFault; n < MinCoverage {
+			fail("coverage: shard %d had %d write attempt(s) after the grace, want at least %d", id, n, MinCoverage)
+		}
+		if n := a.Shards[i].ReadsInsideFault; n < MinCoverage {
+			fail("coverage: shard %d had %d read(s) after the grace, want at least %d", id, n, MinCoverage)
+		}
+	}
+	return true
 }
 
 // experiment adds the criteria particular to in.Experiment (v3.1 §26 table).
@@ -244,11 +308,33 @@ func experiment(in Input, s Summary, fail func(string, ...any)) {
 			fail("recovery: a new leader after %.1fs, over %.0fs", rec.Seconds, in.Bounds.ElectionMaxSeconds)
 		}
 	}
-	probeRefused := func(name string) {
-		if faulted.ProbeReadsDuring[name] == 0 {
-			fail("probe: no direct read of %s during the fault", name)
-		} else if n := faulted.ProbeServedInsideFault[name]; n > 0 {
-			fail("probe: %s served %d linearizable read(s) while cut off from its group", name, n)
+	// probesRefused: every pod in want was probed at least MinCoverage
+	// times after the grace and served none of it; no other pod of the
+	// faulted shard was probed (a wrong target is not coverage).
+	probesRefused := func(want []string) {
+		for _, name := range want {
+			_, during := faulted.ProbeReadsDuring[name]
+			_, inside := faulted.ProbeReadsInsideFault[name]
+			switch n := faulted.ProbeReadsInsideFault[name]; {
+			case !during && !inside:
+				fail("probe: missing probe for %s", name)
+			case n < MinCoverage:
+				fail("probe: %s had %d direct read(s) after the grace, want at least %d", name, n, MinCoverage)
+			}
+			if n := faulted.ProbeServedInsideFault[name]; n > 0 {
+				fail("probe: %s served %d linearizable read(s) while cut off from its group", name, n)
+			}
+		}
+		probed := map[string]bool{}
+		for _, m := range []map[string]int{faulted.ProbeReadsDuring, faulted.ProbeReadsInsideFault, faulted.ProbeServedInsideFault} {
+			for name := range m {
+				probed[name] = true
+			}
+		}
+		for _, name := range slices.Sorted(maps.Keys(probed)) {
+			if !slices.Contains(want, name) {
+				fail("probe: unexpected probe %s on shard %d (want %s)", name, in.Shard, strings.Join(want, ", "))
+			}
 		}
 	}
 	allAcking := func(what string) {
@@ -279,7 +365,11 @@ func experiment(in Input, s Summary, fail func(string, ...any)) {
 			if faulted.AcksDuring == 0 {
 				fail("majority: shard %d acknowledged no write during the fault", in.Shard)
 			}
-			probeRefused(in.Target)
+			if slices.Contains(Replicas(in.Shard), in.Target) {
+				probesRefused([]string{in.Target})
+			} else {
+				fail("probe: target %s is not a replica of shard %d", in.Target, in.Shard)
+			}
 		}
 	case "lose-quorum":
 		if needShard() {
@@ -289,12 +379,7 @@ func experiment(in Input, s Summary, fail func(string, ...any)) {
 			if faulted.ReadsServedInsideFault > 0 {
 				fail("quorum: shard %d served %d linearizable read(s) with no majority", in.Shard, faulted.ReadsServedInsideFault)
 			}
-			for name := range faulted.ProbeReadsDuring {
-				probeRefused(name)
-			}
-			if len(faulted.ProbeReadsDuring) == 0 {
-				fail("probe: no direct read of shard %d's replicas during the fault", in.Shard)
-			}
+			probesRefused(Replicas(in.Shard))
 			switch first := faulted.FirstAckAfterHealMs; {
 			case first < 0:
 				fail("recovery: shard %d acknowledged no write after the heal", in.Shard)

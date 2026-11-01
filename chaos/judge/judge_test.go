@@ -8,16 +8,25 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger"
 )
 
-// clean is a passing run of experiment on shard 1, target storage-shard-1-0:
-// every shard acked during and after the fault, the faulted shard none while
-// it fully held (as lose-quorum needs), and the probe was refused.
+// clean is a passing run of experiment on shard 1, target storage-shard-1-0,
+// a 20 s fault with a 2 s grace: every shard acked during and after the
+// fault and was written and read after the grace, the faulted shard acked
+// none while it fully held (as lose-quorum needs), and the probes (the
+// target; all three replicas for lose-quorum) were refused after the grace.
 func clean(experiment string) Input {
+	probed := []string{"storage-shard-1-0"}
+	if experiment == "lose-quorum" {
+		probed = []string{"storage-shard-1-0", "storage-shard-1-1", "storage-shard-1-2"}
+	}
 	shard := func(id int) ledger.ShardWindow {
 		w := ledger.ShardWindow{Shard: id, AcksBefore: 10, AcksDuring: 20, AcksAfter: 10, FirstAckAfterFaultMs: 50, FirstAckAfterHealMs: 40,
-			ProbeReadsDuring: map[string]int{}, ProbeServedInsideFault: map[string]int{}}
+			WriteAttemptsInsideFault: 18, ReadsInsideFault: 16,
+			ProbeReadsDuring: map[string]int{}, ProbeServedInsideFault: map[string]int{}, ProbeReadsInsideFault: map[string]int{}}
 		if id == 1 {
-			w.ProbeReadsDuring["storage-shard-1-0"] = 30
-			w.ProbeServedInsideFault["storage-shard-1-0"] = 0
+			for _, p := range probed {
+				w.ProbeReadsDuring[p] = 30
+				w.ProbeReadsInsideFault[p] = 25
+			}
 		}
 		return w
 	}
@@ -27,7 +36,7 @@ func clean(experiment string) Input {
 			Resolution: ledger.Resolution{Resolved: 2, NotApplied: 1},
 			Verdict: &ledger.Verdict{Checked: 500, Lost: []ledger.Loss{}, StaleReads: []ledger.StaleRead{},
 				Reads: ledger.ReadStats{Total: 800, Checked: 700, Failed: 60}},
-			Availability: &ledger.WindowStats{FromMs: 1, ToMs: 2, GraceMs: 2000, Shards: []ledger.ShardWindow{shard(0), shard(1), shard(2)}}},
+			Availability: &ledger.WindowStats{FromMs: 1_000_000, ToMs: 1_020_000, GraceMs: 2000, Shards: []ledger.ShardWindow{shard(0), shard(1), shard(2)}}},
 		Check: &Check{OK: true, Verdict: "clean", Report: &struct {
 			Quiescent  bool              `json:"quiescent"`
 			Violations []json.RawMessage `json:"violations"`
@@ -135,7 +144,7 @@ func TestEachCriterionFails(t *testing.T) {
 		{"isolate-leader", func(in *Input) { in.Harness.Recovery.Term = 2 }, "not above the faulted leader's term 2"},
 		{"isolate-leader", func(in *Input) { in.Harness.Recovery = nil }, "elected no new leader"},
 		{"delay-isolate-leader", func(in *Input) { shardOf(in, 1).ProbeServedInsideFault["storage-shard-1-0"] = 4 }, "served 4 linearizable read(s) while cut off"},
-		{"isolate-leader", func(in *Input) { delete(shardOf(in, 1).ProbeReadsDuring, "storage-shard-1-0") }, "no direct read of storage-shard-1-0"},
+		{"isolate-leader", func(in *Input) { dropProbe(in, "storage-shard-1-0") }, "probe: missing probe for storage-shard-1-0"},
 		{"isolate-leader", func(in *Input) { shardOf(in, 1).AcksDuring = 0 }, "majority: shard 1 acknowledged no write"},
 
 		{"lose-quorum", func(in *Input) { shardOf(in, 1).AcksInsideFault = 1 }, "acknowledged 1 write(s) with no majority"},
@@ -143,7 +152,9 @@ func TestEachCriterionFails(t *testing.T) {
 		{"lose-quorum", func(in *Input) { shardOf(in, 1).FirstAckAfterHealMs = -1 }, "acknowledged no write after the heal"},
 		{"lose-quorum", func(in *Input) { shardOf(in, 1).FirstAckAfterHealMs = 75_000 }, "75.0s after the heal, over 60s"},
 		{"lose-quorum", func(in *Input) { shardOf(in, 2).AcksDuring = 0 }, "shard 2 (not faulted) acknowledged no write"},
-		{"lose-quorum", func(in *Input) { shardOf(in, 1).ProbeReadsDuring = map[string]int{} }, "no direct read of shard 1's replicas"},
+		{"lose-quorum", func(in *Input) {
+			shardOf(in, 1).ProbeReadsDuring, shardOf(in, 1).ProbeReadsInsideFault = map[string]int{}, map[string]int{}
+		}, "probe: missing probe for storage-shard-1-0"},
 
 		{"delay-follower", func(in *Input) { in.Harness.Delay.MaxLag = 0 }, "lag never rose"},
 		{"delay-follower", func(in *Input) { in.Harness.Delay.FinalLag = 5 }, "still 5 entries behind"},
@@ -217,5 +228,91 @@ func TestNegativeControls(t *testing.T) {
 func TestUnknownExperiment(t *testing.T) {
 	if r := Judge(clean("unplug-the-laptop")); r.Pass {
 		t.Error("an unknown experiment passed")
+	}
+}
+
+// dropProbe removes pod's probe from the faulted shard's results.
+func dropProbe(in *Input, pod string) {
+	w := shardOf(in, 1)
+	delete(w.ProbeReadsDuring, pod)
+	delete(w.ProbeServedInsideFault, pod)
+	delete(w.ProbeReadsInsideFault, pod)
+}
+
+// A run proves nothing about a fault the load never touched once it fully
+// held: an empty interval after the grace, or one with fewer than
+// MinCoverage write attempts or reads on the faulted shard (every shard for
+// a node or coordinator fault), fails as no coverage. A probe that ran only
+// in the grace was never refused while the fault held.
+func TestCoverage(t *testing.T) {
+	for _, tc := range []struct {
+		name, experiment string
+		breakIt          func(*Input)
+		has              string
+	}{
+		{"empty window", "kill-leader", func(in *Input) { in.Verify.Availability.GraceMs = 20_000 },
+			"coverage: no observation window after the grace: the fault lasted 20000ms, the grace is 20000ms"},
+		{"grace past the heal", "lose-quorum", func(in *Input) { in.Verify.Availability.GraceMs = 20_001 },
+			"coverage: no observation window after the grace: the fault lasted 20000ms, the grace is 20001ms"},
+		{"no writes after the grace", "kill-leader", func(in *Input) { shardOf(in, 1).WriteAttemptsInsideFault = 0 },
+			"coverage: shard 1 had 0 write attempt(s) after the grace, want at least 3"},
+		{"too few reads after the grace", "isolate-replica", func(in *Input) { shardOf(in, 1).ReadsInsideFault = MinCoverage - 1 },
+			"coverage: shard 1 had 2 read(s) after the grace, want at least 3"},
+		{"no writes after the grace, quorum lost", "lose-quorum", func(in *Input) { shardOf(in, 1).WriteAttemptsInsideFault = 0 },
+			"coverage: shard 1 had 0 write attempt(s) after the grace"},
+		{"another shard, node stopped", "stop-worker", func(in *Input) { shardOf(in, 0).ReadsInsideFault = 0 },
+			"coverage: shard 0 had 0 read(s) after the grace"},
+		{"another shard, coordinator restarted", "restart-coordinator", func(in *Input) { shardOf(in, 2).WriteAttemptsInsideFault = 1 },
+			"coverage: shard 2 had 1 write attempt(s) after the grace"},
+		{"probes only in the grace", "lose-quorum", func(in *Input) { shardOf(in, 1).ProbeReadsInsideFault = map[string]int{} },
+			"probe: storage-shard-1-0 had 0 direct read(s) after the grace, want at least 3"},
+		{"probe only in the grace", "isolate-leader", func(in *Input) { shardOf(in, 1).ProbeReadsInsideFault["storage-shard-1-0"] = 2 },
+			"probe: storage-shard-1-0 had 2 direct read(s) after the grace, want at least 3"},
+	} {
+		in := clean(tc.experiment)
+		tc.breakIt(&in)
+		r := Judge(in)
+		if r.Pass || !strings.Contains(strings.Join(r.Failures, "\n"), tc.has) {
+			t.Errorf("%s (%s), want %q: pass %v, failures %q", tc.name, tc.experiment, tc.has, r.Pass, r.Failures)
+		}
+	}
+}
+
+// Every replica an experiment cuts off must have been probed: for
+// lose-quorum all three of the shard's, for an isolated leader the target.
+// A missing one, or a probe of the wrong pod, is reported by name.
+func TestReplicaProbes(t *testing.T) {
+	for _, tc := range []struct {
+		name, experiment string
+		breakIt          func(*Input)
+		has              []string
+	}{
+		{"one missing", "lose-quorum", func(in *Input) { dropProbe(in, "storage-shard-1-2") },
+			[]string{"probe: missing probe for storage-shard-1-2"}},
+		{"two missing", "lose-quorum", func(in *Input) { dropProbe(in, "storage-shard-1-1"); dropProbe(in, "storage-shard-1-2") },
+			[]string{"probe: missing probe for storage-shard-1-1", "probe: missing probe for storage-shard-1-2"}},
+		{"wrong target, quorum lost", "lose-quorum", func(in *Input) {
+			dropProbe(in, "storage-shard-1-2")
+			w := shardOf(in, 1)
+			w.ProbeReadsDuring["storage-shard-2-2"], w.ProbeReadsInsideFault["storage-shard-2-2"] = 30, 25
+		}, []string{"probe: missing probe for storage-shard-1-2",
+			"probe: unexpected probe storage-shard-2-2 on shard 1 (want storage-shard-1-0, storage-shard-1-1, storage-shard-1-2)"}},
+		{"wrong target, leader isolated", "delay-isolate-leader", func(in *Input) {
+			dropProbe(in, "storage-shard-1-0")
+			w := shardOf(in, 1)
+			w.ProbeReadsDuring["storage-shard-1-1"], w.ProbeReadsInsideFault["storage-shard-1-1"] = 30, 25
+		}, []string{"probe: missing probe for storage-shard-1-0", "probe: unexpected probe storage-shard-1-1 on shard 1 (want storage-shard-1-0)"}},
+		{"target on another shard", "isolate-leader", func(in *Input) { in.Target = "storage-shard-2-0" },
+			[]string{"probe: target storage-shard-2-0 is not a replica of shard 1"}},
+	} {
+		in := clean(tc.experiment)
+		tc.breakIt(&in)
+		r := Judge(in)
+		got := strings.Join(r.Failures, "\n")
+		for _, h := range tc.has {
+			if r.Pass || !strings.Contains(got, h) {
+				t.Errorf("%s (%s), want %q: pass %v, failures %q", tc.name, tc.experiment, h, r.Pass, r.Failures)
+			}
+		}
 	}
 }

@@ -45,16 +45,21 @@ func invcheckBinary(t *testing.T) string {
 	return invcheck
 }
 
-// verifyFixture is invcheck verify --json for a run on faulted shard 1 with a
-// probe at storage-shard-1-0: all shards acked during and after, the faulted
-// shard none while the fault fully held.
+// verifyFixture is invcheck verify --json for a run on faulted shard 1 with
+// probes at its three replicas: all shards acked during and after and were
+// written and read after the grace, the faulted shard acked none while the
+// fault fully held.
 func verifyFixture(edit func(w []ledger.ShardWindow, v *ledger.Verdict)) string {
 	shards := []ledger.ShardWindow{}
 	for id := range 3 {
 		w := ledger.ShardWindow{Shard: id, AcksBefore: 9, AcksDuring: 12, AcksAfter: 9, FirstAckAfterFaultMs: 40, FirstAckAfterHealMs: 30,
-			ProbeReadsDuring: map[string]int{}, ProbeServedInsideFault: map[string]int{}}
+			WriteAttemptsInsideFault: 10, ReadsInsideFault: 10,
+			ProbeReadsDuring: map[string]int{}, ProbeServedInsideFault: map[string]int{}, ProbeReadsInsideFault: map[string]int{}}
 		if id == 1 {
-			w.AcksDuring, w.ProbeReadsDuring["storage-shard-1-0"] = 2, 25
+			w.AcksDuring = 2
+			for _, p := range []string{"storage-shard-1-0", "storage-shard-1-1", "storage-shard-1-2"} {
+				w.ProbeReadsDuring[p], w.ProbeReadsInsideFault[p] = 25, 20
+			}
 		}
 		shards = append(shards, w)
 	}

@@ -46,6 +46,13 @@ type ShardWindow struct {
 	// The same two, for probe reads only, by probe.
 	ProbeReadsDuring       map[string]int `json:"probeReadsDuring"`
 	ProbeServedInsideFault map[string]int `json:"probeServedInsideFault"`
+	// Coverage after the grace, in [from+grace, to]: write attempts that
+	// ended there (acknowledged, rejected or failed), and reads that started
+	// there, all and by probe. A fault the load never touched once it fully
+	// held proves nothing, so the judge holds these to a minimum.
+	WriteAttemptsInsideFault int            `json:"writeAttemptsInsideFault"`
+	ReadsInsideFault         int            `json:"readsInsideFault"`
+	ProbeReadsInsideFault    map[string]int `json:"probeReadsInsideFault"`
 	// FirstAckAfterFaultMs: from from to the first ack of a write that
 	// started at or after from; FirstAckAfterHealMs likewise from to. -1: none.
 	FirstAckAfterFaultMs int64 `json:"firstAckAfterFaultMs"`
@@ -90,7 +97,7 @@ func (l *Ledger) Window(fromMs, toMs, graceMs int64, shardOf func(key string) (i
 		w := byShard[s]
 		if w == nil {
 			w = &ShardWindow{Shard: s, FirstAckAfterFaultMs: -1, FirstAckAfterHealMs: -1,
-				ProbeReadsDuring: map[string]int{}, ProbeServedInsideFault: map[string]int{}}
+				ProbeReadsDuring: map[string]int{}, ProbeServedInsideFault: map[string]int{}, ProbeReadsInsideFault: map[string]int{}}
 			byShard[s] = w
 		}
 		return w
@@ -110,6 +117,9 @@ func (l *Ledger) Window(fromMs, toMs, graceMs int64, shardOf func(key string) (i
 			continue
 		}
 		start, at := wall(e.StartNs), wall(e.AckNs)
+		if at >= inside && at <= toMs {
+			w.WriteAttemptsInsideFault++
+		}
 		switch {
 		case at < fromMs:
 			w.AcksBefore++
@@ -134,6 +144,13 @@ func (l *Ledger) Window(fromMs, toMs, graceMs int64, shardOf func(key string) (i
 			first(&w.FirstAckAfterHealMs, toMs, at)
 		}
 	}
+	for _, e := range l.Rejected {
+		if e.At >= inside && e.At <= toMs {
+			if w := get(e.Key); w != nil {
+				w.WriteAttemptsInsideFault++
+			}
+		}
+	}
 	for _, r := range l.Reads {
 		start, end := wall(r.StartNs), wall(r.EndNs)
 		if start < fromMs || start > toMs {
@@ -148,6 +165,12 @@ func (l *Ledger) Window(fromMs, toMs, graceMs int64, shardOf func(key string) (i
 		readLat[w.Shard] = append(readLat[w.Shard], float64(r.EndNs-r.StartNs)/1e6)
 		if r.Target != "" {
 			w.ProbeReadsDuring[r.Target]++
+		}
+		if start >= inside {
+			w.ReadsInsideFault++
+			if r.Target != "" {
+				w.ProbeReadsInsideFault[r.Target]++
+			}
 		}
 		if !served {
 			continue
@@ -164,6 +187,9 @@ func (l *Ledger) Window(fromMs, toMs, graceMs int64, shardOf func(key string) (i
 		if e.At >= fromMs && e.At <= toMs {
 			if w := get(e.Key); w != nil {
 				w.ErrorsDuring++
+				if e.At >= inside {
+					w.WriteAttemptsInsideFault++
+				}
 			}
 		}
 	}

@@ -19,7 +19,9 @@ const ms = int64(1_000_000) // ns per ms
 // and were acknowledged before to (committed while the fault fully held);
 // reads, and those served while it fully held, through the coordinator and
 // by probe; the first ack of a write started after the fault began and
-// after it healed; latencies during; and attempt errors during.
+// after it healed; latencies during; and attempt errors during. Coverage
+// after the grace counts write attempts that ended in [from+grace, to]
+// (acked, rejected, failed) and reads that started there, all and by probe.
 func TestWindow(t *testing.T) {
 	const run = int64(1_792_000_000_000) // StartedAtMs
 	ack := func(key string, startMs, ackMs int64) ledger.Entry {
@@ -43,15 +45,19 @@ func TestWindow(t *testing.T) {
 			ack("s1-a", 3000, 3010), // shard 1, during (inside the window but before from+grace)
 			ack("s1-b", 6000, 6005), // shard 1, inside
 		},
+		Rejected: []ledger.Entry{{OperationID: "s0-r", Key: "s0-r", At: run + 7000,
+			Result: &store.Result{Outcome: store.OutcomeVersionConflict}}}, // shard 0, an attempt inside
+
 		Reads: []ledger.Read{
 			read("s0-a", "", 2500, 2510, false),         // during, served, before grace ends
 			read("s0-a", "", 6000, 6010, false),         // inside, served
 			read("s0-a", "", 6100, 6200, true),          // inside, failed
 			read("s0-a", "probe-0-0", 7000, 7400, true), // probe, inside, refused
 			read("s0-a", "probe-0-0", 7500, 7600, false),
+			read("s0-a", "probe-0-1", 3000, 3010, true), // probe, during, before the grace ends only
 			read("s1-a", "", 8000, 8010, false),
 		},
-		Errors: []ledger.AttemptError{{At: run + 4500, Key: "s0-x"}, {At: run + 50, Key: "s0-y"}},
+		Errors: []ledger.AttemptError{{At: run + 4500, Key: "s0-x"}, {At: run + 50, Key: "s0-y"}, {At: run + 3000, Key: "s0-z"}}, // s0-z: in the grace
 	}
 	w, err := l.Window(run+2000, run+9000, 2000, shardByName)
 	if err != nil {
@@ -64,8 +70,18 @@ func TestWindow(t *testing.T) {
 	if s0.Shard != 0 || s0.AcksBefore != 1 || s0.AcksDuring != 2 || s0.AcksAfter != 2 || s0.AcksInsideFault != 1 {
 		t.Errorf("shard 0 acks %+v, want before 1, during 2, after 2, inside 1", s0)
 	}
-	if s0.ReadsDuring != 5 || s0.ReadsServedDuring != 3 || s0.ReadsServedInsideFault != 2 {
-		t.Errorf("shard 0 reads during %d served %d inside %d, want 5, 3, 2", s0.ReadsDuring, s0.ReadsServedDuring, s0.ReadsServedInsideFault)
+	if s0.ReadsDuring != 6 || s0.ReadsServedDuring != 3 || s0.ReadsServedInsideFault != 2 {
+		t.Errorf("shard 0 reads during %d served %d inside %d, want 6, 3, 2", s0.ReadsDuring, s0.ReadsServedDuring, s0.ReadsServedInsideFault)
+	}
+	// s0-c acked, s0-r rejected, s0-x failed inside; s0-b acked and s0-y, s0-z failed before from+grace, s0-d after to.
+	if s0.WriteAttemptsInsideFault != 3 || s1.WriteAttemptsInsideFault != 1 {
+		t.Errorf("write attempts after the grace: shard 0 %d, shard 1 %d; want 3 and 1", s0.WriteAttemptsInsideFault, s1.WriteAttemptsInsideFault)
+	}
+	if s0.ReadsInsideFault != 4 || s1.ReadsInsideFault != 1 {
+		t.Errorf("reads after the grace: shard 0 %d, shard 1 %d; want 4 and 1", s0.ReadsInsideFault, s1.ReadsInsideFault)
+	}
+	if s0.ProbeReadsDuring["probe-0-1"] != 1 || s0.ProbeReadsInsideFault["probe-0-0"] != 2 || s0.ProbeReadsInsideFault["probe-0-1"] != 0 {
+		t.Errorf("probe reads during %v, after the grace %v; want probe-0-1 1 during and 0 after, probe-0-0 2 after", s0.ProbeReadsDuring, s0.ProbeReadsInsideFault)
 	}
 	if s0.ProbeReadsDuring["probe-0-0"] != 2 || s0.ProbeServedInsideFault["probe-0-0"] != 1 {
 		t.Errorf("shard 0 probe reads %v, served inside %v; want 2 and 1", s0.ProbeReadsDuring, s0.ProbeServedInsideFault)
@@ -73,8 +89,8 @@ func TestWindow(t *testing.T) {
 	if s0.FirstAckAfterFaultMs != 3020 || s0.FirstAckAfterHealMs != 150 {
 		t.Errorf("shard 0 first ack after the fault %d ms, after the heal %d ms; want 3020 and 150", s0.FirstAckAfterFaultMs, s0.FirstAckAfterHealMs)
 	}
-	if s0.ErrorsDuring != 1 {
-		t.Errorf("shard 0 errors during %d, want 1", s0.ErrorsDuring)
+	if s0.ErrorsDuring != 2 {
+		t.Errorf("shard 0 errors during %d, want 2", s0.ErrorsDuring)
 	}
 	if s0.WriteLatencyMs.P50 == 0 || s0.ReadLatencyMs.P99 != 400 {
 		t.Errorf("shard 0 latency write %+v read %+v, want a write p50 and read p99 400", s0.WriteLatencyMs, s0.ReadLatencyMs)
