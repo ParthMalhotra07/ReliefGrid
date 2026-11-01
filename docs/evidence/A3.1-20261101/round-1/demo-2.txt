@@ -1,0 +1,53 @@
+# demo-2: Register a resource, list it, update its availability and status
+result:     FAIL (1 of 2 checks failed)
+runId:      A3.1-20261101/round-1
+host:       DESKTOP-EG9G7UI
+started:    2026-11-01T06:41:37Z
+finished:   2026-11-01T06:41:42Z
+duration:   4.1 s
+code tree:  ec995bfb9640 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: f822e2f78087
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.7.2
+image reliefgrid/storagenode:dev: sha256:eec76a4589016bb18cd43d5186075985556fbe41711a858a78b550c10ba53cea
+image reliefgrid/coordinator:dev: sha256:abc06a1d2e299096c6240e1a4c061face8e631a6652543a17f6913a15abf1635
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+FAIL  application assertions; first failure recorded in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101/round-1/demo-2-app
+
+## commands
+
+# public API assertions and recorded observations
+$ python3 /home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py 2 --out /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101/round-1/demo-2-app
+PASS  201 resource retains validated type, location, availability and unclaimed state
+PASS  creation timestamps are UTC
+PASS  complete authoritative resource list contains the created resource exactly once
+PASS  invalid registration 0 is a definite 400 refusal
+PASS  invalid registration 1 is a definite 400 refusal
+PASS  invalid registration 2 is a definite 400 refusal
+PASS  invalid registrations create no resources
+PASS  status update persists at a different opaque version
+PASS  partial availability update persists
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 446, in <module>
+    main()
+    ~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 438, in main
+    getattr(demo, 'demo' + str(args.number))()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 251, in demo2
+    self.api.call('PUT', '/resources/' + entity_id + '/status', {400}, invalid)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py", line 80, in call
+    raise AssertionError(f'{method} {path}: expected {sorted(expected)}, got {status}: {raw[:500]!r}')
+AssertionError: PUT /resources/3ca1c10c-948f-5ede-82b7-e83ae04afc15/status: expected [400], got 409: b'{"code":"DOMAIN_CONFLICT","correlationId":"4a1f9ad8-468d-40e3-b6e8-04be7b18a400","message":"claims and cleanup control this status","outcomeUnknown":false,"retryable":false}\n'
+[exit 1, 0.4 s]

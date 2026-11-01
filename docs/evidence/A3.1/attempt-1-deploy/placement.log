@@ -1,0 +1,4 @@
+shard 0: OK storage-shard-0-0@reliefgrid-worker2 storage-shard-0-1@reliefgrid-worker storage-shard-0-2@reliefgrid-worker3
+shard 1: OK storage-shard-1-0@reliefgrid-worker storage-shard-1-1@reliefgrid-worker3 storage-shard-1-2@reliefgrid-worker2
+shard 2: OK storage-shard-2-0@reliefgrid-worker storage-shard-2-1@reliefgrid-worker2 storage-shard-2-2@reliefgrid-worker3
+placement-check: every shard has 3 replicas on distinct data workers

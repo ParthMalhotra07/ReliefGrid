@@ -247,8 +247,12 @@ class Demo:
                       windowEnd=(self.now + dt.timedelta(minutes=90)).isoformat(timespec='seconds').replace('+00:00', 'Z'))
         changed = self.api.call('PUT', '/resources/' + entity_id + '/status', {200}, update)[0]
         self.check(all(changed[k] == v for k, v in update.items()), 'partial availability update persists')
-        for invalid in [dict(status='ASSIGNED'), dict(status='CONSUMED'), dict(windowStart=update['windowEnd'], windowEnd=update['windowStart'])]:
-            self.api.call('PUT', '/resources/' + entity_id + '/status', {400}, invalid)
+        before_invalid = self.record('res', entity_id)
+        for invalid in [dict(status='ASSIGNED'), dict(status='CONSUMED')]:
+            error = self.api.call('PUT', '/resources/' + entity_id + '/status', {409}, invalid)[0]
+            self.check(error['code'] == 'DOMAIN_CONFLICT' and error['outcomeUnknown'] is False, 'public claim-managed status is a definite 409 refusal')
+        self.api.call('PUT', '/resources/' + entity_id + '/status', {400}, dict(windowStart=update['windowEnd'], windowEnd=update['windowStart']))
+        self.check(self.record('res', entity_id) == before_invalid, 'all refused updates preserve the complete stored record and version')
         stored = self.record('res', entity_id)['resource']
         self.check(stored['status'] == 'OFFLINE' and stored['location'] == body['location'] and not stored.get('activeClaim'), 'strong stored record preserves location and refuses public claim mutations')
         replay = self.api.call('POST', '/resources', {201}, body, self.key('resource'))

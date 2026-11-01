@@ -13,7 +13,7 @@ case "${1:---static}" in
   run="${A31_RUN_ID:-A3.1-$(date -u +%Y%m%dT%H%M%SZ)}"
   for round in 1 2; do
    echo "A3.1 round $round: clean reset of kind-$cluster"
-   RESET_CONFIRM="$cluster" make demo-reset
+   A15_EVIDENCE_DIR="$ROOT/docs/evidence/$run/round-$round/deploy" RESET_CONFIRM="$cluster" make demo-reset
    for demo in 2 3 5 8 9; do
     DEMO_RUN_ID="$run/round-$round" make "demo-$demo"
    done
