@@ -21,6 +21,13 @@
 // nothing, so a failed read is a retryable *Error and never
 // store.ErrUnknownOutcome, whatever the server said.
 //
+// WithReadConsistency makes every read explicit (#72): point reads send the
+// mode, scans and outbox pages that name none use it, and an answer that
+// was served weaker than asked, or does not say how it was served, is a
+// retryable *Error rather than a result. Without it, point reads send no
+// mode and are not checked, and a strong scan or outbox page refuses only
+// an answer served stale.
+//
 // Mutations and scans carry the client's ringVersion. Every call has a
 // deadline: the caller's, capped at the client's timeout. The cap covers the
 // whole call, a ring refresh and its retry included.
@@ -63,6 +70,8 @@ type Client struct {
 	base    string
 	http    *http.Client
 	timeout time.Duration
+	// readMode is WithReadConsistency's mode; "" means none was set.
+	readMode store.Consistency
 
 	mu   sync.Mutex
 	ring internalapi.Ring
@@ -78,12 +87,21 @@ func WithHTTPClient(c *http.Client) Option { return func(cl *Client) { cl.http =
 // WithTimeout caps every call (default DefaultTimeout).
 func WithTimeout(d time.Duration) Option { return func(cl *Client) { cl.timeout = d } }
 
+// WithReadConsistency sets the mode of every read (#72): strong,
+// linearizable or stale. New fails on any other mode.
+func WithReadConsistency(m store.Consistency) Option { return func(cl *Client) { cl.readMode = m } }
+
 // New connects to the coordinator at baseURL (e.g.
 // http://coordinator.reliefgrid.svc.cluster.local:8080) and loads its ring.
 func New(ctx context.Context, baseURL string, opts ...Option) (*Client, error) {
 	c := &Client{base: strings.TrimRight(baseURL, "/"), http: &http.Client{}, timeout: DefaultTimeout}
 	for _, o := range opts {
 		o(c)
+	}
+	if c.readMode != "" {
+		if _, err := consistency(c.readMode); err != nil {
+			return nil, err
+		}
 	}
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
@@ -373,19 +391,56 @@ func consistency(m store.Consistency) (string, error) {
 	switch m {
 	case "", store.ConsistencyStrong:
 		return string(store.ConsistencyStrong), nil
-	case store.ConsistencyStale:
-		return string(store.ConsistencyStale), nil
+	case store.ConsistencyLinearizable, store.ConsistencyStale:
+		return string(m), nil
 	}
-	return "", invalid("consistency %q must be strong or stale", m)
+	return "", invalid("consistency %q must be strong, linearizable or stale", m)
 }
 
-// servedStale rejects a stale answer to a strong read: a stale miss is only a
-// hint, so it must never stand in for the authoritative result.
-func servedStale(asked, served string) error {
-	if asked == string(store.ConsistencyStrong) && served == string(store.ConsistencyStale) {
-		return &Error{Status: http.StatusOK, Message: "asked for a strong read, served stale", Retryable: true, read: true}
+// queryMode is the mode a scan or outbox page is read in: its own, else the
+// client's, else strong.
+func (c *Client) queryMode(m store.Consistency) (string, error) {
+	if m == "" {
+		m = c.readMode
 	}
-	return nil
+	return consistency(m)
+}
+
+// servedAs refuses an answer served weaker than asked: a stale miss is only
+// a hint, so it must never stand in for an authoritative result. strong and
+// linearizable both satisfy either. With a client read mode set, an answer
+// must also say how it was served; without one, only a stale answer is
+// refused (the behaviour before #72).
+func (c *Client) servedAs(asked, served string) error {
+	if asked == string(store.ConsistencyStale) {
+		return nil
+	}
+	ok := served != string(store.ConsistencyStale)
+	if c.readMode != "" {
+		ok = served == string(store.ConsistencyStrong) || served == string(store.ConsistencyLinearizable)
+	}
+	if ok {
+		return nil
+	}
+	return &Error{Status: http.StatusOK, Message: fmt.Sprintf("asked for a %s read, served %q", asked, served), Retryable: true, read: true}
+}
+
+// pointRead is a read of one key, closure or operation. With a client read
+// mode it sends the mode and checks the answer's read info against it.
+func (c *Client) pointRead(ctx context.Context, path string, query url.Values, resp any, info *internalapi.ReadInfo) error {
+	if c.readMode != "" {
+		if query == nil {
+			query = url.Values{}
+		}
+		query.Set("consistency", string(c.readMode))
+	}
+	if err := c.read(ctx, path, query, resp); err != nil {
+		return err
+	}
+	if c.readMode == "" {
+		return nil
+	}
+	return c.servedAs(string(c.readMode), string(info.Consistency))
 }
 
 func (c *Client) CreateEntity(ctx context.Context, cmd store.CreateEntity) (store.Result, error) {
@@ -450,11 +505,18 @@ func (c *Client) MarkOutboxPublished(ctx context.Context, cmd store.MarkOutboxPu
 }
 
 func (c *Client) ReadRecord(ctx context.Context, key string) (store.Record, error) {
+	rec, _, err := c.ReadRecordInfo(ctx, key)
+	return rec, err
+}
+
+// ReadRecordInfo is ReadRecord plus how the read was served: mode, replica
+// and applied position.
+func (c *Client) ReadRecordInfo(ctx context.Context, key string) (store.Record, internalapi.ReadInfo, error) {
 	var resp internalapi.RecordResponse
-	if err := c.read(ctx, "/internal/data/"+url.PathEscape(key), nil, &resp); err != nil {
-		return store.Record{}, err
+	if err := c.pointRead(ctx, "/internal/data/"+url.PathEscape(key), nil, &resp, &resp.Read); err != nil {
+		return store.Record{}, internalapi.ReadInfo{}, err
 	}
-	return resp.Record, nil
+	return resp.Record, resp.Read, nil
 }
 
 func (c *Client) ReadClosure(ctx context.Context, resourceKey, attemptID string) (store.Closure, error) {
@@ -463,7 +525,7 @@ func (c *Client) ReadClosure(ctx context.Context, resourceKey, attemptID string)
 		return store.Closure{}, err
 	}
 	var resp internalapi.ClosureResponse
-	if err := c.read(ctx, "/internal/resources/"+url.PathEscape(id)+"/closures/"+url.PathEscape(attemptID), nil, &resp); err != nil {
+	if err := c.pointRead(ctx, "/internal/resources/"+url.PathEscape(id)+"/closures/"+url.PathEscape(attemptID), nil, &resp, &resp.Read); err != nil {
 		return store.Closure{}, err
 	}
 	return resp.Closure, nil
@@ -478,7 +540,7 @@ func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 	if q.Limit < 1 || q.Limit > store.MaxScanLimit {
 		return store.ScanResult{}, invalid("scan limit %d must be 1 to %d records per shard", q.Limit, store.MaxScanLimit)
 	}
-	mode, err := consistency(q.Consistency)
+	mode, err := c.queryMode(q.Consistency)
 	if err != nil {
 		return store.ScanResult{}, err
 	}
@@ -508,7 +570,7 @@ func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 	if err := c.read(ctx, "/internal/scan", query, &resp); err != nil {
 		return store.ScanResult{}, err
 	}
-	if err := servedStale(mode, string(resp.Consistency)); err != nil {
+	if err := c.servedAs(mode, string(resp.Consistency)); err != nil {
 		return store.ScanResult{}, err
 	}
 	out := store.ScanResult{Records: resp.Records, Partial: resp.Partial, Positions: resp.Positions}
@@ -559,7 +621,7 @@ func (c *Client) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]stor
 	if q.Wait < 0 || q.Wait > store.MaxOutboxWait || q.Wait%time.Second != 0 {
 		return nil, invalid("outbox wait %s must be whole seconds, 0 to %s", q.Wait, store.MaxOutboxWait)
 	}
-	mode, err := consistency(q.Consistency)
+	mode, err := c.queryMode(q.Consistency)
 	if err != nil {
 		return nil, err
 	}
@@ -571,7 +633,7 @@ func (c *Client) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]stor
 	if err := c.read(ctx, "/internal/outbox", query, &resp); err != nil {
 		return nil, err
 	}
-	if err := servedStale(mode, string(resp.Read.Consistency)); err != nil {
+	if err := c.servedAs(mode, string(resp.Read.Consistency)); err != nil {
 		return nil, err
 	}
 	return resp.Events, nil
@@ -579,7 +641,7 @@ func (c *Client) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]stor
 
 func (c *Client) Operation(ctx context.Context, key, operationID string) (store.Result, error) {
 	var resp internalapi.OperationResponse
-	if err := c.read(ctx, "/internal/operations/"+url.PathEscape(operationID), url.Values{"key": {key}}, &resp); err != nil {
+	if err := c.pointRead(ctx, "/internal/operations/"+url.PathEscape(operationID), url.Values{"key": {key}}, &resp, &resp.Read); err != nil {
 		return store.Result{}, err
 	}
 	return resp.Result, nil
