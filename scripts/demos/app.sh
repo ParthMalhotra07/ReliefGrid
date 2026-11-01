@@ -1,12 +1,23 @@
 # shellcheck shell=bash
 # App demo preflight reuses the storage demo's bounded forwards and cleanup.
 . "$(dirname "${BASH_SOURCE[0]}")/kube.sh"
+await_app_preflight() {
+ local deadline=$((SECONDS + ${1:-90}))
+ while ! preflight; do
+  # kubectl wait visits pods separately; each can have been Ready at a
+  # different instant. Require the strict nine-pod snapshot itself to pass.
+  [ "$PREFLIGHT_WHY" = "not all nine storage pods are Ready" ] || return 1
+  [ "$SECONDS" -lt "$deadline" ] || return 1
+  sleep .25
+ done
+}
 app_demo() {
  demo_reset "clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets"
- # Restoring admission after the preceding demo can briefly put replicas in
- # catch-up. Await the same Ready condition before taking the strict snapshot.
- run "await storage readiness after previous workload" kubectl --context "$CTX" -n "$NS" wait --for=condition=Ready pods -l app.kubernetes.io/component=storagenode --timeout=90s || { fail "storage readiness before app demo"; demo_end; }
- require_preflight
+ if run "await strict storage preflight after previous workload" await_app_preflight; then
+  pass "preflight: nine storage pods Ready, nine nodes UP, one leader per shard"
+ else
+  fail "preflight: $PREFLIGHT_WHY"; demo_end
+ fi
  export DEMO_COORD_URL="$(coord)" DEMO_OPERATOR_TOKEN="$OPTOK"
  if [[ "$1" =~ ^(2|3|5|8)$ ]]; then
   forward "svc/${APP_RELEASE:-reliefgrid}-rabbitmq" 15672 || { fail "preflight: broker management forward"; demo_end; }

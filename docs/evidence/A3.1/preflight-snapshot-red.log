@@ -1,0 +1,13 @@
+--- FAIL: TestAppPreflightWaitsForOneHealthySnapshot (0.26s)
+    --- FAIL: TestAppPreflightWaitsForOneHealthySnapshot/recovers (0.09s)
+        app_readiness_test.go:29: exit=127 want=0 output=/tmp/TestAppPreflightWaitsForOneHealthySnapshotrecovers1750099779/001/run.sh: line 5: await_app_preflight: command not found
+            calls=0 coord=
+    --- FAIL: TestAppPreflightWaitsForOneHealthySnapshot/persistent-unready (0.08s)
+        app_readiness_test.go:29: exit=127 want=1 output=/tmp/TestAppPreflightWaitsForOneHealthySnapshotpersistent-unready3044499899/001/run.sh: line 5: await_app_preflight: command not found
+            calls=0 coord=
+    --- FAIL: TestAppPreflightWaitsForOneHealthySnapshot/other-failure (0.09s)
+        app_readiness_test.go:29: exit=127 want=1 output=/tmp/TestAppPreflightWaitsForOneHealthySnapshotother-failure262865251/001/run.sh: line 5: await_app_preflight: command not found
+            calls=0 coord=
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.262s
+FAIL
