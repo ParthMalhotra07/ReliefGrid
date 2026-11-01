@@ -104,7 +104,7 @@ install() {
 	log "installed (namespace-scoped to $NS)"
 }
 
-# check: prints one JSON object (the facts) and exits 0 only if the install works
+# check: prints one JSON object (the facts) on stdout and exits 0 only if the install works
 check() {
 	local ctrl daemons want forbidden started injected="false" recovered="false" images
 	ctrl="$(k -n "$MESH_NS" get deploy chaos-controller-manager -o jsonpath='{.status.readyReplicas}' 2>/dev/null)"
@@ -126,14 +126,17 @@ check() {
 		k -n "$NS" wait networkchaos/chaos-smoke --for=condition=AllRecovered --timeout=30s >/dev/null 2>&1 && recovered=true
 		k -n "$NS" delete networkchaos chaos-smoke --wait=true --timeout=60s >/dev/null 2>&1
 	fi
-	jq -n --arg v "${CHAOS_MESH_VERSION:-}" --argjson ctrl "${ctrl:-0}" --argjson d "${daemons:-0}" --argjson want "$want" \
+	local facts
+	facts="$(jq -n --arg v "${CHAOS_MESH_VERSION:-}" --argjson ctrl "${ctrl:-0}" --argjson d "${daemons:-0}" --argjson want "$want" \
 		--argjson forbidden "$forbidden" --argjson started "$started" --argjson images "${images:-[]}" \
 		--argjson injected "$injected" --argjson recovered "$recovered" --arg pod "$pod" \
 		--arg server "$(k version -o json 2>/dev/null | jq -r .serverVersion.gitVersion)" \
 		'{version: $v, kubernetes: $server, controllerReady: $ctrl, daemonsReady: $d, dataNodes: $want, forbiddenErrors: $forbidden,
 		  controllersStarted: $started, images: $images, smoke: {pod: $pod, injected: $injected, recovered: $recovered},
 		  ok: ($ctrl == 1 and $d == $want and $forbidden == 0 and $started > 0 and $injected and $recovered
-		       and ($images | all(test("@sha256:[0-9a-f]{64}$"))))}' | tee /dev/stderr | jq -e .ok >/dev/null
+		       and ($images | all(test("@sha256:[0-9a-f]{64}$"))))}')"
+	echo "$facts"
+	jq -e .ok <<<"$facts" >/dev/null
 }
 
 uninstall() {
