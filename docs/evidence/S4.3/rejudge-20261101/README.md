@@ -1,6 +1,7 @@
 # S4.3 re-judge of the saved suite under the coverage rules (#85 review)
 
-**These are re-judged results from rebuilt inputs, not a new chaos run.** The judge now
+**The 11 passing results below are re-judged from rebuilt inputs, not a new chaos run.**
+Only restart-coordinator was re-run on kind (see "restart-coordinator re-run"). The judge now
 needs post-grace coverage and every targeted replica probed. This directory applies it
 to the 12 reports in `../suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports`.
 The raw ledgers those runs wrote are on the cluster's ledger PVC and were not read again.
@@ -17,7 +18,7 @@ The other fields are copied from the report (`build.jq`). The rebuild was checke
 first: the judge before this change, run on the rebuilt inputs, gives each run its
 saved verdict (column "old judge").
 
-## Result: 11 of 12 pass; restart-coordinator fails (pending a re-run)
+## Result: 11 of 12 saved reports pass; restart-coordinator re-run on kind and passes (see below)
 
 | run | saved | old judge, rebuilt | new judge | post-grace ms | writes ≥ | reads ≥ | probes ≥ |
 |---|---|---|---|---|---|---|---|
@@ -42,14 +43,63 @@ on coverage.
 
 **restart-coordinator:** `coverage: no observation window after the grace: the fault
 lasted 859ms, the grace is 2000ms`. Deleting the pod healed in 859 ms, inside the 2 s
-grace, so the saved PASS judged an empty interval. The harness now scales the
-coordinator to 0 and holds it down for the grace plus `COORDINATOR_DOWN_SECONDS` (10 s)
-before scaling back. **Its re-run on kind is pending**, and so is a fresh suite whose
-ledgers carry the real counters instead of these bounds.
+grace, so the saved PASS judged an empty interval. It was re-run on kind, below. The
+other 11 have not been re-run; their counters remain the lower bounds above.
+
+## restart-coordinator re-run (seed 440, the saved run's seed)
+
+The harness now scales the coordinator to 0 and holds it for the grace plus
+`COORDINATOR_DOWN_SECONDS` before scaling back. These runs have their own ledgers, so
+their counters are real values, not lower bounds.
+
+| run | hold | after the grace | write attempts per shard | reads per shard | judged |
+|---|---|---|---|---|---|
+| `../suite-20261101T144808Z-…` | 10 s | 10.2 s | 5 / 4 / 5 | 4 / **2** / **1** | FAIL (reads) |
+| `../suite-20261101T163336Z-…` | 30 s | 30.3 s | **2** / 18 / 21 | 5 / 13 / 5 | FAIL per shard; **PASS** across shards (41 ≥ 9) |
+
+Every other criterion passed in both runs: same ring before and after, leader terms
+unchanged (2/2/2), no new bootstrap Job, every shard acknowledged writes again after the
+restart, 0 lost, 0 stale, and every unknown outcome resolved by operation ID as never
+applied (28 and 13).
+
+Why the counts are low: every data call goes through the coordinator
+(`coordclient` → `storage-coordinator/internal/data`), so while it is down each call
+waits out `coordclient.DefaultTimeout` (5 s; the slowest read in both runs took 5000.7–5001.2 ms).
+Two readers make about 0.7 reads/s across all shards, so 10 s was too short for 3 per
+shard and 30 s is enough. Each write worker retries one operation up to four times, so
+the four workers moved through only one or two keys each during the outage. Which shards
+those keys hash to is chance: shard 0 got 2 attempts.
+
+So the judge counts restart-coordinator's **write attempts across shards**, needing at
+least `MinCoverage × shards` = 9 in total. The fault is the shared routing path, not a
+shard. Reads are still held to 3 per shard, and every shard must still acknowledge
+writes again after the restart. The other experiments keep the per-shard write minimum.
+`restart-coordinator-30s.json` is the 30 s run re-judged under this rule from its own
+counters (input rebuilt with `build.jq`, availability taken from the report as is): the
+judge before this rule reproduces the run's saved failure, and the new judge passes it.
+The cluster was not re-run for this.
+
+## Measured: a coordinator outage means zero availability and no loss (input for #31)
+
+| | 10 s hold | 30 s hold |
+|---|---|---|
+| outage (scale to 0 → scale back) | 12.2 s | 32.3 s |
+| acks before the fault, all shards | 69.3/s | 69.5/s |
+| acks after the grace, per shard | 0 / 0 / 0 | 0 / 0 / 0 |
+| reads served after the grace, per shard | 0 / 0 / 0 | 0 / 0 / 0 |
+| slowest client call | 5.0 s (timeout) | 5.0 s (timeout) |
+| first ack after the scale-up | 3.8–3.9 s | 2.6–2.7 s |
+| lost / stale | 0 / 0 | 0 / 0 |
+| unknown outcomes (all never applied) | 28 | 13 |
+
+With a single coordinator, every client call waits out the 5 s timeout while it is down,
+so availability is zero for the whole outage plus about 3 s, while nothing acknowledged is
+lost. The Raft groups never noticed: terms did not change.
 
 ## Files
 
 - `build.jq`: saved report to judge input, with the bounds above.
+- `restart-coordinator-30s.json`: the 30 s re-run, re-judged with writes counted across shards.
 - `results.jsonl`: one line per run: saved verdict, old judge on the rebuilt input, new
   verdict and failures, and the faulted shard's rebuilt counters.
 

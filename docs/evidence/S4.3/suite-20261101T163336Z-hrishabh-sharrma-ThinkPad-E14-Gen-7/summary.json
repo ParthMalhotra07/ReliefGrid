@@ -1,0 +1,82 @@
+{
+  "runId": "20261101T163336Z-hrishabh-sharrma-ThinkPad-E14-Gen-7",
+  "pass": false,
+  "chaosMesh": {
+    "version": "2.8.7",
+    "kubernetes": "v1.37.0",
+    "controllerReady": 1,
+    "daemonsReady": 3,
+    "dataNodes": 3,
+    "forbiddenErrors": 0,
+    "controllersStarted": 46,
+    "images": [
+      "ghcr.io/chaos-mesh/chaos-daemon:v2.8.7@sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174ae58a5b0bb8dc31465d55",
+      "ghcr.io/chaos-mesh/chaos-mesh:v2.8.7@sha256:e972b7d995c117f8728ed9b792685b4e45ab9c6eb2e92d766a3040aa5987428d"
+    ],
+    "smoke": {
+      "pod": "storage-shard-0-0",
+      "injected": true,
+      "recovered": true
+    },
+    "ok": true
+  },
+  "runs": [
+    {
+      "name": "restart-coordinator",
+      "script": "restart-coordinator",
+      "seed": 440,
+      "exit": 1,
+      "pass": false,
+      "control": null,
+      "failures": [
+        "coverage: shard 0 had 2 write attempt(s) after the grace, want at least 3"
+      ],
+      "recoverySeconds": 33.2,
+      "settleSeconds": 0.9,
+      "summary": {
+        "acked": 6196,
+        "unknownRaw": 13,
+        "resolved": 0,
+        "notApplied": 13,
+        "unresolvedUnknown": 0,
+        "lost": 0,
+        "staleReads": 0,
+        "readsTotal": 3874,
+        "readsChecked": 3843,
+        "readsFailed": 29,
+        "errorCount": 57
+      },
+      "faulted": {
+        "shard": 1,
+        "acksBefore": 600,
+        "acksDuring": 3,
+        "acksAfter": 1814,
+        "acksInsideFault": 0,
+        "readsDuring": 18,
+        "readsServedDuring": 4,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 18,
+        "readsInsideFault": 13,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 17,
+        "firstAckAfterHealMs": 2600,
+        "writeLatencyMs": {
+          "n": 3,
+          "p50": 4.215298,
+          "p99": 17.779956,
+          "max": 17.779956
+        },
+        "readLatencyMs": {
+          "n": 18,
+          "p50": 9.268545,
+          "p99": 5000.906635,
+          "max": 5000.906635
+        },
+        "errorsDuring": 24
+      },
+      "faultSeconds": 32.315
+    }
+  ]
+}

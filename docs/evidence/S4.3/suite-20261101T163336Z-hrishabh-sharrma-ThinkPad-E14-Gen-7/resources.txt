@@ -1,0 +1,39 @@
+## before Chaos Mesh (storage only) (2026-11-01T16:33:45Z)
+reliefgrid-control-plane cpu 21.75% mem 1.005GiB / 30.37GiB
+reliefgrid-worker cpu 11.56% mem 371.4MiB / 30.37GiB
+reliefgrid-worker4 cpu 4.85% mem 461.8MiB / 30.37GiB
+reliefgrid-worker2 cpu 18.59% mem 390MiB / 30.37GiB
+reliefgrid-worker3 cpu 60.97% mem 341MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094        8693        9472         623       14005       22400
+chaos-mesh pod chaos-controller-manager-759cc8846-lblxh on reliefgrid-worker4: 26 MiB
+chaos-mesh pod chaos-daemon-jr97r on reliefgrid-worker3: 11 MiB
+chaos-mesh pod chaos-daemon-njl22 on reliefgrid-worker: 10 MiB
+chaos-mesh pod chaos-daemon-x2sjx on reliefgrid-worker2: 9 MiB
+
+## after the Chaos Mesh install (idle) (2026-11-01T16:34:21Z)
+reliefgrid-control-plane cpu 19.23% mem 1.082GiB / 30.37GiB
+reliefgrid-worker cpu 13.26% mem 357.8MiB / 30.37GiB
+reliefgrid-worker4 cpu 9.81% mem 484.8MiB / 30.37GiB
+reliefgrid-worker2 cpu 14.31% mem 375.2MiB / 30.37GiB
+reliefgrid-worker3 cpu 11.91% mem 325.5MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094        8646        9490         604       14015       22447
+chaos-mesh pod chaos-controller-manager-5fdc649498-xh8g6 on reliefgrid-worker4: 30 MiB
+chaos-mesh pod chaos-controller-manager-759cc8846-lblxh on reliefgrid-worker4: 0 MiB
+chaos-mesh pod chaos-daemon-4jskg on reliefgrid-worker2: 9 MiB
+chaos-mesh pod chaos-daemon-4lwgx on reliefgrid-worker3: 11 MiB
+chaos-mesh pod chaos-daemon-jd9sp on reliefgrid-worker: 10 MiB
+
+## after the runs (2026-11-01T16:37:08Z)
+reliefgrid-control-plane cpu 21.26% mem 1.104GiB / 30.37GiB
+reliefgrid-worker cpu 14.10% mem 366.1MiB / 30.37GiB
+reliefgrid-worker4 cpu 6.21% mem 453.6MiB / 30.37GiB
+reliefgrid-worker2 cpu 13.23% mem 385.8MiB / 30.37GiB
+reliefgrid-worker3 cpu 11.24% mem 337.3MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094        8701        9379         613       14080       22392
+chaos-mesh pod chaos-controller-manager-5fdc649498-xh8g6 on reliefgrid-worker4: 27 MiB
+chaos-mesh pod chaos-daemon-4jskg on reliefgrid-worker2: 10 MiB
+chaos-mesh pod chaos-daemon-4lwgx on reliefgrid-worker3: 11 MiB
+chaos-mesh pod chaos-daemon-jd9sp on reliefgrid-worker: 10 MiB

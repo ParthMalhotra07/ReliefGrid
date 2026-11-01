@@ -1,0 +1,962 @@
+{
+  "experiment": "restart-coordinator",
+  "seed": 440,
+  "runId": "restart-coordinator-s440-1793544563",
+  "pass": false,
+  "failures": [
+    "coverage: shard 1 had 2 read(s) after the grace, want at least 3",
+    "coverage: shard 2 had 1 read(s) after the grace, want at least 3"
+  ],
+  "plan": {
+    "experiment": "restart-coordinator",
+    "seed": 440,
+    "shard": 1,
+    "role": "coordinator",
+    "pick": 1,
+    "faultDelayMs": 14764,
+    "loadSeconds": 117,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-restart-coordinator-s440",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 1,
+    "pod": "storage-coordinator-76f478cbcf-bbrmz",
+    "serverId": "",
+    "role": "coordinator",
+    "term": 2
+  },
+  "fault": {
+    "kind": "coordinator-restart",
+    "mechanism": "kubectl scale of the coordinator to 0, held for the grace plus 10s, then back",
+    "startedAt": 1793544589961,
+    "healedAt": 1793544602149
+  },
+  "recovery": {
+    "leader": "",
+    "term": 0,
+    "seconds": 13.0
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793544689785,
+    "seconds": 0.8,
+    "ok": true,
+    "detail": "shard 1 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793544569000,
+    "faultStartedAt": 1793544589961,
+    "faultHealedAt": 1793544602149,
+    "settledAt": 1793544690635,
+    "loadFinishedAt": 1793544687000
+  },
+  "load": {
+    "job": "chaos-load-restart-coordinator-s440-1793544563",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 4516,
+    "unknown": 28,
+    "rejected": 0,
+    "ackedDuringFault": 8
+  },
+  "errorsObserved": [
+    {
+      "at": 1793544590098,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op366 chaos-restart-coordinator-s440-1793544565-w2-k0 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590098,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op366 chaos-restart-coordinator-s440-1793544565-w1-k0 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590102,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op366 chaos-restart-coordinator-s440-1793544565-w3-k0 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590102,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op366 chaos-restart-coordinator-s440-1793544565-w0-k0 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590123,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op366 chaos-restart-coordinator-s440-1793544565-w1-k0 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590125,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op366 chaos-restart-coordinator-s440-1793544565-w2-k0 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590126,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op366 chaos-restart-coordinator-s440-1793544565-w3-k0 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590126,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op366 chaos-restart-coordinator-s440-1793544565-w0-k0 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590166,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op366 chaos-restart-coordinator-s440-1793544565-w1-k0 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590166,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op366 chaos-restart-coordinator-s440-1793544565-w2-k0 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590169,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op366 chaos-restart-coordinator-s440-1793544565-w0-k0 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590169,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op366 chaos-restart-coordinator-s440-1793544565-w3-k0 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590229,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op366 chaos-restart-coordinator-s440-1793544565-w2-k0 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590229,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op366 chaos-restart-coordinator-s440-1793544565-w1-k0 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590231,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op366 chaos-restart-coordinator-s440-1793544565-w0-k0 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590231,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op366 chaos-restart-coordinator-s440-1793544565-w3-k0 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590283,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op367 chaos-restart-coordinator-s440-1793544565-w1-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590283,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op367 chaos-restart-coordinator-s440-1793544565-w3-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590283,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op367 chaos-restart-coordinator-s440-1793544565-w0-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590283,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op367 chaos-restart-coordinator-s440-1793544565-w2-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590306,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op367 chaos-restart-coordinator-s440-1793544565-w3-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590306,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op367 chaos-restart-coordinator-s440-1793544565-w0-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590306,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op367 chaos-restart-coordinator-s440-1793544565-w1-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590306,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op367 chaos-restart-coordinator-s440-1793544565-w2-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590350,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op367 chaos-restart-coordinator-s440-1793544565-w0-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590350,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op367 chaos-restart-coordinator-s440-1793544565-w1-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590350,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op367 chaos-restart-coordinator-s440-1793544565-w3-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590350,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op367 chaos-restart-coordinator-s440-1793544565-w2-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590413,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op367 chaos-restart-coordinator-s440-1793544565-w0-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590413,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op367 chaos-restart-coordinator-s440-1793544565-w2-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590413,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op367 chaos-restart-coordinator-s440-1793544565-w1-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590413,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op367 chaos-restart-coordinator-s440-1793544565-w3-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590466,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op368 chaos-restart-coordinator-s440-1793544565-w1-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590466,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op368 chaos-restart-coordinator-s440-1793544565-w0-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590466,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op368 chaos-restart-coordinator-s440-1793544565-w3-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590466,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op368 chaos-restart-coordinator-s440-1793544565-w2-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590490,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op368 chaos-restart-coordinator-s440-1793544565-w2-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590490,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op368 chaos-restart-coordinator-s440-1793544565-w0-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590490,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op368 chaos-restart-coordinator-s440-1793544565-w3-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590490,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op368 chaos-restart-coordinator-s440-1793544565-w1-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590534,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op368 chaos-restart-coordinator-s440-1793544565-w2-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590534,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op368 chaos-restart-coordinator-s440-1793544565-w0-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590534,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op368 chaos-restart-coordinator-s440-1793544565-w3-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590535,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op368 chaos-restart-coordinator-s440-1793544565-w1-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590598,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op368 chaos-restart-coordinator-s440-1793544565-w3-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590598,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op368 chaos-restart-coordinator-s440-1793544565-w1-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590598,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op368 chaos-restart-coordinator-s440-1793544565-w0-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590599,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op368 chaos-restart-coordinator-s440-1793544565-w2-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590653,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op369 chaos-restart-coordinator-s440-1793544565-w3-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590653,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op369 chaos-restart-coordinator-s440-1793544565-w1-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590653,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op369 chaos-restart-coordinator-s440-1793544565-w0-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590653,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op369 chaos-restart-coordinator-s440-1793544565-w2-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590677,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op369 chaos-restart-coordinator-s440-1793544565-w3-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590677,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op369 chaos-restart-coordinator-s440-1793544565-w0-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590677,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op369 chaos-restart-coordinator-s440-1793544565-w2-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590677,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op369 chaos-restart-coordinator-s440-1793544565-w1-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590722,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op369 chaos-restart-coordinator-s440-1793544565-w1-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590722,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op369 chaos-restart-coordinator-s440-1793544565-w2-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590722,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op369 chaos-restart-coordinator-s440-1793544565-w3-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590722,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op369 chaos-restart-coordinator-s440-1793544565-w0-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590785,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op369 chaos-restart-coordinator-s440-1793544565-w2-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590785,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op369 chaos-restart-coordinator-s440-1793544565-w1-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590785,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op369 chaos-restart-coordinator-s440-1793544565-w3-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590785,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op369 chaos-restart-coordinator-s440-1793544565-w0-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590838,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op370 chaos-restart-coordinator-s440-1793544565-w3-k2 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590838,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op370 chaos-restart-coordinator-s440-1793544565-w2-k2 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590838,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op370 chaos-restart-coordinator-s440-1793544565-w0-k2 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590838,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op370 chaos-restart-coordinator-s440-1793544565-w1-k2 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590862,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op370 chaos-restart-coordinator-s440-1793544565-w0-k2 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590862,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op370 chaos-restart-coordinator-s440-1793544565-w1-k2 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590862,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op370 chaos-restart-coordinator-s440-1793544565-w2-k2 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590862,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op370 chaos-restart-coordinator-s440-1793544565-w3-k2 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590906,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op370 chaos-restart-coordinator-s440-1793544565-w2-k2 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590906,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op370 chaos-restart-coordinator-s440-1793544565-w3-k2 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590906,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op370 chaos-restart-coordinator-s440-1793544565-w0-k2 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590906,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op370 chaos-restart-coordinator-s440-1793544565-w1-k2 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590970,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op370 chaos-restart-coordinator-s440-1793544565-w0-k2 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590971,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op370 chaos-restart-coordinator-s440-1793544565-w1-k2 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590971,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op370 chaos-restart-coordinator-s440-1793544565-w3-k2 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544590971,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op370 chaos-restart-coordinator-s440-1793544565-w2-k2 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591024,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op371 chaos-restart-coordinator-s440-1793544565-w3-c183 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591024,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op371 chaos-restart-coordinator-s440-1793544565-w0-c183 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591024,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op371 chaos-restart-coordinator-s440-1793544565-w2-c183 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591024,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op371 chaos-restart-coordinator-s440-1793544565-w1-c183 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591048,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op371 chaos-restart-coordinator-s440-1793544565-w3-c183 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591048,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op371 chaos-restart-coordinator-s440-1793544565-w0-c183 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591048,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op371 chaos-restart-coordinator-s440-1793544565-w1-c183 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591048,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op371 chaos-restart-coordinator-s440-1793544565-w2-c183 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591091,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op371 chaos-restart-coordinator-s440-1793544565-w2-c183 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591091,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op371 chaos-restart-coordinator-s440-1793544565-w3-c183 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591091,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op371 chaos-restart-coordinator-s440-1793544565-w1-c183 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591091,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op371 chaos-restart-coordinator-s440-1793544565-w0-c183 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591154,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op371 chaos-restart-coordinator-s440-1793544565-w2-c183 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591154,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op371 chaos-restart-coordinator-s440-1793544565-w0-c183 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591154,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op371 chaos-restart-coordinator-s440-1793544565-w3-c183 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591154,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op371 chaos-restart-coordinator-s440-1793544565-w1-c183 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c183\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591207,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op372 chaos-restart-coordinator-s440-1793544565-w2-k3 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591207,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op372 chaos-restart-coordinator-s440-1793544565-w1-k3 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591207,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op372 chaos-restart-coordinator-s440-1793544565-w0-k3 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591207,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op372 chaos-restart-coordinator-s440-1793544565-w3-k3 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591231,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op372 chaos-restart-coordinator-s440-1793544565-w2-k3 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591231,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op372 chaos-restart-coordinator-s440-1793544565-w3-k3 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591231,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op372 chaos-restart-coordinator-s440-1793544565-w0-k3 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544591231,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op372 chaos-restart-coordinator-s440-1793544565-w1-k3 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544596276,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op372 chaos-restart-coordinator-s440-1793544565-w2-k3 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k3\": context deadline exceeded"
+    },
+    {
+      "at": 1793544596276,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op372 chaos-restart-coordinator-s440-1793544565-w1-k3 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k3\": context deadline exceeded"
+    },
+    {
+      "at": 1793544596276,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op372 chaos-restart-coordinator-s440-1793544565-w3-k3 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k3\": context deadline exceeded"
+    },
+    {
+      "at": 1793544596277,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op372 chaos-restart-coordinator-s440-1793544565-w0-k3 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k3\": context deadline exceeded"
+    },
+    {
+      "at": 1793544596341,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op372 chaos-restart-coordinator-s440-1793544565-w3-k3 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544596341,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op372 chaos-restart-coordinator-s440-1793544565-w1-k3 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544596341,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op372 chaos-restart-coordinator-s440-1793544565-w0-k3 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544596341,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op372 chaos-restart-coordinator-s440-1793544565-w2-k3 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-k3\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544596395,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op373 chaos-restart-coordinator-s440-1793544565-w2-c184 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c184\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544597401,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op373 chaos-restart-coordinator-s440-1793544565-w3-c184 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c184\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544597401,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op373 chaos-restart-coordinator-s440-1793544565-w0-c184 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c184\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544598426,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op373 chaos-restart-coordinator-s440-1793544565-w1-c184 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c184\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544600537,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op373 chaos-restart-coordinator-s440-1793544565-w3-c184 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c184\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544601416,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w2-op373 chaos-restart-coordinator-s440-1793544565-w2-c184 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w2-c184\": context deadline exceeded"
+    },
+    {
+      "at": 1793544602422,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op373 chaos-restart-coordinator-s440-1793544565-w0-c184 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c184\": context deadline exceeded"
+    },
+    {
+      "at": 1793544602466,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w0-op373 chaos-restart-coordinator-s440-1793544565-w0-c184 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w0-c184\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544603448,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op373 chaos-restart-coordinator-s440-1793544565-w1-c184 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c184\": context deadline exceeded"
+    },
+    {
+      "at": 1793544603492,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w1-op373 chaos-restart-coordinator-s440-1793544565-w1-c184 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w1-c184\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793544605578,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793544565-w3-op373 chaos-restart-coordinator-s440-1793544565-w3-c184 attempt 2: coordclient: 0 OUTCOME_UNKNOWN: no answer after sending: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793544565-w3-c184\": context deadline exceeded"
+    }
+  ],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/restart-coordinator-s440-1793544563.json",
+    "job": "chaos-verify-restart-coordinator-s440-1793544563",
+    "exitCode": 0,
+    "checked": 4516,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 28,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-restart-coordinator-s440-1793544563",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 1 is one caught-up group",
+    "recovery": {
+      "seconds": 13.0,
+      "term": 0,
+      "termBefore": 2,
+      "leader": ""
+    },
+    "isolation": null,
+    "delay": null,
+    "worker": null,
+    "coordinator": {
+      "ringBefore": "1/sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360",
+      "ringAfter": "1/sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360",
+      "termsBefore": {
+        "0": 2,
+        "1": 2,
+        "2": 2
+      },
+      "termsAfter": {
+        "0": 2,
+        "1": 2,
+        "2": 2
+      },
+      "bootstrapJobsBefore": 1,
+      "bootstrapJobsAfter": 1,
+      "back": true
+    }
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "linearizable",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [],
+    "verdict": {
+      "total": 3858,
+      "checked": 3804,
+      "unchecked": 2,
+      "failed": 52,
+      "served": {
+        "linearizable": 3805
+      }
+    },
+    "staleCount": 0,
+    "stale": []
+  },
+  "availability": {
+    "fromMs": 1793544589961,
+    "toMs": 1793544602149,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 576,
+        "acksDuring": 5,
+        "acksAfter": 1114,
+        "acksInsideFault": 0,
+        "readsDuring": 25,
+        "readsServedDuring": 2,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 5,
+        "readsInsideFault": 4,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 19,
+        "firstAckAfterHealMs": 3761,
+        "writeLatencyMs": {
+          "n": 5,
+          "p50": 5.00672,
+          "p99": 7.864167,
+          "max": 7.864167
+        },
+        "readLatencyMs": {
+          "n": 25,
+          "p50": 2.823802,
+          "p99": 3108.79565,
+          "max": 3108.79565
+        },
+        "errorsDuring": 49
+      },
+      {
+        "shard": 1,
+        "acksBefore": 446,
+        "acksDuring": 1,
+        "acksAfter": 895,
+        "acksInsideFault": 0,
+        "readsDuring": 20,
+        "readsServedDuring": 4,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 4,
+        "readsInsideFault": 2,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 82,
+        "firstAckAfterHealMs": 3866,
+        "writeLatencyMs": {
+          "n": 1,
+          "p50": 7.263441,
+          "p99": 7.263441,
+          "max": 7.263441
+        },
+        "readLatencyMs": {
+          "n": 20,
+          "p50": 2.95421,
+          "p99": 5000.696398,
+          "max": 5000.696398
+        },
+        "errorsDuring": 32
+      },
+      {
+        "shard": 2,
+        "acksBefore": 430,
+        "acksDuring": 2,
+        "acksAfter": 1047,
+        "acksInsideFault": 0,
+        "readsDuring": 14,
+        "readsServedDuring": 1,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 5,
+        "readsInsideFault": 1,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 23,
+        "firstAckAfterHealMs": 3774,
+        "writeLatencyMs": {
+          "n": 2,
+          "p50": 3.671515,
+          "p99": 5.052499,
+          "max": 5.052499
+        },
+        "readLatencyMs": {
+          "n": 14,
+          "p50": 2.790632,
+          "p99": 5000.841645,
+          "max": 5000.841645
+        },
+        "errorsDuring": 37
+      }
+    ]
+  },
+  "judge": {
+    "pass": false,
+    "noVerdict": false,
+    "failures": [
+      "coverage: shard 1 had 2 read(s) after the grace, want at least 3",
+      "coverage: shard 2 had 1 read(s) after the grace, want at least 3"
+    ],
+    "summary": {
+      "acked": 4516,
+      "unknownRaw": 28,
+      "resolved": 0,
+      "notApplied": 28,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 0,
+      "readsTotal": 3858,
+      "readsChecked": 3804,
+      "readsFailed": 52,
+      "errorCount": 123,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 576,
+          "acksDuring": 5,
+          "acksAfter": 1114,
+          "acksInsideFault": 0,
+          "readsDuring": 25,
+          "readsServedDuring": 2,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 5,
+          "readsInsideFault": 4,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 19,
+          "firstAckAfterHealMs": 3761,
+          "writeLatencyMs": {
+            "n": 5,
+            "p50": 5.00672,
+            "p99": 7.864167,
+            "max": 7.864167
+          },
+          "readLatencyMs": {
+            "n": 25,
+            "p50": 2.823802,
+            "p99": 3108.79565,
+            "max": 3108.79565
+          },
+          "errorsDuring": 49
+        },
+        {
+          "shard": 1,
+          "acksBefore": 446,
+          "acksDuring": 1,
+          "acksAfter": 895,
+          "acksInsideFault": 0,
+          "readsDuring": 20,
+          "readsServedDuring": 4,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 4,
+          "readsInsideFault": 2,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 82,
+          "firstAckAfterHealMs": 3866,
+          "writeLatencyMs": {
+            "n": 1,
+            "p50": 7.263441,
+            "p99": 7.263441,
+            "max": 7.263441
+          },
+          "readLatencyMs": {
+            "n": 20,
+            "p50": 2.95421,
+            "p99": 5000.696398,
+            "max": 5000.696398
+          },
+          "errorsDuring": 32
+        },
+        {
+          "shard": 2,
+          "acksBefore": 430,
+          "acksDuring": 2,
+          "acksAfter": 1047,
+          "acksInsideFault": 0,
+          "readsDuring": 14,
+          "readsServedDuring": 1,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 5,
+          "readsInsideFault": 1,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 23,
+          "firstAckAfterHealMs": 3774,
+          "writeLatencyMs": {
+            "n": 2,
+            "p50": 3.671515,
+            "p99": 5.052499,
+            "max": 5.052499
+          },
+          "readLatencyMs": {
+            "n": 14,
+            "p50": 2.790632,
+            "p99": 5000.841645,
+            "max": 5000.841645
+          },
+          "errorsDuring": 37
+        }
+      ]
+    }
+  }
+}
