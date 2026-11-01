@@ -1,0 +1,45 @@
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CompareAndSet
+--- PASS: TestAPIMutationErrorsPreserveKnownRefusals (0.92s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CreateEntity (0.14s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CompareAndSet (0.04s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	1.960s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]

@@ -1,0 +1,31 @@
+=== RUN   TestAPICreationIntentCASLoserRereadsWinnerDeterministically
+=== RUN   TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=false
+=== RUN   TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=true
+--- PASS: TestAPICreationIntentCASLoserRereadsWinnerDeterministically (0.23s)
+    --- PASS: TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=false (0.18s)
+    --- PASS: TestAPICreationIntentCASLoserRereadsWinnerDeterministically/changed=true (0.05s)
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=false/reuse=false
+    create_followup_test.go:145: error = map[string]interface {}{"code":"CONFLICT_IDEMPOTENCY_KEY", "correlationId":"804b0675-ff7d-43db-94d3-8141817dea59", "message":"creation identity has a different committed payload", "outcomeUnknown":false, "retryable":false}; want DOMAIN_CONFLICT, retryable=false, unknown=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=false/reuse=true
+    create_followup_test.go:145: error = map[string]interface {}{"code":"CONFLICT_IDEMPOTENCY_KEY", "correlationId":"5981d232-c467-45cc-8807-8024d5f89d01", "message":"creation identity has a different committed payload", "outcomeUnknown":false, "retryable":false}; want OPERATION_ID_REUSED, retryable=false, unknown=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=true
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=false/reuse=false
+    create_followup_test.go:145: error = map[string]interface {}{"code":"CONFLICT_IDEMPOTENCY_KEY", "correlationId":"aeaa4394-3547-4f57-92bb-01740922af5f", "message":"creation identity has a different committed payload", "outcomeUnknown":false, "retryable":false}; want DOMAIN_CONFLICT, retryable=false, unknown=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=false/reuse=true
+    create_followup_test.go:145: error = map[string]interface {}{"code":"CONFLICT_IDEMPOTENCY_KEY", "correlationId":"0548ea85-db2c-4a1f-ad76-ada4ffb3fb53", "message":"creation identity has a different committed payload", "outcomeUnknown":false, "retryable":false}; want OPERATION_ID_REUSED, retryable=false, unknown=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=false
+=== RUN   TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=true
+--- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey (0.33s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=false/reuse=false (0.04s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=false/reuse=true (0.04s)
+    --- PASS: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=false (0.05s)
+    --- PASS: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/requests/keyed=true/reuse=true (0.04s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=false/reuse=false (0.05s)
+    --- FAIL: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=false/reuse=true (0.04s)
+    --- PASS: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=false (0.04s)
+    --- PASS: TestAPICreateIdentityConflictsOnlyUseIdempotencyCodeWithAKey/resources/keyed=true/reuse=true (0.04s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.614s
+FAIL

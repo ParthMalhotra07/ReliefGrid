@@ -1,0 +1,186 @@
+=== A1.1 Verify: public API ===
+=== RUN   TestRunServesRealFSMAndStops
+2026/10/30 09:48:10 INFO API listening addr=127.0.0.1:42629
+--- PASS: TestRunServesRealFSMAndStops (0.06s)
+=== RUN   TestProductionStartupConnectsToCoordinator
+--- PASS: TestProductionStartupConnectsToCoordinator (0.00s)
+=== RUN   TestConfigRefusesUnboundedCallsAndBadCoordinator
+--- PASS: TestConfigRefusesUnboundedCallsAndBadCoordinator (0.00s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	1.089s
+=== RUN   TestAPIRequiredRoutesAndReciprocalMatch
+--- PASS: TestAPIRequiredRoutesAndReciprocalMatch (0.21s)
+=== RUN   TestAPICreateReplaySurvivesMutationAndHandlerRestart
+=== RUN   TestAPICreateReplaySurvivesMutationAndHandlerRestart/requests
+=== RUN   TestAPICreateReplaySurvivesMutationAndHandlerRestart/resources
+--- PASS: TestAPICreateReplaySurvivesMutationAndHandlerRestart (0.11s)
+    --- PASS: TestAPICreateReplaySurvivesMutationAndHandlerRestart/requests (0.05s)
+    --- PASS: TestAPICreateReplaySurvivesMutationAndHandlerRestart/resources (0.05s)
+=== RUN   TestAPIConcurrentKeyedCreatesReturnOneOriginalResult
+--- PASS: TestAPIConcurrentKeyedCreatesReturnOneOriginalResult (0.08s)
+=== RUN   TestAPILostCreateResponseIsUnknownAndKeyedRetryRecovers
+--- PASS: TestAPILostCreateResponseIsUnknownAndKeyedRetryRecovers (0.06s)
+=== RUN   TestAPIValidationAndKnownErrors
+=== RUN   TestAPIValidationAndKnownErrors/bad_JSON
+=== RUN   TestAPIValidationAndKnownErrors/missing_details
+=== RUN   TestAPIValidationAndKnownErrors/invalid_type
+=== RUN   TestAPIValidationAndKnownErrors/invalid_latitude
+=== RUN   TestAPIValidationAndKnownErrors/missing_longitude
+=== RUN   TestAPIValidationAndKnownErrors/zero_people
+=== RUN   TestAPIValidationAndKnownErrors/invalid_urgency
+=== RUN   TestAPIValidationAndKnownErrors/client_assignment
+=== RUN   TestAPIValidationAndKnownErrors/missing_reusable
+=== RUN   TestAPIValidationAndKnownErrors/empty_name
+=== RUN   TestAPIValidationAndKnownErrors/reversed_window
+=== RUN   TestAPIValidationAndKnownErrors/non-UTC_window
+=== RUN   TestAPIValidationAndKnownErrors/zero_limit
+=== RUN   TestAPIValidationAndKnownErrors/excessive_radius
+=== RUN   TestAPIValidationAndKnownErrors/bad_near
+--- PASS: TestAPIValidationAndKnownErrors (0.08s)
+    --- PASS: TestAPIValidationAndKnownErrors/bad_JSON (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/missing_details (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/invalid_type (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/invalid_latitude (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/missing_longitude (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/zero_people (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/invalid_urgency (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/client_assignment (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/missing_reusable (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/empty_name (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/reversed_window (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/non-UTC_window (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/zero_limit (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/excessive_radius (0.00s)
+    --- PASS: TestAPIValidationAndKnownErrors/bad_near (0.00s)
+=== RUN   TestAPIPartialAuthoritativeListsReturnUnavailable
+--- PASS: TestAPIPartialAuthoritativeListsReturnUnavailable (0.04s)
+=== RUN   TestAPISSEHeartbeatAndCancellation
+--- PASS: TestAPISSEHeartbeatAndCancellation (0.05s)
+=== RUN   TestAPIMatchingNoCandidateAndDeferredWork
+--- PASS: TestAPIMatchingNoCandidateAndDeferredWork (0.08s)
+=== RUN   TestAPIStatusChangesRetainClaimsUntilClosure
+=== RUN   TestAPIStatusChangesRetainClaimsUntilClosure/cancel
+=== RUN   TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_reusable
+=== RUN   TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_consumable
+=== RUN   TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_expired_reusable
+--- PASS: TestAPIStatusChangesRetainClaimsUntilClosure (0.33s)
+    --- PASS: TestAPIStatusChangesRetainClaimsUntilClosure/cancel (0.09s)
+    --- PASS: TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_reusable (0.09s)
+    --- PASS: TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_consumable (0.08s)
+    --- PASS: TestAPIStatusChangesRetainClaimsUntilClosure/fulfill_expired_reusable (0.08s)
+=== RUN   TestAPIOutboxEnvelopesAndRouting
+--- PASS: TestAPIOutboxEnvelopesAndRouting (0.07s)
+=== RUN   TestAPIDurableCreationIntentResumesBothCrashWindows
+=== RUN   TestAPIDurableCreationIntentResumesBothCrashWindows/intent-response-lost
+=== RUN   TestAPIDurableCreationIntentResumesBothCrashWindows/before-domain-create
+--- PASS: TestAPIDurableCreationIntentResumesBothCrashWindows (0.11s)
+    --- PASS: TestAPIDurableCreationIntentResumesBothCrashWindows/intent-response-lost (0.06s)
+    --- PASS: TestAPIDurableCreationIntentResumesBothCrashWindows/before-domain-create (0.05s)
+=== RUN   TestAPIConcurrentDifferentPayloadsCommitOnlyOne
+--- PASS: TestAPIConcurrentDifferentPayloadsCommitOnlyOne (0.05s)
+=== RUN   TestAPIKeyIsScopedByOperationAndOptional
+--- PASS: TestAPIKeyIsScopedByOperationAndOptional (0.12s)
+=== RUN   TestAPIPublicCASAndOperationReuseErrors
+=== RUN   TestAPIPublicCASAndOperationReuseErrors/VERSION_CONFLICT
+=== RUN   TestAPIPublicCASAndOperationReuseErrors/OPERATION_ID_REUSED
+--- PASS: TestAPIPublicCASAndOperationReuseErrors (0.09s)
+    --- PASS: TestAPIPublicCASAndOperationReuseErrors/VERSION_CONFLICT (0.06s)
+    --- PASS: TestAPIPublicCASAndOperationReuseErrors/OPERATION_ID_REUSED (0.04s)
+=== RUN   TestAPIReadFailuresKeepKnownAndUnknownSeparate
+=== RUN   TestAPIReadFailuresKeepKnownAndUnknownSeparate/NO_LEADER
+=== RUN   TestAPIReadFailuresKeepKnownAndUnknownSeparate/NOT_LEADER
+=== RUN   TestAPIReadFailuresKeepKnownAndUnknownSeparate/RING_VERSION_MISMATCH
+=== RUN   TestAPIReadFailuresKeepKnownAndUnknownSeparate/STORAGE_UNAVAILABLE
+--- PASS: TestAPIReadFailuresKeepKnownAndUnknownSeparate (0.14s)
+    --- PASS: TestAPIReadFailuresKeepKnownAndUnknownSeparate/NO_LEADER (0.03s)
+    --- PASS: TestAPIReadFailuresKeepKnownAndUnknownSeparate/NOT_LEADER (0.04s)
+    --- PASS: TestAPIReadFailuresKeepKnownAndUnknownSeparate/RING_VERSION_MISMATCH (0.04s)
+    --- PASS: TestAPIReadFailuresKeepKnownAndUnknownSeparate/STORAGE_UNAVAILABLE (0.03s)
+=== RUN   TestAPIEveryRemoteCallHasACappedDeadline
+--- PASS: TestAPIEveryRemoteCallHasACappedDeadline (0.04s)
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CompareAndSet
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CreateEntity
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CompareAndSet
+--- PASS: TestAPIMutationErrorsPreserveKnownRefusals (0.79s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/invalid_before_proposal/CompareAndSet (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/local_invalid_not_sent/CompareAndSet (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/not_sent/CompareAndSet (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CreateEntity (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/domain_refusal/CompareAndSet (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/version_refusal/CompareAndSet (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/operation_reuse_refusal/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_bad_upstream_route/CompareAndSet (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CreateEntity (0.05s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/lost_committed_response/CompareAndSet (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CreateEntity (0.04s)
+    --- PASS: TestAPIMutationErrorsPreserveKnownRefusals/unclassified_mutation_transport/CompareAndSet (0.04s)
+=== RUN   TestAPIIdempotencyKeyMatchesFrozenUUIDContract
+--- PASS: TestAPIIdempotencyKeyMatchesFrozenUUIDContract (0.06s)
+=== RUN   TestAPIStrictWireValidation
+=== RUN   TestAPIStrictWireValidation/nullable_people_prohibited
+=== RUN   TestAPIStrictWireValidation/nullable_urgency_prohibited
+=== RUN   TestAPIStrictWireValidation/duplicate_fields
+=== RUN   TestAPIStrictWireValidation/trailing_JSON
+=== RUN   TestAPIStrictWireValidation/case-sensitive_fields
+=== RUN   TestAPIStrictWireValidation/nested_unknown_field
+=== RUN   TestAPIStrictWireValidation/oversized_details
+=== RUN   TestAPIStrictWireValidation/oversized_name
+=== RUN   TestAPIStrictWireValidation/longitude_out_of_range
+=== RUN   TestAPIStrictWireValidation/window_has_no_timezone
+=== RUN   TestAPIStrictWireValidation/unknown_query
+=== RUN   TestAPIStrictWireValidation/duplicate_limit
+=== RUN   TestAPIStrictWireValidation/bad_request_status
+=== RUN   TestAPIStrictWireValidation/nondecimal_near
+=== RUN   TestAPIStrictWireValidation/infinite_radius
+=== RUN   TestAPIStrictWireValidation/NaN_radius
+=== RUN   TestAPIStrictWireValidation/malformed_ID
+--- PASS: TestAPIStrictWireValidation (0.08s)
+    --- PASS: TestAPIStrictWireValidation/nullable_people_prohibited (0.00s)
+    --- PASS: TestAPIStrictWireValidation/nullable_urgency_prohibited (0.00s)
+    --- PASS: TestAPIStrictWireValidation/duplicate_fields (0.00s)
+    --- PASS: TestAPIStrictWireValidation/trailing_JSON (0.00s)
+    --- PASS: TestAPIStrictWireValidation/case-sensitive_fields (0.00s)
+    --- PASS: TestAPIStrictWireValidation/nested_unknown_field (0.00s)
+    --- PASS: TestAPIStrictWireValidation/oversized_details (0.00s)
+    --- PASS: TestAPIStrictWireValidation/oversized_name (0.00s)
+    --- PASS: TestAPIStrictWireValidation/longitude_out_of_range (0.00s)
+    --- PASS: TestAPIStrictWireValidation/window_has_no_timezone (0.00s)
+    --- PASS: TestAPIStrictWireValidation/unknown_query (0.00s)
+    --- PASS: TestAPIStrictWireValidation/duplicate_limit (0.00s)
+    --- PASS: TestAPIStrictWireValidation/bad_request_status (0.00s)
+    --- PASS: TestAPIStrictWireValidation/nondecimal_near (0.00s)
+    --- PASS: TestAPIStrictWireValidation/infinite_radius (0.00s)
+    --- PASS: TestAPIStrictWireValidation/NaN_radius (0.00s)
+    --- PASS: TestAPIStrictWireValidation/malformed_ID (0.00s)
+=== RUN   TestAPIProtectedSSEErrors
+--- PASS: TestAPIProtectedSSEErrors (0.03s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	3.675s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok    actual API event validates: request.created
+ok    actual API event validates: request.state_changed
+ok    actual API event validates: resource.registered
+ok    actual API event validates: resource.state_changed
+A1.1 VERIFY: ALL PASS

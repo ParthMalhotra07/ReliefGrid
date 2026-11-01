@@ -1,0 +1,12 @@
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CreateEntity
+    refusal_test.go:48: error = map[string]interface {}{"code":"STORAGE_UNAVAILABLE", "correlationId":"a77285c6-78e6-41a3-b59b-2a63bd2ee58d", "message":"storage did not accept the command", "outcomeUnknown":false, "retryable":true}; want OUTCOME_UNKNOWN, retryable=true, unknown=true
+=== RUN   TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CompareAndSet
+    refusal_test.go:48: error = map[string]interface {}{"code":"STORAGE_UNAVAILABLE", "correlationId":"6ee37280-cfd6-4524-b1d8-8938229f88a8", "message":"storage did not accept the command", "outcomeUnknown":false, "retryable":true}; want OUTCOME_UNKNOWN, retryable=true, unknown=true
+--- FAIL: TestAPIMutationErrorsPreserveKnownRefusals (0.18s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CreateEntity (0.14s)
+    --- FAIL: TestAPIMutationErrorsPreserveKnownRefusals/no_answer_after_sending_(status_zero)/CompareAndSet (0.04s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.218s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+FAIL
