@@ -1,30 +1,30 @@
-== S4.6 Verify 2026-10-27T19:49:33Z, git acdf334fb6fb
-ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	6.938s
+== S4.6 Verify 2026-11-01T10:42:38Z, git ad36a075d297
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	6.907s
 PASS  CI tests (scripts/ci_test.go)
 
-# PR #54: run 40571981910 (https://github.com/ParthMalhotra07/ReliefGrid/actions/runs/40571981910)
-check                 success  150 s
-changes               success  8 s
-commit-lint           success  6 s
-images (tools)        success  24 s
-images (storagenode)  success  35 s
-images (coordinator)  success  29 s
-smoke                 success  149 s
-PASS  PR #54: check ran and passed
-PASS  PR #54: changes ran and passed
-PASS  PR #54: images (storagenode) ran and passed
-PASS  PR #54: images (coordinator) ran and passed
-PASS  PR #54: images (tools) ran and passed
-PASS  PR #54: smoke ran and passed
-PASS  PR #54: smoke evidence has demo-4 PASS (9/9 checks)
+# PR #74: run 41284949889 (https://github.com/ParthMalhotra07/ReliefGrid/actions/runs/41284949889)
+check                 success  306 s
+commit-lint           success  5 s
+changes               success  5 s
+images (coordinator)  success  23 s
+images (storagenode)  success  29 s
+images (tools)        success  19 s
+smoke                 success  372 s
+PASS  PR #74: check ran and passed
+PASS  PR #74: changes ran and passed
+PASS  PR #74: images (storagenode) ran and passed
+PASS  PR #74: images (coordinator) ran and passed
+PASS  PR #74: images (tools) ran and passed
+PASS  PR #74: smoke ran and passed
+PASS  PR #74: smoke evidence has demo-4 PASS (9/9 checks)
 
 # smoke steps (timings.txt)
-create the kind cluster                              52 s  exit 0
-load the image archives into kind                     8 s  exit 0
-install deploy/helm/storage                          26 s  exit 0
-wait for three groups with leaders                    2 s  exit 0
-demo 4: seeded keys, distribution, locate            29 s  exit 0
-total                                               118 s
+create the kind cluster                              76 s  exit 0
+load the image archives into kind                    13 s  exit 0
+install deploy/helm/storage                          31 s  exit 0
+wait for three groups with leaders                    1 s  exit 0
+demo 4: seeded keys, distribution, locate            40 s  exit 0
+total                                               163 s
 
 # leaders (leaders.txt)
 shard 0: leader storage-shard-0-0
@@ -38,7 +38,7 @@ changes      skipped  -
 smoke        skipped  -
 images       skipped  -
 PASS  probe PR #55: check failed
-PASS  probe PR #55: the contract-drift step failed on internal/internalapi/types.gen.go
+PASS  probe PR #55: the contract-drift step (make gen-check) failed on internal/internalapi/types.gen.go
 
 # the drift it reported
 diff --git a/internal/internalapi/types.gen.go b/internal/internalapi/types.gen.go
