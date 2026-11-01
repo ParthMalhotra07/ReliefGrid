@@ -1,0 +1,79 @@
+# S4.3 #40 coordinator NetworkPolicy with the application deployed
+result:     PASSED (15/15 checks)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-11-01T07:24:00Z
+code tree:  d4cea3c8601e (git ls-tree -r HEAD -- go.mod go.sum Makefile cmd/api cmd/matcher cmd/coordinator cmd/storagenode internal deploy/helm scripts/app-deploy.sh scripts/e2e-smoke.py scripts/verify-S4.3-netpol-app.sh | git hash-object --stdin)
+code dirty: yes (uncommitted changes under those paths)
+
+## checks
+PASS  cluster: fresh reliefgrid cluster
+PASS  images: storagenode and coordinator built and loaded
+PASS  storage: helm install --wait --wait-for-jobs
+PASS  policy: storage-coordinator installed, selecting the coordinator
+PASS  app: make app-deploy (standalone storage)
+PASS  api: Deployment Available
+PASS  api: all 2 pods labelled reliefgrid.io/coordinator-client=true
+PASS  api: 2/2 pods Ready, 0 restarts (reached the coordinator at start)
+PASS  matcher: Deployment Available
+PASS  matcher: all 2 pods labelled reliefgrid.io/coordinator-client=true
+PASS  matcher: 2/2 pods Ready, 0 restarts (reached the coordinator at start)
+PASS  ui: no pod carries reliefgrid.io/coordinator-client (it doesn't call the coordinator)
+PASS  e2e-smoke: create, register and match through Traefik
+PASS  control: an unlabelled pod from reliefgrid/api:a15-20261101072205 fails at start with 'connect coordinator'
+PASS  control: the same pod labelled reliefgrid.io/coordinator-client=true is still running after 40 s
+
+## kubectl get pods -o wide
+NAME                                   READY   STATUS      RESTARTS      AGE     IP            NODE                 NOMINATED NODE   READINESS GATES
+cnp-api-client                         1/1     Running     0             45s     10.244.1.9    reliefgrid-worker3   <none>           <none>
+cnp-api-open                           0/1     Error       0             52s     10.244.1.8    reliefgrid-worker3   <none>           <none>
+reliefgrid-api-65fc948555-bz5g5        1/1     Running     0             98s     10.244.3.9    reliefgrid-worker2   <none>           <none>
+reliefgrid-api-65fc948555-g2sz7        1/1     Running     0             98s     10.244.4.10   reliefgrid-worker    <none>           <none>
+reliefgrid-matcher-7876c5bdf-th55h     1/1     Running     0             98s     10.244.4.9    reliefgrid-worker    <none>           <none>
+reliefgrid-matcher-7876c5bdf-wzs5w     1/1     Running     0             98s     10.244.3.10   reliefgrid-worker2   <none>           <none>
+reliefgrid-rabbitmq-0                  1/1     Running     1 (67s ago)   98s     10.244.2.5    reliefgrid-worker4   <none>           <none>
+reliefgrid-traefik-84c8448448-75s7m    1/1     Running     0             98s     10.244.2.3    reliefgrid-worker4   <none>           <none>
+reliefgrid-ui-76fc8fcdfb-d4xfs         1/1     Running     0             98s     10.244.4.8    reliefgrid-worker    <none>           <none>
+storage-bootstrap-1-szbnx              0/1     Completed   0             2m20s   10.244.3.2    reliefgrid-worker2   <none>           <none>
+storage-coordinator-76f478cbcf-lr97g   1/1     Running     0             2m20s   10.244.2.2    reliefgrid-worker4   <none>           <none>
+storage-shard-0-0                      1/1     Running     0             2m20s   10.244.1.3    reliefgrid-worker3   <none>           <none>
+storage-shard-0-1                      1/1     Running     0             2m20s   10.244.4.7    reliefgrid-worker    <none>           <none>
+storage-shard-0-2                      1/1     Running     0             2m20s   10.244.3.8    reliefgrid-worker2   <none>           <none>
+storage-shard-1-0                      1/1     Running     0             2m20s   10.244.4.4    reliefgrid-worker    <none>           <none>
+storage-shard-1-1                      1/1     Running     0             2m20s   10.244.3.5    reliefgrid-worker2   <none>           <none>
+storage-shard-1-2                      1/1     Running     0             2m20s   10.244.1.7    reliefgrid-worker3   <none>           <none>
+storage-shard-2-0                      1/1     Running     0             2m20s   10.244.3.6    reliefgrid-worker2   <none>           <none>
+storage-shard-2-1                      1/1     Running     0             2m20s   10.244.1.6    reliefgrid-worker3   <none>           <none>
+storage-shard-2-2                      1/1     Running     0             2m20s   10.244.4.5    reliefgrid-worker    <none>           <none>
+
+## pod labels (reliefgrid.io/coordinator-client)
+NAME                                   READY   STATUS      RESTARTS      AGE     COORDINATOR-CLIENT   COMPONENT
+cnp-api-client                         1/1     Running     0             45s     true
+cnp-api-open                           0/1     Error       0             52s
+reliefgrid-api-65fc948555-bz5g5        1/1     Running     0             98s     true                 api
+reliefgrid-api-65fc948555-g2sz7        1/1     Running     0             98s     true                 api
+reliefgrid-matcher-7876c5bdf-th55h     1/1     Running     0             98s     true                 matcher
+reliefgrid-matcher-7876c5bdf-wzs5w     1/1     Running     0             98s     true                 matcher
+reliefgrid-rabbitmq-0                  1/1     Running     1 (67s ago)   98s                          rabbitmq
+reliefgrid-traefik-84c8448448-75s7m    1/1     Running     0             98s
+reliefgrid-ui-76fc8fcdfb-d4xfs         1/1     Running     0             98s                          ui
+storage-bootstrap-1-szbnx              0/1     Completed   0             2m20s                        storage-bootstrap
+storage-coordinator-76f478cbcf-lr97g   1/1     Running     0             2m20s                        coordinator
+storage-shard-0-0                      1/1     Running     0             2m20s                        storagenode
+storage-shard-0-1                      1/1     Running     0             2m20s                        storagenode
+storage-shard-0-2                      1/1     Running     0             2m20s                        storagenode
+storage-shard-1-0                      1/1     Running     0             2m20s                        storagenode
+storage-shard-1-1                      1/1     Running     0             2m20s                        storagenode
+storage-shard-1-2                      1/1     Running     0             2m20s                        storagenode
+storage-shard-2-0                      1/1     Running     0             2m20s                        storagenode
+storage-shard-2-1                      1/1     Running     0             2m20s                        storagenode
+storage-shard-2-2                      1/1     Running     0             2m20s                        storagenode
+
+## control pods
+### cnp-api-open (labels 'none', phase Failed)
+2026/11/01 07:23:13 ERROR API stopped error="connect coordinator: coordclient: load ring: Get \"http://storage-coordinator:8080/internal/ring\": context deadline exceeded"
+### cnp-api-client (labels 'reliefgrid.io/coordinator-client=true', phase Running)
+2026/11/01 07:23:18 INFO API listening addr=[::]:8080
+
+## e2e-smoke (tail)
+A1.5 E2E SMOKE: PASS {"result": "PASS", "requestId": "b65e5646-8941-5734-9082-841e7116b7ef", "resourceId": "d4e69558-77b6-5cf2-8c25-bfc324849ca2", "reciprocalClaim": true, "originalCreateReplay": true}
+evidence=/tmp/tmp.sEbFtMyNdI/a15/e2e-20261101T072308Z-8d4cd273
