@@ -11,12 +11,20 @@
 # would count post-heal commits as committed during the fault.
 #
 # Environment: DELAY_MS (300), DELAY_JITTER_MS (50), DELAY_SECONDS (25), DELAY_LEAD_SECONDS (5),
+# DELAY_ISOLATE_MS (150), DELAY_ISOLATE_JITTER_MS (30),
 # QUORUM_SECONDS (20), WORKER_SECONDS (30), WORKER_BACK_SECONDS (240).
 
 DELAY_MS="${DELAY_MS:-300}"
 DELAY_JITTER_MS="${DELAY_JITTER_MS:-50}"
 DELAY_SECONDS="${DELAY_SECONDS:-25}"
 DELAY_LEAD_SECONDS="${DELAY_LEAD_SECONDS:-5}"
+# delay-isolate-leader's delay stays under Raft's LeaderLeaseTimeout (500 ms, the library
+# default): its majority is the new leader plus the delayed peer, and a leader that hears from
+# no quorum within its lease steps down. At 300 ms each way (RTT >= 600 ms) the majority elected
+# and stepped down every ~0.5 s and committed nothing for 20 s (measured, S4.3); at 150 ms
+# (RTT ~300 ms) it can commit, so the run tests acks in flight while the old leader is read.
+DELAY_ISOLATE_MS="${DELAY_ISOLATE_MS:-150}"
+DELAY_ISOLATE_JITTER_MS="${DELAY_ISOLATE_JITTER_MS:-30}"
 QUORUM_SECONDS="${QUORUM_SECONDS:-20}"
 WORKER_SECONDS="${WORKER_SECONDS:-30}"
 WORKER_BACK_SECONDS="${WORKER_BACK_SECONDS:-240}"
@@ -38,8 +46,8 @@ partition_spec() { # partition_spec <selector JSON> <target JSON>
 	jq -nc --argjson s "$1" --argjson t "$2" '{action: "partition", mode: "all", selector: $s, direction: "both",
 		target: {mode: "all", selector: $t}}'
 }
-delay_spec() { # delay_spec <selector JSON> <target JSON>
-	jq -nc --argjson s "$1" --argjson t "$2" --arg l "${DELAY_MS}ms" --arg j "${DELAY_JITTER_MS}ms" \
+delay_spec() { # delay_spec <selector JSON> <target JSON> [latency ms] [jitter ms]
+	jq -nc --argjson s "$1" --argjson t "$2" --arg l "${3:-$DELAY_MS}ms" --arg j "${4:-$DELAY_JITTER_MS}ms" \
 		'{action: "delay", mode: "all", selector: $s, direction: "both", delay: {latency: $l, jitter: $j, correlation: "0"},
 		  target: {mode: "all", selector: $t}}'
 }
@@ -83,9 +91,9 @@ fault_mesh_isolate() {
 	local delayed="" t_c1 t_c2 m_c1 m_c2 m_leader
 	if [ "${1:-}" = delay-first ]; then
 		delayed="${peers[$pick]}"
-		mesh_apply "delay-$run_id" "$(delay_spec "$(pods_json "$delayed")" "$(pods_json "$target_pod" "${peers[$((1 - pick))]}")")" ||
-			no_verdict "the delay on $delayed was not injected"
-		note "delayed $delayed by ${DELAY_MS}ms (+-${DELAY_JITTER_MS}ms) both ways; isolating in ${DELAY_LEAD_SECONDS}s"
+		mesh_apply "delay-$run_id" "$(delay_spec "$(pods_json "$delayed")" "$(pods_json "$target_pod" "${peers[$((1 - pick))]}")" \
+			"$DELAY_ISOLATE_MS" "$DELAY_ISOLATE_JITTER_MS")" || no_verdict "the delay on $delayed was not injected"
+		note "delayed $delayed by ${DELAY_ISOLATE_MS}ms (+-${DELAY_ISOLATE_JITTER_MS}ms) both ways; isolating in ${DELAY_LEAD_SECONDS}s"
 		sleep "$DELAY_LEAD_SECONDS"
 	fi
 	fault_started_at="$(now_ms)"

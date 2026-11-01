@@ -498,7 +498,7 @@ chaos_main() {
 	restart-shard) fault_kind=shard-restart fault_mechanism="kubectl delete pod of all three replicas (graceful)" ;;
 	isolate-replica) fault_kind=raft-isolation fault_mechanism="label $ISOLATED_LABEL=true, excluded by NetworkPolicy storage-shard-$shard-raft" ;;
 	isolate-leader) fault_kind=partition fault_mechanism="Chaos Mesh NetworkChaos partition: the leader against both peers, both directions" ;;
-	delay-isolate-leader) fault_kind=delay+partition fault_mechanism="Chaos Mesh NetworkChaos: one peer delayed ${DELAY_MS}ms, then the leader partitioned from both" ;;
+	delay-isolate-leader) fault_kind=delay+partition fault_mechanism="Chaos Mesh NetworkChaos: one peer delayed ${DELAY_ISOLATE_MS}ms +-${DELAY_ISOLATE_JITTER_MS}ms (under the 500 ms Raft lease), then the leader partitioned from both" ;;
 	lose-quorum) fault_kind=quorum-loss fault_mechanism="Chaos Mesh NetworkChaos: every replica of the shard partitioned from the other two" ;;
 	delay-follower) fault_kind=delay fault_mechanism="Chaos Mesh NetworkChaos delay ${DELAY_MS}ms +-${DELAY_JITTER_MS}ms, the follower with both peers, both directions" ;;
 	stop-worker) fault_kind=node-stop fault_mechanism="docker stop of the data worker's kind node (one replica of every shard), then docker start" ;;
