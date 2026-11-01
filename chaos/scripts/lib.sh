@@ -368,13 +368,24 @@ harness_facts() {
 		--argjson dl "${harness_delay:-null}" --argjson w "${harness_worker:-null}" --argjson c "${harness_coordinator:-null}" \
 		'{settleOk: $ok, settleDetail: $d, recovery: $rec, isolation: $iso, delay: $dl, worker: $w, coordinator: $c}'
 }
+# snap: verify_json and check_json as files. They can exceed the kernel's limit on one
+# argument (a stale-reader control lists thousands of stale reads), so jq reads them with
+# --slurpfile, never --argjson. printf is a builtin, so writing them has no such limit.
+snap() {
+	printf '%s' "${verify_json:-}" >"$work/verify.json"
+	printf '%s' "${check_json:-}" >"$work/check.json"
+	jq -e . "$work/verify.json" >/dev/null 2>&1 || echo '{}' >"$work/verify.json"
+	jq -e . "$work/check.json" >/dev/null 2>&1 || echo '{}' >"$work/check.json"
+}
+
 # run_judge <negative|"">: chaos/judge over this run, from the tools image (no Go needed here)
 run_judge() {
+	snap
 	jq -n --arg e "$EXPERIMENT" --argjson shard "$shard" --arg t "${target_pod:-}" --arg neg "$1" \
-		--argjson em "$ELECTION_MAX_SECONDS" --argjson rm "$RECOVERY_MAX_SECONDS" --argjson v "$verify_json" --argjson vx "${verify_exit:-2}" \
-		--argjson c "$check_json" --argjson cx "${check_exit:-2}" --argjson h "$(harness_facts)" \
+		--argjson em "$ELECTION_MAX_SECONDS" --argjson rm "$RECOVERY_MAX_SECONDS" --slurpfile vs "$work/verify.json" --argjson vx "${verify_exit:-2}" \
+		--slurpfile cs "$work/check.json" --argjson cx "${check_exit:-2}" --argjson h "$(harness_facts)" \
 		'{experiment: $e, shard: $shard, target: $t, negative: $neg, bounds: {electionMaxSeconds: $em, recoveryMaxSeconds: $rm},
-		  verify: $v, verifyExit: $vx, check: $c, checkExit: $cx, harness: $h}' |
+		  verify: $vs[0], verifyExit: $vx, check: $cs[0], checkExit: $cx, harness: $h}' |
 		docker run --rm -i "$TOOLS_IMAGE" judge --input -
 }
 
@@ -402,13 +413,15 @@ apply_judge() {
 
 write_report() { # write_report <pass true|false>
 	local errors
+	snap
 	errors="$(
 		{
-			jq -c '.ledger.errors[]? | {at, source: "load", message: "\(.operationId) \(.key) attempt \(.attempt): \(.error)"}' <<<"$verify_json" 2>/dev/null
+			jq -c '.ledger.errors[]? | {at, source: "load", message: "\(.operationId) \(.key) attempt \(.attempt): \(.error)"}' "$work/verify.json" 2>/dev/null
 			cat "$work/notes" 2>/dev/null
 		} | jq -cs 'sort_by(.at)'
 	)"
-	jq -n --arg e "$EXPERIMENT" --argjson seed "$seed" --arg run "$run_id" --argjson pass "$1" --argjson v "$verify_json" \
+	jq -n --arg e "$EXPERIMENT" --argjson seed "$seed" --arg run "$run_id" --argjson pass "$1" \
+		--slurpfile vs "$work/verify.json" --slurpfile cs "$work/check.json" \
 		--argjson failures "$(printf '%s\n' "${failures[@]+"${failures[@]}"}" | jq -Rsc 'split("\n") | map(select(. != ""))')" \
 		--argjson plan "$plan" \
 		--argjson target "$(jq -cn --argjson s "$shard" --arg p "${target_pod:-}" --arg id "${target_id:-}" --arg r "$role" --argjson t "${target_term:-0}" \
@@ -423,25 +436,28 @@ write_report() { # write_report <pass true|false>
 		--argjson timings "$(jq -cn --argjson a "${load_started_at:-0}" --argjson b "${fault_started_at:-0}" --argjson c "${fault_healed_at:-0}" \
 			--argjson d "${settled_at:-0}" --argjson e "${load_finished_at:-0}" \
 			'{loadStartedAt: $a, faultStartedAt: $b, faultHealedAt: $c, settledAt: $d, loadFinishedAt: $e}')" \
-		--argjson load "$(jq -cn --arg j "$load_job" --arg u "$COORD_URL" --argjson x "${load_exit:--1}" --argjson v "$verify_json" \
-			'{job: $j, coordinator: $u, exitCode: $x, acked: ($v.ledger.acked // 0), unknown: ($v.ledger.unknown // 0),
-			  rejected: ($v.ledger.rejected // 0), ackedDuringFault: ($v.ledger.ackedInWindow // 0)}')" \
+		--arg loadjob "$load_job" --arg coord "$COORD_URL" --argjson lx "${load_exit:--1}" \
 		--argjson errors "$errors" \
-		--argjson ledger "$(jq -cn --arg pvc "$PVC" --arg p "$ledger_path" --arg j "${verify_job:-}" --argjson x "${verify_exit:--1}" --argjson v "$verify_json" \
-			'{pvc: $pvc, path: $p, job: $j, exitCode: $x, checked: ($v.verdict.checked // 0), lost: ($v.verdict.lost // []),
-			  resolution: ($v.resolution // {}), incomplete: ($v.incomplete // null)}')" \
-		--argjson invcheck "$(jq -cn --arg j "${check_job:-}" --argjson x "${check_exit:--1}" --argjson c "$check_json" \
-			'{job: $j, exitCode: $x, verdict: ($c.verdict // null), quiescent: ($c.report.quiescent // false),
-			  violations: ($c.report.violations // []), incomplete: ($c.incomplete // null)}')" \
+		--arg pvc "$PVC" --arg lpath "$ledger_path" --arg vjob "${verify_job:-}" --argjson vx "${verify_exit:--1}" \
+		--arg cjob "${check_job:-}" --argjson cx "${check_exit:--1}" \
 		--argjson isolation "${isolation:-null}" --argjson injected "${injected:-null}" \
 		--argjson judge "${judge_json:-null}" --argjson control "${control_json:-null}" --argjson harness "$(harness_facts)" \
 		--argjson readers "$(jq -cn --argjson n "$READERS" --arg m "${read_mode:-}" --argjson iv "$READ_INTERVAL_MS" --argjson g "$GRACE_SECONDS" \
 			--argjson p "$(printf '%s\n' "${probe_args[@]+"${probe_args[@]}"}" | grep -v '^--probe$' | jq -Rsc 'split("\n") | map(select(. != ""))')" \
 			'{readers: $n, consistency: $m, intervalMs: $iv, graceSeconds: $g, probes: $p}')" \
-		'{experiment: $e, seed: $seed, runId: $run, pass: $pass, failures: $failures, plan: $plan, target: $target,
-		  fault: $fault, recovery: $recovery, settle: $settle, timings: $timings, load: $load, errorsObserved: $errors,
-		  ledger: $ledger, invcheck: $invcheck, harness: $harness,
-		  reads: ($readers + {verdict: ($v.verdict.reads // null), stale: ($v.verdict.staleReads // [])}),
+		'$vs[0] as $v | $cs[0] as $c |
+		{experiment: $e, seed: $seed, runId: $run, pass: $pass, failures: $failures, plan: $plan, target: $target,
+		  fault: $fault, recovery: $recovery, settle: $settle, timings: $timings,
+		  load: {job: $loadjob, coordinator: $coord, exitCode: $lx, acked: ($v.ledger.acked // 0), unknown: ($v.ledger.unknown // 0),
+		    rejected: ($v.ledger.rejected // 0), ackedDuringFault: ($v.ledger.ackedInWindow // 0)},
+		  errorsObserved: $errors,
+		  ledger: {pvc: $pvc, path: $lpath, job: $vjob, exitCode: $vx, checked: ($v.verdict.checked // 0), lost: ($v.verdict.lost // []),
+		    resolution: ($v.resolution // {}), incomplete: ($v.incomplete // null)},
+		  invcheck: {job: $cjob, exitCode: $cx, verdict: ($c.verdict // null), quiescent: ($c.report.quiescent // false),
+		    violations: ($c.report.violations // []), incomplete: ($c.incomplete // null)},
+		  harness: $harness,
+		  reads: ($readers + {verdict: ($v.verdict.reads // null), staleCount: (($v.verdict.staleReads // []) | length),
+		    stale: (($v.verdict.staleReads // [])[:100])}),
 		  availability: ($v.availability // null), judge: $judge}
 		  + (if $isolation then {isolation: $isolation} else {} end)
 		  + (if $injected then {injected: $injected} else {} end)

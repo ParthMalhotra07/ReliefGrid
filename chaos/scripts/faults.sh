@@ -6,6 +6,10 @@
 # leaves nothing behind: every chaos object carries reliefgrid.io/chaos-run=<runId>, and the
 # EXIT trap (cleanup_faults) deletes them and starts a node it stopped.
 #
+# fault_healed_at is stamped when removal *begins*: removing one partition can restore a
+# majority while the next is still being deleted, so a stamp taken after the deletes return
+# would count post-heal commits as committed during the fault.
+#
 # Environment: DELAY_MS (300), DELAY_JITTER_MS (50), DELAY_SECONDS (25), DELAY_LEAD_SECONDS (5),
 # QUORUM_SECONDS (20), WORKER_SECONDS (30), WORKER_BACK_SECONDS (240).
 
@@ -92,9 +96,9 @@ fault_mesh_isolate() {
 	t_c1="$(field "$(st "$target_pod")" .commitIndex)" m_c1="$(field "$(st "$m_leader")" .commitIndex)"
 	while [ "$(now_ms)" -lt $((fault_started_at + ISOLATE_SECONDS * 1000)) ]; do sleep 0.5; done
 	t_c2="$(field "$(st "$target_pod")" .commitIndex)" m_c2="$(field "$(st "$m_leader")" .commitIndex)"
+	fault_healed_at="$(now_ms)"
 	mesh_delete "partition-$run_id" || note "could not delete partition-$run_id"
 	[ -n "$delayed" ] && { mesh_delete "delay-$run_id" || note "could not delete delay-$run_id"; }
-	fault_healed_at="$(now_ms)"
 	isolation="$(isolation_facts "$target_pod" "$t_c1" "$t_c2" "$m_c1" "$m_c2")"
 	harness_isolation="$isolation"
 }
@@ -107,9 +111,9 @@ fault_lose_quorum() {
 		mesh_apply "quorum-b-$run_id" "$(partition_spec "$(pods_json "${p[1]}")" "$(pods_json "${p[2]}")")" ||
 		no_verdict "the quorum partitions of shard $shard were not injected"
 	while [ "$(now_ms)" -lt $((fault_started_at + QUORUM_SECONDS * 1000)) ]; do sleep 0.5; done
+	fault_healed_at="$(now_ms)"
 	mesh_delete "quorum-a-$run_id" || note "could not delete quorum-a-$run_id"
 	mesh_delete "quorum-b-$run_id" || note "could not delete quorum-b-$run_id"
-	fault_healed_at="$(now_ms)"
 	wait_recovery 0 0 "${p[@]}" || failed "recovery: shard $shard agreed on no leader within ${RECOVERY_MAX_SECONDS}s of the heal"
 }
 
@@ -127,8 +131,8 @@ fault_delay_follower() {
 		fi
 		sleep 0.5
 	done
-	mesh_delete "delay-$run_id" || note "could not delete delay-$run_id"
 	fault_healed_at="$(now_ms)"
+	mesh_delete "delay-$run_id" || note "could not delete delay-$run_id"
 	delay_max_lag="$max" delay_samples="$n"
 }
 # delay_final_lag: after the settle (one_group means equal applied indexes, so normally 0)

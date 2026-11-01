@@ -192,6 +192,23 @@ func TestHarnessVerdicts(t *testing.T) {
 		t.Errorf("stale-reader control read %v, want stale", r["reads"].(map[string]any)["consistency"])
 	}
 
+	// A verify answer far over the kernel's 128 KiB limit on one argument
+	// (5000 stale reads, ~1.5 MB) still reaches the judge and the report: the
+	// harness passes it to jq through a file. The report keeps the count and
+	// the first 100.
+	r, code, log = runHarness(t, harnessRun{experiment: "delay-follower", args: "--stale-readers", verifyExit: 1, vars: delay,
+		verify: verifyFixture(func(_ []ledger.ShardWindow, v *ledger.Verdict) {
+			for i := range 5000 {
+				v.StaleReads = append(v.StaleReads, ledger.StaleRead{Read: ledger.Read{Key: "chaos-delay-follower-s3-w1-k2", StartNs: int64(i)},
+					Reason: strings.Repeat("read v3 of chaos-delay-follower-s3-w1-k2, but seq 7 at v4 was acknowledged before the read began ", 2)})
+			}
+		})})
+	ctl, _ = r["control"].(map[string]any)
+	rd := r["reads"].(map[string]any)
+	if code != 0 || ctl == nil || ctl["pass"] != true || rd["staleCount"] != float64(5000) || len(rd["stale"].([]any)) != 100 {
+		t.Errorf("large stale-reader control: exit %d, control %v, staleCount %v, stale listed %d\n%s", code, ctl, rd["staleCount"], len(rd["stale"].([]any)), log)
+	}
+
 	// The lost-write control (S2.3's --inject): the failure names the ledger
 	// and the loss, as verify-S2.3.sh expects, and the control is caught.
 	r, _, _ = runHarness(t, harnessRun{experiment: "kill-follower", args: "--inject lost-write", verifyExit: 1,
