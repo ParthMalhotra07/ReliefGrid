@@ -1,0 +1,70 @@
+# Who may reach the coordinator (#40). Its /internal routes take routed
+# writes, claims, close-attempt and node registration, and only /admin needs
+# the operator token (#29 tracks authenticating the rest), so port 8080
+# accepts only, from this namespace:
+#   - the storage pods: register and heartbeat;
+#   - pods labelled reliefgrid.io/coordinator-client=true: the API and the
+#     matcher (which hosts the relay and reconcilers), set in deploy/helm/reliefgrid;
+#   - pods labelled reliefgrid.io/chaos=true: the chaos harness's and demos'
+#     invcheck Jobs (chaos/scripts/lib.sh);
+#   - pods labelled reliefgrid.io/storage-operator=true: operator Jobs.
+# Egress is the storage pods' 8080 (routing; the coordinator calls nothing
+# else) and kube-dns. The egress rule does not exclude
+# reliefgrid.io/chaos-isolated pods: an isolated or minority replica must
+# still be reachable, so routed calls hit its read fence and are refused.
+# The kubelet's probes come from the node and kubectl port-forward arrives
+# on the pod's loopback; neither is subject to this policy on the CNIs we
+# use (scripts/verify-storage-k8s.sh step 5a checks both on kind).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: storage-coordinator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "storage.labels" . | nindent 4 }}
+    app.kubernetes.io/component: coordinator
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: storage
+      app.kubernetes.io/component: coordinator
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: storage
+              app.kubernetes.io/component: storagenode
+        - podSelector:
+            matchLabels:
+              reliefgrid.io/coordinator-client: "true"
+        - podSelector:
+            matchLabels:
+              reliefgrid.io/chaos: "true"
+        - podSelector:
+            matchLabels:
+              reliefgrid.io/storage-operator: "true"
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: storage
+              app.kubernetes.io/component: storagenode
+      ports:
+        - port: 8080
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
