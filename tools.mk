@@ -23,3 +23,12 @@ HELM_SHA256           := 896cf63684a42a723d61c980369d6e588330927deb13676ca0d8500
 # The kindest/node image kind $(KIND_VERSION) was released with, pinned by digest
 # as kind's release notes require. Change it together with KIND_VERSION.
 KIND_NODE_IMAGE       := kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+
+# Chaos Mesh for the S4.3 suite (make chaos-install, chaos/mesh/install.sh): the
+# chart by sha256 and both images by their linux/amd64 manifest digests (the
+# entries of the v2.8.7 multi-arch indexes that kind nodes run). Change all four
+# together.
+CHAOS_MESH_VERSION        := 2.8.7
+CHAOS_MESH_CHART_SHA256   := c963e0f4ed2e30c1c7e236477f1c31fcf988b171991801bbe392546948436d38
+CHAOS_MESH_IMAGE_DIGEST   := sha256:e972b7d995c117f8728ed9b792685b4e45ab9c6eb2e92d766a3040aa5987428d
+CHAOS_DAEMON_IMAGE_DIGEST := sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174ae58a5b0bb8dc31465d55

@@ -1,0 +1,26 @@
+# Chaos Mesh for the S4.3 suite. Installed by chaos/mesh/install.sh (make
+# chaos-install), which sets both image tags to v<version>@<digest> from
+# tools.mk: the chart has no digest field and renders
+# registry/repository:tag, so the digest rides in the tag.
+#
+# Namespace-scoped: it can inject only into reliefgrid (with the one extra
+# read in remotecluster-rbac.yaml). One controller on the infra worker; the
+# daemon only on the data workers, where the storage pods run.
+clusterScoped: false
+controllerManager:
+  replicaCount: 1
+  targetNamespace: reliefgrid
+  # Images are imported into each node and tagged by digest (install.sh);
+  # nothing is pulled at run time, so the suite also works offline.
+  imagePullPolicy: Never
+  nodeSelector: {role: infra}
+  tolerations:
+    - {key: role, operator: Equal, value: infra, effect: NoSchedule}
+  leaderElection: {enabled: false}
+chaosDaemon:
+  runtime: containerd
+  socketPath: /run/containerd/containerd.sock
+  imagePullPolicy: Never
+  nodeSelector: {role: data}
+dashboard: {create: false}
+dnsServer: {create: false}
