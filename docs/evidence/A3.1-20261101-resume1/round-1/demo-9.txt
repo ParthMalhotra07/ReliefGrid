@@ -22,12 +22,12 @@ image reliefgrid/coordinator:dev: sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a
 
 ## checks
 PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
-PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-9-app
+PASS  application assertions passed; inputs, interruptions and strong reads retained in <repo>/docs/evidence/A3.1-20261101-resume1/round-1/demo-9-app
 
 ## commands
 
 # public API assertions and recorded observations
-$ python3 /home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py 9 --out /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-9-app
+$ python3 <repo>/scripts/demos/app_demo.py 9 --out <repo>/docs/evidence/A3.1-20261101-resume1/round-1/demo-9-app
 PASS  manual API scale demo has no competing HPA
 PASS  API starts at two replicas
 PASS  all six API pods become Ready under traffic

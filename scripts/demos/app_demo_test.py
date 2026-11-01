@@ -82,5 +82,16 @@ class ClientTests(unittest.TestCase):
                 app.require_reciprocal(request, bad)
 
 
+class InterruptedCallAssertions(unittest.TestCase):
+    def test_requires_observed_interruption_and_identical_successful_retry(self):
+        failure = dict(at=1, method='POST', path='/requests', status=0, key='same', payloadSHA256='original')
+        success = dict(failure, at=2, status=201)
+        self.assertEqual(app.require_recovered_interruptions([failure, success]), 1)
+        for rows in ([success], [failure], [failure, dict(success, key='changed')],
+                     [failure, dict(success, payloadSHA256='changed')], [dict(success, at=0), failure]):
+            with self.assertRaises(AssertionError):
+                app.require_recovered_interruptions(rows)
+
+
 if __name__ == '__main__':
     unittest.main()

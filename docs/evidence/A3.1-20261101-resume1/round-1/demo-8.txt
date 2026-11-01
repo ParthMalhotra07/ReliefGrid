@@ -1,45 +1,65 @@
 # demo-8: Delete one API or matcher pod while traffic and work continue
 result:     PASS (2/2 checks)
-runId:      A3.1-20261101-resume1/round-1
+runId:      a31-reviewed-20261101-recovery
 host:       DESKTOP-EG9G7UI
-started:    2026-11-01T11:43:40Z
-finished:   2026-11-01T11:44:04Z
-duration:   24.2 s
+started:    2026-11-01T16:59:41Z
+finished:   2026-11-01T17:00:13Z
+duration:   32.4 s
 code tree:  2fb719c74696 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
-code dirty: no (uncommitted changes under those paths)
+code dirty: yes (uncommitted changes under those paths)
 seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
 
 ## versions
-git head: 19ad0cbb58d2
+git head: 3b6d8c9bcfbc
 go: go version go1.27.2 linux/amd64
 kubectl: v1.37.1
 kubernetes (kind-reliefgrid): v1.37.0
 helm: v3.22.1+gd6c1a0e
 kind: kind v0.33.0 go1.26.7 linux/amd64
 docker: 29.7.2
-image reliefgrid/storagenode:dev: sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb
-image reliefgrid/coordinator:dev: sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101
+image reliefgrid/storagenode:dev: sha256:5a53c9c5006940548d85a4387c0fa638ce78cf2d8626f2778c6083b40b23074e
+image reliefgrid/coordinator:dev: sha256:0ef17156046ed80ccaa26d1a7d0c67d5900e69265380f8c8e8a59e1f7180353a
 
 ## checks
 PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
-PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-8-app
+PASS  application assertions passed; inputs, interruptions and strong reads retained in <repo>/docs/evidence/a31-reviewed-20261101-recovery/demo-8-app
 
 ## commands
 
+# await storage readiness after previous workload
+$ kubectl --context kind-reliefgrid -n reliefgrid wait --for=condition=Ready pods -l app.kubernetes.io/component=storagenode --timeout=90s
+pod/storage-shard-0-0 condition met
+pod/storage-shard-0-1 condition met
+pod/storage-shard-0-2 condition met
+pod/storage-shard-1-0 condition met
+pod/storage-shard-1-1 condition met
+pod/storage-shard-1-2 condition met
+pod/storage-shard-2-0 condition met
+pod/storage-shard-2-1 condition met
+pod/storage-shard-2-2 condition met
+[exit 0, 1.1 s]
+
+# build bounded relay-only handoff drainer
+$ go build -o /tmp/tmp.NjVnE85ZB0/drain-outbox <repo>/scripts/demos/drain-outbox
+[exit 0, 0.5 s]
+
 # public API assertions and recorded observations
-$ python3 /home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py 8 --out /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-8-app
+$ python3 <repo>/scripts/demos/app_demo.py 8 --out <repo>/docs/evidence/a31-reviewed-20261101-recovery/demo-8-app
 PASS  api: two Ready pods before deletion
+PASS  interrupted create retried and replayed its original result
 PASS  api: a new UID becomes Ready within 90s
 PASS  api: traffic completed with no lost create outcome: []
 PASS  api: successful calls continued during and after pod replacement
 PASS  no resource assigned to two requests
-PASS  api: all interrupted-call retries/replays preserve the same key, payload and original create result
+PASS  api: every successful create replay returned its original result
 PASS  matcher: two Ready pods before deletion
 PASS  matcher: a new UID becomes Ready within 90s
 PASS  matcher: traffic completed with no lost create outcome: []
 PASS  matcher: successful calls continued during and after pod replacement
 PASS  no resource assigned to two requests
-PASS  matcher: all interrupted-call retries/replays preserve the same key, payload and original create result
-PASS  interrupted calls counted and retained: 1; zero is reported honestly when redundant pods avoided interruption
+PASS  matcher: every successful create replay returned its original result
+PASS  1 interrupted calls observed; every one recovered using its original key and payload
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
 PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
-[exit 0, 18.7 s]
+[exit 0, 25.4 s]

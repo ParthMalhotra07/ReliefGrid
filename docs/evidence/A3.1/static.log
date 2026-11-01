@@ -1,5 +1,0 @@
-bash scripts/verify-A3.1.sh --static
-ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	6.679s
-ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	1.097s
-ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	2.808s
-A3.1 VERIFY: ALL PASS

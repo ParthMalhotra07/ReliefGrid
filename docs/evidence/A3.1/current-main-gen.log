@@ -1,9 +1,0 @@
-mkdir -p internal/api/gen
-go tool oapi-codegen \
-	-generate types \
-	-package gen \
-	-o internal/api/gen/types.gen.go \
-	contracts/public.yaml
-go tool oapi-codegen -generate types -package internalapi \
-	-o internal/internalapi/types.gen.go contracts/internal.yaml
-git diff --exit-code -- internal/api/gen internal/internalapi

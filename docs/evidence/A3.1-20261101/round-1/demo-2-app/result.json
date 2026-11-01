@@ -1,5 +1,0 @@
-{
-  "result": "FAIL",
-  "error": "PUT /resources/3ca1c10c-948f-5ede-82b7-e83ae04afc15/status: expected [400], got 409: b'{\"code\":\"DOMAIN_CONFLICT\",\"correlationId\":\"4a1f9ad8-468d-40e3-b6e8-04be7b18a400\",\"message\":\"claims and cleanup control this status\",\"outcomeUnknown\":false,\"retryable\":false}\\n'",
-  "checks": 9
-}

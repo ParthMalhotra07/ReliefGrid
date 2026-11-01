@@ -13,6 +13,7 @@ import http.client
 import json
 import os
 import pathlib
+import socket
 import subprocess
 import threading
 import time
@@ -38,6 +39,16 @@ def require_reciprocal(request, resource):
 def queue_counts(queue):
     counts = (queue.get('messages_ready'), queue.get('messages_unacknowledged'))
     return counts if all(isinstance(value, int) and value >= 0 for value in counts) else None
+
+
+def require_recovered_interruptions(attempts):
+    failed = [row for row in attempts if row['status'] in (0, 502, 503, 504)]
+    assert failed, 'no interrupted call was observed'
+    for row in failed:
+        assert any(other['at'] >= row['at'] and other['status'] == (201 if row['method'] == 'POST' else 200)
+                   and all(other.get(field) == row.get(field) for field in ('method', 'path', 'key', 'payloadSHA256'))
+                   for other in attempts), 'interrupted call has no successful identical-input retry'
+    return len(failed)
 
 
 class Client:
@@ -270,7 +281,7 @@ class Demo:
         self.check(stored['status'] == 'OFFLINE' and stored['location'] == body['location'] and not stored.get('activeClaim'), 'strong stored record preserves location and refuses public claim mutations')
         replay = self.api.call('POST', '/resources', {201}, body, self.key('resource'))
         self.check(replay[2] == original[2] and replay[1]['location'] == original[1]['location'], 'resource create replay retains original body and Location after updates')
-        self.invariants()
+        self.audit_without_admission()
 
     def demo3(self):
         for offset, mode in [(0, 'async'), (1, 'explicit')]:
@@ -298,7 +309,7 @@ class Demo:
         ids = self.parallel(range(2), lambda n: self.request('competitor-' + str(n), location=location), workers=2)
         rows = self.settle(ids, 1)
         self.check(sorted(row['status'] for row in rows) == ['MATCHED', 'WAITING'], 'two requests competing for one resource produce one match and one waiting request')
-        self.invariants()
+        self.audit_without_admission()
 
     def broker(self):
         secret = json.loads(self.kube('get', 'secret', self.release + '-rabbitmq', '-o', 'json'))['data']
@@ -420,7 +431,10 @@ class Demo:
             try:
                 assert started.wait(10) and successes, failures
                 deleted = time.time()
-                self.kube('delete', 'pod', victim, '--wait=false')
+                if component == 'api':
+                    self.interrupt_create(victim)
+                else:
+                    self.kube('delete', 'pod', victim, '--wait=false')
                 deadline = time.monotonic() + 90
                 while time.monotonic() < deadline:
                     current = self.pods(component)
@@ -444,12 +458,67 @@ class Demo:
             for name, body, original in replay_inputs:
                 replay = self.api.call('POST', '/requests', {201}, body, self.key(name))
                 assert replay[2] == original[2] and replay[1]['location'] == original[1]['location'], name
-            self.check(True, component + ': all interrupted-call retries/replays preserve the same key, payload and original create result')
+            self.check(len(replay_inputs) == len(successes) and len(successes) > 0, component + ': every successful create replay returned its original result')
         attempts = [json.loads(line) for line in (self.out / 'attempts.jsonl').read_text().splitlines()]
         interrupted = sum(row['status'] in (0, 502, 503, 504) for row in attempts)
         self.save('interrupted-calls', dict(interrupted=interrupted, attempts=len(attempts)))
-        self.check(True, f'interrupted calls counted and retained: {interrupted}; zero is reported honestly when redundant pods avoided interruption')
-        self.invariants()
+        recovered = require_recovered_interruptions(attempts)
+        self.check(interrupted > 0 and recovered == interrupted, f'{interrupted} interrupted calls observed; every one recovered using its original key and payload')
+        self.audit_without_admission()
+
+    def interrupt_create(self, victim):
+        # Hold an actual create halfway through its body on the selected pod,
+        # then crash that pod. This guarantees a measured transport interruption
+        # even when the Service routes ordinary traffic to the surviving replica.
+        name = 'api-interrupted-create'
+        body = self.request_body(name, kind='SHELTER')
+        raw = json.dumps(body, sort_keys=True, separators=(',', ':')).encode()
+        key = self.key(name)
+        with socket.socket() as reservation:
+            reservation.bind(('127.0.0.1', 0))
+            port = reservation.getsockname()[1]
+        command = ['kubectl', '--context', self.ctx, '-n', self.namespace, 'port-forward',
+                   'pod/' + victim, f'{port}:8080', '--address=127.0.0.1']
+        with (self.out / 'interrupted-forward.log').open('w') as diagnostic:
+            forward = subprocess.Popen(command, stdout=diagnostic, stderr=subprocess.STDOUT)
+            connection = None
+            try:
+                deadline = time.monotonic() + 10
+                while time.monotonic() < deadline:
+                    try:
+                        connection = socket.create_connection(('127.0.0.1', port), timeout=1)
+                        break
+                    except OSError:
+                        time.sleep(.1)
+                assert connection is not None, 'victim API forward unavailable'
+                connection.settimeout(10)
+                headers = (f'POST /api/v1/requests HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n'
+                           f'Idempotency-Key: {key}\r\nContent-Length: {len(raw)}\r\nConnection: close\r\n\r\n').encode()
+                connection.sendall(headers + raw[:len(raw)//2])
+                stamp = time.time()
+                self.kube('delete', 'pod', victim, '--force', '--grace-period=0', '--wait=false')
+                try:
+                    reply = connection.recv(4096)
+                    assert not reply, f'expected interrupted transport, received {reply[:100]!r}'
+                except (ConnectionResetError, BrokenPipeError):
+                    pass
+                row = dict(at=stamp, method='POST', path='/requests', status=0, key=key,
+                           payloadSHA256=hashlib.sha256(raw).hexdigest(), pod=victim,
+                           reason='pod crashed while create body was in flight')
+                with self.api.lock, (self.out / 'attempts.jsonl').open('a') as log:
+                    log.write(json.dumps(row) + '\n')
+                _, original = self.create('requests', name, body)
+                replay = self.api.call('POST', '/requests', {201}, body, key)
+                self.check(replay[2] == original[2], 'interrupted create retried and replayed its original result')
+            finally:
+                if connection is not None:
+                    connection.close()
+                forward.terminate()
+                try:
+                    forward.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    forward.kill()
+                    forward.wait(timeout=5)
 
     def demo9(self):
         deployment = self.release + '-api'

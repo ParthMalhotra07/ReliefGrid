@@ -5,6 +5,10 @@
   },
   {
     "passed": true,
+    "assertion": "interrupted create retried and replayed its original result"
+  },
+  {
+    "passed": true,
     "assertion": "api: a new UID becomes Ready within 90s"
   },
   {
@@ -21,7 +25,7 @@
   },
   {
     "passed": true,
-    "assertion": "api: all interrupted-call retries/replays preserve the same key, payload and original create result"
+    "assertion": "api: every successful create replay returned its original result"
   },
   {
     "passed": true,
@@ -45,11 +49,19 @@
   },
   {
     "passed": true,
-    "assertion": "matcher: all interrupted-call retries/replays preserve the same key, payload and original create result"
+    "assertion": "matcher: every successful create replay returned its original result"
   },
   {
     "passed": true,
-    "assertion": "interrupted calls counted and retained: 1; zero is reported honestly when redundant pods avoided interruption"
+    "assertion": "1 interrupted calls observed; every one recovered using its original key and payload"
+  },
+  {
+    "passed": true,
+    "assertion": "retry admission workers are identified before pausing"
+  },
+  {
+    "passed": true,
+    "assertion": "last committed handoffs drained with routed confirms while admission stays stopped"
   },
   {
     "passed": true,

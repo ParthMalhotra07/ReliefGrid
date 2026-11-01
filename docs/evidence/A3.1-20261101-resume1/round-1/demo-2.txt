@@ -1,33 +1,37 @@
 # demo-2: Register a resource, list it, update its availability and status
 result:     PASS (2/2 checks)
-runId:      A3.1-20261101-resume1/round-1
+runId:      a31-reviewed-20261101
 host:       DESKTOP-EG9G7UI
-started:    2026-11-01T11:41:54Z
-finished:   2026-11-01T11:42:03Z
-duration:   8.4 s
+started:    2026-11-01T16:56:21Z
+finished:   2026-11-01T16:56:41Z
+duration:   19.7 s
 code tree:  2fb719c74696 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
-code dirty: no (uncommitted changes under those paths)
+code dirty: yes (uncommitted changes under those paths)
 seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
 
 ## versions
-git head: 19ad0cbb58d2
+git head: 3b6d8c9bcfbc
 go: go version go1.27.2 linux/amd64
 kubectl: v1.37.1
 kubernetes (kind-reliefgrid): v1.37.0
 helm: v3.22.1+gd6c1a0e
 kind: kind v0.33.0 go1.26.7 linux/amd64
 docker: 29.7.2
-image reliefgrid/storagenode:dev: sha256:c6dcfa587a0104948f4ae4582b3a11362e40b255fc9c5d72f4ac5090aa0dd5cb
-image reliefgrid/coordinator:dev: sha256:d17006dd8fbfb205d573e8fd379eec87c6b1a7a82d42d4f7c8ee414ca7488101
+image reliefgrid/storagenode:dev: sha256:5a53c9c5006940548d85a4387c0fa638ce78cf2d8626f2778c6083b40b23074e
+image reliefgrid/coordinator:dev: sha256:0ef17156046ed80ccaa26d1a7d0c67d5900e69265380f8c8e8a59e1f7180353a
 
 ## checks
 PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
-PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-2-app
+PASS  application assertions passed; inputs, interruptions and strong reads retained in <repo>/docs/evidence/a31-reviewed-20261101/demo-2-app
 
 ## commands
 
+# build bounded relay-only handoff drainer
+$ go build -o /tmp/tmp.wbXK5GMcXR/drain-outbox <repo>/scripts/demos/drain-outbox
+[exit 0, 0.6 s]
+
 # public API assertions and recorded observations
-$ python3 /home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo.py 2 --out /home/parthmalhotra/reliefgrid-a31/docs/evidence/A3.1-20261101-resume1/round-1/demo-2-app
+$ python3 <repo>/scripts/demos/app_demo.py 2 --out <repo>/docs/evidence/a31-reviewed-20261101/demo-2-app
 PASS  201 resource retains validated type, location, availability and unclaimed state
 PASS  creation timestamps are UTC
 PASS  complete authoritative resource list contains the created resource exactly once
@@ -42,5 +46,7 @@ PASS  public claim-managed status is a definite 409 refusal
 PASS  all refused updates preserve the complete stored record and version
 PASS  strong stored record preserves location and refuses public claim mutations
 PASS  resource create replay retains original body and Location after updates
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
 PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
-[exit 0, 4.4 s]
+[exit 0, 13.6 s]

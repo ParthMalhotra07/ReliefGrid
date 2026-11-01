@@ -1,9 +1,0 @@
-{
-  "image": "reliefgrid/matcher:a15-20261101073205",
-  "imageId": "sha256:980f98962bb7ec494c40aa17e1d64ac0fac5abd9f214ef335f762d5dd21a4404",
-  "user": "65532:65532",
-  "entrypoint": [
-    "/matcher"
-  ],
-  "architecture": "amd64"
-}
