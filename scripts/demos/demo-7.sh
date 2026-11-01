@@ -19,8 +19,9 @@
 #   2. All DEMO7_WRITES writes commit while it is down (the majority serves them).
 #   3. Restarting it (uncordon) brings the pod Running on its own worker again (its PV is
 #      there) within DEMO7_REJOIN_SECONDS (120).
-#   4. Replay/catch-up: polled from its first answer, its appliedIndex rises to at least the
-#      shard's commit index taken after the writes, and it reports caughtUp.
+#   4. Replay/catch-up: polled from its first answer, it reports caughtUp with a
+#      leaderCommitIndex at or past the shard's commit index taken after the writes: its FSM
+#      has applied the last command at or below that index (caught_up_to in kube.sh).
 #   5. Data-ready: the pod's Ready condition (readiness is gated on catch-up, S3.1) is True.
 #   6. Same identity: the same serverId (podName/incarnation) as before the stop, and one
 #      leader that all three replicas name.
@@ -133,11 +134,11 @@ caught="" t0="$SECONDS"
 while [ $((SECONDS - t0)) -lt "$REJOIN_SECONDS" ]; do
 	s="$(st "${POD:-none}")"
 	[ -n "$s" ] && echo "$((SECONDS - t0))s $(jq -c '{state, appliedIndex, commitIndex, leaderCommitIndex, restoredIndex, caughtUp}' <<<"$s")" >>"$DEMO_TMP/polls"
-	[ "$(field "$s" .caughtUp)" = true ] && [ -n "$target" ] && [ "$(field "$s" .appliedIndex)" -ge "$target" ] && { caught=1; break; }
+	caught_up_to "$s" "$target" && { caught=1; break; }
 	sleep 0.5
 done
 demo_show "replay/catch-up of $POD (polls of /mgmt/status)" "$(cat "$DEMO_TMP/polls")"
-[ -n "$caught" ] && pass "catch-up: ${POD:-the pod} replayed to appliedIndex $(field "$s" .appliedIndex) (>= commit index $target) and is caughtUp" ||
+[ -n "$caught" ] && pass "catch-up: ${POD:-the pod} is caughtUp at leader commit $(field "$s" .leaderCommitIndex) (>= $target, the commit index after the writes); FSM at command $(field "$s" .appliedIndex)" ||
 	fail "catch-up: the restarted replica reaches the shard's commit index and reports caughtUp" "target ${target:-unknown}; last poll: $(tail -1 "$DEMO_TMP/polls")"
 check "data-ready: ${POD:-the pod} is Ready (readiness gated on catch-up)" kn wait --for=condition=Ready "pod/${POD:-none}" --timeout="${REJOIN_SECONDS}s"
 

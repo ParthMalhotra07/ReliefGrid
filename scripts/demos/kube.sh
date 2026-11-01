@@ -104,6 +104,15 @@ all_caught_up() {
 	done
 	return 1
 }
+# caught_up_to <status JSON> <raft index>: the replica has replayed through <raft index>.
+# It uses the node's own caughtUp (raftstore Status, #45): the FSM has applied the last
+# command at or below leaderCommitIndex (commandTarget). Requiring leaderCommitIndex to have
+# reached <raft index> makes that cover it, since commandTarget never decreases. appliedIndex
+# is never compared with a raw Raft index: no-ops, barriers and configuration entries never
+# reach the FSM, so with strong reads running it can stay below the commit index for good.
+caught_up_to() {
+	[ -n "$2" ] && jq -e --argjson want "$2" '.caughtUp == true and (.leaderCommitIndex // 0) >= $want' <<<"$1" >/dev/null 2>&1
+}
 # dumps <shard>: one line per replica, "<pod> <appliedIndex> <sha256> records=<n>"
 dumps() {
 	local p d

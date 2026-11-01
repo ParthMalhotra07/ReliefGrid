@@ -47,7 +47,8 @@ if python3 -c "import openapi_spec_validator" 2>/dev/null; then
     fail "openapi-spec-validator: skipped (public.yaml missing)"
   fi
 else
-  fail "openapi-spec-validator not installed (pip3 install --break-system-packages openapi-spec-validator)"
+  osv_pin="$(sed -n 's/^OPENAPI_SPEC_VALIDATOR_VERSION[[:space:]]*:=[[:space:]]*//p' tools.mk)"
+  fail "openapi-spec-validator not installed (pip3 install --break-system-packages openapi-spec-validator==${osv_pin}; make doctor checks it)"
 fi
 
 # ── Check 3: all five event schemas exist ─────────────────────────────────────

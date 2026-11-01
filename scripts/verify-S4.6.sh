@@ -86,14 +86,18 @@ else
 	durations "$run"
 	c="$(gh run view "$run" --repo "$REPO" --json jobs --jq '[.jobs[] | select(.name == "check")][0].conclusion // "missing"')"
 	[ "$c" = failure ] && pass "probe PR #$PROBE: check failed" || fail "probe PR #$PROBE: check failed (got $c)"
-	gh run view "$run" --repo "$REPO" --log-failed >"$tmp/probe.log" 2>&1
-	if grep -q 'contract drift' "$tmp/probe.log" && grep -q 'diff --git a/internal/internalapi/types.gen.go' "$tmp/probe.log"; then
-		pass "probe PR #$PROBE: the contract-drift step failed on internal/internalapi/types.gen.go"
+	# The run's log archive, read by ci-drift-log.sh: gh run view --log-failed splits logs by
+	# step file names, which GitHub's archive no longer has (one file per job since late 2026).
+	if ! gh api "repos/$REPO/actions/runs/$run/logs" >"$tmp/probe-logs.zip" 2>"$tmp/probe-logs.err"; then
+		fail "probe PR #$PROBE: download the run's log archive ($(head -1 "$tmp/probe-logs.err"))"
+	elif bash scripts/ci-drift-log.sh "$tmp/probe-logs.zip" >"$tmp/probe-drift.txt" 2>&1; then
+		pass "probe PR #$PROBE: the contract-drift step (make gen-check) failed on internal/internalapi/types.gen.go"
 		echo
 		echo "# the drift it reported"
-		grep -A12 'diff --git a/internal/internalapi/types.gen.go' "$tmp/probe.log" | cut -f3- | sed 's/^[0-9TZ:.-]* //' | head -14
+		cat "$tmp/probe-drift.txt"
 	else
-		fail "probe PR #$PROBE: the contract-drift step failed on internal/internalapi/types.gen.go"
+		fail "probe PR #$PROBE: the contract-drift step (make gen-check) failed on internal/internalapi/types.gen.go"
+		cat "$tmp/probe-drift.txt"
 	fi
 fi
 

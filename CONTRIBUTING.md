@@ -47,6 +47,7 @@ those pins; run it after any pin change.
 | kubectl | `KUBECTL_VERSION` | release binary from dl.k8s.io into `~/.local/bin` |
 | helm | `HELM_VERSION` | Helm 3 tarball from get.helm.sh into `~/.local/bin` |
 | oapi-codegen | `OAPI_CODEGEN_VERSION` | nothing to install: it is a `tool` in `go.mod`, run as `go tool oapi-codegen` |
+| openapi-spec-validator | `OPENAPI_SPEC_VALIDATOR_VERSION` | Python package used by `scripts/verify-A0.1.sh`: `pip3 install --user --break-system-packages openapi-spec-validator==<pin>` (or in a virtualenv) |
 | Docker | not pinned | Docker Engine (Linux) or Docker Desktop with WSL2 integration; your user must reach the daemon without `sudo`. |
 
 Check each download against its published SHA-256 before installing it.

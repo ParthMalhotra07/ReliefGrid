@@ -9,6 +9,8 @@ KIND_VERSION          := v0.33.0
 KUBECTL_VERSION       := v1.37.1
 HELM_VERSION          := v3.22.1
 OAPI_CODEGEN_VERSION  := v2.8.0
+# Python openapi-spec-validator: verify-A0.1 validates contracts/public.yaml with it.
+OPENAPI_SPEC_VALIDATOR_VERSION := 0.9.0
 
 # sha256 of the linux/amd64 downloads CI installs (scripts/ci-tools.sh): the kind
 # binary, the kubectl binary and the helm tarball. CI checks each download
