@@ -256,6 +256,16 @@ func incomplete(v *Verify) string {
 // faulted shard (every shard for a node or coordinator fault, which touch
 // them all). With no interval at all the experiment's criteria are not
 // applied: each would be judged on nothing. It reports whether they are.
+//
+// restart-coordinator counts write attempts across the shards instead, at
+// least MinCoverage per shard in total. Every data call goes through the
+// coordinator, so while it is down each attempt waits out the client's
+// 5 s timeout and a worker retries one operation up to four times: the
+// load's few workers move through only one or two keys each, and which
+// shards those land on is chance (measured, S4.3: 2, 18 and 21 attempts
+// in 30 s). The fault is the shared routing path, not a shard, so any
+// shard's attempt exercises it. Reads stay per shard, and so does the
+// check that every shard acknowledges writes again after the restart.
 func coverage(in Input, a ledger.WindowStats, fail func(string, ...any)) bool {
 	if a.ToMs-a.FromMs <= a.GraceMs {
 		fail("coverage: no observation window after the grace: the fault lasted %dms, the grace is %dms", a.ToMs-a.FromMs, a.GraceMs)
@@ -265,18 +275,24 @@ func coverage(in Input, a ledger.WindowStats, fail func(string, ...any)) bool {
 	if in.Experiment == "stop-worker" || in.Experiment == "restart-coordinator" {
 		want = []int{0, 1, 2}
 	}
+	pooled := in.Experiment == "restart-coordinator"
+	writes := 0
 	for _, id := range want {
 		i := slices.IndexFunc(a.Shards, func(w ledger.ShardWindow) bool { return w.Shard == id })
 		if i < 0 {
 			fail("coverage: no write attempt or read on shard %d", id)
 			continue
 		}
-		if n := a.Shards[i].WriteAttemptsInsideFault; n < MinCoverage {
+		writes += a.Shards[i].WriteAttemptsInsideFault
+		if n := a.Shards[i].WriteAttemptsInsideFault; !pooled && n < MinCoverage {
 			fail("coverage: shard %d had %d write attempt(s) after the grace, want at least %d", id, n, MinCoverage)
 		}
 		if n := a.Shards[i].ReadsInsideFault; n < MinCoverage {
 			fail("coverage: shard %d had %d read(s) after the grace, want at least %d", id, n, MinCoverage)
 		}
+	}
+	if pooled && writes < MinCoverage*len(want) {
+		fail("coverage: %d write attempt(s) after the grace across all shards, want at least %d", writes, MinCoverage*len(want))
 	}
 	return true
 }

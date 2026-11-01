@@ -262,8 +262,6 @@ func TestCoverage(t *testing.T) {
 			"coverage: shard 1 had 0 write attempt(s) after the grace"},
 		{"another shard, node stopped", "stop-worker", func(in *Input) { shardOf(in, 0).ReadsInsideFault = 0 },
 			"coverage: shard 0 had 0 read(s) after the grace"},
-		{"another shard, coordinator restarted", "restart-coordinator", func(in *Input) { shardOf(in, 2).WriteAttemptsInsideFault = 1 },
-			"coverage: shard 2 had 1 write attempt(s) after the grace"},
 		{"probes only in the grace", "lose-quorum", func(in *Input) { shardOf(in, 1).ProbeReadsInsideFault = map[string]int{} },
 			"probe: storage-shard-1-0 had 0 direct read(s) after the grace, want at least 3"},
 		{"probe only in the grace", "isolate-leader", func(in *Input) { shardOf(in, 1).ProbeReadsInsideFault["storage-shard-1-0"] = 2 },
@@ -314,5 +312,39 @@ func TestReplicaProbes(t *testing.T) {
 				t.Errorf("%s (%s), want %q: pass %v, failures %q", tc.name, tc.experiment, h, r.Pass, r.Failures)
 			}
 		}
+	}
+}
+
+// A coordinator outage stalls every shard's traffic alike, so its write
+// attempts after the grace are counted across the shards (at least
+// MinCoverage per shard in total); its reads are still held per shard.
+func TestCoordinatorCoverage(t *testing.T) {
+	writes := func(in *Input, per [3]int) {
+		for id, n := range per {
+			shardOf(in, id).WriteAttemptsInsideFault = n
+		}
+	}
+	in := clean("restart-coordinator")
+	writes(&in, [3]int{0, 0, 9}) // all on one shard
+	if r := Judge(in); !r.Pass {
+		t.Errorf("9 write attempts, all on shard 2: failures %q, want a pass", r.Failures)
+	}
+	in = clean("restart-coordinator")
+	writes(&in, [3]int{2, 3, 3})
+	if r := Judge(in); r.Pass || !strings.Contains(strings.Join(r.Failures, "\n"),
+		"coverage: 8 write attempt(s) after the grace across all shards, want at least 9") {
+		t.Errorf("8 write attempts in total: pass %v, failures %q, want a coverage failure", r.Pass, r.Failures)
+	}
+	in = clean("restart-coordinator")
+	writes(&in, [3]int{0, 0, 41})
+	shardOf(&in, 1).ReadsInsideFault = 2
+	if r := Judge(in); r.Pass || !strings.Contains(strings.Join(r.Failures, "\n"), "coverage: shard 1 had 2 read(s) after the grace, want at least 3") {
+		t.Errorf("shard 1 with 2 reads: pass %v, failures %q, want a coverage failure", r.Pass, r.Failures)
+	}
+	// Other experiments keep the per-shard write minimum.
+	in = clean("stop-worker")
+	writes(&in, [3]int{0, 0, 41})
+	if r := Judge(in); r.Pass || !strings.Contains(strings.Join(r.Failures, "\n"), "coverage: shard 0 had 0 write attempt(s) after the grace") {
+		t.Errorf("stop-worker with writes on one shard: pass %v, failures %q, want a per-shard failure", r.Pass, r.Failures)
 	}
 }
