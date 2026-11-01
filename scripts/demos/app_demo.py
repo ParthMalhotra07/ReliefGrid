@@ -307,6 +307,24 @@ class Demo:
         authorization = base64.b64encode((username + ':' + password).encode()).decode()
         return Client(os.environ['DEMO_BROKER_URL'], self.out, budget=300, auth='Basic ' + authorization)
 
+    def drain_outbox(self):
+        # Consumers are stopped. Finish their last committed handoffs using the
+        # existing routed-confirm relay, without admitting any new retry work.
+        secret = json.loads(self.kube('get', 'secret', self.release + '-rabbitmq', '-o', 'json'))['data']
+        username = base64.b64decode(secret['username']).decode()
+        password = base64.b64decode(secret['password']).decode()
+        endpoint = urllib.parse.urlsplit(os.environ['DEMO_AMQP_ENDPOINT'])
+        assert endpoint.scheme == 'amqp' and endpoint.hostname == '127.0.0.1' and endpoint.port
+        credentials = urllib.parse.quote(username, safe='') + ':' + urllib.parse.quote(password, safe='')
+        env = dict(os.environ, COORDINATOR_URL=self.coordinator.base,
+                   AMQP_URL=urllib.parse.urlunsplit(('amqp', credentials + '@' + endpoint.netloc, '/', '', '')))
+        result = subprocess.run([os.environ['DEMO_OUTBOX_DRAIN']], env=env,
+                                capture_output=True, text=True, timeout=40, check=False)
+        # Credentials stay in child environment; no command line/evidence copy.
+        diagnostic = result.stderr.replace(password, '[redacted]').replace(urllib.parse.quote(password, safe=''), '[redacted]')
+        (self.out / 'handoff-drain.log').write_text(result.stdout + diagnostic)
+        self.check(result.returncode == 0, 'last committed handoffs drained with routed confirms while admission stays stopped')
+
     def audit_without_admission(self):
         # C13: stop new retries before the final audit. Unconsumed hints remain
         # durable in RabbitMQ; no delivery is acked just to quiet the workload.
@@ -321,6 +339,7 @@ class Demo:
         try:
             for component in saved:
                 self.scale(component, 0)
+            self.drain_outbox()
             self.invariants()
         finally:
             for component, replicas in saved.items():

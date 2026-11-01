@@ -1,0 +1,7 @@
+bash scripts/verify-A3.1.sh --static
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	9.418s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	1.074s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	4.878s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+A3.1 VERIFY: ALL PASS

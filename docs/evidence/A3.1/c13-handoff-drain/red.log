@@ -1,0 +1,29 @@
+F....
+======================================================================
+FAIL: test_burst_audit_restores_admission_workers_after_failure (__main__.ClientTests.test_burst_audit_restores_admission_workers_after_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-a31/scripts/demos/app_demo_test.py", line 70, in test_burst_audit_restores_admission_workers_after_failure
+    self.assertEqual(changes, [('matcher', 0), ('reconciler', 0), ('drain', 0), ('audit', 0), ('matcher', 2), ('reconciler', 1)])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [('ma[28 chars]), ('audit', 0), ('matcher', 2), ('reconciler', 1)] != [('ma[28 chars]), ('drain', 0), ('audit', 0), ('matcher', 2),[14 chars], 1)]
+
+First differing element 2:
+('audit', 0)
+('drain', 0)
+
+Second list contains 1 additional elements.
+First extra element 5:
+('reconciler', 1)
+
+  [('matcher', 0),
+   ('reconciler', 0),
++  ('drain', 0),
+   ('audit', 0),
+   ('matcher', 2),
+   ('reconciler', 1)]
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.725s
+
+FAILED (failures=1)

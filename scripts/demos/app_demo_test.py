@@ -60,13 +60,14 @@ class ClientTests(unittest.TestCase):
         changes = []
         demo.scale = lambda component, replicas: changes.append((component, replicas))
         demo.check = lambda condition, text: self.assertTrue(condition, text)
+        demo.drain_outbox = lambda: changes.append(('drain', 0))
         def audit():
             changes.append(('audit', 0))
             raise RuntimeError('audit failed')
         demo.invariants = audit
         with self.assertRaisesRegex(RuntimeError, 'audit failed'):
             demo.audit_without_admission()
-        self.assertEqual(changes, [('matcher', 0), ('reconciler', 0), ('audit', 0), ('matcher', 2), ('reconciler', 1)])
+        self.assertEqual(changes, [('matcher', 0), ('reconciler', 0), ('drain', 0), ('audit', 0), ('matcher', 2), ('reconciler', 1)])
 
     def test_missing_broker_counters_are_unknown_not_empty(self):
         self.assertIsNone(app.queue_counts({'name': 'matching.requests'}))
