@@ -5,7 +5,7 @@
 set -uo pipefail
 
 : "${GO_VERSION:?run via make doctor}" "${GOLANGCI_LINT_VERSION:?}" "${KIND_VERSION:?}"
-: "${KUBECTL_VERSION:?}" "${HELM_VERSION:?}" "${OAPI_CODEGEN_VERSION:?}"
+: "${KUBECTL_VERSION:?}" "${HELM_VERSION:?}" "${OAPI_CODEGEN_VERSION:?}" "${OPENAPI_SPEC_VALIDATOR_VERSION:?}"
 : "${KIND_CONFIG:?}" "${MEMINFO:?}" "${PROFILE:?}" "${MIN_AVAILABLE_RAM_GIB:?}"
 
 bad=0
@@ -43,6 +43,11 @@ tool helm "$HELM_VERSION" version --short
 # oapi-codegen runs as `go tool`, so its version is whatever go.mod requires.
 oapi="$(grep -E '^[[:space:]]*github\.com/oapi-codegen/oapi-codegen/v2 ' go.mod 2>/dev/null | semver)"
 report "oapi-codegen" "$OAPI_CODEGEN_VERSION" "$oapi"
+
+# openapi-spec-validator: a Python package (verify-A0.1), so ask Python which version is installed.
+osv="$(python3 -c 'import importlib.metadata as m; print(m.version("openapi-spec-validator"))' 2>/dev/null | semver)"
+report "openapi-spec-validator" "$OPENAPI_SPEC_VALIDATOR_VERSION" "$osv"
+[ -n "$osv" ] || printf '          %-14s pip3 install --user --break-system-packages openapi-spec-validator==%s\n' "" "$OPENAPI_SPEC_VALIDATOR_VERSION"
 
 versions_bad="$bad"
 
