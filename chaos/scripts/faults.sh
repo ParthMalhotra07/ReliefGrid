@@ -12,7 +12,7 @@
 #
 # Environment: DELAY_MS (300), DELAY_JITTER_MS (50), DELAY_SECONDS (25), DELAY_LEAD_SECONDS (5),
 # DELAY_ISOLATE_MS (150), DELAY_ISOLATE_JITTER_MS (30),
-# QUORUM_SECONDS (20), WORKER_SECONDS (30), WORKER_BACK_SECONDS (240), COORDINATOR_DOWN_SECONDS (10).
+# QUORUM_SECONDS (20), WORKER_SECONDS (30), WORKER_BACK_SECONDS (240), COORDINATOR_DOWN_SECONDS (30).
 
 DELAY_MS="${DELAY_MS:-300}"
 DELAY_JITTER_MS="${DELAY_JITTER_MS:-50}"
@@ -30,8 +30,11 @@ WORKER_SECONDS="${WORKER_SECONDS:-30}"
 WORKER_BACK_SECONDS="${WORKER_BACK_SECONDS:-240}"
 # restart-coordinator holds the coordinator at zero replicas for GRACE_SECONDS plus this, so
 # the judge has an interval after the grace to observe (a bare pod delete healed in 859 ms,
-# inside the 2 s grace, and was judged on nothing).
-COORDINATOR_DOWN_SECONDS="${COORDINATOR_DOWN_SECONDS:-10}"
+# inside the 2 s grace, and was judged on nothing). 30 s, not 10: every client call goes
+# through the coordinator and waits out coordclient's 5 s timeout while it is down, so two
+# readers make ~0.7 reads/s over all three shards; 10 s after the grace gave 4/2/1 reads per
+# shard (measured, S4.3), under the judge's 3.
+COORDINATOR_DOWN_SECONDS="${COORDINATOR_DOWN_SECONDS:-30}"
 stopped_node=""        # a kind node this run stopped and has not started again
 scaled_coordinator=""  # the coordinator's replica count, while this run holds it at zero
 
