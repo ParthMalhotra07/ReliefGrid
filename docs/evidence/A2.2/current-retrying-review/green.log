@@ -1,0 +1,4 @@
+=== RUN   TestRetrySCH08CurrentRetryingRejectsConfirmAndReachesFixtureFinalState
+--- PASS: TestRetrySCH08CurrentRetryingRejectsConfirmAndReachesFixtureFinalState (0.17s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	1.249s
