@@ -120,7 +120,7 @@ class Demo:
 
     def resource_body(self, name, kind='MEDICINE', location=None, expired=False):
         start, end = (-120, -60) if expired else (-1, 120)
-        stamp = lambda minutes: (self.now + dt.timedelta(minutes=minutes)).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+        stamp = lambda minutes: (self.now + dt.timedelta(minutes=minutes)).isoformat(timespec='seconds').replace('+00:00', 'Z')
         return dict(resourceType=kind, name='Synthetic demo ' + name, location=location or self.location(),
                     windowStart=stamp(start), windowEnd=stamp(end), reusable=True)
 
@@ -243,8 +243,8 @@ class Demo:
         self.check({r['resourceId'] for r in listing()['items']} == {r['resourceId'] for r in before['items']}, 'invalid registrations create no resources')
         changed = self.api.call('PUT', '/resources/' + entity_id + '/status', {200}, dict(status='OFFLINE'))[0]
         self.check(changed['version'] != created['version'] and changed['status'] == 'OFFLINE', 'status update persists at a different opaque version')
-        update = dict(windowStart=(self.now + dt.timedelta(minutes=30)).isoformat(timespec='milliseconds').replace('+00:00', 'Z'),
-                      windowEnd=(self.now + dt.timedelta(minutes=90)).isoformat(timespec='milliseconds').replace('+00:00', 'Z'))
+        update = dict(windowStart=(self.now + dt.timedelta(minutes=30)).isoformat(timespec='seconds').replace('+00:00', 'Z'),
+                      windowEnd=(self.now + dt.timedelta(minutes=90)).isoformat(timespec='seconds').replace('+00:00', 'Z'))
         changed = self.api.call('PUT', '/resources/' + entity_id + '/status', {200}, update)[0]
         self.check(all(changed[k] == v for k, v in update.items()), 'partial availability update persists')
         for invalid in [dict(status='ASSIGNED'), dict(status='CONSUMED'), dict(windowStart=update['windowEnd'], windowEnd=update['windowStart'])]:
