@@ -1,0 +1,136 @@
+# S4.3 #40 coordinator NetworkPolicy (verify-storage-k8s.sh steps 2 and 5a)
+result:     PASSED (16/16 checks)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-11-01T07:32:40Z
+code tree:  7735c48c6691 (same fingerprint as the S1.5 evidence)
+code dirty: no
+
+## checks
+PASS  coordinator networkpolicy: rendered
+PASS  coordinator networkpolicy: selects the coordinator pod
+PASS  coordinator networkpolicy: policyTypes Ingress and Egress
+PASS  coordinator networkpolicy: ingress only to 8080/TCP
+PASS  coordinator networkpolicy: ingress only from storage pods and pods labelled coordinator-client, chaos or storage-operator (this namespace)
+PASS  coordinator networkpolicy: egress only to storage pods on 8080/TCP and kube-dns on 53
+PASS  coordinator networkpolicy: installed
+PASS  coordinator networkpolicy: an unlabelled pod cannot connect to storage-coordinator.reliefgrid.svc.cluster.local:8080
+PASS  coordinator networkpolicy: a coordinator-client pod connects to storage-coordinator.reliefgrid.svc.cluster.local:8080
+PASS  coordinator networkpolicy: an unlabelled pod's routed write fails (no ring)
+PASS  coordinator networkpolicy: a coordinator-client pod's routed writes are acknowledged (3 acknowledged)
+PASS  coordinator networkpolicy: a chaos-labelled Job's routed writes are acknowledged (3 acknowledged)
+PASS  coordinator networkpolicy: kubectl port-forward to Service storage-coordinator still connects
+PASS  coordinator networkpolicy: GET /internal/ring through the port-forward answers 200
+PASS  coordinator networkpolicy: storage heartbeats still arrive (all 9 nodes UP)
+PASS  coordinator networkpolicy: storage-coordinator-76f478cbcf-c6pb8 Ready with 0 restarts (kubelet probes on /healthz pass)
+
+## networkpolicy storage-coordinator .spec, as installed during step 5a
+{
+  "egress": [
+    {
+      "ports": [
+        {
+          "port": 8080,
+          "protocol": "TCP"
+        }
+      ],
+      "to": [
+        {
+          "podSelector": {
+            "matchLabels": {
+              "app.kubernetes.io/component": "storagenode",
+              "app.kubernetes.io/name": "storage"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "ports": [
+        {
+          "port": 53,
+          "protocol": "UDP"
+        },
+        {
+          "port": 53,
+          "protocol": "TCP"
+        }
+      ],
+      "to": [
+        {
+          "namespaceSelector": {
+            "matchLabels": {
+              "kubernetes.io/metadata.name": "kube-system"
+            }
+          },
+          "podSelector": {
+            "matchLabels": {
+              "k8s-app": "kube-dns"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "ingress": [
+    {
+      "from": [
+        {
+          "podSelector": {
+            "matchLabels": {
+              "app.kubernetes.io/component": "storagenode",
+              "app.kubernetes.io/name": "storage"
+            }
+          }
+        },
+        {
+          "podSelector": {
+            "matchLabels": {
+              "reliefgrid.io/coordinator-client": "true"
+            }
+          }
+        },
+        {
+          "podSelector": {
+            "matchLabels": {
+              "reliefgrid.io/chaos": "true"
+            }
+          }
+        },
+        {
+          "podSelector": {
+            "matchLabels": {
+              "reliefgrid.io/storage-operator": "true"
+            }
+          }
+        }
+      ],
+      "ports": [
+        {
+          "port": 8080,
+          "protocol": "TCP"
+        }
+      ]
+    }
+  ],
+  "podSelector": {
+    "matchLabels": {
+      "app.kubernetes.io/component": "coordinator",
+      "app.kubernetes.io/name": "storage"
+    }
+  },
+  "policyTypes": [
+    "Ingress",
+    "Egress"
+  ]
+}
+
+## probe pod output
+### cnp-open (labels 'none', exit class 1)
+storagectl: storagectl: dial storage-coordinator.reliefgrid.svc.cluster.local:8080: dial tcp 10.96.12.125:8080: i/o timeout
+### cnp-client-dial (labels 'reliefgrid.io/coordinator-client=true', exit class 0)
+### cnp-open-load (labels 'none', exit class 1)
+invcheck: coordinator http://storage-coordinator.reliefgrid.svc.cluster.local:8080: coordclient: load ring: Get "http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/ring": context deadline exceeded
+### cnp-client-load (labels 'reliefgrid.io/coordinator-client=true', exit class 0)
+ledger /tmp/l.json: 3 acknowledged, 0 unknown, 0 rejected
+### Job cnp-chaos (reliefgrid.io/chaos=true)
+ledger /tmp/l.json: 3 acknowledged, 0 unknown, 0 rejected
