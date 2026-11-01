@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -36,8 +37,22 @@ func (t *txn) apply(entry []byte) (store.Result, error) {
 	}
 	if found {
 		if hash != cmd.hash {
-			return store.Result{Outcome: store.OutcomeOperationIDReuse, OperationID: id, Key: stored.Key,
-				Reason: "operationId already used with a different payload", AppliedIndex: t.index}, nil
+			// An outbox envelope's traceparent is not part of an operation's
+			// identity: a retry may carry a new trace. The stored hash stays
+			// the full-body hash (so old logs and snapshots are unchanged), and
+			// a mismatch is re-checked against the traceparents this operation
+			// committed in its outbox rows. This depends on committed outbox
+			// rows being permanent and never rewritten: any future outbox
+			// retention or compaction must keep or migrate them (enforced by
+			// TestFSMNeverDeletesOrRewritesOutboxRows).
+			same, err := t.traceOnlyRetry(cmd, hash)
+			if err != nil {
+				return store.Result{}, err
+			}
+			if !same {
+				return store.Result{Outcome: store.OutcomeOperationIDReuse, OperationID: id, Key: stored.Key,
+					Reason: "operationId already used with a different payload", AppliedIndex: t.index}, nil
+			}
 		}
 		stored.Replayed = true
 		return stored, nil
@@ -62,6 +77,51 @@ func (t *txn) apply(entry []byte) (store.Result, error) {
 		return store.Result{}, fmt.Errorf("store result: %w", err)
 	}
 	return res, nil
+}
+
+// traceOnlyRetry reports whether cmd hashes to stored once each outbox
+// event's top-level envelope traceparent is replaced by the value committed
+// in that event's outbox row. A match proves cmd differs from the stored
+// operation only in those traceparent values, wherever the substituted value
+// came from. It reads only committed state in this transaction, so every
+// replica decides the same. A rejection wrote no outbox rows, so its
+// trace-only retry stays OPERATION_ID_REUSED (documented limitation).
+func (t *txn) traceOnlyRetry(cmd command, stored string) (bool, error) {
+	events := outboxOf(cmd.body)
+	if events == nil || len(*events) == 0 {
+		return false, nil
+	}
+	orig := *events
+	retraced := make([]store.OutboxEvent, len(orig))
+	for i, ev := range orig {
+		var row string
+		err := t.tx.QueryRowContext(t.ctx, `SELECT event FROM outbox WHERE event_id = ?`, ev.EventID).Scan(&row)
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("read outbox %q: %w", ev.EventID, err)
+		}
+		var committed store.OutboxEvent
+		if err := json.Unmarshal([]byte(row), &committed); err != nil {
+			return false, fmt.Errorf("decode outbox %q: %w", ev.EventID, err)
+		}
+		f, ok := traceparentField(committed.Payload)
+		if !ok {
+			return false, nil
+		}
+		if ev.Payload, ok = withTraceparent(ev.Payload, f.value); !ok {
+			return false, nil
+		}
+		retraced[i] = ev
+	}
+	*events = retraced
+	h, err := payloadHash(cmd.op, cmd.body)
+	*events = orig
+	if err != nil {
+		return false, err
+	}
+	return h == stored, nil
 }
 
 func (t *txn) dispatch(body any) (store.Result, error) {
