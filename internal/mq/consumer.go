@@ -16,8 +16,11 @@ import (
 // reread proves no work remains). Unknown outcomes must remain errors. Handle
 // must honor its context and use idempotent committed workflow operations.
 type Consumer struct {
-	Store       store.Store
-	Handle      func(context.Context, store.Record) error
+	Store  store.Store
+	Handle func(context.Context, store.Record) error
+	// Retry is optional: nil preserves leave-unacknowledged/reconnect behaviour.
+	// It may return nil only after a confirmed persistent delayed handoff.
+	Retry       func(context.Context, amqp.Delivery) error
 	CallTimeout time.Duration
 	WorkTimeout time.Duration
 }
@@ -47,8 +50,9 @@ func (c Consumer) timeouts() (time.Duration, time.Duration) {
 }
 
 // Process disposes one delivery. A malformed event is rejected into the DLX.
-// A valid event's read/handler error leaves it unacknowledged: the caller must
-// stop this channel, then back off before reconnecting, never nack-loop it.
+// A valid event's failed read/handler may hand off the same hint through Retry.
+// Without a successful confirmed handoff it stays unacknowledged: stop the
+// channel and back off before reconnecting, never nack-loop it.
 func (c Consumer) Process(ctx context.Context, d amqp.Delivery) error {
 	if err := c.validate(); err != nil {
 		return err
@@ -83,7 +87,7 @@ func (c Consumer) Process(ctx context.Context, d amqp.Delivery) error {
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("read current request for event %s: %w", e.EventID, err)
+		return c.deferDelivery(ctx, d, fmt.Errorf("read current request for event %s: %w", e.EventID, err))
 	}
 	if rec.Request == nil {
 		return fmt.Errorf("event %s has no current request", e.EventID)
@@ -93,7 +97,7 @@ func (c Consumer) Process(ctx context.Context, d amqp.Delivery) error {
 		// This delivery's matching work is already superseded. No claim action.
 	default:
 		if err := c.Handle(ctx, rec); err != nil {
-			return fmt.Errorf("durable event handoff %s: %w", e.EventID, err)
+			return c.deferDelivery(ctx, d, fmt.Errorf("durable event handoff %s: %w", e.EventID, err))
 		}
 	}
 	if err := ctx.Err(); err != nil {

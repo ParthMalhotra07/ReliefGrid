@@ -242,7 +242,12 @@ type brokerAdmin struct{ endpoint, user, password, vhost string }
 
 func isolatedBroker(t *testing.T) (context.Context, *amqp.Connection, brokerAdmin) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	return isolatedBrokerWithTimeout(t, 30*time.Second)
+}
+
+func isolatedBrokerWithTimeout(t *testing.T, budget time.Duration) (context.Context, *amqp.Connection, brokerAdmin) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), budget)
 	t.Cleanup(cancel)
 	amqpURL := os.Getenv("MQ_AMQP_URL")
 	endpoint := os.Getenv("MQ_MANAGEMENT_URL")

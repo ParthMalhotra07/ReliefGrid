@@ -10,7 +10,7 @@ default authoritative scanner is safe.
 MATCHING intent, claims the resource, verifies current ownership and confirms the
 exact request version/attempt. Confirmation writes `match.completed` atomically.
 Intent creation writes `match.proposed`. A negative complete authoritative scan
-writes WAITING, a five-second due time and `request.retry` to the outbox together.
+writes WAITING, a tiered due time and `request.retry` to the outbox together.
 
 Scans retain only the nearest three eligible resources, ordered by Haversine
 distance and then ID. Selection hashes the configured seed, request key and
@@ -53,11 +53,10 @@ intent and returns an error.
 
 Callers must not acknowledge errors. MATCHED and IGNORED describe current committed
 state; NO_CANDIDATE includes a committed retry handoff, and DEFERRED describes an
-existing future WAITING schedule. RETRYING still returns ErrNeedsRecovery
-without clearing the intent. CANCELLING/FULFILLING resume the bounded A2.1
-cleanup below; state-aware retries, periodic reconciliation and the complete
-adversarial suite remain A2.2–A2.4. RabbitMQ publication and
-deployment remain A1.3–A1.5; this goal does not run the real cluster path.
+existing future schedule in any work state. RETRYING resumes exact-attempt
+closure before WAITING; CANCELLING/FULFILLING resume the bounded A2.1 cleanup
+below. Periodic reconciliation and the complete cluster adversarial suite remain
+A2.3–A2.4; the focused goal verifier uses the real in-memory FSM and a live broker.
 
 Outbox envelopes carry a deterministic, unsampled root traceparent for retry
 stability. End-to-end tracing and propagation belong to the later tracing work.
@@ -94,3 +93,31 @@ intent intact. A recorded closure cannot release a later different owner. The
 helper does not start background scans or consume matching.wakeups; those remain
 A2.4. Run make verify-A2.1 for the real-FSM fault/barrier cases, frozen schema
 validation and API protections. make check runs it in CI via the shared Makefile.
+
+## State-aware retries [A2.2]
+
+Production consumers call Handle, which performs Match and, after an unresolved
+error, attempts an exact-version RetryWorkflow. This commits nextAttemptAt and
+request.retry together without changing status, intent or cleanup disposition.
+The first business retry uses 5s, the second 30s, and subsequent retries 120s.
+Future due times deduplicate old hints in all work states. Due WAITING with no
+candidates uses RetryWorkflow because WAITING -> WAITING is not a domain transition.
+A partial shard scan preserves its incomplete status; it never becomes NO_CANDIDATE.
+
+Unknown claim outcomes retain the attempt and reconstruct the same TryClaim
+operation ID and payload after retry metadata changes or process restart.
+Abandon first CASes the exact MATCHING version/attempt to RETRYING, then closes
+only that attempt, reads its permanent closure, and finally CASes to WAITING.
+A confirmer that wins first is never cleaned up; when RETRYING wins the old
+confirmation loses its exact CAS. The stored RETRYING version supplies stable
+closure inputs; an expired availability window selects OFFLINE. A later helper
+accepts the first exact closure and never changes its disposition.
+
+If no workflow handoff can commit, Handle returns an error. Production then
+uses the separately confirmed durable transport handoff described in mq/README.md;
+it does not invent a successful domain result. Broker retry counts and persisted
+business retryCount remain separate. Background due scans, resource wakeups,
+and broad real-cluster crash schedules remain A2.3/A2.4.
+
+Run make verify-A2.2. docs/evidence/A2.2 records fault/barrier tests, live recovery
+after 25 transport failures, unroutable publishing, and a lost-confirm duplicate.

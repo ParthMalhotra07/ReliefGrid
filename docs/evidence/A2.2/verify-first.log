@@ -1,0 +1,41 @@
+bash scripts/verify-A2.2.sh
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	2.661s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	1.404s
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+=== RUN   TestRetryTransportIntegrationSurvives25TransientFailures
+2026/10/31 08:58:20 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths=<nil>
+2026/10/31 08:58:25 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:58:25 +0000 UTC]]"
+2026/10/31 08:58:30 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:58:30 +0000 UTC]]"
+2026/10/31 08:58:35 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:58:35 +0000 UTC]]"
+2026/10/31 08:58:40 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:58:40 +0000 UTC]]"
+2026/10/31 08:58:46 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:58:45 +0000 UTC]]"
+2026/10/31 08:58:51 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:58:51 +0000 UTC]]"
+2026/10/31 08:58:56 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:58:56 +0000 UTC]]"
+2026/10/31 08:59:01 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:01 +0000 UTC]]"
+2026/10/31 08:59:06 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:06 +0000 UTC]]"
+2026/10/31 08:59:11 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:11 +0000 UTC]]"
+2026/10/31 08:59:16 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:16 +0000 UTC]]"
+2026/10/31 08:59:21 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:21 +0000 UTC]]"
+2026/10/31 08:59:26 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:26 +0000 UTC]]"
+2026/10/31 08:59:31 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:31 +0000 UTC]]"
+2026/10/31 08:59:36 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:36 +0000 UTC]]"
+2026/10/31 08:59:41 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:41 +0000 UTC]]"
+2026/10/31 08:59:46 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:46 +0000 UTC]]"
+2026/10/31 08:59:51 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:51 +0000 UTC]]"
+2026/10/31 08:59:56 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 08:59:56 +0000 UTC]]"
+2026/10/31 09:00:02 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 09:00:01 +0000 UTC]]"
+2026/10/31 09:00:07 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 09:00:07 +0000 UTC]]"
+2026/10/31 09:00:12 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 09:00:12 +0000 UTC]]"
+2026/10/31 09:00:17 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 09:00:17 +0000 UTC]]"
+2026/10/31 09:00:22 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=<nil> brokerDeaths="[map[count:1 exchange:relief.retry queue:retry.5s reason:expired routing-keys:[delay.5s] time:2026-10-31 09:00:22 +0000 UTC]]"
+    retry_integration_test.go:162: readFailures=13 handoffFailures=12 confirmedDeferrals=25 deliveryLimit=20 businessRetryCount=1; healthy work recovered after >20 failures
+--- PASS: TestRetryTransportIntegrationSurvives25TransientFailures (127.72s)
+=== RUN   TestRetryTransportIntegrationUnroutableRetainsOriginal
+    retry_integration_test.go:203: mandatory NO_ROUTE leaves original unacknowledged and redeliverable
+--- PASS: TestRetryTransportIntegrationUnroutableRetainsOriginal (0.32s)
+=== RUN   TestRetryTransportIntegrationLostConfirmIsDuplicateSafe
+    retry_integration_test.go:274: lost confirm preserves original plus delayed copy; both hints produce one durable business retry
+--- PASS: TestRetryTransportIntegrationLostConfirmIsDuplicateSafe (5.68s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	134.786s
+A2.2 VERIFY: ALL PASS

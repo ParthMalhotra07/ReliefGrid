@@ -1,0 +1,6 @@
+=== RUN   TestRetryRepeatedNoCandidateUsesAllBoundedTiers
+    retry_test.go:328: due no-candidate pass 2: {Outcome: ResourceID: NextAttemptAt:0} workflow transition rejected with DOMAIN_CONFLICT: illegal transition WAITING -> WAITING
+--- FAIL: TestRetryRepeatedNoCandidateUsesAllBoundedTiers (0.07s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	0.113s
+FAIL

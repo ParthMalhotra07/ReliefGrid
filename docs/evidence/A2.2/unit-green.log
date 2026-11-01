@@ -1,0 +1,59 @@
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/PENDING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/WAITING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/MATCHING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/RETRYING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/CANCELLING
+=== RUN   TestRetryStateAwareSchedulePreservesAllWorkStates/FULFILLING
+--- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates (0.49s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/PENDING (0.06s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/WAITING (0.08s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/MATCHING (0.08s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/RETRYING (0.09s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/CANCELLING (0.10s)
+    --- PASS: TestRetryStateAwareSchedulePreservesAllWorkStates/FULFILLING (0.07s)
+=== RUN   TestRetryUnknownClaimKeepsIntentAndExactCommand
+=== RUN   TestRetryUnknownClaimKeepsIntentAndExactCommand/before_commit
+=== RUN   TestRetryUnknownClaimKeepsIntentAndExactCommand/lost_response
+--- PASS: TestRetryUnknownClaimKeepsIntentAndExactCommand (0.19s)
+    --- PASS: TestRetryUnknownClaimKeepsIntentAndExactCommand/before_commit (0.09s)
+    --- PASS: TestRetryUnknownClaimKeepsIntentAndExactCommand/lost_response (0.10s)
+=== RUN   TestRetryRetargetFencesConfirmation
+=== RUN   TestRetryRetargetFencesConfirmation/confirmation_first
+=== RUN   TestRetryRetargetFencesConfirmation/RETRYING_first
+--- PASS: TestRetryRetargetFencesConfirmation (0.16s)
+    --- PASS: TestRetryRetargetFencesConfirmation/confirmation_first (0.08s)
+    --- PASS: TestRetryRetargetFencesConfirmation/RETRYING_first (0.09s)
+=== RUN   TestRetryUnknownClosureNeverClearsAttempt
+--- PASS: TestRetryUnknownClosureNeverClearsAttempt (0.08s)
+=== RUN   TestRetryDroppedScheduleResponseReplaysIdenticalCommand
+--- PASS: TestRetryDroppedScheduleResponseReplaysIdenticalCommand (0.08s)
+=== RUN   TestRetryBrokerDownLeavesIntentAndOutboxPending
+--- PASS: TestRetryBrokerDownLeavesIntentAndOutboxPending (0.08s)
+=== RUN   TestRetryRepeatedNoCandidateUsesAllBoundedTiers
+--- PASS: TestRetryRepeatedNoCandidateUsesAllBoundedTiers (0.15s)
+=== RUN   TestRetryIncompleteScanSchedulesWithoutNoCandidateOrIntent
+--- PASS: TestRetryIncompleteScanSchedulesWithoutNoCandidateOrIntent (0.07s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	2.338s
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirmed
+2026/10/31 08:50:08 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=19 brokerDeaths=<nil>
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_mandatory_publish_returned
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_publisher_confirm_rejected
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirm_lost
+--- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload (0.24s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirmed (0.06s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_mandatory_publish_returned (0.06s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_publisher_confirm_rejected (0.06s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirm_lost (0.06s)
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/poison
+2026/10/31 08:50:08 WARN rejected malformed matching event messageId="" error="invalid character 'p' looking for beginning of value"
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/absent
+2026/10/31 08:50:08 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+--- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence (0.10s)
+    --- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/poison (0.05s)
+    --- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/absent (0.05s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	1.387s

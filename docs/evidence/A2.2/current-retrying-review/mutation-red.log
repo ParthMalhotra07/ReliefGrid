@@ -1,0 +1,6 @@
+=== RUN   TestRetrySCH08CurrentRetryingRejectsConfirmAndReachesFixtureFinalState
+    retry_current_state_test.go:31: outcome = {Outcome:OK OperationID:sch08-current-retrying-confirm Key:req:550e8400-e29b-41d4-a716-446655440000 Version:4 Reason: Replayed:false Shard:0 AppliedIndex:5}, <nil>; want DOMAIN_CONFLICT
+--- FAIL: TestRetrySCH08CurrentRetryingRejectsConfirmAndReachesFixtureFinalState (0.08s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	0.123s
+FAIL

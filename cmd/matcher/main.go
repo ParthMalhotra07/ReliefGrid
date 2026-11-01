@@ -51,7 +51,8 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) err
 	if err != nil {
 		return err
 	}
-	c := mq.Consumer{Store: s, Handle: func(ctx context.Context, rec store.Record) error { _, err := m.Match(ctx, rec.Request.ID); return err }}
+	transportRetry := mq.TransportRetry{PublisherFactory: func(ctx context.Context) (mq.RetryPublisher, error) { return mq.NewPublisher(ctx, amqpURL) }}
+	c := mq.Consumer{Store: s, Handle: func(ctx context.Context, rec store.Record) error { return m.Handle(ctx, rec.Request.ID) }, Retry: transportRetry.Retry}
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", healthAddress)
 	if err != nil {
 		return fmt.Errorf("matcher health listen: %w", err)
@@ -77,8 +78,8 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) err
 }
 
 // A failed handoff remains unacked. Closing its dedicated connection requeues
-// it, and bounded reconnect backoff avoids a tight redelivery loop. Business
-// cleanup and state-aware recovery remain with A2.2/reconcilers.
+// it, and bounded reconnect backoff avoids a tight redelivery loop. Successful
+// retry handoffs are acknowledged; periodic reconciliation remains A2.4.
 func consume(ctx context.Context, address string, c mq.Consumer, state *healthState) error {
 	defer state.consumerConnected.Store(false)
 	backoff := 100 * time.Millisecond
