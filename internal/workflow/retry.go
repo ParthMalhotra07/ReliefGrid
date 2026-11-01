@@ -153,7 +153,7 @@ func (m *Matcher) abandon(ctx context.Context, rec store.Record) (Result, error)
 	if a == nil {
 		return Result{}, ErrNeedsRecovery
 	}
-	cmd := transition(rec, store.RequestRetrying, m.cfg.Now().UnixMilli())
+	cmd := transition(rec, store.RequestRetrying, rec.UpdatedAt)
 	cmd.OperationID = transitionID(cmd)
 	cmd.Outbox, err = cleanupEvent(rec, cmd)
 	if err != nil {
@@ -213,7 +213,7 @@ func (m *Matcher) retrying(ctx context.Context, rec store.Record) (Result, error
 			return Result{}, ErrOwnershipUnknown
 		}
 	}
-	at := m.cfg.Now().UnixMilli()
+	at := rec.UpdatedAt
 	cmd := transition(rec, store.RequestWaiting, at)
 	cmd.NextAttemptAt = at + retryDelay(rec.Request.RetryCount)
 	cmd.LastError = "ATTEMPT_CLOSED"
