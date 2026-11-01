@@ -40,6 +40,10 @@
 //	                       FROM+--grace, default 2s, to TO).
 //	invcheck ring --coordinator URL
 //	                       print the ring the coordinator serves, as JSON.
+//	invcheck judge --input FILE|-
+//	                       the S4.3 chaos pass criteria (chaos/judge) over one
+//	                       run's observations; no coordinator. Exit 0 passed,
+//	                       1 failed, 2 no verdict.
 //	invcheck inject --coordinator URL --ledger FILE --confirm
 //	                       chaos build only (go build -tags chaos, the tools
 //	                       image): overwrite one acknowledged write so that a
@@ -99,7 +103,7 @@ type command struct {
 var commands = map[string]*command{}
 
 func usage(stderr io.Writer) int {
-	names := "check|load|verify|ring"
+	names := "check|load|verify|ring|judge"
 	for name := range commands {
 		names += "|" + name
 	}
@@ -110,6 +114,9 @@ func usage(stderr io.Writer) int {
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) < 1 {
 		return usage(stderr)
+	}
+	if args[0] == "judge" {
+		return judgeCmd(args[1:], os.Stdin, stdout, stderr)
 	}
 	extra := commands[args[0]]
 	switch args[0] {
