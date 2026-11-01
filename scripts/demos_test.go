@@ -376,9 +376,8 @@ func TestResetRefusesWithoutConfirmation(t *testing.T) {
 	}
 }
 
-// Parth's demos (A3.1) are stubs that say so: NOT IMPLEMENTED, with the §28
-// acceptance condition in the header for whoever fills in the body.
-func TestDemoStubs(t *testing.T) {
+// App demos fail closed without their deployment, retaining the §28 acceptance headers.
+func TestAppDemosRequireDeployment(t *testing.T) {
 	for n, accept := range map[int]string{
 		2: "Resource persists with validated state and location",
 		3: "reciprocal assignment; no double claim",
@@ -394,10 +393,10 @@ func TestDemoStubs(t *testing.T) {
 			}
 			root := t.TempDir()
 			out, code := runScript(t, "", []string{"EVIDENCE_ROOT=" + root, "DEMO_RUN_ID=r", "KUBE_CONTEXT=no-such-context"}, script)
-			if code != exitNotImplemented {
-				t.Fatalf("exit %d, want NOT IMPLEMENTED (%d)\n%s", code, exitNotImplemented, out)
+			if code != exitFail {
+				t.Fatalf("exit %d, want FAIL (%d)\n%s", code, exitFail, out)
 			}
-			if ev := readFile(t, filepath.Join(root, "r", fmt.Sprintf("demo-%d.txt", n))); !strings.Contains(ev, "result:     NOT IMPLEMENTED") {
+			if ev := readFile(t, filepath.Join(root, "r", fmt.Sprintf("demo-%d.txt", n))); !strings.Contains(ev, "result:     FAIL") {
 				t.Fatalf("evidence:\n%s", ev)
 			}
 		})

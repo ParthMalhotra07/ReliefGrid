@@ -18,9 +18,10 @@
 #     /internal/data/res:<id>) has the validated state and location.
 #
 # Seed/reset: write it with demo_reset; start from the gate's clean deployment (reset.sh).
-# Fill in the body below with lib.sh (run, check, pass, fail, demo_end); see demo-4.sh for a
-# worked example. Until then this demo reports NOT IMPLEMENTED, which the gate counts as a
-# failure.
+# Executed through app.sh and app_demo.py. The shared report retains the seed,
+# assertions, inputs, HTTP outcomes and bounded recovery observations.
 . "$(dirname "$0")/lib.sh"
 demo_begin 2 "Register a resource, list it, update its availability and status"
-demo_not_implemented "owner A, goal A3.1"
+# Shared preflight and durable evidence wrap the executable application assertions.
+. "$(dirname "$0")/app.sh"
+app_demo 2

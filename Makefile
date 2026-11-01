@@ -223,3 +223,10 @@ verify-A2.4: ## Verify paged recovery, wakeup acknowledgement and live fixed-TTL
 
 verify-A2.4-cluster: ## Kill test matcher workers at committed boundaries and audit recovery
 	bash scripts/verify-A2.4-cluster.sh
+
+.PHONY: verify-A3.1-static verify-A3.1
+verify-A3.1-static: ## App demo client, failure propagation and rendered toleration regressions
+	bash scripts/verify-A3.1.sh --static
+
+verify-A3.1: ## Clean deployment and app demos 2/3/5/8/9, twice (scoped kind reset)
+	bash scripts/verify-A3.1.sh --live

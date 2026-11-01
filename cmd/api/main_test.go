@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -62,6 +63,13 @@ func TestRunServesRealFSMAndStops(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = response.Body.Close() }()
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := response.Header.Get("X-ReliefGrid-Pod"); got != hostname {
+		t.Errorf("served pod %q, want %q", got, hostname)
+	}
 	var body struct {
 		ID string `json:"requestId"`
 	}
