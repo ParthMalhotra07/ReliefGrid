@@ -1,0 +1,13 @@
+=== RUN   TestRelayReplicasDeriveIdenticalCanonicalBatchCommands
+    review_test.go:44: two replicas changed canonical batch identity: left=[{Meta:{OperationID:9fd2b617-e6f7-4693-b8a5-279f83047148 At:1793437465035} Shard:0 EventIDs:[c4140371-2211-4847-a5d8-08d0268c5ad6 f47b7a9a-a73e-4e6e-8b3f-6a48ed8d4f07 5d1b2a3d-7814-491a-b245-159e913b6e81]}] right=[{Meta:{OperationID:14cca450-851f-4b7c-a2a0-d5451d15438a At:1793437465038} Shard:0 EventIDs:[5d1b2a3d-7814-491a-b245-159e913b6e81 f47b7a9a-a73e-4e6e-8b3f-6a48ed8d4f07 c4140371-2211-4847-a5d8-08d0268c5ad6]}]
+--- FAIL: TestRelayReplicasDeriveIdenticalCanonicalBatchCommands (0.07s)
+=== RUN   TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows
+=== RUN   TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/nack
+=== RUN   TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/invalid_urgency
+    review_test.go:70: per-row failure stalled later work: report={Read:3 Published:0 Marked:0} calls=1 err=event 39d6d6d5-44a6-4a81-9bfb-21341d07864c: invalid event urgency: "BROKEN"
+--- FAIL: TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows (0.12s)
+    --- PASS: TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/nack (0.06s)
+    --- FAIL: TestRelayNackAndInvalidUrgencyDoNotBlockLaterRows/invalid_urgency (0.06s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	0.246s
+FAIL
