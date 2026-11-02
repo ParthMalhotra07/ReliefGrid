@@ -1,0 +1,5 @@
+17:04:29 restart-shard: plan {"experiment":"restart-shard","seed":433,"shard":1,"role":"all","pick":0,"faultDelayMs":13379,"loadSeconds":164,"settleMaxSeconds":120,"prefix":"chaos-restart-shard-s433","workers":4,"keys":4,"intervalMs":50}
+17:04:30 target storage-shard-1-0 (all, term 13)
+17:04:32 load running since 2026-11-01T11:34:31Z; fault in 13379ms
+17:04:50 fault shard-restart on storage-shard-1-0: 5s; recovery storage-shard-1-2 term 14
+17:07:50 PASSED: report docs/evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/restart-shard.json

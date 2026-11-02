@@ -1,0 +1,399 @@
+{
+  "experiment": "lose-quorum",
+  "seed": 437,
+  "runId": "lose-quorum-s437-1793533481",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "lose-quorum",
+    "seed": 437,
+    "shard": 2,
+    "role": "all",
+    "pick": 0,
+    "faultDelayMs": 12622,
+    "loadSeconds": 123,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-lose-quorum-s437",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 2,
+    "pod": "storage-shard-2-1",
+    "serverId": "storage-shard-2-1/259a9e34-d311-410b-87d0-0f152e4f1b88",
+    "role": "all",
+    "term": 5
+  },
+  "fault": {
+    "kind": "quorum-loss",
+    "mechanism": "Chaos Mesh NetworkChaos: every replica of the shard partitioned from the other two",
+    "startedAt": 1793533495764,
+    "healedAt": 1793533515801
+  },
+  "recovery": {
+    "leader": "storage-shard-2-2",
+    "term": 6,
+    "seconds": 21.8
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793533610179,
+    "seconds": 0.9,
+    "ok": true,
+    "detail": "shard 2 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793533483000,
+    "faultStartedAt": 1793533495764,
+    "faultHealedAt": 1793533515801,
+    "settledAt": 1793533611030,
+    "loadFinishedAt": 1793533606000
+  },
+  "load": {
+    "job": "chaos-load-lose-quorum-s437-1793533481",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 7138,
+    "unknown": 4,
+    "rejected": 0,
+    "ackedDuringFault": 124
+  },
+  "errorsObserved": [
+    {
+      "at": 1793533501339,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w1-op250 chaos-lose-quorum-s437-1793533482-w1-k2 attempt 0: coordclient: 503 OUTCOME_UNKNOWN: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533501376,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w2-op251 chaos-lose-quorum-s437-1793533482-w2-c123 attempt 0: coordclient: 503 OUTCOME_UNKNOWN: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533501434,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w3-op252 chaos-lose-quorum-s437-1793533482-w3-k3 attempt 0: coordclient: 503 OUTCOME_UNKNOWN: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533501489,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w0-op253 chaos-lose-quorum-s437-1793533482-w0-c124 attempt 0: coordclient: 503 OUTCOME_UNKNOWN: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533505361,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w1-op250 chaos-lose-quorum-s437-1793533482-w1-k2 attempt 1: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533505398,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w2-op251 chaos-lose-quorum-s437-1793533482-w2-c123 attempt 1: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533505456,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w3-op252 chaos-lose-quorum-s437-1793533482-w3-k3 attempt 1: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533505510,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w0-op253 chaos-lose-quorum-s437-1793533482-w0-c124 attempt 1: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533509403,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w1-op250 chaos-lose-quorum-s437-1793533482-w1-k2 attempt 2: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533509440,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w2-op251 chaos-lose-quorum-s437-1793533482-w2-c123 attempt 2: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533509498,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w3-op252 chaos-lose-quorum-s437-1793533482-w3-k3 attempt 2: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533509553,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w0-op253 chaos-lose-quorum-s437-1793533482-w0-c124 attempt 2: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533513466,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w1-op250 chaos-lose-quorum-s437-1793533482-w1-k2 attempt 3: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533513502,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w2-op251 chaos-lose-quorum-s437-1793533482-w2-c123 attempt 3: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533513560,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w3-op252 chaos-lose-quorum-s437-1793533482-w3-k3 attempt 3: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    },
+    {
+      "at": 1793533513620,
+      "source": "load",
+      "message": "chaos-lose-quorum-s437-1793533482-w0-op253 chaos-lose-quorum-s437-1793533482-w0-c124 attempt 3: coordclient: 503 NO_LEADER: shard 2: no leader answered within 4s (last: storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 2 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    }
+  ],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/lose-quorum-s437-1793533481.json",
+    "job": "chaos-verify-lose-quorum-s437-1793533481",
+    "exitCode": 0,
+    "checked": 7138,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 4,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-lose-quorum-s437-1793533481",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 2 is one caught-up group",
+    "recovery": {
+      "seconds": 21.8,
+      "term": 6,
+      "termBefore": 5,
+      "leader": "storage-shard-2-2"
+    },
+    "isolation": null,
+    "delay": null,
+    "worker": null,
+    "coordinator": null
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "linearizable",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [
+      "2=http://storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:8080",
+      "2=http://storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:8080",
+      "2=http://storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080"
+    ],
+    "verdict": {
+      "total": 11007,
+      "checked": 5878,
+      "unchecked": 3,
+      "failed": 5126,
+      "served": {
+        "linearizable": 5879
+      }
+    },
+    "staleCount": 0,
+    "stale": []
+  },
+  "availability": {
+    "fromMs": 1793533495764,
+    "toMs": 1793533515801,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 273,
+        "acksDuring": 45,
+        "acksAfter": 1963,
+        "acksInsideFault": 5,
+        "readsDuring": 20,
+        "readsServedDuring": 20,
+        "readsServedInsideFault": 4,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 57,
+        "firstAckAfterHealMs": 1046,
+        "writeLatencyMs": {
+          "n": 45,
+          "p50": 4.876461,
+          "p99": 14.157947,
+          "max": 14.157947
+        },
+        "readLatencyMs": {
+          "n": 20,
+          "p50": 2.042083,
+          "p99": 4.485252,
+          "max": 4.485252
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 1,
+        "acksBefore": 249,
+        "acksDuring": 34,
+        "acksAfter": 1804,
+        "acksInsideFault": 1,
+        "readsDuring": 20,
+        "readsServedDuring": 20,
+        "readsServedInsideFault": 4,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 5,
+        "firstAckAfterHealMs": 1056,
+        "writeLatencyMs": {
+          "n": 34,
+          "p50": 4.264853,
+          "p99": 9.156694,
+          "max": 9.156694
+        },
+        "readLatencyMs": {
+          "n": 20,
+          "p50": 2.267189,
+          "p99": 11.561286,
+          "max": 11.561286
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 2,
+        "acksBefore": 362,
+        "acksDuring": 45,
+        "acksAfter": 2363,
+        "acksInsideFault": 0,
+        "readsDuring": 1198,
+        "readsServedDuring": 62,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {
+          "storage-shard-2-0": 389,
+          "storage-shard-2-1": 380,
+          "storage-shard-2-2": 389
+        },
+        "probeServedInsideFault": {},
+        "firstAckAfterFaultMs": 6,
+        "firstAckAfterHealMs": 1166,
+        "writeLatencyMs": {
+          "n": 45,
+          "p50": 4.540973,
+          "p99": 21.681441,
+          "max": 21.681441
+        },
+        "readLatencyMs": {
+          "n": 1198,
+          "p50": 0.845587,
+          "p99": 12.509635,
+          "max": 4002.33339
+        },
+        "errorsDuring": 16
+      }
+    ]
+  },
+  "judge": {
+    "pass": true,
+    "noVerdict": false,
+    "failures": [],
+    "summary": {
+      "acked": 7138,
+      "unknownRaw": 4,
+      "resolved": 0,
+      "notApplied": 4,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 0,
+      "readsTotal": 11007,
+      "readsChecked": 5878,
+      "readsFailed": 5126,
+      "errorCount": 16,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 273,
+          "acksDuring": 45,
+          "acksAfter": 1963,
+          "acksInsideFault": 5,
+          "readsDuring": 20,
+          "readsServedDuring": 20,
+          "readsServedInsideFault": 4,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 57,
+          "firstAckAfterHealMs": 1046,
+          "writeLatencyMs": {
+            "n": 45,
+            "p50": 4.876461,
+            "p99": 14.157947,
+            "max": 14.157947
+          },
+          "readLatencyMs": {
+            "n": 20,
+            "p50": 2.042083,
+            "p99": 4.485252,
+            "max": 4.485252
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 1,
+          "acksBefore": 249,
+          "acksDuring": 34,
+          "acksAfter": 1804,
+          "acksInsideFault": 1,
+          "readsDuring": 20,
+          "readsServedDuring": 20,
+          "readsServedInsideFault": 4,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 5,
+          "firstAckAfterHealMs": 1056,
+          "writeLatencyMs": {
+            "n": 34,
+            "p50": 4.264853,
+            "p99": 9.156694,
+            "max": 9.156694
+          },
+          "readLatencyMs": {
+            "n": 20,
+            "p50": 2.267189,
+            "p99": 11.561286,
+            "max": 11.561286
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 2,
+          "acksBefore": 362,
+          "acksDuring": 45,
+          "acksAfter": 2363,
+          "acksInsideFault": 0,
+          "readsDuring": 1198,
+          "readsServedDuring": 62,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {
+            "storage-shard-2-0": 389,
+            "storage-shard-2-1": 380,
+            "storage-shard-2-2": 389
+          },
+          "probeServedInsideFault": {},
+          "firstAckAfterFaultMs": 6,
+          "firstAckAfterHealMs": 1166,
+          "writeLatencyMs": {
+            "n": 45,
+            "p50": 4.540973,
+            "p99": 21.681441,
+            "max": 21.681441
+          },
+          "readLatencyMs": {
+            "n": 1198,
+            "p50": 0.845587,
+            "p99": 12.509635,
+            "max": 4002.33339
+          },
+          "errorsDuring": 16
+        }
+      ]
+    }
+  }
+}

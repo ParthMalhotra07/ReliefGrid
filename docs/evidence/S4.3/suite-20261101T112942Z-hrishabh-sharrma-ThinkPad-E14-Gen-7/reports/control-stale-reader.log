@@ -1,0 +1,7 @@
+17:29:57 delay-follower: plan {"experiment":"delay-follower","seed":442,"shard":2,"role":"follower","pick":1,"faultDelayMs":9151,"loadSeconds":110,"settleMaxSeconds":120,"prefix":"chaos-delay-follower-s442","workers":4,"keys":4,"intervalMs":50}
+17:29:58 target storage-shard-2-1 (follower, term 6)
+17:29:59 load running since 2026-11-01T11:59:59Z; fault in 9151ms
+17:30:34 fault delay on storage-shard-2-1: 26s; recovery none term ?
+17:32:16 FAILED: reads: 645 stale read(s): a read missed a write acknowledged before it began
+17:32:16 negative control stale-reader: caught
+17:32:16 FAILED (1): report docs/evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/control-stale-reader.json

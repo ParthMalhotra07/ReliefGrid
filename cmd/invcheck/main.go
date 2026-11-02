@@ -13,16 +13,19 @@
 //	invcheck load --coordinator URL --ledger FILE [--prefix P] [--workers N]
 //	                       [--keys N] [--ops N] [--duration D] [--interval D]
 //	                       [--retries N] [--readers N] [--read-interval D]
-//	                       [--consistency strong|linearizable|stale]
+//	                       [--probe SHARD=URL ...] [--consistency strong|linearizable|stale]
 //	                       drive writes and save the acknowledged-write ledger
 //	                       to FILE: --ops writes per worker, or with --ops 0
 //	                       until --duration has passed. --readers read the
 //	                       update keys in --consistency mode while the writers
 //	                       run, and their reads go into the ledger (stale is
-//	                       the negative control: verify must catch it). Exit
+//	                       the negative control: verify must catch it). Each
+//	                       --probe reads the update keys SHARD owns straight
+//	                       from the storage node at URL (an isolated or minority
+//	                       leader), recorded as reads with that node as target. Exit
 //	                       2 if interrupted (the ledger so far is still saved).
 //	invcheck verify --coordinator URL --ledger FILE [--json] [--window FROM:TO]
-//	                [--consistency strong|linearizable]
+//	                [--grace D] [--consistency strong|linearizable]
 //	                       after writers stop: resolve unknown outcomes by
 //	                       operation lookup, then check every acknowledged
 //	                       write, and every reader's read against the writes
@@ -30,7 +33,17 @@
 //	                       and no stale read; 1: some lost or stale; 2: a read
 //	                       or lookup failed, so no verdict. --json also gives
 //	                       the ledger as written (counts, failed attempts and
-//	                       the writes acknowledged between FROM and TO, unix ms).
+//	                       the writes acknowledged between FROM and TO, unix ms)
+//	                       and, with --window, availability: per shard, the
+//	                       writes and reads before, during and after the fault,
+//	                       and those that succeeded while it fully held (from
+//	                       FROM+--grace, default 2s, to TO).
+//	invcheck ring --coordinator URL
+//	                       print the ring the coordinator serves, as JSON.
+//	invcheck judge --input FILE|-
+//	                       the S4.3 chaos pass criteria (chaos/judge) over one
+//	                       run's observations; no coordinator. Exit 0 passed,
+//	                       1 failed, 2 no verdict.
 //	invcheck inject --coordinator URL --ledger FILE --confirm
 //	                       chaos build only (go build -tags chaos, the tools
 //	                       image): overwrite one acknowledged write so that a
@@ -48,6 +61,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -89,7 +103,7 @@ type command struct {
 var commands = map[string]*command{}
 
 func usage(stderr io.Writer) int {
-	names := "check|load|verify"
+	names := "check|load|verify|ring|judge"
 	for name := range commands {
 		names += "|" + name
 	}
@@ -101,9 +115,12 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if len(args) < 1 {
 		return usage(stderr)
 	}
+	if args[0] == "judge" {
+		return judgeCmd(args[1:], os.Stdin, stdout, stderr)
+	}
 	extra := commands[args[0]]
 	switch args[0] {
-	case "check", "load", "verify":
+	case "check", "load", "verify", "ring":
 	default:
 		if extra == nil {
 			_, _ = fmt.Fprintf(stderr, "invcheck: unknown command %q\n", args[0])
@@ -136,6 +153,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs.DurationVar(&d.Interval, "interval", 0, "pause between one writer's writes (load)")
 	var win window
 	fs.Func("window", "FROM:TO unix ms: count the writes acknowledged in it (verify --json)", win.parse)
+	grace := fs.Duration("grace", 2*time.Second, "after FROM, how long until the fault is taken to fully hold (verify --window)")
+	var probeTo probeFlags
+	fs.Var(&probeTo, "probe", "SHARD=URL: also read SHARD's update keys straight from the node at URL (load; repeatable)")
 	if extra != nil && extra.flags != nil {
 		extra.flags(fs)
 	}
@@ -161,7 +181,11 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		_, _ = fmt.Fprintln(stderr, "invcheck: --readers must be 0 or more")
 		return exitUsage
 	}
-	if args[0] != "check" && *path == "" {
+	if *grace < 0 {
+		_, _ = fmt.Fprintln(stderr, "invcheck: --grace must be 0 or more")
+		return exitUsage
+	}
+	if args[0] != "check" && args[0] != "ring" && *path == "" {
 		_, _ = fmt.Fprintln(stderr, "invcheck: --ledger is required")
 		return exitUsage
 	}
@@ -181,6 +205,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return exitIncomplete
 	}
 	switch args[0] {
+	case "ring":
+		writeJSON(stdout, client.Ring())
+		return exitClean
 	case "check":
 		return check(ctx, client, opt, *asJSON, stdout)
 	case "load":
@@ -192,17 +219,36 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 				return rec, string(info.Consistency), err
 			}
 		}
+		if len(probeTo) > 0 {
+			shardOf, err := owner(client.Ring())
+			if err != nil {
+				_, _ = fmt.Fprintln(stderr, err)
+				return exitIncomplete
+			}
+			d.ReadConsistency = *mode
+			d.Probes = probes(probeTo, shardOf, *mode, &http.Client{})
+		}
 		return load(ctx, d, *path, stdout)
 	case "verify":
+		win.graceMs = grace.Milliseconds()
+		if win.set {
+			if win.shardOf, err = owner(client.Ring()); err != nil {
+				_, _ = fmt.Fprintln(stderr, err)
+				return exitIncomplete
+			}
+		}
 		return verify(ctx, client, *path, *asJSON, win, stdout)
 	}
 	return extra.run(ctx, client, *path, stdout)
 }
 
-// window is verify's --window FROM:TO, in unix ms.
+// window is verify's --window FROM:TO, in unix ms, with its --grace and the
+// ring's key-to-shard map (set only when --window is).
 type window struct {
 	from, to int64
 	set      bool
+	graceMs  int64
+	shardOf  func(key string) (int, error)
 }
 
 func (w *window) parse(v string) error {
@@ -323,6 +369,16 @@ func verify(ctx context.Context, s store.Store, path string, asJSON bool, w wind
 		from, to = 1, 0 // an empty window
 	}
 	stats := l.Stats(from, to)
+	var avail *ledger.WindowStats
+	var availErr string
+	if w.set && w.shardOf != nil {
+		a, err := l.Window(w.from, w.to, w.graceMs, w.shardOf)
+		if err != nil {
+			availErr = err.Error()
+		} else {
+			avail = &a
+		}
+	}
 	res, err := l.Resolve(ctx, s)
 	var v ledger.Verdict
 	if err == nil {
@@ -342,7 +398,11 @@ func verify(ctx context.Context, s store.Store, path string, asJSON bool, w wind
 			Ledger     ledger.Stats      `json:"ledger"`
 			Resolution ledger.Resolution `json:"resolution"`
 			Verdict    *ledger.Verdict   `json:"verdict,omitempty"`
-		}{OK: code == exitClean, Ledger: stats, Resolution: res}
+			// Availability is the run around the fault (--window); a ledger
+			// that can't be lined up with it says why in AvailabilityError.
+			Availability      *ledger.WindowStats `json:"availability,omitempty"`
+			AvailabilityError string              `json:"availabilityError,omitempty"`
+		}{OK: code == exitClean, Ledger: stats, Resolution: res, Availability: avail, AvailabilityError: availErr}
 		if err != nil {
 			r.Incomplete = err.Error()
 		} else {

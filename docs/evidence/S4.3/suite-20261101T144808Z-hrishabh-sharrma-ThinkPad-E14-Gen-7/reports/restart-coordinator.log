@@ -1,0 +1,7 @@
+20:19:23 restart-coordinator: plan {"experiment":"restart-coordinator","seed":440,"shard":1,"role":"coordinator","pick":1,"faultDelayMs":14764,"loadSeconds":117,"settleMaxSeconds":120,"prefix":"chaos-restart-coordinator-s440","workers":4,"keys":4,"intervalMs":50}
+20:19:25 target storage-coordinator-76f478cbcf-bbrmz (coordinator, term 2)
+20:19:30 load running since 2026-11-01T14:49:29Z; fault in 14764ms
+20:20:13 fault coordinator-restart on storage-coordinator-76f478cbcf-bbrmz: 12s; recovery none term ?
+20:21:48 FAILED: coverage: shard 1 had 2 read(s) after the grace, want at least 3
+20:21:48 FAILED: coverage: shard 2 had 1 read(s) after the grace, want at least 3
+20:21:48 FAILED (2): report /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/S4.3/suite-20261101T144808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/restart-coordinator.json

@@ -1,0 +1,6 @@
+17:07:50 isolate-replica: plan {"experiment":"isolate-replica","seed":434,"shard":0,"role":"leader","pick":0,"faultDelayMs":8054,"loadSeconds":104,"settleMaxSeconds":120,"prefix":"chaos-isolate-replica-s434","workers":4,"keys":4,"intervalMs":50}
+17:07:52 target storage-shard-0-1 (leader, term 3)
+17:07:53 load running since 2026-11-01T11:37:53Z; fault in 8054ms
+17:08:09 note: the NetworkPolicy cut did not take within 8s; clearing storage-shard-0-1's conntrack entries
+17:08:22 fault raft-isolation on storage-shard-0-1: 20s; recovery storage-shard-0-2 term 4
+17:10:04 PASSED: report docs/evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/isolate-replica.json

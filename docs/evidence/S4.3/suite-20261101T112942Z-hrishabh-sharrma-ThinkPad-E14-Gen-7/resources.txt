@@ -1,0 +1,34 @@
+## before Chaos Mesh (storage only) (2026-11-01T11:29:59Z)
+reliefgrid-control-plane cpu 21.30% mem 1.006GiB / 30.37GiB
+reliefgrid-worker3 cpu 21.73% mem 292.5MiB / 30.37GiB
+reliefgrid-worker4 cpu 5.69% mem 224.5MiB / 30.37GiB
+reliefgrid-worker2 cpu 27.50% mem 343.9MiB / 30.37GiB
+reliefgrid-worker cpu 70.30% mem 225.6MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094        9541        5416         698       17288       21552
+
+## after the Chaos Mesh install (idle) (2026-11-01T11:30:36Z)
+reliefgrid-control-plane cpu 19.73% mem 1.076GiB / 30.37GiB
+reliefgrid-worker3 cpu 17.90% mem 290MiB / 30.37GiB
+reliefgrid-worker4 cpu 5.14% mem 248.5MiB / 30.37GiB
+reliefgrid-worker2 cpu 27.72% mem 352.1MiB / 30.37GiB
+reliefgrid-worker cpu 15.71% mem 236.9MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094        9923        5013         708       17319       21171
+chaos-mesh pod chaos-controller-manager-6966764b7d-ttcvk on reliefgrid-worker4: 30 MiB
+chaos-mesh pod chaos-daemon-5r2p4 on reliefgrid-worker2: 9 MiB
+chaos-mesh pod chaos-daemon-n9v7d on reliefgrid-worker: 9 MiB
+chaos-mesh pod chaos-daemon-w9d4m on reliefgrid-worker3: 11 MiB
+
+## after the runs (2026-11-01T12:02:16Z)
+reliefgrid-control-plane cpu 15.75% mem 1.081GiB / 30.37GiB
+reliefgrid-worker3 cpu 28.42% mem 326.4MiB / 30.37GiB
+reliefgrid-worker4 cpu 4.74% mem 267.4MiB / 30.37GiB
+reliefgrid-worker2 cpu 22.93% mem 348.7MiB / 30.37GiB
+reliefgrid-worker cpu 23.06% mem 237.8MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094       10533        3631         843       18225       20561
+chaos-mesh pod chaos-controller-manager-6966764b7d-ttcvk on reliefgrid-worker4: 34 MiB
+chaos-mesh pod chaos-daemon-5r2p4 on reliefgrid-worker2: 12 MiB
+chaos-mesh pod chaos-daemon-n9v7d on reliefgrid-worker: 11 MiB
+chaos-mesh pod chaos-daemon-w9d4m on reliefgrid-worker3: 12 MiB

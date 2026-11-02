@@ -1,0 +1,12 @@
+# S4.3 chaos suite 20261101T163336Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
+result: FAILED (0/1 runs)
+chaos mesh: {"version":"2.8.7","kubernetes":"v1.37.0","images":["ghcr.io/chaos-mesh/chaos-daemon:v2.8.7@sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174ae58a5b0bb8dc31465d55","ghcr.io/chaos-mesh/chaos-mesh:v2.8.7@sha256:e972b7d995c117f8728ed9b792685b4e45ab9c6eb2e92d766a3040aa5987428d"],"smoke":{"pod":"storage-shard-0-0","injected":true,"recovered":true}}
+
+run                    pass  faultS  recovS  acked unknown unresolv   lost  stale probeSrvd quorumAck firstAckH
+restart-coordinator    FAIL  32.315    33.2   6196      13        0      0      0         0         0      2600
+
+## failures
+restart-coordinator: coverage: shard 0 had 2 write attempt(s) after the grace, want at least 3
+
+## faulted shard availability (writes and reads around each fault)
+restart-coordinator: {"acksBefore":600,"acksDuring":3,"acksAfter":1814,"acksInsideFault":0,"readsDuring":18,"readsServedDuring":4,"readsServedInsideFault":0,"probeServedInsideFault":{},"firstAckAfterFaultMs":17,"firstAckAfterHealMs":2600,"writeLatencyMs":{"n":3,"p50":4.215298,"p99":17.779956,"max":17.779956},"readLatencyMs":{"n":18,"p50":9.268545,"p99":5000.906635,"max":5000.906635},"errorsDuring":24}

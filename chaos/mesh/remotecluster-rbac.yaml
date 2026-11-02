@@ -1,0 +1,27 @@
+# Chaos Mesh 2.8.7 namespace-scoped mode (clusterScoped: false) binds its
+# chaos-mesh.org permissions with a RoleBinding in the target namespace, which
+# can't grant the cluster-scoped RemoteCluster kind. The controller's
+# RemoteCluster informer is then forbidden, its cache never syncs, and no chaos
+# controller starts (a NetworkChaos gets no status at all). This grants that
+# one read and nothing else; injection stays limited to the target namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: chaos-mesh-remotecluster-read
+rules:
+  - apiGroups: [chaos-mesh.org]
+    resources: [remoteclusters]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: chaos-mesh-remotecluster-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: chaos-mesh-remotecluster-read
+subjects:
+  - kind: ServiceAccount
+    name: chaos-controller-manager
+    namespace: chaos-mesh

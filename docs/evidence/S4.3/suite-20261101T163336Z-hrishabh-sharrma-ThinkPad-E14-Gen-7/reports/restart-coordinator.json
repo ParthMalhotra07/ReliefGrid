@@ -1,0 +1,630 @@
+{
+  "experiment": "restart-coordinator",
+  "seed": 440,
+  "runId": "restart-coordinator-s440-1793550864",
+  "pass": false,
+  "failures": [
+    "coverage: shard 0 had 2 write attempt(s) after the grace, want at least 3"
+  ],
+  "plan": {
+    "experiment": "restart-coordinator",
+    "seed": 440,
+    "shard": 1,
+    "role": "coordinator",
+    "pick": 1,
+    "faultDelayMs": 14764,
+    "loadSeconds": 137,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-restart-coordinator-s440",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 1,
+    "pod": "storage-coordinator-76f478cbcf-96nqz",
+    "serverId": "",
+    "role": "coordinator",
+    "term": 2
+  },
+  "fault": {
+    "kind": "coordinator-restart",
+    "mechanism": "kubectl scale of the coordinator to 0, held for the grace plus 30s, then back",
+    "startedAt": 1793550886908,
+    "healedAt": 1793550919223
+  },
+  "recovery": {
+    "leader": "",
+    "term": 0,
+    "seconds": 33.2
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1793551007370,
+    "seconds": 0.9,
+    "ok": true,
+    "detail": "shard 1 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1793550866000,
+    "faultStartedAt": 1793550886908,
+    "faultHealedAt": 1793550919223,
+    "settledAt": 1793551008295,
+    "loadFinishedAt": 1793551004000
+  },
+  "load": {
+    "job": "chaos-load-restart-coordinator-s440-1793550864",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 6196,
+    "unknown": 13,
+    "rejected": 0,
+    "ackedDuringFault": 8
+  },
+  "errorsObserved": [
+    {
+      "at": 1793550887041,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op366 chaos-restart-coordinator-s440-1793550866-w2-k0 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887055,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op366 chaos-restart-coordinator-s440-1793550866-w3-k0 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887065,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op366 chaos-restart-coordinator-s440-1793550866-w2-k0 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887077,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op366 chaos-restart-coordinator-s440-1793550866-w3-k0 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887077,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op367 chaos-restart-coordinator-s440-1793550866-w1-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887086,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op366 chaos-restart-coordinator-s440-1793550866-w0-k0 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887101,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op367 chaos-restart-coordinator-s440-1793550866-w1-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887108,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op366 chaos-restart-coordinator-s440-1793550866-w0-k0 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887109,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op366 chaos-restart-coordinator-s440-1793550866-w2-k0 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887121,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op366 chaos-restart-coordinator-s440-1793550866-w3-k0 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887144,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op367 chaos-restart-coordinator-s440-1793550866-w1-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550887152,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op366 chaos-restart-coordinator-s440-1793550866-w0-k0 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k0\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550892174,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op366 chaos-restart-coordinator-s440-1793550866-w2-k0 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k0\": context deadline exceeded"
+    },
+    {
+      "at": 1793550892183,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op366 chaos-restart-coordinator-s440-1793550866-w3-k0 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k0\": context deadline exceeded"
+    },
+    {
+      "at": 1793550892205,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op367 chaos-restart-coordinator-s440-1793550866-w1-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c181\": context deadline exceeded"
+    },
+    {
+      "at": 1793550892212,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op366 chaos-restart-coordinator-s440-1793550866-w0-k0 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k0\": context deadline exceeded"
+    },
+    {
+      "at": 1793550892230,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op367 chaos-restart-coordinator-s440-1793550866-w2-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550892237,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op367 chaos-restart-coordinator-s440-1793550866-w3-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550892253,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op367 chaos-restart-coordinator-s440-1793550866-w2-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550892259,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op368 chaos-restart-coordinator-s440-1793550866-w1-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550892259,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op367 chaos-restart-coordinator-s440-1793550866-w3-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550894299,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op367 chaos-restart-coordinator-s440-1793550866-w0-c181 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550895385,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op367 chaos-restart-coordinator-s440-1793550866-w0-c181 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550896409,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op368 chaos-restart-coordinator-s440-1793550866-w1-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550897294,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op367 chaos-restart-coordinator-s440-1793550866-w2-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-c181\": context deadline exceeded"
+    },
+    {
+      "at": 1793550897300,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op367 chaos-restart-coordinator-s440-1793550866-w3-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c181\": context deadline exceeded"
+    },
+    {
+      "at": 1793550899417,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op367 chaos-restart-coordinator-s440-1793550866-w3-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550900427,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op367 chaos-restart-coordinator-s440-1793550866-w0-c181 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-c181\": context deadline exceeded"
+    },
+    {
+      "at": 1793550900442,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op367 chaos-restart-coordinator-s440-1793550866-w2-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-c181\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550901450,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op368 chaos-restart-coordinator-s440-1793550866-w1-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-k1\": context deadline exceeded"
+    },
+    {
+      "at": 1793550901514,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op368 chaos-restart-coordinator-s440-1793550866-w1-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550904468,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op368 chaos-restart-coordinator-s440-1793550866-w3-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k1\": context deadline exceeded"
+    },
+    {
+      "at": 1793550904493,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op368 chaos-restart-coordinator-s440-1793550866-w3-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550905487,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op367 chaos-restart-coordinator-s440-1793550866-w0-c181 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-c181\": context deadline exceeded"
+    },
+    {
+      "at": 1793550905492,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op368 chaos-restart-coordinator-s440-1793550866-w2-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k1\": context deadline exceeded"
+    },
+    {
+      "at": 1793550905516,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op368 chaos-restart-coordinator-s440-1793550866-w2-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550906565,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op369 chaos-restart-coordinator-s440-1793550866-w1-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793550906585,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op368 chaos-restart-coordinator-s440-1793550866-w2-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550909533,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op368 chaos-restart-coordinator-s440-1793550866-w3-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k1\": context deadline exceeded"
+    },
+    {
+      "at": 1793550909597,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op368 chaos-restart-coordinator-s440-1793550866-w3-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550910538,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op368 chaos-restart-coordinator-s440-1793550866-w0-k1 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k1\": context deadline exceeded"
+    },
+    {
+      "at": 1793550910560,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op368 chaos-restart-coordinator-s440-1793550866-w0-k1 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550911586,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op369 chaos-restart-coordinator-s440-1793550866-w1-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793550911631,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op369 chaos-restart-coordinator-s440-1793550866-w1-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550911647,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op368 chaos-restart-coordinator-s440-1793550866-w2-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-k1\": context deadline exceeded"
+    },
+    {
+      "at": 1793550913690,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op368 chaos-restart-coordinator-s440-1793550866-w0-k1 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k1\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550914648,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op369 chaos-restart-coordinator-s440-1793550866-w3-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793550914672,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op369 chaos-restart-coordinator-s440-1793550866-w3-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550915737,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op369 chaos-restart-coordinator-s440-1793550866-w3-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550916691,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op369 chaos-restart-coordinator-s440-1793550866-w1-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793550916699,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op369 chaos-restart-coordinator-s440-1793550866-w2-c182 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793550916722,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op369 chaos-restart-coordinator-s440-1793550866-w2-c182 attempt 1: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550918751,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w0-op368 chaos-restart-coordinator-s440-1793550866-w0-k1 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w0-k1\": context deadline exceeded"
+    },
+    {
+      "at": 1793550919833,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w2-op369 chaos-restart-coordinator-s440-1793550866-w2-c182 attempt 2: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w2-c182\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550920798,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op369 chaos-restart-coordinator-s440-1793550866-w3-c182 attempt 3: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-c182\": context deadline exceeded"
+    },
+    {
+      "at": 1793550920852,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w3-op370 chaos-restart-coordinator-s440-1793550866-w3-k2 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w3-k2\": dial tcp 10.96.182.93:8080: connect: connection refused"
+    },
+    {
+      "at": 1793550921742,
+      "source": "load",
+      "message": "chaos-restart-coordinator-s440-1793550866-w1-op370 chaos-restart-coordinator-s440-1793550866-w1-k2 attempt 0: coordclient: 0 : not sent: Put \"http://storage-coordinator.reliefgrid.svc.cluster.local:8080/internal/data/chaos-restart-coordinator-s440-1793550866-w1-k2\": context deadline exceeded"
+    }
+  ],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/restart-coordinator-s440-1793550864.json",
+    "job": "chaos-verify-restart-coordinator-s440-1793550864",
+    "exitCode": 0,
+    "checked": 6196,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 13,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-restart-coordinator-s440-1793550864",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 1 is one caught-up group",
+    "recovery": {
+      "seconds": 33.2,
+      "term": 0,
+      "termBefore": 2,
+      "leader": ""
+    },
+    "isolation": null,
+    "delay": null,
+    "worker": null,
+    "coordinator": {
+      "ringBefore": "1/sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360",
+      "ringAfter": "1/sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360",
+      "termsBefore": {
+        "0": 2,
+        "1": 2,
+        "2": 2
+      },
+      "termsAfter": {
+        "0": 2,
+        "1": 2,
+        "2": 2
+      },
+      "bootstrapJobsBefore": 1,
+      "bootstrapJobsAfter": 1,
+      "back": true
+    }
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "linearizable",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [],
+    "verdict": {
+      "total": 3874,
+      "checked": 3843,
+      "unchecked": 2,
+      "failed": 29,
+      "served": {
+        "linearizable": 3843
+      }
+    },
+    "staleCount": 0,
+    "stale": []
+  },
+  "availability": {
+    "fromMs": 1793550886908,
+    "toMs": 1793550919223,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 435,
+        "acksDuring": 2,
+        "acksAfter": 1510,
+        "acksInsideFault": 0,
+        "readsDuring": 8,
+        "readsServedDuring": 1,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 2,
+        "readsInsideFault": 5,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 39,
+        "firstAckAfterHealMs": 2617,
+        "writeLatencyMs": {
+          "n": 2,
+          "p50": 3.616679,
+          "p99": 6.092069,
+          "max": 6.092069
+        },
+        "readLatencyMs": {
+          "n": 8,
+          "p50": 4.760874,
+          "p99": 5000.664816,
+          "max": 5000.664816
+        },
+        "errorsDuring": 8
+      },
+      {
+        "shard": 1,
+        "acksBefore": 600,
+        "acksDuring": 3,
+        "acksAfter": 1814,
+        "acksInsideFault": 0,
+        "readsDuring": 18,
+        "readsServedDuring": 4,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 18,
+        "readsInsideFault": 13,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 17,
+        "firstAckAfterHealMs": 2600,
+        "writeLatencyMs": {
+          "n": 3,
+          "p50": 4.215298,
+          "p99": 17.779956,
+          "max": 17.779956
+        },
+        "readLatencyMs": {
+          "n": 18,
+          "p50": 9.268545,
+          "p99": 5000.906635,
+          "max": 5000.906635
+        },
+        "errorsDuring": 24
+      },
+      {
+        "shard": 2,
+        "acksBefore": 418,
+        "acksDuring": 3,
+        "acksAfter": 1411,
+        "acksInsideFault": 0,
+        "readsDuring": 8,
+        "readsServedDuring": 0,
+        "readsServedInsideFault": 0,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 21,
+        "readsInsideFault": 5,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 54,
+        "firstAckAfterHealMs": 2650,
+        "writeLatencyMs": {
+          "n": 3,
+          "p50": 6.006881,
+          "p99": 11.860169,
+          "max": 11.860169
+        },
+        "readLatencyMs": {
+          "n": 8,
+          "p50": 3.873758,
+          "p99": 5001.22349,
+          "max": 5001.22349
+        },
+        "errorsDuring": 21
+      }
+    ]
+  },
+  "judge": {
+    "pass": false,
+    "noVerdict": false,
+    "failures": [
+      "coverage: shard 0 had 2 write attempt(s) after the grace, want at least 3"
+    ],
+    "summary": {
+      "acked": 6196,
+      "unknownRaw": 13,
+      "resolved": 0,
+      "notApplied": 13,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 0,
+      "readsTotal": 3874,
+      "readsChecked": 3843,
+      "readsFailed": 29,
+      "errorCount": 57,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 435,
+          "acksDuring": 2,
+          "acksAfter": 1510,
+          "acksInsideFault": 0,
+          "readsDuring": 8,
+          "readsServedDuring": 1,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 2,
+          "readsInsideFault": 5,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 39,
+          "firstAckAfterHealMs": 2617,
+          "writeLatencyMs": {
+            "n": 2,
+            "p50": 3.616679,
+            "p99": 6.092069,
+            "max": 6.092069
+          },
+          "readLatencyMs": {
+            "n": 8,
+            "p50": 4.760874,
+            "p99": 5000.664816,
+            "max": 5000.664816
+          },
+          "errorsDuring": 8
+        },
+        {
+          "shard": 1,
+          "acksBefore": 600,
+          "acksDuring": 3,
+          "acksAfter": 1814,
+          "acksInsideFault": 0,
+          "readsDuring": 18,
+          "readsServedDuring": 4,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 18,
+          "readsInsideFault": 13,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 17,
+          "firstAckAfterHealMs": 2600,
+          "writeLatencyMs": {
+            "n": 3,
+            "p50": 4.215298,
+            "p99": 17.779956,
+            "max": 17.779956
+          },
+          "readLatencyMs": {
+            "n": 18,
+            "p50": 9.268545,
+            "p99": 5000.906635,
+            "max": 5000.906635
+          },
+          "errorsDuring": 24
+        },
+        {
+          "shard": 2,
+          "acksBefore": 418,
+          "acksDuring": 3,
+          "acksAfter": 1411,
+          "acksInsideFault": 0,
+          "readsDuring": 8,
+          "readsServedDuring": 0,
+          "readsServedInsideFault": 0,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 21,
+          "readsInsideFault": 5,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 54,
+          "firstAckAfterHealMs": 2650,
+          "writeLatencyMs": {
+            "n": 3,
+            "p50": 6.006881,
+            "p99": 11.860169,
+            "max": 11.860169
+          },
+          "readLatencyMs": {
+            "n": 8,
+            "p50": 3.873758,
+            "p99": 5001.22349,
+            "max": 5001.22349
+          },
+          "errorsDuring": 21
+        }
+      ]
+    }
+  }
+}

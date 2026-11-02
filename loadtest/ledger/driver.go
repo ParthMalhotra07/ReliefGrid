@@ -24,9 +24,13 @@ import (
 //
 // Readers, if set, read the writers' update keys in turn with Read until
 // the writers stop, each pausing ReadInterval between reads; every read goes
-// to Ledger.Reads for Ledger.CheckReads. Readers and writers share one
-// clock: nanoseconds since Run began, from Now's monotonic reading, so an
-// acknowledgement and a read's start are ordered without clock skew.
+// to Ledger.Reads for Ledger.CheckReads. Each Probe is one more reader that
+// reads only the keys it Owns with its own Read (straight from one node,
+// say an isolated leader), recorded with its Name as Read.Target. Readers,
+// probes and writers share one clock: nanoseconds since Run began, from
+// Now's monotonic reading, so an acknowledgement and a read's start are
+// ordered without clock skew. Ledger.StartedAtMs is that instant on the wall
+// clock, for lining the run up with a harness's fault times.
 type Driver struct {
 	Store    store.Store
 	Prefix   string        // key and operation ID prefix; unique per run
@@ -46,6 +50,7 @@ type Driver struct {
 	Read         ReadFunc      // required when Readers > 0
 	// ReadConsistency is the mode Read asks for, recorded in the ledger.
 	ReadConsistency string
+	Probes          []Probe // direct readers, beside Readers
 
 	deadline time.Time // set by Run from Duration
 	base     time.Time // Run's start: the zero of every *Ns instant
@@ -53,6 +58,14 @@ type Driver struct {
 
 // ReadFunc reads one key and says how the read was served.
 type ReadFunc func(ctx context.Context, key string) (store.Record, string, error)
+
+// Probe is a reader of its own: Read is called for each update key Owns
+// accepts (all, if Owns is nil), recorded with Target Name.
+type Probe struct {
+	Name string
+	Owns func(key string) bool
+	Read ReadFunc
+}
 
 // Run drives the load until every worker is done or ctx ends, and returns
 // the ledger so far.
@@ -67,20 +80,34 @@ func (d Driver) Run(ctx context.Context) (*Ledger, error) {
 		d.Now = time.Now
 	}
 	d.base = d.Now()
-	if d.Duration > 0 {
-		d.deadline = d.Now().Add(d.Duration)
-	}
 	if d.Workers == 0 {
 		d.Workers = 4
 	}
 	if d.Keys == 0 {
 		d.Keys = 4
 	}
+	probeKeys := make([][]string, len(d.Probes))
+	for i, p := range d.Probes {
+		if p.Name == "" || p.Read == nil {
+			return nil, fmt.Errorf("ledger: probe %d needs a Name and a Read function", i)
+		}
+		for _, key := range d.updateKeys() {
+			if p.Owns == nil || p.Owns(key) {
+				probeKeys[i] = append(probeKeys[i], key)
+			}
+		}
+		if len(probeKeys[i]) == 0 {
+			return nil, fmt.Errorf("ledger: probe %s owns none of the %d update keys", p.Name, d.Workers*d.Keys)
+		}
+	}
+	if d.Duration > 0 {
+		d.deadline = d.Now().Add(d.Duration)
+	}
 	if d.Retries == 0 {
 		d.Retries = 3
 	}
-	l := &Ledger{}
-	if d.Readers > 0 {
+	l := &Ledger{StartedAtMs: d.base.UnixMilli()}
+	if d.Readers > 0 || len(d.Probes) > 0 {
 		l.ReadConsistency = d.ReadConsistency
 	}
 	var wg, readers sync.WaitGroup
@@ -92,11 +119,19 @@ func (d Driver) Run(ctx context.Context) (*Ledger, error) {
 		}()
 	}
 	stop := make(chan struct{})
+	keys := d.updateKeys()
 	for r := range d.Readers {
 		readers.Add(1)
 		go func() {
 			defer readers.Done()
-			d.reader(ctx, l, r, stop)
+			d.readLoop(ctx, l, keys, r, d.Readers, "", d.Read, stop)
+		}()
+	}
+	for i, p := range d.Probes {
+		readers.Add(1)
+		go func() {
+			defer readers.Done()
+			d.readLoop(ctx, l, probeKeys[i], 0, 1, p.Name, p.Read, stop)
 		}()
 	}
 	wg.Wait()
@@ -108,16 +143,21 @@ func (d Driver) Run(ctx context.Context) (*Ledger, error) {
 // since is now on the run's monotonic clock, in nanoseconds.
 func (d Driver) since() int64 { return int64(d.Now().Sub(d.base)) }
 
-// reader reads the update keys, reader r starting at key r and stepping by
-// Readers, until stop closes or ctx ends.
-func (d Driver) reader(ctx context.Context, l *Ledger, r int, stop <-chan struct{}) {
+// updateKeys are every worker's update keys, in worker then key order.
+func (d Driver) updateKeys() []string {
 	keys := make([]string, 0, d.Workers*d.Keys)
 	for w := range d.Workers {
 		for k := range d.Keys {
 			keys = append(keys, fmt.Sprintf("%s-w%d-k%d", d.Prefix, w, k))
 		}
 	}
-	for i := r; ; i += d.Readers {
+	return keys
+}
+
+// readLoop reads keys with read, starting at index first and stepping by
+// step, recording each read with target, until stop closes or ctx ends.
+func (d Driver) readLoop(ctx context.Context, l *Ledger, keys []string, first, step int, target string, read ReadFunc, stop <-chan struct{}) {
+	for i := first; ; i += step {
 		select {
 		case <-stop:
 			return
@@ -126,8 +166,8 @@ func (d Driver) reader(ctx context.Context, l *Ledger, r int, stop <-chan struct
 		default:
 		}
 		key := keys[i%len(keys)]
-		rd := Read{Key: key, StartNs: d.since()}
-		rec, served, err := d.Read(ctx, key)
+		rd := Read{Key: key, Target: target, StartNs: d.since()}
+		rec, served, err := read(ctx, key)
 		rd.EndNs, rd.Served = d.since(), served
 		switch {
 		case errors.Is(err, store.ErrNotFound):
@@ -230,6 +270,7 @@ func (wk *worker) create(ctx context.Context, key, value string) (store.Result, 
 // unknown, records it, and reports whether it committed OK.
 func (wk *worker) write(ctx context.Context, e Entry, call func(context.Context) (store.Result, error)) (store.Result, bool) {
 	var err error
+	e.StartNs = wk.d.since()
 	for attempt := 0; ; attempt++ {
 		var res store.Result
 		res, err = call(ctx)

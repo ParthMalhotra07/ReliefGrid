@@ -9,6 +9,7 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
 COPY loadtest/ loadtest/
+COPY chaos/judge/ chaos/judge/
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
 	CGO_ENABLED=0 go build -trimpath -tags chaos -o /out/ ./cmd/invcheck
 

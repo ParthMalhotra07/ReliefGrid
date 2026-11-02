@@ -1,0 +1,5 @@
+17:02:37 kill-follower: plan {"experiment":"kill-follower","seed":432,"shard":2,"role":"follower","pick":1,"faultDelayMs":9742,"loadSeconds":85,"settleMaxSeconds":120,"prefix":"chaos-kill-follower-s432","workers":4,"keys":4,"intervalMs":50}
+17:02:39 target storage-shard-2-2 (follower, term 5)
+17:02:40 load running since 2026-11-01T11:32:40Z; fault in 9742ms
+17:03:01 fault pod-delete on storage-shard-2-2: 11s; recovery storage-shard-2-1 term 5
+17:04:29 PASSED: report docs/evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/kill-follower.json

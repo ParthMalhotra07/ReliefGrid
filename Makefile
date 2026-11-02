@@ -35,6 +35,19 @@ DIFF_BASE ?= origin/main
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
 .PHONY: verify-A1.3 verify-A1.4 verify-A2.1 verify-A2.2
 .PHONY: app-images app-deploy e2e-smoke verify-A1.5-static
+.PHONY: chaos-install chaos-check chaos-uninstall chaos-suite verify-S4.3
+
+# Chaos experiments (S2.3, S4.3): make chaos-<experiment> SEED=N runs chaos/scripts/<experiment>.sh
+# against the running cluster and writes its report to chaos-<experiment>-<seed>.json.
+CHAOS_EXPERIMENTS := kill-leader kill-follower restart-shard isolate-replica isolate-leader lose-quorum \
+	delay-follower delay-isolate-leader stop-worker restart-coordinator
+SEED ?= 1
+.PHONY: $(addprefix chaos-,$(CHAOS_EXPERIMENTS))
+
+# Chaos Mesh (S4.3): pins from tools.mk, passed to chaos/mesh/install.sh.
+CHAOS_PINS = CHAOS_CONTEXT=kind-$(CLUSTER) CHAOS_NAMESPACE=$(STORAGE_NS) CHAOS_MESH_VERSION='$(CHAOS_MESH_VERSION)' \
+	CHAOS_MESH_CHART_SHA256='$(CHAOS_MESH_CHART_SHA256)' CHAOS_MESH_IMAGE_DIGEST='$(CHAOS_MESH_IMAGE_DIGEST)' \
+	CHAOS_DAEMON_IMAGE_DIGEST='$(CHAOS_DAEMON_IMAGE_DIGEST)'
 
 help: ## List targets
 	@grep -E '^[a-z0-9 -]+:.*## ' $(MAKEFILE_LIST) | sed 's/^[^:]*://' | awk -F':.*## ' '{printf "  %-17s %s\n", $$1, $$2}'
@@ -146,6 +159,24 @@ tools-image: ## Build the tools image (invcheck with the chaos tag) and load it 
 coordinator-image: ## Build the coordinator image and load it into kind
 	docker build -f cmd/coordinator/Dockerfile -t $(COORDINATOR_IMAGE) .
 	kind load docker-image --name $(CLUSTER) $(COORDINATOR_IMAGE)
+
+chaos-install: ## Install Chaos Mesh (pinned chart + image digests, namespace-scoped to STORAGE_NS) into kind
+	$(CHAOS_PINS) chaos/mesh/install.sh install
+
+chaos-check: ## Check the Chaos Mesh install: pods Ready, no RBAC errors, a smoke NetworkChaos injects and recovers
+	$(CHAOS_PINS) chaos/mesh/install.sh check
+
+chaos-uninstall: ## Remove Chaos Mesh: leftover chaos objects, the release, its RBAC and CRDs
+	$(CHAOS_PINS) chaos/mesh/install.sh uninstall
+
+$(addprefix chaos-,$(CHAOS_EXPERIMENTS)): ## Run one chaos experiment (SEED=N): fault, heal, settle, judge, JSON report
+	CHAOS_CONTEXT=kind-$(CLUSTER) CHAOS_NAMESPACE=$(STORAGE_NS) TOOLS_IMAGE=$(TOOLS_IMAGE) chaos/scripts/$(@:chaos-%=%).sh --seed $(SEED)
+
+chaos-suite: ## S4.3: install Chaos Mesh, run every experiment and both negative controls, evidence in docs/evidence/S4.3
+	$(CHAOS_PINS) TOOLS_IMAGE=$(TOOLS_IMAGE) chaos/scripts/suite.sh
+
+verify-S4.3: ## S4.3 Verify: the chaos suite's static checks, then make chaos-suite, all green
+	$(CHAOS_PINS) TOOLS_IMAGE=$(TOOLS_IMAGE) scripts/verify-S4.3.sh
 
 storage-replace: ## Run storagectl replace SHARD=N POD=<pod> as a Job (M7 disk replacement; rerun to resume)
 	KUBE_CONTEXT=kind-$(CLUSTER) NAMESPACE=$(STORAGE_NS) SHARD='$(SHARD)' POD='$(POD)' CRASH_AT='$(CRASH_AT)' scripts/storage-replace.sh
