@@ -140,3 +140,14 @@ func strict(b []byte, v any) error {
 	}
 	return nil
 }
+
+// Describe returns a log entry's op and operationId without applying it.
+// It is for observers outside Apply (the S4.6b test seams); Apply never
+// calls it.
+func Describe(entry []byte) (Op, string, error) {
+	c, err := decode(entry)
+	if err != nil {
+		return "", "", fmt.Errorf("fsm: describe entry: %w", err)
+	}
+	return c.op, c.meta.OperationID, nil
+}

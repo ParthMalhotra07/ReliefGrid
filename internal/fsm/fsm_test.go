@@ -853,3 +853,17 @@ func TestFileReadsDoNotBlockApply(t *testing.T) {
 		}
 	}
 }
+
+func TestDescribeReportsOpAndOperationID(t *testing.T) {
+	entry, err := fsm.Encode(store.CompareAndSet{Meta: store.Meta{OperationID: "op-d", At: 1}, Key: "kv:d", Value: json.RawMessage(`1`)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, id, err := fsm.Describe(entry)
+	if err != nil || op != fsm.OpCompareAndSet || id != "op-d" {
+		t.Fatalf("Describe = %q, %q, %v; want CompareAndSet, op-d", op, id, err)
+	}
+	if _, _, err := fsm.Describe([]byte(`{"op":"Nope","body":{}}`)); err == nil {
+		t.Fatal("Describe accepted an unknown op")
+	}
+}
