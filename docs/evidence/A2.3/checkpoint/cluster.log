@@ -1,0 +1,16 @@
+execution_test.go:497: run=checkpoint-cluster-20261102 backend=cluster seeds=50
+SCH02_DroppedResponseAfterCommit: seeds 1..50 PASS (50 executions)
+SCH03_CrashBeforeMatchingStep: seeds 1..50 PASS (50 executions)
+SCH04_CrashAfterMatchingStep: seeds 1..50 PASS (50 executions)
+SCH05_CancelBeforeTryClaim: seeds 1..50 PASS (50 executions)
+SCH06_CancelAfterTryClaim: seeds 1..50 PASS (50 executions)
+SCH07_StaleTryClaimAfterCloseAttempt: seeds 1..50 PASS (50 executions)
+SCH08_ConfirmationRacingWithRetarget: seeds 1..50 PASS (50 executions)
+SCH09_StaleOperationResultReplayAfterClose: seeds 1..50 PASS (50 executions)
+SCH10_DuplicateTerminalEvents: seeds 1..50 PASS (50 executions)
+SCH11_RepeatedCancelFulfillCalls: seeds 1..50 PASS (50 executions)
+SCH15_BrokerOutageDuringRetryScheduling: seeds 1..50 PASS (50 executions)
+SCH16_PoisonMessages: seeds 1..50 PASS (50 executions)
+SCH17_PartialCandidateScan: seeds 1..50 PASS (50 executions)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	148.942s

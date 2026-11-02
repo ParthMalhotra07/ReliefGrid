@@ -1,5 +1,10 @@
 include tools.mk
 
+.PHONY: test-schedules
+SEEDS ?= 50
+test-schedules: ## Execute all mandatory adversarial schedules; missing drivers fail explicitly
+	SEEDS=$(SEEDS) bash scripts/test-schedules.sh
+
 SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
