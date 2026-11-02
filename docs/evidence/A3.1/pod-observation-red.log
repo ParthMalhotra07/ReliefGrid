@@ -1,0 +1,6 @@
+2026/11/01 06:24:18 INFO API listening addr=127.0.0.1:41611
+--- FAIL: TestRunServesRealFSMAndStops (0.07s)
+    main_test.go:71: served pod "", want "DESKTOP-EG9G7UI"
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/api	0.085s
+FAIL

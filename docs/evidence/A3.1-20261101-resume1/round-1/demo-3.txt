@@ -1,0 +1,47 @@
+# demo-3: Async and explicit API matching with compatible and incompatible resources
+result:     PASS (2/2 checks)
+runId:      a31-reviewed-20261101
+host:       DESKTOP-EG9G7UI
+started:    2026-11-01T16:56:42Z
+finished:   2026-11-01T16:57:19Z
+duration:   36.8 s
+code tree:  2fb719c74696 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: yes (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: 3b6d8c9bcfbc
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.7.2
+image reliefgrid/storagenode:dev: sha256:5a53c9c5006940548d85a4387c0fa638ce78cf2d8626f2778c6083b40b23074e
+image reliefgrid/coordinator:dev: sha256:0ef17156046ed80ccaa26d1a7d0c67d5900e69265380f8c8e8a59e1f7180353a
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in <repo>/docs/evidence/a31-reviewed-20261101/demo-3-app
+
+## commands
+
+# build bounded relay-only handoff drainer
+$ go build -o /tmp/tmp.vZALN728kv/drain-outbox <repo>/scripts/demos/drain-outbox
+[exit 0, 0.7 s]
+
+# public API assertions and recorded observations
+$ python3 <repo>/scripts/demos/app_demo.py 3 --out <repo>/docs/evidence/a31-reviewed-20261101/demo-3-app
+PASS  no resource assigned to two requests
+PASS  async match respects type, 50 km radius and current availability window
+PASS  async incompatible resources remain unclaimed
+PASS  explicit match completes while matcher Deployment is stopped
+PASS  no resource assigned to two requests
+PASS  explicit match respects type, 50 km radius and current availability window
+PASS  explicit incompatible resources remain unclaimed
+PASS  no resource assigned to two requests
+PASS  two requests competing for one resource produce one match and one waiting request
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 30.0 s]

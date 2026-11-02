@@ -87,6 +87,10 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 	if err != nil {
 		return err
 	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		return fmt.Errorf("API hostname: %w", err)
+	}
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", cfg.addr)
 	if err != nil {
 		return fmt.Errorf("API listen: %w", err)
@@ -95,7 +99,12 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 	mux.Handle("/", h)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) })
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) })
-	srv := &http.Server{Handler: mux, ReadHeaderTimeout: cfg.api.Budget, ReadTimeout: cfg.api.Budget,
+	// Diagnostic response metadata lets the scaling demo observe Service routing.
+	observed := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-ReliefGrid-Pod", hostname)
+		mux.ServeHTTP(w, r)
+	})
+	srv := &http.Server{Handler: observed, ReadHeaderTimeout: cfg.api.Budget, ReadTimeout: cfg.api.Budget,
 		BaseContext: func(net.Listener) context.Context { return ctx }}
 	done := make(chan error, 1)
 	go func() { done <- srv.Serve(listener) }()

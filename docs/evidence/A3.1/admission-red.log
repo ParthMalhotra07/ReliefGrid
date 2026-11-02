@@ -1,0 +1,14 @@
+E....
+======================================================================
+ERROR: test_burst_audit_restores_admission_workers_after_failure (__main__.ClientTests.test_burst_audit_restores_admission_workers_after_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/scripts/demos/app_demo_test.py", line 68, in test_burst_audit_restores_admission_workers_after_failure
+    demo.audit_without_admission()
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Demo' object has no attribute 'audit_without_admission'
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.712s
+
+FAILED (errors=1)

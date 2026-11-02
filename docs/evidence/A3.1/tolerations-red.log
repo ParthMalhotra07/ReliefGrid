@@ -1,0 +1,11 @@
+=== RUN   TestAppDemoProfileHasThirtySecondEvictionTolerations
+    app_demo_profile_test.go:22: reliefgrid-api lacks a 30-second NoExecute toleration for node.kubernetes.io/not-ready
+    app_demo_profile_test.go:22: reliefgrid-api lacks a 30-second NoExecute toleration for node.kubernetes.io/unreachable
+    app_demo_profile_test.go:22: reliefgrid-matcher lacks a 30-second NoExecute toleration for node.kubernetes.io/not-ready
+    app_demo_profile_test.go:22: reliefgrid-matcher lacks a 30-second NoExecute toleration for node.kubernetes.io/unreachable
+    app_demo_profile_test.go:22: reliefgrid-ui lacks a 30-second NoExecute toleration for node.kubernetes.io/not-ready
+    app_demo_profile_test.go:22: reliefgrid-ui lacks a 30-second NoExecute toleration for node.kubernetes.io/unreachable
+--- FAIL: TestAppDemoProfileHasThirtySecondEvictionTolerations (2.71s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.727s
+FAIL
