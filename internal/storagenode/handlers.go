@@ -466,6 +466,7 @@ func (s *server) ownsShard(w http.ResponseWriter, raw string) bool {
 func (s *server) status(w http.ResponseWriter, r *http.Request) {
 	st := s.node.Status()
 	writeJSON(w, http.StatusOK, statusResponse{
+		Seams:   seamsBuild,
 		PodName: st.PodName, Incarnation: st.Incarnation, GroupID: st.GroupID, Shard: st.Shard,
 		ServerID: string(st.ServerID), Address: string(st.Address), State: st.State, Term: st.Term,
 		LeaderID: string(st.LeaderID), LeaderAddr: string(st.LeaderAddr), CommitIndex: st.CommitIndex,

@@ -2,13 +2,16 @@
 # tool the bootstrap Job runs). Build from the repo root (make storage-image):
 #   docker build -f cmd/storagenode/Dockerfile -t reliefgrid/storagenode:dev .
 FROM golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 AS build
+# GO_TAGS=seams builds the S4.6b test-boundary image (make storage-image-seams);
+# empty, the default, builds the same binary as before.
+ARG GO_TAGS=""
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-	CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/storagenode ./cmd/storagectl
+	CGO_ENABLED=0 go build -trimpath -tags "$GO_TAGS" -o /out/ ./cmd/storagenode ./cmd/storagectl
 
 FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
 COPY --from=build /out/storagenode /out/storagectl /

@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// S4.6: the test seams are compiled out of the default storagenode binary
+// S4.6b: the test seams are compiled out of the default storagenode binary
 // (the image the demo and production run) and present only with -tags
 // seams. Checking both builds keeps the absence check from passing
 // vacuously when the names change.

@@ -17,7 +17,7 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/testseam"
 )
 
-// S4.6 seams in-process (#88). A held hook cannot stand in for a kill here:
+// S4.6b seams in-process (#88). A held hook cannot stand in for a kill here:
 // Node.Close waits for Raft's FSM and snapshot goroutines (raft v1.8.0
 // state.go:153), so a hook that never returns deadlocks it. As in
 // crash_test.go, a crash is the disk state at the moment of death: the hook
@@ -373,7 +373,12 @@ func TestCrashMidInstallTransferRefetchesFromLeader(t *testing.T) {
 
 // SCH13b: a follower dies halfway through staging a snapshot it has fully
 // received. Raft had already stored it, so on restart the follower restores
-// its own copy without asking the leader, and ends at the leader's rows.
+// its own complete copy inside Open, before any leader contact, and ends at
+// the leader's rows. The leader still sends the same snapshot once more: it
+// moves its nextIndex for a follower only on a successful install (raft
+// v1.8.0 replication.go:370), so after the failed one its next append finds
+// the entries compacted (:223) and it retries the snapshot. That resend
+// installs the same index.
 func TestCrashMidRestoreStageUsesLocalSnapshot(t *testing.T) {
 	c, sw := newSeamCluster(t)
 	li, l := c.waitLeader()
@@ -397,7 +402,6 @@ func TestCrashMidRestoreStageUsesLocalSnapshot(t *testing.T) {
 	c.kill(fi)
 	restoreCrashImage(t, cfg, r.img)
 	sw[fi].clear()
-	installs := countInstalls(c, fi)
 	c.open(fi)
 	f := c.nodes[fi]
 	if st := f.Status(); st.RestoredIndex != snap.AppliedIndex || st.AppliedIndex < snap.AppliedIndex {
@@ -407,7 +411,7 @@ func TestCrashMidRestoreStageUsesLocalSnapshot(t *testing.T) {
 		t.Fatalf("FSM directory kept %v: the partial stage survived the restart", extra)
 	}
 	catchUpAndCompare(t, l, f)
-	if n := installs.Load(); n != 0 {
-		t.Fatalf("leader sent the snapshot %d more times; the local copy was complete", n)
+	if got := f.Status().RestoredIndex; got != snap.AppliedIndex {
+		t.Fatalf("restored %d after catching up, want the same snapshot at %d", got, snap.AppliedIndex)
 	}
 }

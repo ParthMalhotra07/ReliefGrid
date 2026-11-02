@@ -55,6 +55,8 @@ type server struct {
 	noConfigAt atomic.Int64
 	// operatorToken guards /mgmt/bootstrap; empty disables it (403).
 	operatorToken string
+	// seams is the seams build's armed boundaries (empty otherwise).
+	seams seamRegistry //nolint:unused // used by the seams build (seams_on.go)
 }
 
 // dataRoutes is the storage-node subset of contracts/internal.yaml. Every
@@ -122,7 +124,7 @@ func (s *server) mgmtRoutes() http.Handler {
 	mux.HandleFunc("POST /mgmt/membership", s.membership)
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /readyz", s.readyz)
-	registerSeamRoutes(mux, s) // seams build only (S4.6); a no-op otherwise
+	registerSeamRoutes(mux, s) // seams build only (S4.6b); a no-op otherwise
 	return mux
 }
 
@@ -156,6 +158,9 @@ type statusResponse struct {
 	// Unadmitted); AdmissionReason says why.
 	Admitted        bool   `json:"admitted"`
 	AdmissionReason string `json:"admissionReason,omitempty"`
+	// Seams is true only in a binary built with the seams tag (S4.6b), so
+	// a test runner can refuse to arm boundaries on anything else.
+	Seams bool `json:"seams,omitempty"`
 }
 
 // transferResponse is the /mgmt/transfer-leader body: this replica after

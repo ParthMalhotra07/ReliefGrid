@@ -40,6 +40,12 @@ func TestArmSeamPersistAtRuntimeThenRestartDisarms(t *testing.T) {
 		t.Fatal(err)
 	}
 	c.restart(li)
+	// A restarted node has nothing to snapshot until it applies a command.
+	_, nl := c.waitLeader()
+	more := writeKeys(t, nl, "b", 2)
+	if err := c.nodes[li].WaitApplied(testCtx(t), more.AppliedIndex); err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	if _, err := c.nodes[li].Snapshot(ctx); err != nil {

@@ -117,10 +117,12 @@ type fenceTransport struct {
 	// Tests only (Config.dropSend, Config.afterSend); set before Raft starts.
 	dropSend  func(target raft.ServerAddress, req any) bool
 	afterSend func(target raft.ServerAddress, req any)
+	// seams, tests and the seams build only: the InstallSnapshot pause.
+	seams *seamState
 }
 
-func newFenceTransport(t *raft.NetworkTransport, fence *commitFence, before func(raft.RPC)) *fenceTransport {
-	ft := &fenceTransport{NetworkTransport: t, fence: fence, consumeCh: make(chan raft.RPC), done: make(chan struct{}), before: before}
+func newFenceTransport(t *raft.NetworkTransport, fence *commitFence, before func(raft.RPC), seams *seamState) *fenceTransport {
+	ft := &fenceTransport{NetworkTransport: t, fence: fence, consumeCh: make(chan raft.RPC), done: make(chan struct{}), before: before, seams: seams}
 	go ft.forward()
 	return ft
 }
@@ -137,6 +139,11 @@ func (t *fenceTransport) forward() {
 			}
 			if t.before != nil {
 				t.before(rpc)
+			}
+			if req, ok := rpc.Command.(*raft.InstallSnapshotRequest); ok {
+				if h := t.seams.load(); h != nil && h.installPause != nil {
+					rpc.Reader = &pausingReader{r: rpc.Reader, size: req.Size, raftIndex: req.LastLogIndex, pause: h.installPause}
+				}
 			}
 			select {
 			case t.consumeCh <- rpc:

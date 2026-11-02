@@ -74,6 +74,7 @@ func (g *Gated) why() string {
 
 func (g *Gated) status(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, statusResponse{
+		Seams:   seamsBuild,
 		PodName: g.id.PodName, Incarnation: g.id.Incarnation, GroupID: g.id.GroupID, Shard: g.id.Shard,
 		ServerID: string(g.id.ServerID()), Address: g.cfg.Address, State: StateUnadmitted, HasState: g.hasState,
 		RingVersion: g.cfg.RingVersion, Admitted: false, AdmissionReason: g.why(),

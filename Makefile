@@ -25,15 +25,17 @@ endif
 STORAGE_IMAGE   ?= reliefgrid/storagenode:dev
 COORDINATOR_IMAGE ?= reliefgrid/coordinator:dev
 TOOLS_IMAGE     ?= reliefgrid/tools:dev
+# The storage node built with the seams tag (S4.6b): test images only.
+STORAGE_SEAMS_IMAGE ?= reliefgrid/storagenode:seams
 STORAGE_NS      ?= reliefgrid
 STORAGE_RELEASE ?= storage
 
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image coordinator-image tools-image storage-replace storage-reset placement-check
+.PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image storage-image-seams coordinator-image tools-image storage-replace storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
-.PHONY: verify-A1.3 verify-A1.4 verify-A2.1 verify-A2.2
+.PHONY: verify-A1.3 verify-A1.4 verify-A2.1 verify-A2.2 verify-S4.6b
 .PHONY: app-images app-deploy e2e-smoke verify-A1.5-static
 
 help: ## List targets
@@ -48,19 +50,30 @@ whitespace-check: ## git diff --check since the merge base with DIFF_BASE (defau
 fmt-check:
 	@out="$$(gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt needed on:"; echo "$$out"; exit 1; fi
 
-# The chaos build tag adds `invcheck inject` (tools image only); vet, lint
-# and test that build too.
+# The chaos build tag adds `invcheck inject` (tools image only); the seams
+# tag adds the S4.6b test boundaries to the storage node (storagenode:seams
+# image only). Vet, lint and test those builds too; for raftstore only the
+# seam tests run tagged, as the rest is the same code as untagged.
+SEAMS_PKGS       := ./internal/raftstore/... ./internal/storagenode/... ./cmd/storagenode/...
+SEAMS_RAFT_TESTS := Seam|LogBarrier|CrashMid|AfterAppend|LogStore
+
 vet:
 	go vet ./...
 	go vet -tags chaos ./cmd/invcheck/...
+	go vet -tags seams $(SEAMS_PKGS)
+	go vet -tags kind ./tests/seams/...
 
 lint:
 	golangci-lint run ./...
 	golangci-lint run --build-tags chaos ./cmd/invcheck/...
+	golangci-lint run --build-tags seams $(SEAMS_PKGS)
+	golangci-lint run --build-tags kind ./tests/seams/...
 
-test: ## go test -race ./... (and cmd/invcheck with the chaos tag)
+test: ## go test -race ./... (and the chaos and seams builds)
 	go test -race ./...
 	go test -race -tags chaos ./cmd/invcheck/...
+	go test -race -tags seams -run '$(SEAMS_RAFT_TESTS)' ./internal/raftstore/...
+	go test -race -tags seams ./internal/storagenode/... ./cmd/storagenode/...
 	@# CI also proves the real pinned-broker TTL/DLX/consumer path (A1.3).
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.3; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.4; fi
@@ -138,6 +151,13 @@ print-%: ## Print a pin, e.g. make -s print-GOLANGCI_LINT_VERSION
 storage-image: ## Build the storage node image (storagenode + storagectl) and load it into kind
 	docker build -f cmd/storagenode/Dockerfile -t $(STORAGE_IMAGE) .
 	kind load docker-image --name $(CLUSTER) $(STORAGE_IMAGE)
+
+verify-S4.6b: ## S4.6b test seams on kind (SCH01/12/13 with real kills); needs the storage release; restores the default image
+	scripts/verify-S4.6b.sh
+
+storage-image-seams: ## Build the storage node with the seams tag (S4.6b test boundaries; schedules runner only) and load it into kind
+	docker build -f cmd/storagenode/Dockerfile --build-arg GO_TAGS=seams -t $(STORAGE_SEAMS_IMAGE) .
+	kind load docker-image --name $(CLUSTER) $(STORAGE_SEAMS_IMAGE)
 
 tools-image: ## Build the tools image (invcheck with the chaos tag) and load it into kind
 	docker build -f cmd/invcheck/Dockerfile -t $(TOOLS_IMAGE) .

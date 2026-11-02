@@ -126,6 +126,11 @@ type Node struct {
 	fence commitFence
 	// raftLogs is the log store Raft was given: logs, or a seamLogStore.
 	raftLogs raft.LogStore
+	// seams, tests and the seams build only, are the S4.6b hooks in force;
+	// nil otherwise. armed is the seams build's runtime boundaries (empty
+	// in the default build).
+	seams *seamState
+	armed armedSeams //nolint:unused // used by the seams build (seams_on.go)
 	// cfgScan finds the latest configuration's index (Configuration).
 	cfgScan configScan
 
@@ -225,17 +230,27 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 		return nil, err
 	}
 	n.sm.beforeSwap = cfg.beforeRestoreSwap
+	if cfg.seams != nil || seamsBuild {
+		n.seams = &seamState{}
+		if cfg.seams != nil {
+			n.seams.hooks.Store(cfg.seams)
+		}
+		n.sm.seams = n.seams
+	}
 	nt, err := newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, cfg.listen, logger.Named("transport"))
 	if err != nil {
 		return nil, err
 	}
-	n.trans = newFenceTransport(nt, &n.fence, cfg.beforeRPC)
+	n.trans = newFenceTransport(nt, &n.fence, cfg.beforeRPC, n.seams)
 	n.trans.dropSend, n.trans.afterSend = cfg.dropSend, cfg.afterSend
 	rc := cfg.raftConfig(n.id.ServerID())
 	rc.Logger = logger
 	// NewRaft restores the latest snapshot into the fresh FSM before it
 	// returns; the log suffix replays once the commit index is known.
 	n.raftLogs = n.logs
+	if n.seams != nil {
+		n.raftLogs = &seamLogStore{LogStore: n.logs, seams: n.seams}
+	}
 	if n.raft, err = raft.NewRaft(rc, n.sm, n.raftLogs, n.logs, n.snaps, n.trans); err != nil {
 		return nil, fmt.Errorf("raftstore: start raft: %w", err)
 	}
