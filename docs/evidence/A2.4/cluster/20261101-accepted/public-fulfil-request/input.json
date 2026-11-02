@@ -1,0 +1,13 @@
+{
+  "key": "1a8c7a6b-e8be-510d-aad1-9201e56c9796",
+  "body": {
+    "requestType": "TRANSPORTATION",
+    "details": "Synthetic reconciliation verification",
+    "peopleAffected": 1,
+    "urgency": "NORMAL",
+    "location": {
+      "lat": 62,
+      "lng": 0
+    }
+  }
+}

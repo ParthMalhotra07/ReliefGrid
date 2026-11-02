@@ -1,0 +1,18 @@
+Using the just-deployed current A2.4 application on kind-reliefgrid
+deployment "reliefgrid-matcher" successfully rolled out
+PASS public public-cancel -> CANCELLED without manual match
+PASS public public-fulfil -> FULFILLED without manual match
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-a24/scripts/verify-reconcile.py", line 139, in <module>
+    parser=argparse.ArgumentParser();parser.add_argument('--out',type=pathlib.Path,required=True);parser.add_argument('--probe',required=True);args=parser.parse_args();Verify(args.out,args.probe).run()
+                                                                                                                                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a24/scripts/verify-reconcile.py", line 132, in run
+    self.public_cleanup('public-cancel','CANCELLED',68,True);self.public_cleanup('public-fulfil','FULFILLED',62,False);self.resource_wakeup()
+                                                                                                                       ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-a24/scripts/verify-reconcile.py", line 99, in resource_wakeup
+    rid=self.create('resources','wake-resource',self.resource_body('wake-resource',56,True));started=time.monotonic();rec=self.wait(qid,'MATCHED',30);resource=self.record('res',rid);self.owns(rec,resource);assert time.time()*1000<future['nextAttemptAt'];self.save('resource-wakeup/matched',rec);self.save('resource-wakeup/timing',{'elapsedSeconds':time.monotonic()-started,'originalDue':future['nextAttemptAt']});print('PASS resource registration wakes 120-second future waiter before due time',flush=True)
+                                                                                                                          ~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-a24/scripts/verify-reconcile.py", line 47, in wait
+    self.save('first-failure',{'request':last,'expected':status});raise TimeoutError(f'{qid}: did not reach {status} within {seconds}s')
+                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: 1c5cc94b-d4a1-5b25-aafc-d4549818b01b: did not reach MATCHED within 30s

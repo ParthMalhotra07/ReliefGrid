@@ -1,0 +1,21 @@
+--- FAIL: TestWakeupConsumerCommitsBeforeAck (0.01s)
+    wakeup_test.go:58: ack=&{t:0x20ee86e0d208 acks:0 rejects:0 nacks:0 err:<nil>}
+--- FAIL: TestWakeupConsumerRetryRequiresConfirmedHandoff (0.00s)
+    --- FAIL: TestWakeupConsumerRetryRequiresConfirmedHandoff/confirmed (0.00s)
+        wakeup_test.go:82: retry=false ack=0 err=<nil>
+    --- FAIL: TestWakeupConsumerRetryRequiresConfirmedHandoff/publish_failed (0.00s)
+        wakeup_test.go:82: retry=false ack=0 err=<nil>
+--- FAIL: TestWakeupConsumerRejectsPoisonWithoutBusinessOrRetry (0.00s)
+    wakeup_test.go:96: poison disposition &{t:0x20ee86ee0fc8 acks:0 rejects:0 nacks:0 err:<nil>}
+--- FAIL: TestWakeupTransportPreservesBodyAndReturnsToWakeQueue (0.00s)
+    wakeup_test.go:118: wakeup retry sent to wrong path or changed input: &{event:{EventID: EventType: SchemaVersion:0 Exchange: RoutingKey: Payload:[] EntityKey: EntityVersion:0 CreatedAt:0 Published:false} closed:false}
+--- FAIL: TestWakeupSchemasMatchFrozenContracts (0.00s)
+    wakeup_test.go:129: schema request_state_changed missing or differs: open schemas/request_state_changed.json: no such file or directory
+    wakeup_test.go:129: schema resource_registered missing or differs: open schemas/resource_registered.json: no such file or directory
+    wakeup_test.go:129: schema resource_state_changed missing or differs: open schemas/resource_state_changed.json: no such file or directory
+    wakeup_test.go:129: schema match_proposed missing or differs: open schemas/match_proposed.json: no such file or directory
+--- FAIL: TestWakeupRetryHasOwnDurableDestination (0.00s)
+    wakeup_test.go:158: missing dedicated wakeup retry queue
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.022s
+FAIL

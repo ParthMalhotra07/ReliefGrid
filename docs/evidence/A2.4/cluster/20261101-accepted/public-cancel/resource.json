@@ -1,0 +1,23 @@
+{
+  "key": "res:aaa1587d-d9d8-59e3-afbf-e318a6ba078e",
+  "kind": "resource",
+  "version": 1,
+  "resource": {
+    "id": "aaa1587d-d9d8-59e3-afbf-e318a6ba078e",
+    "type": "TRANSPORTATION",
+    "name": "Synthetic public-cancel",
+    "location": {
+      "lat": 68,
+      "lng": 0
+    },
+    "geohash": "uh04b50",
+    "availableFrom": 1793539505000,
+    "availableUntil": 1793546765000,
+    "status": "AVAILABLE",
+    "reusable": true,
+    "locationRevision": 0,
+    "createdAt": 1793539565105,
+    "updatedAt": 1793539565105
+  },
+  "updatedAt": 1793539565105
+}

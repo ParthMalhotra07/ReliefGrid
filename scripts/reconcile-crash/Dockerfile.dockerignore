@@ -1,0 +1,17 @@
+*
+!go.mod
+!go.sum
+!cmd/
+!cmd/**
+!internal/
+!internal/**
+!loadtest/
+!loadtest/**
+!ui/
+!ui/**
+!scripts/
+!scripts/reconcile-crash/
+!scripts/reconcile-crash/**
+**/*_test.go
+**/AGENTS.md
+**/CLAUDE.md

@@ -48,7 +48,7 @@ var traceparent = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$
 
 // parseEvent validates transport identity and supported version before any
 // state read. Payload fields are hints, never inputs to an ownership decision.
-func parseEvent(body []byte) (event, error) {
+func decodeEnvelope(body []byte) (event, error) {
 	var e event
 	if len(body) > 256*1024 {
 		return e, fmt.Errorf("event exceeds 256 KiB")
@@ -69,6 +69,14 @@ func parseEvent(body []byte) (event, error) {
 	}
 	if _, err := time.Parse(time.RFC3339Nano, e.OccurredAt); err != nil {
 		return e, fmt.Errorf("event occurredAt: %w", err)
+	}
+	return e, nil
+}
+
+func parseEvent(body []byte) (event, error) {
+	e, err := decodeEnvelope(body)
+	if err != nil {
+		return e, err
 	}
 	var payload struct {
 		RequestID string `json:"requestId"`

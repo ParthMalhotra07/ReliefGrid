@@ -1,0 +1,5 @@
+--- FAIL: TestPeriodicRecoveryFencesOldIntentDespiteFutureRetry (0.01s)
+    reconcile_test.go:291: periodic scan hid old intent behind retry metadata: &{ID:ce423292-72f1-5ec9-8c87-4ae9ce1ae57a Type:WATER Location:{Lat:0 Lng:0} Geohash:s000000 PeopleAffected:1 Urgency:1 Details:null Status:MATCHING WorkflowGeneration:1 CurrentAttempt:0x1e1176c55aa0 AssignedResourceID: Disposition: NextAttemptAt:1793534475000 RetryCount:1 LastError:OUTCOME_UNKNOWN CreatedAt:1793534400000 UpdatedAt:1793534470000}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	0.014s
+FAIL

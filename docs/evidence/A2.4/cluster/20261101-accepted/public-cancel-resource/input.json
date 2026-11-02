@@ -1,0 +1,14 @@
+{
+  "key": "04a111e1-056f-59f1-9561-8dc38c84ba64",
+  "body": {
+    "resourceType": "TRANSPORTATION",
+    "name": "Synthetic public-cancel",
+    "location": {
+      "lat": 68,
+      "lng": 0
+    },
+    "windowStart": "2026-11-01T13:25:05Z",
+    "windowEnd": "2026-11-01T15:26:05Z",
+    "reusable": true
+  }
+}

@@ -1,0 +1,5 @@
+--- FAIL: TestHealthReportsReconcilerAndWakeupWorkers (0.00s)
+    health_test.go:80: recovery workers invisible: {"consumerConnected":false,"initialized":false,"relayRunning":false}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	0.009s
+FAIL

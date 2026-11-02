@@ -1,0 +1,7 @@
+--- FAIL: TestRecoverOldMatchingClosesUnknownClaimBeforeClearingIntent (0.00s)
+    reconcile_test.go:42: old attempt not fenced/closed: &{ID:old Type:WATER Location:{Lat:0 Lng:0} Geohash:s000000 PeopleAffected:1 Urgency:1 Details:null Status:MATCHING WorkflowGeneration:1 CurrentAttempt:0x92cb1dc35c0 AssignedResourceID: Disposition: NextAttemptAt:1793016075000 RetryCount:1 LastError:OUTCOME_UNKNOWN CreatedAt:1793016000000 UpdatedAt:1793016070000}
+--- FAIL: TestConcurrentHelperDoesNotInvalidateWinningIntentWithRetryMetadata (0.01s)
+    reconcile_test.go:222: losing helper invalidated winner with retry metadata: winning v2 current {Key:req:winner-request Kind:request Version:3 Deleted:false Request:0x92cb1f4a0e0 Resource:<nil> Value:null UpdatedAt:1793016000000}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	0.022s
+FAIL

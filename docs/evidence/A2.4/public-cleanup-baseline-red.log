@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/mnt/c/Users/am/Desktop/CC/.tools/a24/public-baseline.py", line 24, in <module>
+    assert q['status']=='CANCELLED',f"public cancellation remained {q['status']} without a recovery worker"
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: public cancellation remained CANCELLING without a recovery worker

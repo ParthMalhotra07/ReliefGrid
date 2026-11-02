@@ -141,6 +141,24 @@
         "x-max-length": 10000,
         "x-max-length-bytes": 67108864
       }
+    },
+    {
+      "name": "wakeup.retry.5s",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-queue-type": "quorum",
+        "x-quorum-initial-group-size": 1,
+        "x-dead-letter-strategy": "at-least-once",
+        "x-overflow": "reject-publish",
+        "x-max-length": 10000,
+        "x-max-length-bytes": 67108864,
+        "x-dead-letter-exchange": "relief.events",
+        "x-dead-letter-routing-key": "reconcile.retry",
+        "x-delivery-limit": 20,
+        "x-message-ttl": 5000
+      }
     }
   ],
   "bindings": [
@@ -223,6 +241,22 @@
       "destination_type": "queue",
       "routing_key": "resource.state_changed",
       "arguments": {}
+    },
+    {
+      "source": "relief.retry",
+      "vhost": "/",
+      "destination": "wakeup.retry.5s",
+      "destination_type": "queue",
+      "routing_key": "wakeup.delay.5s",
+      "arguments": {}
+    },
+    {
+      "source": "relief.events",
+      "vhost": "/",
+      "destination": "matching.wakeups",
+      "destination_type": "queue",
+      "routing_key": "reconcile.retry",
+      "arguments": {}
     }
   ],
   "policies": [
@@ -254,6 +288,22 @@
         "max-length-bytes": 67108864,
         "dead-letter-exchange": "relief.requests",
         "dead-letter-routing-key": "request.retry",
+        "delivery-limit": 20
+      }
+    },
+    {
+      "name": "wakeup-retry-safety",
+      "vhost": "/",
+      "pattern": "^wakeup\\.retry\\.5s$",
+      "apply-to": "quorum_queues",
+      "priority": 10,
+      "definition": {
+        "dead-letter-strategy": "at-least-once",
+        "overflow": "reject-publish",
+        "max-length": 10000,
+        "max-length-bytes": 67108864,
+        "dead-letter-exchange": "relief.events",
+        "dead-letter-routing-key": "reconcile.retry",
         "delivery-limit": 20
       }
     }

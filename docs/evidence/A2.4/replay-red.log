@@ -1,0 +1,7 @@
+--- FAIL: TestReplayDeadRequiresValidatedReplacementAndRoutedConfirm (0.00s)
+    replay_test.go:37: replay fail=false calls=0 ack=0 err=<nil>
+--- FAIL: TestReplayDeadRefusesPoisonAndIdentityChange (0.00s)
+    replay_test.go:56: invalid replay consumed dead work: calls=0 ack=0 err=<nil>
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.008s
+FAIL

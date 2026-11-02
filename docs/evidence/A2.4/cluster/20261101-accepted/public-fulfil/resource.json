@@ -1,0 +1,23 @@
+{
+  "key": "res:1d1d422c-c16a-5fda-a01e-39923cd02fcd",
+  "kind": "resource",
+  "version": 3,
+  "resource": {
+    "id": "1d1d422c-c16a-5fda-a01e-39923cd02fcd",
+    "type": "TRANSPORTATION",
+    "name": "Synthetic public-fulfil",
+    "location": {
+      "lat": 62,
+      "lng": 0
+    },
+    "geohash": "u5008nb",
+    "availableFrom": 1793539505000,
+    "availableUntil": 1793546765000,
+    "status": "CONSUMED",
+    "reusable": false,
+    "locationRevision": 0,
+    "createdAt": 1793539565697,
+    "updatedAt": 1793539565992
+  },
+  "updatedAt": 1793539565992
+}

@@ -1,0 +1,61 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 960B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [build 1/8] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#4 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 740.33kB 0.0s done
+#6 DONE 0.0s
+
+#7 [build 2/8] WORKDIR /src
+#7 CACHED
+
+#8 [build 3/8] COPY go.mod go.sum ./
+#8 CACHED
+
+#9 [build 4/8] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#9 CACHED
+
+#10 [build 5/8] COPY cmd/ cmd/
+#10 CACHED
+
+#11 [build 6/8] COPY internal/ internal/
+#11 CACHED
+
+#12 [build 7/8] COPY scripts/reconcile-crash/ scripts/reconcile-crash/
+#12 DONE 0.0s
+
+#13 [build 8/8] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/matcher ./scripts/reconcile-crash
+#13 DONE 0.6s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 CACHED
+
+#14 [stage-1 2/2] COPY --from=build /out/matcher /matcher
+#14 DONE 0.0s
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 0.5s done
+#15 exporting manifest sha256:5b63dea0f109b00fffd50d057f7d27e97630a9027b763318f4c54ab774361386 0.0s done
+#15 exporting config sha256:13f474d676c69a42109ff5fd1258cc455b0d064d45d879666329a284f1676d84 0.0s done
+#15 exporting attestation manifest sha256:005f78a5c571670af40ca7bca76bd5274c9a4fddbc52dc823bc83d8140cb4f71 0.0s done
+#15 exporting manifest list sha256:915c79aa6f336706487844969b0bc0ef989e8a062635b636b16ad957bfa75b49 0.0s done
+#15 naming to docker.io/reliefgrid/reconcile-crash:a24 done
+#15 unpacking to docker.io/reliefgrid/reconcile-crash:a24 0.1s done
+#15 DONE 0.7s

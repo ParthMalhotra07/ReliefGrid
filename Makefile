@@ -79,6 +79,7 @@ test: ## go test -race ./... (and cmd/invcheck with the chaos tag)
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.4; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.1; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.2; fi
+	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.4; fi
 
 verify-A2.2: ## Verify state-aware retries and confirmed delayed transport handoffs
 	bash scripts/verify-A2.2.sh
@@ -215,3 +216,10 @@ ci-smoke: ## CI's smoke test on a fresh runner: kind, the storage chart from pre
 
 gate: ## All nine demos from a clean deployment, twice, with a summary table (asks first)
 	bash scripts/demos/gate.sh
+
+.PHONY: verify-A2.4 verify-A2.4-cluster
+verify-A2.4: ## Verify paged recovery, wakeup acknowledgement and live fixed-TTL retries
+	bash scripts/verify-A2.4.sh
+
+verify-A2.4-cluster: ## Kill test matcher workers at committed boundaries and audit recovery
+	bash scripts/verify-A2.4-cluster.sh

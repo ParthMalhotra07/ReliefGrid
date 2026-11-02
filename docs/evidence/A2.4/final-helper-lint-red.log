@@ -1,0 +1,12 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+scripts/reconcile-crash/main.go:89:22: QF1008: could remove embedded field "Store" from selector (staticcheck)
+			rec, readErr := h.Store.ReadRecord(ctx, store.RequestKey(c.RequestID))
+			                  ^
+scripts/reconcile-crash/main.go:95:26: QF1008: could remove embedded field "Store" from selector (staticcheck)
+			result, retryErr := h.Store.RetryWorkflow(ctx, cmd)
+			                      ^
+2 issues:
+* staticcheck: 2
+make: *** [Makefile:57: lint] Error 1

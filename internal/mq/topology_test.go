@@ -47,8 +47,8 @@ func TestTopologyDefinitionsAndHelmStayIdentical(t *testing.T) {
 	if err := json.Unmarshal(mq.Definitions(), &d); err != nil {
 		t.Fatal(err)
 	}
-	if len(d.Exchanges) != 4 || len(d.Queues) != 6 {
-		t.Fatalf("exchanges=%d queues=%d; want 4/6", len(d.Exchanges), len(d.Queues))
+	if len(d.Exchanges) != 4 || len(d.Queues) != 7 {
+		t.Fatalf("exchanges=%d queues=%d; want 4/7", len(d.Exchanges), len(d.Queues))
 	}
 	wantExchanges := map[string]string{"relief.requests": "topic", "relief.retry": "direct", "relief.events": "topic", "relief.dlx": "fanout"}
 	for _, e := range d.Exchanges {
@@ -60,7 +60,7 @@ func TestTopologyDefinitionsAndHelmStayIdentical(t *testing.T) {
 	if len(wantExchanges) != 0 {
 		t.Fatalf("missing exchanges: %v", wantExchanges)
 	}
-	wantTTL := map[string]float64{"retry.5s": 5000, "retry.30s": 30000, "retry.120s": 120000}
+	wantTTL := map[string]float64{"retry.5s": 5000, "retry.30s": 30000, "retry.120s": 120000, "wakeup.retry.5s": 5000}
 	for _, q := range d.Queues {
 		if !q.Durable || q.Arguments["x-queue-type"] != "quorum" || q.Arguments["x-quorum-initial-group-size"] != float64(1) {
 			t.Errorf("unsafe queue: %+v", q)

@@ -1,0 +1,80 @@
+[
+  {
+    "stage": "pending",
+    "result": "PASS",
+    "terminal": "MATCHED",
+    "elapsedSeconds": 6.528685243996733
+  },
+  {
+    "stage": "intent",
+    "result": "PASS",
+    "terminal": "MATCHED",
+    "elapsedSeconds": 9.022490106995974
+  },
+  {
+    "stage": "claim",
+    "result": "PASS",
+    "terminal": "MATCHED",
+    "elapsedSeconds": 8.037985759998264
+  },
+  {
+    "stage": "confirm",
+    "result": "PASS",
+    "terminal": "MATCHED",
+    "elapsedSeconds": 8.014116007005214
+  },
+  {
+    "stage": "cancel-intent",
+    "result": "PASS",
+    "terminal": "CANCELLED",
+    "elapsedSeconds": 9.069896594002785
+  },
+  {
+    "stage": "cancel-close",
+    "result": "PASS",
+    "terminal": "CANCELLED",
+    "elapsedSeconds": 8.025625797003158
+  },
+  {
+    "stage": "cancel-terminal",
+    "result": "PASS",
+    "terminal": "CANCELLED",
+    "elapsedSeconds": 9.002448741004628
+  },
+  {
+    "stage": "fulfil-intent",
+    "result": "PASS",
+    "terminal": "FULFILLED",
+    "elapsedSeconds": 8.03226577299938
+  },
+  {
+    "stage": "fulfil-close",
+    "result": "PASS",
+    "terminal": "FULFILLED",
+    "elapsedSeconds": 8.025399519996427
+  },
+  {
+    "stage": "fulfil-terminal",
+    "result": "PASS",
+    "terminal": "FULFILLED",
+    "elapsedSeconds": 8.003506583001581
+  },
+  {
+    "stage": "retry-intent",
+    "result": "PASS",
+    "terminal": "MATCHED",
+    "elapsedSeconds": 12.68245122799999
+  },
+  {
+    "stage": "retry-close",
+    "result": "PASS",
+    "terminal": "MATCHED",
+    "elapsedSeconds": 10.955472255998757
+  },
+  {
+    "stage": "old-claim",
+    "result": "PASS",
+    "terminal": "MATCHED",
+    "elapsedSeconds": 36.60555046099762
+  }
+]

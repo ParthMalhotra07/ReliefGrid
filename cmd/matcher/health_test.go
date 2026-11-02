@@ -65,3 +65,18 @@ func TestHealthServerStopsWithItsWorkerContext(t *testing.T) {
 		t.Fatal("health listener still accepting after shutdown")
 	}
 }
+
+func TestHealthReportsReconcilerAndWakeupWorkers(t *testing.T) {
+	h := &healthState{}
+	h.reconcilerRunning.Store(true)
+	h.wakeupConnected.Store(true)
+	w := httptest.NewRecorder()
+	h.handler().ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), "GET", "/healthz", nil))
+	var body map[string]bool
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if !body["reconcilerRunning"] || !body["wakeupConnected"] {
+		t.Fatalf("recovery workers invisible: %s", w.Body.String())
+	}
+}

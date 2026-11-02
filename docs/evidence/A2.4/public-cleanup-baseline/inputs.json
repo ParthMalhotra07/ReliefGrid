@@ -1,0 +1,24 @@
+{
+  "seed": "7d4f8569-2a0b-488f-bb05-894c3ea41b52",
+  "resource": {
+    "resourceType": "TRANSPORTATION",
+    "name": "Synthetic recovery baseline",
+    "location": {
+      "lat": 74,
+      "lng": 90
+    },
+    "windowStart": "2026-11-01T12:45:42Z",
+    "windowEnd": "2026-11-01T14:46:42Z",
+    "reusable": true
+  },
+  "request": {
+    "requestType": "TRANSPORTATION",
+    "details": "Synthetic recovery baseline",
+    "peopleAffected": 1,
+    "urgency": "NORMAL",
+    "location": {
+      "lat": 74,
+      "lng": 90
+    }
+  }
+}
