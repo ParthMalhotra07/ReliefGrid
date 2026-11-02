@@ -1,0 +1,137 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	2.126s
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+=== RUN   TestConsumerReadsCurrentStateBeforeDurableHandlerAndAck
+--- PASS: TestConsumerReadsCurrentStateBeforeDurableHandlerAndAck (0.07s)
+=== RUN   TestConsumerDropsStaleHintAfterReadingTerminalState
+--- PASS: TestConsumerDropsStaleHintAfterReadingTerminalState (0.05s)
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/handoff
+=== RUN   TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/read
+--- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead (0.10s)
+    --- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/handoff (0.04s)
+    --- PASS: TestConsumerNeverAcknowledgesFailedHandoffOrStorageRead/read (0.05s)
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/not-json
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="invalid character 'o' in literal null (expecting 'u')"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{}
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":99}
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/null
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":1,"eventId":"not-a-uuid"}
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+--- PASS: TestConsumerMalformedEventsRejectWithoutRequeue (0.23s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/not-json (0.05s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{} (0.05s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":99} (0.04s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/null (0.04s)
+    --- PASS: TestConsumerMalformedEventsRejectWithoutRequeue/{"schemaVersion":1,"eventId":"not-a-uuid"} (0.04s)
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found
+2026/11/01 16:56:48 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found
+2026/11/01 16:56:48 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+=== RUN   TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted
+2026/11/01 16:56:48 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+--- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue (0.15s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/not_found (0.05s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/wrapped_not_found (0.04s)
+    --- PASS: TestConsumerRejectsPermanentlyMissingRequestWithoutRequeue/deleted (0.05s)
+=== RUN   TestConsumerSurfacesPermanentAbsenceRejectFailure
+--- PASS: TestConsumerSurfacesPermanentAbsenceRejectFailure (0.04s)
+=== RUN   TestConsumerSurfacesAcknowledgementFailure
+--- PASS: TestConsumerSurfacesAcknowledgementFailure (0.05s)
+=== RUN   TestConsumerAcceptsRealWorkflowRetryEnvelope
+--- PASS: TestConsumerAcceptsRealWorkflowRetryEnvelope (0.06s)
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="event property entityId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="event property requestId is required"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="duplicate event property \"entityId\""
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="trailing event JSON"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="event has missing or unknown properties"
+=== RUN   TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload
+2026/11/01 16:56:48 WARN rejected malformed matching event messageId="" error="request.created schema: jsonschema validation failed with 'https://reliefgrid.internal/events/request_created.json#'\n- at '/payload/requestType': value must be one of 'WATER', 'FOOD', 'MEDICINE', 'TRANSPORTATION', 'SHELTER'"
+--- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties (0.07s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_envelope_property_case (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/retry_payload_property_case (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/duplicate_identity (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/trailing_document (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/unknown_envelope_property (0.00s)
+    --- PASS: TestConsumerRejectsAmbiguousEnvelopeAndRetryProperties/invalid_created_payload (0.00s)
+=== RUN   TestIntegrationRetryTTLDeadLetterRoutePreservesPriority
+    integration_test.go:54: TTL -> relief.requests/request.retry -> matching.requests; priority=3; reason=expired
+--- PASS: TestIntegrationRetryTTLDeadLetterRoutePreservesPriority (6.03s)
+=== RUN   TestIntegrationMalformedDeliveryReachesMatchingDead
+2026/11/01 16:56:55 WARN rejected malformed matching event messageId=fbb58d93-d3e0-41e8-9a8b-b2c8d9066773 error="invalid character 'm' looking for beginning of value"
+    integration_test.go:103: malformed -> reject(requeue=false) -> relief.dlx -> matching.dead
+--- PASS: TestIntegrationMalformedDeliveryReachesMatchingDead (0.67s)
+=== RUN   TestIntegrationMissingRequestDeadLettersWithoutRestart
+2026/11/01 16:56:55 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+    integration_test.go:139: missing request -> one reject(requeue=false) -> matching.dead; no consumer restart
+--- PASS: TestIntegrationMissingRequestDeadLettersWithoutRestart (0.49s)
+=== RUN   TestIntegrationDomainEventsRouteToDurableWakeups
+    integration_test.go:161: all four relief.events patterns: mandatory routed confirm -> durable quorum matching.wakeups
+--- PASS: TestIntegrationDomainEventsRouteToDurableWakeups (4.88s)
+=== RUN   TestIntegrationManualAckPrefetchAndInterruptedHandoff
+    integration_test.go:238: prefetch=8; manual ack=true; interrupted handoff redelivered
+--- PASS: TestIntegrationManualAckPrefetchAndInterruptedHandoff (15.58s)
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"NORMAL"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"HIGH"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"CRITICAL"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":1}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":3}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":0}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":4}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2.5}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"urgent"}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":null}}
+=== RUN   TestEventPriorityPreservesPublicAndRetryUrgency/not-json
+--- PASS: TestEventPriorityPreservesPublicAndRetryUrgency (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"NORMAL"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"HIGH"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"CRITICAL"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":1}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":3}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":0}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":4}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":2.5}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":"urgent"}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/{"payload":{"urgency":null}} (0.00s)
+    --- PASS: TestEventPriorityPreservesPublicAndRetryUrgency/not-json (0.00s)
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirmed
+2026/11/01 16:57:16 INFO matching delivery deferred eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 retryClass=transport brokerDeliveryCount=19 brokerDeaths=<nil>
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_mandatory_publish_returned
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_publisher_confirm_rejected
+=== RUN   TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirm_lost
+--- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload (0.26s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirmed (0.07s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_mandatory_publish_returned (0.05s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/mq:_publisher_confirm_rejected (0.06s)
+    --- PASS: TestRetryTransportConfirmsBeforeAckAndKeepsPayload/confirm_lost (0.08s)
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/poison
+2026/11/01 16:57:16 WARN rejected malformed matching event messageId="" error="invalid character 'p' looking for beginning of value"
+=== RUN   TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/absent
+2026/11/01 16:57:16 WARN rejected matching event for absent request eventId=a1b2c3d4-e5f6-7890-abcd-ef1234567890 requestId=550e8400-e29b-41d4-a716-446655440000
+--- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence (0.12s)
+    --- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/poison (0.05s)
+    --- PASS: TestRetryTransportDoesNotHidePoisonOrPermanentAbsence/absent (0.07s)
+=== RUN   TestEmbeddedCreatedSchemaMatchesFrozenContract
+--- PASS: TestEmbeddedCreatedSchemaMatchesFrozenContract (0.00s)
+=== RUN   TestTopologyDefinitionsAndHelmStayIdentical
+--- PASS: TestTopologyDefinitionsAndHelmStayIdentical (0.01s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	29.945s
+A1.3 VERIFY: ALL PASS

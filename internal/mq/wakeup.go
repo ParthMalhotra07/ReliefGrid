@@ -189,7 +189,7 @@ func (c WakeupConsumer) Consume(ctx context.Context, conn *amqp.Connection) erro
 	if conn == nil {
 		return fmt.Errorf("wakeup consumer requires connection")
 	}
-	call, _ := c.timeouts()
+	call, work := c.timeouts()
 	setup, cancel := context.WithTimeout(ctx, call)
 	stop := closeOnCancel(setup, conn)
 	ch, err := conn.Channel()
@@ -250,10 +250,18 @@ func (c WakeupConsumer) Consume(ctx context.Context, conn *amqp.Connection) erro
 			if !ok {
 				return fmt.Errorf("wakeup delivery channel closed")
 			}
-			d.Acknowledger = boundedAcknowledger{Acknowledger: d.Acknowledger, ctx: ctx, conn: conn, timeout: call}
+			originalAck := d.Acknowledger
 			backoff := 100 * time.Millisecond
 			for {
-				err := c.Process(ctx, d)
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				// Only the admitted attempt survives shutdown. A failed retry
+				// stays on the same unacked delivery while admission is open.
+				deliveryCtx, finish := context.WithTimeout(context.WithoutCancel(ctx), work)
+				d.Acknowledger = boundedAcknowledger{Acknowledger: originalAck, ctx: deliveryCtx, conn: conn, timeout: call}
+				err := c.Process(deliveryCtx, d)
+				finish()
 				if err == nil {
 					break
 				}

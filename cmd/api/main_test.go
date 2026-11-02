@@ -133,3 +133,80 @@ func TestConfigRefusesUnboundedCallsAndBadCoordinator(t *testing.T) {
 		}
 	}
 }
+
+// Hold a real FSM create across process cancellation. A graceful stop must let
+// this admitted request commit and return its original HTTP result.
+type drainStore struct {
+	store.Store
+	entered, release chan struct{}
+}
+
+func (s *drainStore) CreateEntity(ctx context.Context, c store.CreateEntity) (store.Result, error) {
+	close(s.entered)
+	<-s.release
+	return s.Store.CreateEntity(ctx, c)
+}
+func TestShutdownDrainsAdmittedCreate(t *testing.T) {
+	s, err := memstore.New(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = s.Close() }()
+	held := &drainStore{Store: s, entered: make(chan struct{}), release: make(chan struct{})}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	cfg, err := loadConfig(func(string) string { return "" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.addr = "127.0.0.1:0"
+	ready, stopped := make(chan string, 1), make(chan error, 1)
+	go func() { stopped <- run(ctx, cfg, held, ready) }()
+	var addr string
+	select {
+	case addr = <-ready:
+	case <-time.After(5 * time.Second):
+		t.Fatal("not listening")
+	}
+	result := make(chan int, 1)
+	go func() {
+		req, err := http.NewRequestWithContext(t.Context(), "POST", "http://"+addr+"/api/v1/requests", strings.NewReader(`{"requestType":"WATER","location":{"lat":0,"lng":0},"details":"Synthetic draining request"}`))
+		if err != nil {
+			result <- 0
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Idempotency-Key", "271d725c-2f34-411e-92ea-496456f5da92")
+		response, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+		if err != nil {
+			result <- 0
+			return
+		}
+		defer func() { _ = response.Body.Close() }()
+		result <- response.StatusCode
+	}()
+	select {
+	case <-held.entered:
+	case <-time.After(5 * time.Second):
+		close(held.release)
+		t.Fatal("create never entered")
+	}
+	cancel()
+	close(held.release)
+	select {
+	case status := <-result:
+		if status != http.StatusCreated {
+			t.Errorf("admitted create lost on SIGTERM: HTTP %d, want201", status)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("create did not finish")
+	}
+	select {
+	case err := <-stopped:
+		if err != nil {
+			t.Error(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("API did not join after drain")
+	}
+}
