@@ -122,6 +122,7 @@ func (s *server) mgmtRoutes() http.Handler {
 	mux.HandleFunc("POST /mgmt/membership", s.membership)
 	mux.HandleFunc("GET /healthz", s.healthz)
 	mux.HandleFunc("GET /readyz", s.readyz)
+	registerSeamRoutes(mux, s) // seams build only (S4.6); a no-op otherwise
 	return mux
 }
 

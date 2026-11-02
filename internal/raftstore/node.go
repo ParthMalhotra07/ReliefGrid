@@ -124,6 +124,8 @@ type Node struct {
 	snaps *raft.FileSnapshotStore
 	trans *fenceTransport
 	fence commitFence
+	// raftLogs is the log store Raft was given: logs, or a seamLogStore.
+	raftLogs raft.LogStore
 	// cfgScan finds the latest configuration's index (Configuration).
 	cfgScan configScan
 
@@ -233,7 +235,8 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 	rc.Logger = logger
 	// NewRaft restores the latest snapshot into the fresh FSM before it
 	// returns; the log suffix replays once the commit index is known.
-	if n.raft, err = raft.NewRaft(rc, n.sm, n.logs, n.logs, n.snaps, n.trans); err != nil {
+	n.raftLogs = n.logs
+	if n.raft, err = raft.NewRaft(rc, n.sm, n.raftLogs, n.logs, n.snaps, n.trans); err != nil {
 		return nil, fmt.Errorf("raftstore: start raft: %w", err)
 	}
 	return n, nil
