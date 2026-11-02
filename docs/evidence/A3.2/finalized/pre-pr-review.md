@@ -15,5 +15,8 @@ handoff tests pass. The A2.4 25-hop verifier is required before push to pin
 delivery retention. Earlier combined demo5/8 evidence retains its actual source
 identity and is not represented as a new run of this branch.
 
-Source is reviewable; keep draft until #84's demo8 can run on the integrated
-branch and the strict audit passes. Rebase/retarget after prerequisite merges.
+READY for review: current source combined with #84 passed clean-deployment
+demo8, including an actual interruption and strict audit. See ../acceptance/.
+Parent merge/rebase and main post-merge checks remain. The combined default
+check exposed unchanged S-owned #91; a sequential-package full check passed
+without modifying tests, and standard CI on production head3b7acb6 passed.

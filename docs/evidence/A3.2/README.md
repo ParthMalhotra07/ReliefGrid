@@ -30,4 +30,6 @@ Limit: a handler must honor its work deadline. Abrupt pod loss can still cause a
 unknown client outcome, which uses the existing idempotent retry path. The joint
 gate and post-merge checks remain pending. Both consumers now drain in actual
 source; the prior patch artifact has been removed. The real-broker verifier
-exercises both workers. Final demo8 acceptance on the merged branch awaits #84.
+exercises both workers. Current recovery source combined with #84 passed a
+fresh clean-deployment demo8; see acceptance/ for exact provenance and audit.
+The PR is ready for review; human merges and main post-merge checks remain.
