@@ -33,28 +33,34 @@ func operatorCall(ctx context.Context, name, method, path string, defTimeout tim
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	return operatorRequest(ctx, name, method, *addr, path, *timeout, getenv, out)
+}
+
+// operatorRequest makes one operator-token call to addr and copies a 200
+// body to out; any other status is an error carrying the code and body.
+func operatorRequest(ctx context.Context, name, method, addr, path string, timeout time.Duration, getenv func(string) string, out io.Writer) error {
 	token := getenv("OPERATOR_TOKEN")
 	if token == "" {
 		return errors.New(name + ": OPERATOR_TOKEN is required")
 	}
-	ctx, cancel := context.WithTimeout(ctx, *timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, method, "http://"+*addr+path, nil)
+	req, err := http.NewRequestWithContext(ctx, method, "http://"+addr+path, nil)
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("storagectl: %s %s: %w", name, *addr, err)
+		return fmt.Errorf("storagectl: %s %s: %w", name, addr, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	b, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return fmt.Errorf("storagectl: %s %s: %w", name, *addr, err)
+		return fmt.Errorf("storagectl: %s %s: %w", name, addr, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("storagectl: %s %s: HTTP %d: %s", name, *addr, resp.StatusCode, bytes.TrimSpace(b))
+		return fmt.Errorf("storagectl: %s %s: HTTP %d: %s", name, addr, resp.StatusCode, bytes.TrimSpace(b))
 	}
 	_, err = fmt.Fprintln(out, string(bytes.TrimSpace(b)))
 	return err
