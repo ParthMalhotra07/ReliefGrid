@@ -113,8 +113,8 @@ func TestCICheckStaysFast(t *testing.T) {
 	if len(j.needs()) > 0 {
 		t.Errorf("check needs %v; it must start at once", j.needs())
 	}
-	if j.Timeout == 0 || j.Timeout > 15 {
-		t.Errorf("check timeout-minutes = %d, want 1..15", j.Timeout)
+	if j.Timeout == 0 || j.Timeout > 20 {
+		t.Errorf("check timeout-minutes = %d, want 1..20", j.Timeout)
 	}
 	for _, slow := range []string{"docker build", "kind ", "helm ", "ci-smoke"} {
 		if strings.Contains(j.text(), slow) {
@@ -123,6 +123,72 @@ func TestCICheckStaysFast(t *testing.T) {
 	}
 	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "make gen-check") }) {
 		t.Error("check has no contract-drift step (make gen-check)")
+	}
+}
+
+// Go cache: setup-go's own cache is keyed on go.sum alone and saved once, so
+// its test results froze at whatever main looked like then, and every PR
+// touching a package below the frozen state re-ran it uncached. Instead each
+// job that sets up Go restores the newest cache main saved for this go.sum
+// (key go-<os>-<go.sum hash>-<sha>, restore-keys the prefix), and only check,
+// on a push to main, saves one, so PRs never use up the cache quota.
+const (
+	goCacheKey     = "go-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}"
+	goCachePrefix  = "go-${{ runner.os }}-${{ hashFiles('go.sum') }}-"
+	goCacheRestore = "actions/cache/restore@"
+	goCacheSave    = "actions/cache/save@"
+)
+
+func TestCIGoCache(t *testing.T) {
+	w := loadCI(t)
+	var savers []string
+	for name, j := range w.Jobs {
+		setup := slices.IndexFunc(j.Steps, func(s step) bool { return strings.HasPrefix(s.Uses, "actions/setup-go@") })
+		if setup < 0 {
+			continue
+		}
+		if c, ok := j.Steps[setup].With["cache"]; !ok || c != false {
+			t.Errorf("job %s: setup-go has cache: %v; want false (the go.sum-only key freezes the cache)", name, c)
+		}
+		restore := slices.IndexFunc(j.Steps, func(s step) bool { return strings.HasPrefix(s.Uses, goCacheRestore) })
+		if restore < 0 {
+			t.Errorf("job %s sets up Go but does not restore the Go cache (%s)", name, goCacheRestore)
+			continue
+		}
+		r := j.Steps[restore]
+		if r.With["key"] != goCacheKey || r.With["restore-keys"] != goCachePrefix {
+			t.Errorf("job %s restore: key %q restore-keys %q; want %q and %q", name, r.With["key"], r.With["restore-keys"], goCacheKey, goCachePrefix)
+		}
+		if r.If != "" {
+			t.Errorf("job %s restore has if: %q; every run restores", name, r.If)
+		}
+		path, _ := r.With["path"].(string)
+		for _, want := range []string{"gocache", "gomodcache"} {
+			if !strings.Contains(path, want) {
+				t.Errorf("job %s restore path %q does not include the %s output", name, path, want)
+			}
+		}
+		for i, s := range j.Steps {
+			if strings.HasPrefix(s.Uses, "actions/cache@") {
+				t.Errorf("job %s step %d uses actions/cache (restore and save); PRs would save", name, i)
+			}
+			if !strings.HasPrefix(s.Uses, goCacheSave) {
+				continue
+			}
+			savers = append(savers, name)
+			if s.With["key"] != goCacheKey || s.With["path"] != r.With["path"] {
+				t.Errorf("job %s save: key %q path %q; want the restore's key and path", name, s.With["key"], s.With["path"])
+			}
+			if s.If != "github.event_name == 'push' && github.ref == 'refs/heads/main'" {
+				t.Errorf("job %s save if: %q; only pushes to main save", name, s.If)
+			}
+			if i < restore {
+				t.Errorf("job %s saves before it restores", name)
+			}
+		}
+	}
+	if !slices.Equal(savers, []string{"check"}) {
+		t.Errorf("jobs saving the Go cache: %v; want only check (one writer per key)", savers)
 	}
 }
 

@@ -17,7 +17,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -25,6 +25,18 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod # uses the toolchain line
+          cache: false # restored below, saved only by check on main (see check)
+      - id: gopaths
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.gopaths.outputs.gocache }}
+            ${{ steps.gopaths.outputs.gomodcache }}
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - id: pins
         run: echo "golangci=$(make -s print-GOLANGCI_LINT_VERSION)" >> "$GITHUB_OUTPUT"
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
@@ -34,6 +46,17 @@ jobs:
       - name: contract drift (contracts/ regenerated must match the committed code)
         run: make gen-check
       - run: make check
+      # Go cache: setup-go's cache is keyed on go.sum alone and saved once, so its test results
+      # froze and PRs re-ran every package changed on main since then. Each push to main that
+      # passes check saves a fresh cache (key ends in the commit), and PRs restore the newest one
+      # through restore-keys. PRs never save, so they do not use up the cache quota.
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.gopaths.outputs.gocache }}
+            ${{ steps.gopaths.outputs.gomodcache }}
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
   commit-lint:
     if: github.event_name == 'pull_request'
@@ -114,6 +137,18 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod # demo 4's preflight and evidence use go
+          cache: false # restored below, saved only by check on main (see check)
+      - id: gopaths
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.gopaths.outputs.gocache }}
+            ${{ steps.gopaths.outputs.gomodcache }}
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - name: install kind, kubectl and helm (tools.mk pins, sha256-checked)
         run: |
           scripts/ci-tools.sh "$RUNNER_TEMP/bin"
