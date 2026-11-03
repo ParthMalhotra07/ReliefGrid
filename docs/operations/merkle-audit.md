@@ -50,7 +50,12 @@ possible execution.
 
 1. **Quiesce first.** Stop the API writers and matcher admission, let the
    relay drain, and let workflows settle.
-2. **Run the audit** with one management endpoint per replica:
+2. **Run the audit** with one management endpoint per replica, from a pod
+   labelled `reliefgrid.io/storage-operator=true`. Each shard's NetworkPolicy
+   admits the management port (8081) only from operator pods, so running it
+   inside a storage pod times out. `scripts/verify-S4.5.sh --kind` runs it as
+   a Job built from the bootstrap Job's pod spec, the same way
+   `scripts/storage-replace.sh` runs storagectl:
 
    ```sh
    OPERATOR_TOKEN=... storagectl audit \
@@ -104,10 +109,16 @@ Intel Core Ultra 7 258V, go1.27.2):
 
 ## Verify
 
-`scripts/verify-S4.5.sh` runs every S4.5 test suite and the benchmark, and
-writes `docs/evidence/S4.5/verify-<time>.txt`. The kind part (equal roots on
-every shard of a deployed cluster after a seeded load) runs after the 4 Nov
-gate.
+- **Go part:** `scripts/verify-S4.5.sh` runs every S4.5 test suite and the
+  benchmark, and writes `docs/evidence/S4.5/verify-<time>.txt`.
+- **Kind part:** `scripts/verify-S4.5.sh --kind` runs against a deployed
+  cluster (`make demo-reset`) and never recreates it. It runs a seeded
+  `invcheck load` (`SEED`, one per cluster), then `invcheck verify`. It
+  quiesces by scaling every Deployment except the coordinator to 0, then runs
+  `invcheck check`. Last, it runs `storagectl audit` for each shard. It passes
+  only if every shard is `equal` with three pods at one `appliedIndex` and one
+  root, past the index read before the load. It writes
+  `docs/evidence/S4.5/kind-<time>.txt`.
 
 ## Limits
 

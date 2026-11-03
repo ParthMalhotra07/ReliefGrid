@@ -1,0 +1,140 @@
+# S4.5 Merkle audit: kind part of the Verify
+result:     PASSED (7/7 checks)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-11-03T12:03:12Z
+cluster:    kind-reliefgrid, namespace reliefgrid, 5 nodes
+images:     docker.io/library/import-2026-11-03@sha256:164ee0fcbb021fc7dfd029be19b59a3aba2f207520984b9808ab882a2f625933
+code tree:  254483479c50 (git ls-tree -r HEAD -- go.mod go.sum cmd internal loadtest deploy/helm/storage chaos/scripts/lib.sh scripts/verify-S4.5.sh | git hash-object --stdin)
+dirty:      no
+commit:     f8f24cd
+load:       seed 4, prefix s45-seed4, 4 writers x 4 keys x 50 writes
+
+## checks
+PASS  seeded load ran to completion (exit 0)
+PASS  invcheck verify: nothing acknowledged was lost ({"acked":216,"unknown":0,"lost":0})
+PASS  quiesced: load finished; 4 app Deployment(s) at 0 replicas (reliefgrid-api, reliefgrid-matcher, reliefgrid-traefik, reliefgrid-ui)
+PASS  invcheck check: claim invariants clean, no write during the walk (outbox pending per shard [0,0,0])
+PASS  shard 0: equal, 3 replicas at appliedIndex 970 (was 613 before the load), root 6ce4614a3abd71c3
+PASS  shard 1: equal, 3 replicas at appliedIndex 945 (was 653 before the load), root 3e4ad2aab3c34c12
+PASS  shard 2: equal, 3 replicas at appliedIndex 1033 (was 688 before the load), root cf00314fe2d9caf1
+
+## invcheck load (log), verify and check (JSON)
+ledger /ledger/s45-load-seed4.json: 216 acknowledged, 0 unknown, 0 rejected, 0 reads
+{"ok":true,"ledger":{"acked":216,"unknown":0,"rejected":0,"reads":0,"ackedInWindow":0,"errorCount":0},"resolution":{"resolved":0,"notApplied":0,"stillUnknown":0},"verdict":{"checked":216,"keys":116,"lost":null,"unknown":0,"reads":{"total":0,"checked":0,"unchecked":0,"failed":0,"served":{}},"staleReads":[]}}
+{"ok":true,"verdict":"clean","report":{"requests":0,"resources":0,"pages":2,"partialPages":0,"violations":null,"outbox":[{"shard":0,"pending":0},{"shard":1,"pending":0},{"shard":2,"pending":0}],"appliedBefore":{"0":970,"1":945,"2":1033},"appliedAfter":{"0":970,"1":945,"2":1033},"quiescent":true}}
+
+## storagectl audit, one per shard
+### shard 0 (storagectl audit exit 0)
+{
+  "verdict": "equal",
+  "appliedIndex": 970,
+  "pods": [
+    {
+      "pod": "storage-shard-0-0",
+      "addr": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 970,
+      "raftAppliedIndex": 1155,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "6ce4614a3abd71c327290fbf940687f578230cae7b30d9687fce168a810df9eb"
+    },
+    {
+      "pod": "storage-shard-0-1",
+      "addr": "storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 970,
+      "raftAppliedIndex": 1155,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "6ce4614a3abd71c327290fbf940687f578230cae7b30d9687fce168a810df9eb"
+    },
+    {
+      "pod": "storage-shard-0-2",
+      "addr": "storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 970,
+      "raftAppliedIndex": 1155,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "6ce4614a3abd71c327290fbf940687f578230cae7b30d9687fce168a810df9eb"
+    }
+  ]
+}
+
+### shard 1 (storagectl audit exit 0)
+{
+  "verdict": "equal",
+  "appliedIndex": 945,
+  "pods": [
+    {
+      "pod": "storage-shard-1-0",
+      "addr": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 945,
+      "raftAppliedIndex": 1084,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "3e4ad2aab3c34c12ef746db91aab8b659c37edfc73e5661189e3f5dcc9219ff3"
+    },
+    {
+      "pod": "storage-shard-1-1",
+      "addr": "storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 945,
+      "raftAppliedIndex": 1084,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "3e4ad2aab3c34c12ef746db91aab8b659c37edfc73e5661189e3f5dcc9219ff3"
+    },
+    {
+      "pod": "storage-shard-1-2",
+      "addr": "storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 945,
+      "raftAppliedIndex": 1084,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "3e4ad2aab3c34c12ef746db91aab8b659c37edfc73e5661189e3f5dcc9219ff3"
+    }
+  ]
+}
+
+### shard 2 (storagectl audit exit 0)
+{
+  "verdict": "equal",
+  "appliedIndex": 1033,
+  "pods": [
+    {
+      "pod": "storage-shard-2-0",
+      "addr": "storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 1033,
+      "raftAppliedIndex": 1191,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "cf00314fe2d9caf1a74a97cd835294efc6b84da5c83ebec0149eefdf2fb48645"
+    },
+    {
+      "pod": "storage-shard-2-1",
+      "addr": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 1033,
+      "raftAppliedIndex": 1191,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "cf00314fe2d9caf1a74a97cd835294efc6b84da5c83ebec0149eefdf2fb48645"
+    },
+    {
+      "pod": "storage-shard-2-2",
+      "addr": "storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8081",
+      "appliedIndex": 1033,
+      "raftAppliedIndex": 1191,
+      "ringVersion": 1,
+      "schemaVersion": "1",
+      "tombstones": 0,
+      "root": "cf00314fe2d9caf1a74a97cd835294efc6b84da5c83ebec0149eefdf2fb48645"
+    }
+  ]
+}
+
