@@ -107,9 +107,9 @@ kind_part() {
 	local before=()
 	for shard in 0 1 2; do before[shard]="$(st "storage-shard-$shard-0" | jq -r '.appliedIndex // 0')"; done
 	out="$(run_job "$load_job" load --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --prefix "$prefix" \
-		--workers "$WORKERS" --keys "$KEYS" --ops "$OPS" --timeout 600s --json)"
+		--workers "$WORKERS" --keys "$KEYS" --ops "$OPS" --timeout 600s)"
 	code=$?
-	echo "$out" >"$tmp/load.json"
+	kn logs "job/$load_job" --tail=-1 >"$tmp/load.log" 2>&1
 	[ "$code" -eq 0 ] && pass "seeded load ran to completion (exit 0)" || fail "seeded load" "exit $code: $(kn logs "job/$load_job" --tail=5 2>&1 | tr '\n' ' ')"
 	out="$(run_job "s45-verify-seed$SEED" verify --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --json)"
 	code=$?
@@ -135,7 +135,7 @@ kind_part() {
 	out="$(run_job "s45-check-seed$SEED" check --coordinator "$COORD_URL" --json)"
 	code=$?
 	echo "$out" >"$tmp/check.json"
-	[ "$code" -eq 0 ] && pass "invcheck check: claim invariants clean, no write during the walk (outbox pending per shard $(jq -c "[.outbox[]?.pending]" <<<"$out" 2>/dev/null))" || fail "invcheck check" "exit $code: $(head -c 400 <<<"$out")"
+	[ "$code" -eq 0 ] && pass "invcheck check: claim invariants clean, no write during the walk (outbox pending per shard $(jq -c "[.report.outbox[]?.pending]" <<<"$out" 2>/dev/null))" || fail "invcheck check" "exit $code: $(head -c 400 <<<"$out")"
 
 	echo "== 3. storagectl audit per shard"
 	local pods addrs verdict nidx nroot
@@ -177,8 +177,8 @@ kind_part() {
 		echo "## checks"
 		cat "$tmp/results"
 		echo
-		echo "## invcheck load / verify / check (JSON)"
-		jq -c . "$tmp/load.json" 2>/dev/null || cat "$tmp/load.json"
+		echo "## invcheck load (log), verify and check (JSON)"
+		cat "$tmp/load.log"
 		jq -c 'del(.ledger.errors)' "$tmp/verify.json" 2>/dev/null || cat "$tmp/verify.json"
 		jq -c . "$tmp/check.json" 2>/dev/null || cat "$tmp/check.json"
 		echo
