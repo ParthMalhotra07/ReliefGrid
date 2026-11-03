@@ -1,0 +1,47 @@
+# demo-7: Restart the stopped node; replay, catch-up and equal committed state
+result:     PASS (12/12 checks)
+runId:      demos17-race-run1
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-03T08:49:48Z
+finished:   2026-11-03T08:50:13Z
+duration:   25.2 s
+code tree:  aba543813fd9 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: yes (uncommitted changes under those paths)
+seed/reset: shard 1's leader stopped; 100 writes under demo7-7-1793695788 while it is down (seed 7); restart by uncordoning its worker
+
+## versions
+git head: c4fc5fccf9e3
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:42ef80bc20fac72bf7890f335c2d15acfe23fa8ce4e760a83200c6e71d21282a
+image reliefgrid/coordinator:dev: sha256:0f63e53e951970ba779a0aca3a34fbeb49a99349e7665f0c2585b094abb32bd7
+
+## checks
+PASS  preflight: coordinator reachable
+PASS  healthy: shard 1 has all three replicas Ready and one leader (storage-shard-1-0) before demo 7 stops one
+PASS  stop: storage-shard-1-0 (storage-shard-1-0/36824c76-d15d-439d-ae50-1af7197b1f0d) deleted with reliefgrid-worker2 cordoned; its replacement is Pending
+PASS  stopped: storage-shard-1-0 is down; storage-shard-1-2 leads shard 1 at term 3
+PASS  writes: 100 writes to shard 1 committed while storage-shard-1-0 was down
+PASS  restart: reliefgrid-worker2 uncordoned; storage-shard-1-0 is Running on it again (2 s)
+PASS  catch-up: storage-shard-1-0 is caughtUp at leader commit 9605 (>= 9601, the commit index after the writes); FSM at command 9599
+PASS  data-ready: storage-shard-1-0 is Ready (readiness gated on catch-up)
+PASS  identity: storage-shard-1-0 rejoined as storage-shard-1-0/36824c76-d15d-439d-ae50-1af7197b1f0d (same disk); storage-shard-1-2 leads all three
+PASS  equal state: the three replicas' dumps are identical at appliedIndex 9599
+PASS  replayed data: all 100 writes made while it was down are served by storage-shard-1-0's own FSM
+PASS  coordinator: all nine nodes UP
+
+## commands
+shard 1 commit index after the writes: 9601 (leader storage-shard-1-2)
+
+# replay/catch-up of storage-shard-1-0 (polls of /mgmt/status)
+0s {"state":"Follower","appliedIndex":9599,"commitIndex":9605,"leaderCommitIndex":9605,"restoredIndex":7845,"caughtUp":true}
+
+# dumps of shard 1 after settling
+storage-shard-1-0 9599 58e7696353db0ecdb857e53d52db9bf8ed3443063ba4077957233c15462dc5ce records=426
+storage-shard-1-1 9599 58e7696353db0ecdb857e53d52db9bf8ed3443063ba4077957233c15462dc5ce records=426
+storage-shard-1-2 9599 58e7696353db0ecdb857e53d52db9bf8ed3443063ba4077957233c15462dc5ce records=426
+stale reads of the missed writes on storage-shard-1-0: 0 retried after a 503 not caught up
