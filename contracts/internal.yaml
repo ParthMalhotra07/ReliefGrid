@@ -855,6 +855,72 @@ paths:
         "401": {$ref: "#/components/responses/Unauthorized"}
         "403": {$ref: "#/components/responses/Forbidden"}
 
+  /admin/ring/simulate:
+    get:
+      tags: [admin]
+      operationId: adminRingSimulate
+      summary: Measured key movement for a candidate ring (read-only)
+      description: |
+        Builds a candidate ring with the same token builder as the active
+        ring (internal/ring) and reports how many keys would change shard.
+        It never changes the active ring, and publishing a ring with other
+        numbers is not rebalancing: moving keys needs the fenced migration
+        protocol. Counts are measured on the keys, not promised.
+
+        Keys come from a synthetic sample (the default: req:{i} and res:{i},
+        alternating, sample keys in all) or, with source=stored, from a
+        complete scan of every kind on every shard's leader at the current
+        ringVersion. A stored scan that misses any shard is 503 NO_LEADER,
+        never a smaller count (CONTRIBUTING.md, Invariants, 7).
+      security: [{operatorToken: []}]
+      parameters:
+        - name: shards
+          in: query
+          required: true
+          description: Candidate shard count
+          schema: {type: integer, minimum: 1}
+        - name: vnodes
+          in: query
+          description: Candidate virtual nodes per shard; defaults to the active ring's
+          schema: {type: integer, minimum: 1}
+        - name: sample
+          in: query
+          description: Synthetic keys to place; not with source=stored
+          schema: {type: integer, minimum: 1, maximum: 1000000, default: 10000}
+        - name: source
+          in: query
+          description: sample (synthetic keys) or stored (every stored key, complete scan)
+          schema: {type: string, enum: [sample, stored], default: sample}
+      responses:
+        "200":
+          description: Movement from the active ring to the candidate
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RingSimulation"}
+              example:
+                source: sample
+                currentRing: *ringExample
+                candidate:
+                  ringVersion: 2
+                  hash: xxhash64
+                  shards: 4
+                  vnodesPerShard: 128
+                  checksum: "sha256:9b2000ee77469c92dc42c3be76654aea280c704cc11db99e86aedea08c5b2072"
+                keys: 10000
+                moved: 2493
+                movedFraction: 0.2493
+                idealFraction: 0.25
+                matrix:
+                  "0": {"0": 2697, "3": 857}
+                  "1": {"1": 2249, "3": 720}
+                  "2": {"2": 2561, "3": 916}
+                perShardBefore: [3554, 2969, 3477]
+                perShardAfter: [2697, 2249, 2561, 2493]
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
 components:
   securitySchemes:
     operatorToken:
@@ -1743,3 +1809,36 @@ components:
                 allOf: [{$ref: "#/components/schemas/ServerID"}]
                 description: The leader whose heartbeat supplied the counts
               heartbeatAgeMs: {type: integer, format: int64, minimum: 0, description: Age of that heartbeat; shows how stale the counts are}
+    RingSimulation:
+      type: object
+      required: [source, currentRing, candidate, keys, moved, movedFraction, idealFraction, matrix, perShardBefore, perShardAfter]
+      properties:
+        source: {type: string, enum: [sample, stored]}
+        currentRing: {$ref: "#/components/schemas/Ring"}
+        candidate:
+          allOf: [{$ref: "#/components/schemas/Ring"}]
+          description: The ring that would be published next (ringVersion + 1); never loaded
+        keys: {type: integer, minimum: 0, description: Keys placed on both rings}
+        moved: {type: integer, minimum: 0, description: Keys whose shard differs between the rings}
+        movedFraction: {type: number, format: double, description: "moved / keys; 0 with no keys"}
+        idealFraction:
+          type: number
+          format: double
+          description: |
+            The least any ring can move for this shard-count change:
+            1 - S/S' when growing from S to S' shards, 1 - S'/S when
+            shrinking, 0 when S' = S (a vnode change can still move keys).
+        matrix:
+          type: object
+          description: 'from shard → to shard → keys, as decimal strings; zero entries omitted'
+          additionalProperties:
+            type: object
+            additionalProperties: {type: integer, minimum: 1}
+        perShardBefore:
+          type: array
+          description: Keys per shard on the active ring
+          items: {type: integer, minimum: 0}
+        perShardAfter:
+          type: array
+          description: Keys per shard on the candidate ring
+          items: {type: integer, minimum: 0}
