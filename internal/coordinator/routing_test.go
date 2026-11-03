@@ -3,7 +3,9 @@ package coordinator_test
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"slices"
@@ -372,6 +374,39 @@ func TestHungNodeIsBoundedByTheBudget(t *testing.T) {
 	}
 	if e := decodeJSON[internalapi.Error](t, rec); e.OutcomeUnknown || e.Code == internalapi.OUTCOMEUNKNOWN {
 		t.Fatalf("read reported %s outcomeUnknown=%v; a read is never an unknown outcome", e.Code, e.OutcomeUnknown)
+	}
+}
+
+// A mutation whose request was written to the leader is unknown when the
+// budget ends, even if the leader's server never got as far as running it
+// (a starved process, as under parallel -race load in issue #91): the
+// coordinator cannot tell that from a request in flight. Here the leader's
+// server holds every connection before the handler, so the attempt always
+// outlives the budget, which AttemptTimeout here equals.
+func TestSentAttemptTheLeaderNeverRanIsUnknown(t *testing.T) {
+	h := newHarness(t, func(c *coordinator.Config) { c.Budget = 200 * time.Millisecond })
+	leader := h.nodes[1][0]
+	leader.srv.Close()
+	release := make(chan struct{})
+	leader.srv = httptest.NewUnstartedServer(http.HandlerFunc(leader.serve))
+	leader.srv.Config.ConnState = func(_ net.Conn, s http.ConnState) {
+		if s == http.StateActive { // a request has started arriving
+			<-release
+		}
+	}
+	leader.srv.Start()
+	t.Cleanup(leader.srv.Close)
+	t.Cleanup(func() { close(release) }) // runs first: Close waits for active connections
+	h.ready()
+
+	e := expectError(t, h.do(routedCalls(t, h, 1)[0].call), http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN)
+	if !e.OutcomeUnknown {
+		t.Fatalf("error = %+v, want outcomeUnknown", e)
+	}
+	for _, n := range h.nodes[1] {
+		if got := len(n.requests()); got != 0 {
+			t.Fatalf("%s ran %d requests; the leader's attempt should hold the whole budget", n.pod, got)
+		}
 	}
 }
 
