@@ -36,6 +36,7 @@ DIFF_BASE ?= origin/main
 .PHONY: verify-A1.3 verify-A1.4 verify-A2.1 verify-A2.2
 .PHONY: app-images app-deploy e2e-smoke verify-A1.5-static
 .PHONY: chaos-install chaos-check chaos-uninstall chaos-suite verify-S4.3
+.PHONY: tracing-up tracing-down tracing-ui
 
 # Chaos experiments (S2.3, S4.3): make chaos-<experiment> SEED=N runs chaos/scripts/<experiment>.sh
 # against the running cluster and writes its report to chaos-<experiment>-<seed>.json.
@@ -184,6 +185,25 @@ storage-replace: ## Run storagectl replace SHARD=N POD=<pod> as a Job (M7 disk r
 
 placement-check: ## Fail if two replicas of a storage shard share a worker (or one is off the data workers)
 	KUBE_CONTEXT=kind-$(CLUSTER) NAMESPACE=$(STORAGE_NS) scripts/placement-check.sh
+
+# Tracing (S4.4): the Collector and Jaeger (deploy/helm/tracing) on the infra worker, in
+# the storage namespace, and tracing turned on in the storage release (values-tracing.yaml).
+# Changing the pods' environment rolls the coordinator and the storage pods (PDB-bounded).
+# --reset-then-reuse-values: plain --reuse-values would keep the old chart's defaults (no tracing.*).
+TRACING_RELEASE ?= tracing
+TRACING_SAMPLE  ?= 1.0
+tracing-up: ## S4.4: install the Collector + Jaeger and turn tracing on in storage (TRACING_SAMPLE=1.0; 0.1 under load)
+	helm --kube-context kind-$(CLUSTER) upgrade --install $(TRACING_RELEASE) deploy/helm/tracing -n $(STORAGE_NS) --wait --timeout 5m
+	helm --kube-context kind-$(CLUSTER) upgrade $(STORAGE_RELEASE) deploy/helm/storage -n $(STORAGE_NS) --reset-then-reuse-values \
+		-f deploy/helm/storage/values-tracing.yaml --set-string tracing.samplerArg='$(TRACING_SAMPLE)' --wait --timeout 10m
+
+tracing-down: ## S4.4: turn tracing off in storage, then uninstall the Collector and Jaeger
+	helm --kube-context kind-$(CLUSTER) upgrade $(STORAGE_RELEASE) deploy/helm/storage -n $(STORAGE_NS) --reset-then-reuse-values \
+		--set tracing.enabled=false --wait --timeout 10m
+	helm --kube-context kind-$(CLUSTER) uninstall $(TRACING_RELEASE) -n $(STORAGE_NS) --ignore-not-found --wait
+
+tracing-ui: ## S4.4: Jaeger's UI on http://127.0.0.1:16686 (kubectl port-forward; Jaeger has no route)
+	kubectl --context kind-$(CLUSTER) -n $(STORAGE_NS) port-forward svc/jaeger 16686:16686
 
 # The bootstrap manifests belong to storagectl, not Helm, so helm uninstall
 # leaves them and wiped disks never re-bootstrap by accident (v3.1 §10);

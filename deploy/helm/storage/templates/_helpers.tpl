@@ -94,3 +94,23 @@ readOnlyRootFilesystem: true
 capabilities:
   drop: [ALL]
 {{- end }}
+
+{{/*
+OTEL_* environment for one service when tracing is on (S4.4); nothing when
+it is off. Call with (dict "root" $ "service" "coordinator").
+*/}}
+{{- define "storage.tracingEnv" -}}
+{{- $t := .root.Values.tracing -}}
+{{- if $t.enabled }}
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: {{ $t.endpoint | quote }}
+- name: OTEL_EXPORTER_OTLP_PROTOCOL
+  value: http/protobuf
+- name: OTEL_SERVICE_NAME
+  value: {{ .service | quote }}
+- name: OTEL_TRACES_SAMPLER
+  value: {{ $t.sampler | quote }}
+- name: OTEL_TRACES_SAMPLER_ARG
+  value: {{ $t.samplerArg | toString | quote }}
+{{- end }}
+{{- end }}

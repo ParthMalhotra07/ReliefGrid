@@ -1,0 +1,5 @@
+# Overlay: tracing on (S4.4). Applied by `make tracing-up` after it installs
+# deploy/helm/tracing; pass --set-string tracing.samplerArg=0.1 under load
+# (TRACING_SAMPLE=0.1).
+tracing:
+  enabled: true

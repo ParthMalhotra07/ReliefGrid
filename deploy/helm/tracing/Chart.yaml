@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tracing
+description: ReliefGrid tracing (S4.4) - an OpenTelemetry Collector (core) exporting to Jaeger v2 with in-memory storage
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
