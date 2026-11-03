@@ -77,6 +77,20 @@ func New(cfg Config) (*Ring, error) {
 	return &Ring{cfg: cfg, tokens: tokens, hashes: hashes}, nil
 }
 
+// Build makes the ring for version, shards and vnodes with its checksum
+// computed: the same tokens New would build from a published config with
+// those numbers. It is for candidates (/admin/ring/simulate) and tools; the
+// coordinator routes only by a ring loaded from the published ring.yaml.
+func Build(version uint64, shards, vnodes int) (*Ring, error) {
+	cfg := Config{RingVersion: version, Hash: HashXXHash64, Shards: shards, VNodesPerShard: vnodes,
+		Checksum: checksumPrefix + strings.Repeat("0", 2*sha256.Size)}
+	if err := validate(cfg); err != nil {
+		return nil, err
+	}
+	cfg.Checksum = checksum(cfg, buildTokens(shards, vnodes))
+	return New(cfg)
+}
+
 func validate(cfg Config) error {
 	switch {
 	case cfg.RingVersion == 0:
