@@ -190,6 +190,16 @@ func TestAgreedDumps(t *testing.T) {
 			}
 		})
 	}
+	// Every call records its retry count in the evidence's command log (demos 4 and 7).
+	for _, c := range []struct{ moving, bound, want string }{
+		{"2", "15", "dumps of shard 1: 2 retried at different appliedIndexes"},
+		{"0", "15", "dumps of shard 1: 0 retried at different appliedIndexes"},
+	} {
+		out, _ := runKube(t, `MOVING=$1; `+fake+`agreed_dumps 1 "$2" >/dev/null; cat "$DEMO_TMP/commands"`, c.moving, c.bound)
+		if !strings.Contains(out, c.want) {
+			t.Errorf("moving %s: command log %q, want it to contain %q", c.moving, out, c.want)
+		}
+	}
 	// Divergence at one index is not retried.
 	out, _ := runKube(t, `dumps() { echo x >>"$DEMO_TMP/calls"; printf 'p0 900 aaa records=10\np1 900 aaa records=10\np2 900 ccc records=10\n'; }; `+
 		`agreed_dumps 1 15; echo "rc=$? calls=$(grep -c . "$DEMO_TMP/calls")"`)

@@ -208,10 +208,14 @@ dumps_agree() {
 }
 # agreed_dumps <shard> <seconds>: dump the three replicas until they agree (dumps_agree),
 # retrying only while they are at different appliedIndexes, within <seconds>. The last dumps
-# are in $DEMO_TMP/dumps-<shard>.
+# are in $DEMO_TMP/dumps-<shard>; the number of retried dumps is a line in the evidence.
 agreed_dumps() {
+	local rc
 	_dumps_once() { dumps "$1" >"$DEMO_TMP/dumps-$1"; dumps_agree <"$DEMO_TMP/dumps-$1"; }
 	retry_on 75 "$2" _dumps_once "$1"
+	rc=$?
+	demo_note "dumps of shard $1: $((RETRY_ATTEMPT - 1)) retried at different appliedIndexes"
+	return "$rc"
 }
 
 # preflight: the storage deployment is there and healthy enough to demo on. Runs in this
