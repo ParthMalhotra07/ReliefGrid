@@ -189,7 +189,8 @@ func TestRaftApplyUnknownOutcome(t *testing.T) {
 // loopback cluster: no SDK (the default no-op provider), the SDK sampling
 // everything into a discarding exporter, and the SDK at 10%. S4.4 evidence.
 //
-//	go test ./internal/raftstore -run '^$' -bench 'Apply$' -benchtime 2000x -count 10
+//	go test ./internal/raftstore -run '^$' -bench 'Apply$' -benchtime 2000x -count 10 > apply.txt
+//	benchstat -col /tp apply.txt
 func BenchmarkApply(b *testing.B) {
 	sdk := func(ratio float64) trace.TracerProvider {
 		tp := sdktrace.NewTracerProvider(
@@ -206,7 +207,7 @@ func BenchmarkApply(b *testing.B) {
 		{"sdk100", func() trace.TracerProvider { return sdk(1) }},
 		{"sdk10", func() trace.TracerProvider { return sdk(0.1) }},
 	} {
-		b.Run(cfg.name, func(b *testing.B) {
+		b.Run("tp="+cfg.name, func(b *testing.B) {
 			tp := cfg.tp()
 			c := newTracedCluster(b, slices.Repeat([]trace.TracerProvider{tp}, 3))
 			_, l := c.waitLeader()
