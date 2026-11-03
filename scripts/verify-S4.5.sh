@@ -45,21 +45,53 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# audit_job <shard> <storagectl audit args...>: storagectl audit as a Job from the storage
+# bootstrap Job's pod spec (storage image, operator label, OPERATOR_TOKEN), the same way
+# scripts/storage-replace.sh runs storagectl: the shards' NetworkPolicy admits the management
+# port (8081) only from operator pods. Prints the audit's JSON; returns storagectl's exit code.
+audit_job() {
+	local shard="$1" name="s45-audit-shard-$1" boot i code
+	shift
+	boot="$(kn get jobs -l app.kubernetes.io/component=storage-bootstrap --sort-by=.metadata.creationTimestamp -o name | tail -1)"
+	[ -n "$boot" ] || { echo "no bootstrap Job to take the pod spec from" >&2; return 99; }
+	kn delete job "$name" --ignore-not-found --wait >/dev/null 2>&1
+	kn get "$boot" -o json | jq --arg name "$name" --args '$ARGS.positional as $args | .spec.template as $t
+		| {apiVersion: "batch/v1", kind: "Job",
+		   metadata: {name: $name, labels: {"app.kubernetes.io/name": "storage", "app.kubernetes.io/component": "storage-audit"}},
+		   spec: {backoffLimit: 0, ttlSecondsAfterFinished: 3600,
+		     template: {
+		       metadata: {labels: ($t.metadata.labels | del(.["controller-uid"], .["batch.kubernetes.io/controller-uid"], .["job-name"], .["batch.kubernetes.io/job-name"]))},
+		       spec: ($t.spec | .containers |= map(
+		         .command = (["/storagectl", "audit"] + $args)
+		         | .env = [.env[] | select(.name == "OPERATOR_TOKEN")]))}}}' "$@" |
+		kn apply -f - >/dev/null || { echo "could not create Job $name" >&2; return 99; }
+	for ((i = 0; i < 720; i++)); do
+		job_done "$name" && break
+		sleep 0.5
+	done
+	job_done "$name" || { echo "Job $name did not finish within 6 minutes" >&2; return 98; }
+	kn logs "job/$name" --tail=-1 2>/dev/null | awk '/^\{/ { f = 1 } f { print } f && /^\}/ { exit }'
+	kn logs "job/$name" --tail=-1 2>/dev/null | grep '^storagectl:' >&2
+	code="$(job_exit "$name")"
+	return "${code:-97}"
+}
+
 kind_part() {
 	local SEED="${SEED:-1}" WORKERS="${WORKERS:-4}" KEYS="${KEYS:-4}" OPS="${OPS:-50}"
 	EXPERIMENT=s45 seed="$SEED"
 	# shellcheck source=chaos/scripts/lib.sh
 	. chaos/scripts/lib.sh
 	local evidence="docs/evidence/S4.5/kind-$(date -u +%Y%m%dT%H%M%SZ).txt"
-	local tmp passes=0 failures=0 prefix="s45-seed$SEED" load_job="s45-load-seed$SEED" shard out code idx
-	tmp="$(mktemp -d)"
+	local passes=0 failures=0 prefix="s45-seed$SEED" load_job="s45-load-seed$SEED" shard out code idx
+	kind_tmp="$(mktemp -d)"
+	local tmp="$kind_tmp"
 	work="$tmp" && : >"$work/notes"
 	: >"$tmp/results" && : >"$tmp/audits" && : >"$tmp/scaled"
 	run_id="$load_job"
 	restore() {
 		local d n
-		while read -r d n; do kn scale "$d" --replicas "$n" >/dev/null 2>&1; done <"$tmp/scaled"
-		rm -rf "$tmp"
+		while read -r d n; do kn scale "$d" --replicas "$n" >/dev/null 2>&1; done <"$kind_tmp/scaled"
+		rm -rf "$kind_tmp"
 	}
 	trap restore EXIT
 	pass() { echo "PASS  $1" | tee -a "$tmp/results"; passes=$((passes + 1)); }
@@ -97,8 +129,8 @@ kind_part() {
 	while read -r d n; do
 		kn wait --for=delete pod -l "$(kn get "$d" -o json | jq -r '.spec.selector.matchLabels | to_entries | map("\(.key)=\(.value)") | join(",")')" --timeout=120s >/dev/null 2>&1 || quiet=no
 	done <"$tmp/scaled"
-	[ "$quiet" = yes ] && pass "quiesced: load finished; $(wc -l <"$tmp/scaled") writer Deployment(s) at 0 replicas ($(awk '{sub("deployment.apps/", "", $1); printf "%s%s", s, $1; s=", "}' "$tmp/scaled"))" ||
-		fail "quiesce: writer pods still running"
+	[ "$quiet" = yes ] && pass "quiesced: load finished; $(wc -l <"$tmp/scaled") app Deployment(s) at 0 replicas ($(awk '{sub("deployment.apps/", "", $1); printf "%s%s", s, $1; s=", "}' "$tmp/scaled"))" ||
+		fail "quiesce: app pods still running"
 
 	out="$(run_job "s45-check-seed$SEED" check --coordinator "$COORD_URL" --json)"
 	code=$?
@@ -110,7 +142,7 @@ kind_part() {
 	for shard in 0 1 2; do
 		addrs=()
 		for pod in $(shard_pods "$shard"); do addrs+=(--addr "$pod.storage-shard-$shard.$NS.svc.cluster.local:8081"); done
-		out="$(kn exec "storage-shard-$shard-0" -c storagenode -- /storagectl audit "${addrs[@]}" 2>"$tmp/audit-$shard.err")"
+		out="$(audit_job "$shard" "${addrs[@]}" 2>"$tmp/audit-$shard.err")"
 		code=$?
 		{ echo "### shard $shard (storagectl audit exit $code)"; echo "$out"; echo; } >>"$tmp/audits"
 		verdict="$(jq -r .verdict <<<"$out" 2>/dev/null)"
