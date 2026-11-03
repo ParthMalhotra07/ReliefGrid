@@ -348,8 +348,8 @@ func TestMerkleBucketRejectsBadArguments(t *testing.T) {
 		table  string
 		bucket int
 	}{{"meta", 0}, {"nope", 0}, {"records", -1}, {"records", merkle.Buckets}} {
-		if _, err := f.MerkleBucket(ctx, n, c.table, c.bucket); err == nil || errors.Is(err, fsm.ErrIndexMismatch) {
-			t.Errorf("MerkleBucket(%s, %d): err = %v, want an argument error", c.table, c.bucket, err)
+		if _, err := f.MerkleBucket(ctx, n, c.table, c.bucket); !errors.Is(err, fsm.ErrMerkleArgument) || errors.Is(err, fsm.ErrIndexMismatch) {
+			t.Errorf("MerkleBucket(%s, %d): err = %v, want ErrMerkleArgument", c.table, c.bucket, err)
 		}
 	}
 	br, err := f.MerkleBucket(ctx, n, "attempt_closures", 0)

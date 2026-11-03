@@ -38,6 +38,10 @@ const AnyIndex uint64 = math.MaxUint64
 // ErrIndexMismatch: the FSM is not at the index the audit asked for.
 var ErrIndexMismatch = errors.New("fsm: applied index mismatch")
 
+// ErrMerkleArgument: MerkleBucket was asked for a table the audit does not
+// hash or a bucket out of range.
+var ErrMerkleArgument = errors.New("fsm: bad merkle argument")
+
 // IndexMismatchError is the index asked for and the index the read saw.
 type IndexMismatchError struct{ Want, Got uint64 }
 
@@ -122,10 +126,10 @@ func (f *FSM) MerkleBucket(ctx context.Context, at uint64, table string, bucket 
 		}
 	}
 	if idx < 0 {
-		return MerkleBucketReport{}, fmt.Errorf("fsm: merkle: table %q is not audited", table)
+		return MerkleBucketReport{}, fmt.Errorf("%w: table %q is not audited", ErrMerkleArgument, table)
 	}
 	if bucket < 0 || bucket >= merkle.Buckets {
-		return MerkleBucketReport{}, fmt.Errorf("fsm: merkle: bucket %d: must be 0 to %d", bucket, merkle.Buckets-1)
+		return MerkleBucketReport{}, fmt.Errorf("%w: bucket %d: must be 0 to %d", ErrMerkleArgument, bucket, merkle.Buckets-1)
 	}
 	mt := merkleTables[idx]
 	var rep MerkleBucketReport
