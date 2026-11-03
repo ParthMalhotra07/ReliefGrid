@@ -51,7 +51,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -72,6 +76,8 @@ type Client struct {
 	timeout time.Duration
 	// readMode is WithReadConsistency's mode; "" means none was set.
 	readMode store.Consistency
+	// tracerProvider records client spans (S4.4); nil uses the global one.
+	tracerProvider trace.TracerProvider
 
 	mu   sync.Mutex
 	ring internalapi.Ring
@@ -83,6 +89,27 @@ type Option func(*Client)
 
 // WithHTTPClient sets the HTTP client (default: a fresh http.Client).
 func WithHTTPClient(c *http.Client) Option { return func(cl *Client) { cl.http = c } }
+
+// WithTracerProvider records client spans with tp instead of the global
+// provider (S4.4).
+func WithTracerProvider(tp trace.TracerProvider) Option {
+	return func(cl *Client) { cl.tracerProvider = tp }
+}
+
+// span starts the client span of one store call (S4.4), named by method,
+// never by key; the coordinator receives its context on every request the
+// call makes (a ring-mismatch retry included). end records err; a read's
+// NOT_FOUND is an answer, not an error.
+func (c *Client) span(ctx context.Context, op string) (context.Context, func(error)) {
+	ctx, span := obs.Tracer(c.tracerProvider).Start(ctx, "coordclient."+op, trace.WithSpanKind(trace.SpanKindClient))
+	return ctx, func(err error) {
+		if err != nil && !errors.Is(err, store.ErrNotFound) { // committed rejections are results, not errors
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		}
+		span.End()
+	}
+}
 
 // WithTimeout caps every call (default DefaultTimeout).
 func WithTimeout(d time.Duration) Option { return func(cl *Client) { cl.timeout = d } }
@@ -218,6 +245,7 @@ func (c *Client) send(ctx context.Context, method, path string, query url.Values
 	for k, v := range header {
 		req.Header.Set(k, v)
 	}
+	obs.InjectHTTP(ctx, req.Header)
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return answer{}, &transportError{err: err, sent: wrote.Load()}
@@ -232,6 +260,7 @@ func (c *Client) send(ctx context.Context, method, path string, query url.Values
 
 // mutation is one store command as a contract route.
 type mutation struct {
+	op           string // store method, the span's name
 	method, path string
 	query        url.Values        // without ringVersion
 	header       map[string]string // conditional headers
@@ -243,7 +272,9 @@ type mutation struct {
 // RING_VERSION_MISMATCH it refreshes the ring and, if the version changed,
 // retries once with the same command and the new ringVersion. The client's
 // timeout caps all of it.
-func (c *Client) mutate(ctx context.Context, m mutation) (store.Result, error) {
+func (c *Client) mutate(ctx context.Context, m mutation) (res store.Result, err error) {
+	ctx, end := c.span(ctx, m.op)
+	defer func() { end(err) }()
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	for retried := false; ; retried = true {
@@ -330,7 +361,9 @@ func commandBody(cmd any, rv uint64, drop []string) ([]byte, error) {
 // read sends a GET and decodes a 200 into out. Every failure is an *Error
 // that is never ErrUnknownOutcome; a 404 NOT_FOUND matches ErrNotFound.
 // The client's timeout caps the call, refresh and retry included.
-func (c *Client) read(ctx context.Context, path string, query url.Values, out any) error {
+func (c *Client) read(ctx context.Context, op, path string, query url.Values, out any) (err error) {
+	ctx, end := c.span(ctx, op)
+	defer func() { end(err) }()
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 	for retried := false; ; retried = true {
@@ -435,14 +468,14 @@ func (c *Client) servedAs(asked, served string) error {
 
 // pointRead is a read of one key, closure or operation. With a client read
 // mode it sends the mode and checks the answer's read info against it.
-func (c *Client) pointRead(ctx context.Context, path string, query url.Values, resp any, info *internalapi.ReadInfo) error {
+func (c *Client) pointRead(ctx context.Context, op, path string, query url.Values, resp any, info *internalapi.ReadInfo) error {
 	if c.readMode != "" {
 		if query == nil {
 			query = url.Values{}
 		}
 		query.Set("consistency", string(c.readMode))
 	}
-	if err := c.read(ctx, path, query, resp); err != nil {
+	if err := c.read(ctx, op, path, query, resp); err != nil {
 		return err
 	}
 	if c.readMode == "" {
@@ -452,7 +485,7 @@ func (c *Client) pointRead(ctx context.Context, path string, query url.Values, r
 }
 
 func (c *Client) CreateEntity(ctx context.Context, cmd store.CreateEntity) (store.Result, error) {
-	return c.mutate(ctx, mutation{method: http.MethodPut, path: "/internal/data/" + url.PathEscape(cmd.Key),
+	return c.mutate(ctx, mutation{op: "CreateEntity", method: http.MethodPut, path: "/internal/data/" + url.PathEscape(cmd.Key),
 		header: map[string]string{"If-None-Match": "*"}, body: cmd, drop: []string{"key"}})
 }
 
@@ -460,10 +493,10 @@ func (c *Client) CompareAndSet(ctx context.Context, cmd store.CompareAndSet) (st
 	ifMatch := map[string]string{"If-Match": `"` + strconv.FormatUint(cmd.ExpectedVersion, 10) + `"`}
 	path := "/internal/data/" + url.PathEscape(cmd.Key)
 	if cmd.Delete {
-		return c.mutate(ctx, mutation{method: http.MethodDelete, path: path, header: ifMatch,
+		return c.mutate(ctx, mutation{op: "CompareAndSet", method: http.MethodDelete, path: path, header: ifMatch,
 			query: url.Values{"operationId": {cmd.OperationID}, "at": {strconv.FormatInt(cmd.At, 10)}}})
 	}
-	return c.mutate(ctx, mutation{method: http.MethodPut, path: path, header: ifMatch, body: cmd,
+	return c.mutate(ctx, mutation{op: "CompareAndSet", method: http.MethodPut, path: path, header: ifMatch, body: cmd,
 		drop: []string{"key", "expectedVersion", "delete"}})
 }
 
@@ -472,7 +505,7 @@ func (c *Client) TransitionRequest(ctx context.Context, cmd store.TransitionRequ
 	if err != nil {
 		return store.Result{}, err
 	}
-	return c.mutate(ctx, mutation{method: http.MethodPost, path: "/internal/requests/" + url.PathEscape(id) + "/transition", body: cmd, drop: []string{"key"}})
+	return c.mutate(ctx, mutation{op: "TransitionRequest", method: http.MethodPost, path: "/internal/requests/" + url.PathEscape(id) + "/transition", body: cmd, drop: []string{"key"}})
 }
 
 func (c *Client) RetryWorkflow(ctx context.Context, cmd store.RetryWorkflow) (store.Result, error) {
@@ -480,7 +513,7 @@ func (c *Client) RetryWorkflow(ctx context.Context, cmd store.RetryWorkflow) (st
 	if err != nil {
 		return store.Result{}, err
 	}
-	return c.mutate(ctx, mutation{method: http.MethodPost, path: "/internal/requests/" + url.PathEscape(id) + "/retry", body: cmd, drop: []string{"key"}})
+	return c.mutate(ctx, mutation{op: "RetryWorkflow", method: http.MethodPost, path: "/internal/requests/" + url.PathEscape(id) + "/retry", body: cmd, drop: []string{"key"}})
 }
 
 func (c *Client) TransitionResource(ctx context.Context, cmd store.TransitionResource) (store.Result, error) {
@@ -488,7 +521,7 @@ func (c *Client) TransitionResource(ctx context.Context, cmd store.TransitionRes
 	if err != nil {
 		return store.Result{}, err
 	}
-	return c.mutate(ctx, mutation{method: http.MethodPost, path: "/internal/resources/" + url.PathEscape(id) + "/transition", body: cmd, drop: []string{"key"}})
+	return c.mutate(ctx, mutation{op: "TransitionResource", method: http.MethodPost, path: "/internal/resources/" + url.PathEscape(id) + "/transition", body: cmd, drop: []string{"key"}})
 }
 
 func (c *Client) TryClaim(ctx context.Context, cmd store.TryClaim) (store.Result, error) {
@@ -496,7 +529,7 @@ func (c *Client) TryClaim(ctx context.Context, cmd store.TryClaim) (store.Result
 	if err != nil {
 		return store.Result{}, err
 	}
-	return c.mutate(ctx, mutation{method: http.MethodPost, path: "/internal/resources/" + url.PathEscape(id) + "/claim", body: cmd, drop: []string{"resourceKey"}})
+	return c.mutate(ctx, mutation{op: "TryClaim", method: http.MethodPost, path: "/internal/resources/" + url.PathEscape(id) + "/claim", body: cmd, drop: []string{"resourceKey"}})
 }
 
 func (c *Client) CloseAttempt(ctx context.Context, cmd store.CloseAttempt) (store.Result, error) {
@@ -504,11 +537,11 @@ func (c *Client) CloseAttempt(ctx context.Context, cmd store.CloseAttempt) (stor
 	if err != nil {
 		return store.Result{}, err
 	}
-	return c.mutate(ctx, mutation{method: http.MethodPost, path: "/internal/resources/" + url.PathEscape(id) + "/close-attempt", body: cmd, drop: []string{"resourceKey"}})
+	return c.mutate(ctx, mutation{op: "CloseAttempt", method: http.MethodPost, path: "/internal/resources/" + url.PathEscape(id) + "/close-attempt", body: cmd, drop: []string{"resourceKey"}})
 }
 
 func (c *Client) MarkOutboxPublished(ctx context.Context, cmd store.MarkOutboxPublished) (store.Result, error) {
-	return c.mutate(ctx, mutation{method: http.MethodPost, path: "/internal/outbox/published",
+	return c.mutate(ctx, mutation{op: "MarkOutboxPublished", method: http.MethodPost, path: "/internal/outbox/published",
 		query: url.Values{"shard": {strconv.Itoa(cmd.Shard)}}, body: cmd, drop: []string{"shard"}})
 }
 
@@ -521,7 +554,7 @@ func (c *Client) ReadRecord(ctx context.Context, key string) (store.Record, erro
 // and applied position.
 func (c *Client) ReadRecordInfo(ctx context.Context, key string) (store.Record, internalapi.ReadInfo, error) {
 	var resp internalapi.RecordResponse
-	if err := c.pointRead(ctx, "/internal/data/"+url.PathEscape(key), nil, &resp, &resp.Read); err != nil {
+	if err := c.pointRead(ctx, "ReadRecordInfo", "/internal/data/"+url.PathEscape(key), nil, &resp, &resp.Read); err != nil {
 		return store.Record{}, internalapi.ReadInfo{}, err
 	}
 	return resp.Record, resp.Read, nil
@@ -533,7 +566,7 @@ func (c *Client) ReadClosure(ctx context.Context, resourceKey, attemptID string)
 		return store.Closure{}, err
 	}
 	var resp internalapi.ClosureResponse
-	if err := c.pointRead(ctx, "/internal/resources/"+url.PathEscape(id)+"/closures/"+url.PathEscape(attemptID), nil, &resp, &resp.Read); err != nil {
+	if err := c.pointRead(ctx, "ReadClosure", "/internal/resources/"+url.PathEscape(id)+"/closures/"+url.PathEscape(attemptID), nil, &resp, &resp.Read); err != nil {
 		return store.Closure{}, err
 	}
 	return resp.Closure, nil
@@ -575,7 +608,7 @@ func (c *Client) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult,
 		query["geohashPrefixes"] = q.GeohashPrefixes
 	}
 	var resp internalapi.ScanResponse
-	if err := c.read(ctx, "/internal/scan", query, &resp); err != nil {
+	if err := c.read(ctx, "Scan", "/internal/scan", query, &resp); err != nil {
 		return store.ScanResult{}, err
 	}
 	if err := c.servedAs(mode, string(resp.Consistency)); err != nil {
@@ -638,7 +671,7 @@ func (c *Client) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]stor
 		query.Set("wait", strconv.Itoa(int(q.Wait/time.Second)))
 	}
 	var resp internalapi.OutboxPage
-	if err := c.read(ctx, "/internal/outbox", query, &resp); err != nil {
+	if err := c.read(ctx, "PendingOutbox", "/internal/outbox", query, &resp); err != nil {
 		return nil, err
 	}
 	if err := c.servedAs(mode, string(resp.Read.Consistency)); err != nil {
@@ -649,7 +682,7 @@ func (c *Client) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]stor
 
 func (c *Client) Operation(ctx context.Context, key, operationID string) (store.Result, error) {
 	var resp internalapi.OperationResponse
-	if err := c.pointRead(ctx, "/internal/operations/"+url.PathEscape(operationID), url.Values{"key": {key}}, &resp, &resp.Read); err != nil {
+	if err := c.pointRead(ctx, "Operation", "/internal/operations/"+url.PathEscape(operationID), url.Values{"key": {key}}, &resp, &resp.Read); err != nil {
 		return store.Result{}, err
 	}
 	return resp.Result, nil
