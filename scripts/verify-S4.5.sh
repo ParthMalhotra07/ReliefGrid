@@ -55,7 +55,7 @@ audit_job() {
 	boot="$(kn get jobs -l app.kubernetes.io/component=storage-bootstrap --sort-by=.metadata.creationTimestamp -o name | tail -1)"
 	[ -n "$boot" ] || { echo "no bootstrap Job to take the pod spec from" >&2; return 99; }
 	kn delete job "$name" --ignore-not-found --wait >/dev/null 2>&1
-	kn get "$boot" -o json | jq --arg name "$name" --args '$ARGS.positional as $args | .spec.template as $t
+	kn get "$boot" -o json | jq --arg name "$name" --argjson args "$(printf '%s\n' "$@" | jq -R . | jq -sc .)" '.spec.template as $t
 		| {apiVersion: "batch/v1", kind: "Job",
 		   metadata: {name: $name, labels: {"app.kubernetes.io/name": "storage", "app.kubernetes.io/component": "storage-audit"}},
 		   spec: {backoffLimit: 0, ttlSecondsAfterFinished: 3600,
@@ -63,7 +63,7 @@ audit_job() {
 		       metadata: {labels: ($t.metadata.labels | del(.["controller-uid"], .["batch.kubernetes.io/controller-uid"], .["job-name"], .["batch.kubernetes.io/job-name"]))},
 		       spec: ($t.spec | .containers |= map(
 		         .command = (["/storagectl", "audit"] + $args)
-		         | .env = [.env[] | select(.name == "OPERATOR_TOKEN")]))}}}' "$@" |
+		         | .env = [.env[] | select(.name == "OPERATOR_TOKEN")]))}}}' |
 		kn apply -f - >/dev/null || { echo "could not create Job $name" >&2; return 99; }
 	for ((i = 0; i < 720; i++)); do
 		job_done "$name" && break
