@@ -35,9 +35,11 @@
 #   2. invcheck verify: nothing acknowledged was lost.
 #   3. quiesce: the load has finished; every Deployment except the
 #      coordinator (the app's API and matcher, which hosts the relay) is scaled
-#      to 0 and its pods are gone (restored on exit); then invcheck check
-#      (claim invariants, and no write committed during its walk).
-#   4. storagectl audit per shard, run inside storage-shard-N-0 against the
+#      to 0 and its pods are gone; then invcheck check
+#      (claim invariants, and no write committed during its walk). On any
+#      exit, including a failure, Ctrl-C or SIGTERM, an EXIT trap scales those
+#      Deployments back to their replicas in their Helm release.
+#   4. storagectl audit per shard, as an operator Job (audit_job) against the
 #      three replicas' management endpoints: verdict equal, exit 0, three pods
 #      at one appliedIndex with one root, and that index past the load.
 # Writes docs/evidence/S4.5/kind-<UTC time>.txt with each shard's audit JSON.
@@ -76,6 +78,39 @@ audit_job() {
 	return "${code:-97}"
 }
 
+# helm_replicas <release>: "<deployment> <replicas>" for each Deployment in the release's
+# manifest (replicas left out of a manifest mean 1, the Kubernetes default).
+helm_replicas() {
+	helm --kube-context "$CTX" -n "$NS" get manifest "$1" | awk '
+		function emit() { if (kind == "Deployment" && name != "") print name, (reps == "" ? 1 : reps) }
+		/^---/ { emit(); kind = name = reps = ""; meta = 0; next }
+		/^kind:/ { kind = $2 }
+		/^metadata:/ { meta = 1; next }
+		/^[^ #]/ { meta = 0 }
+		meta && /^  name:/ && name == "" { name = $2; gsub(/["\047]/, "", name) }
+		/^  replicas:/ { reps = $2 }
+		END { emit() }'
+}
+
+# restore_app: the EXIT trap of the kind part. Scales every Deployment the quiesce planned to
+# stop ($kind_tmp/scaled: "<deployment> <replicas>", written before the first scale-down) back
+# to its replicas in its Helm release, so a failed, interrupted or killed run never leaves the
+# app at 0. Runs on any exit; INT, TERM and HUP are turned into exits so it runs then too.
+restore_app() {
+	local d n
+	[ -n "${kind_tmp:-}" ] || return 0
+	if [ -s "$kind_tmp/scaled" ]; then
+		while read -r d n; do
+			if kn scale "$d" --replicas "$n" >/dev/null 2>&1; then
+				echo "restored $d to $n replicas" >&2
+			else
+				echo "WARNING: could not restore $d to $n replicas: run kubectl -n $NS scale $d --replicas $n" >&2
+			fi
+		done <"$kind_tmp/scaled"
+	fi
+	rm -rf "$kind_tmp"
+}
+
 kind_part() {
 	local SEED="${SEED:-1}" WORKERS="${WORKERS:-4}" KEYS="${KEYS:-4}" OPS="${OPS:-50}"
 	EXPERIMENT=s45 seed="$SEED"
@@ -88,12 +123,9 @@ kind_part() {
 	work="$tmp" && : >"$work/notes"
 	: >"$tmp/results" && : >"$tmp/audits" && : >"$tmp/scaled"
 	run_id="$load_job"
-	restore() {
-		local d n
-		while read -r d n; do kn scale "$d" --replicas "$n" >/dev/null 2>&1; done <"$kind_tmp/scaled"
-		rm -rf "$kind_tmp"
-	}
-	trap restore EXIT
+	trap restore_app EXIT
+	trap 'exit 130' INT
+	trap 'exit 143' TERM HUP
 	pass() { echo "PASS  $1" | tee -a "$tmp/results"; passes=$((passes + 1)); }
 	fail() { echo "FAIL  $1${2:+: $2}" | tee -a "$tmp/results"; failures=$((failures + 1)); }
 
@@ -102,29 +134,50 @@ kind_part() {
 		kn get statefulset "storage-shard-$shard" >/dev/null 2>&1 || { echo "kind part: storage-shard-$shard is not deployed (make demo-reset)" >&2; return 2; }
 	done
 
+	# The Job helpers poll for minutes. They run in this shell with their output in a file,
+	# never inside $(...): bash runs a trap only once the foreground command returns, so a
+	# SIGTERM to this process during a subshell would wait out the whole poll before the
+	# trap restores the app.
 	echo "== 1. seeded load ($prefix: $WORKERS writers x $KEYS keys x $OPS writes)"
 	ensure_pvc || { echo "kind part: could not create PVC $PVC" >&2; return 2; }
 	local before=()
 	for shard in 0 1 2; do before[shard]="$(st "storage-shard-$shard-0" | jq -r '.appliedIndex // 0')"; done
-	out="$(run_job "$load_job" load --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --prefix "$prefix" \
-		--workers "$WORKERS" --keys "$KEYS" --ops "$OPS" --timeout 600s)"
+	run_job "$load_job" load --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --prefix "$prefix" \
+		--workers "$WORKERS" --keys "$KEYS" --ops "$OPS" --timeout 600s >"$tmp/out"
 	code=$?
 	kn logs "job/$load_job" --tail=-1 >"$tmp/load.log" 2>&1
 	[ "$code" -eq 0 ] && pass "seeded load ran to completion (exit 0)" || fail "seeded load" "exit $code: $(kn logs "job/$load_job" --tail=5 2>&1 | tr '\n' ' ')"
-	out="$(run_job "s45-verify-seed$SEED" verify --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --json)"
-	code=$?
+	run_job "s45-verify-seed$SEED" verify --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --json >"$tmp/out"
+	code=$? out="$(cat "$tmp/out")"
 	echo "$out" >"$tmp/verify.json"
 	[ "$code" -eq 0 ] && pass "invcheck verify: nothing acknowledged was lost ($(jq -c '{acked: .ledger.acked, unknown: .ledger.unknown, lost: (.verdict.lost | length)}' <<<"$out" 2>/dev/null))" ||
 		fail "invcheck verify" "exit $code: $(head -c 400 <<<"$out")"
 
 	echo "== 2. quiesce"
-	local d n
-	for d in $(kn get deployments -o name); do
-		[ "$d" = deployment.apps/storage-coordinator ] && continue
-		n="$(kn get "$d" -o jsonpath='{.spec.replicas}')"
-		echo "$d $n" >>"$tmp/scaled"
-		kn scale "$d" --replicas 0 >/dev/null || fail "scale $d to 0"
+	# The plan first: each app Deployment and its replicas in its Helm release (by the
+	# meta.helm.sh/release-name annotation). The trap restores that, not the count seen now,
+	# which an earlier broken run may have left at 0.
+	local d n rel plan
+	plan="$(kn get deployments -o json | jq -r '.items[] | select(.metadata.name != "storage-coordinator")
+		| [.metadata.name, (.metadata.annotations["meta.helm.sh/release-name"] // "-"), (.spec.replicas // 1)] | @tsv')" ||
+		{ echo "kind part: could not list the Deployments to quiesce" >&2; return 2; }
+	: >"$tmp/helm"
+	for rel in $(cut -f2 <<<"$plan" | sort -u); do
+		[ "$rel" = - ] || helm_replicas "$rel" >>"$tmp/helm" || { echo "kind part: could not read Helm release $rel" >&2; return 2; }
 	done
+	local name want
+	while IFS=$'\t' read -r name rel n; do
+		[ -n "$name" ] || continue
+		want="$(awk -v d="$name" '$1 == d { print $2; exit }' "$tmp/helm")"
+		if [ -z "$want" ]; then
+			echo "kind part: $name is not in a Helm release; it will be restored to its current $n replicas" >&2
+			want="$n"
+		fi
+		echo "deployment.apps/$name $want" >>"$tmp/scaled"
+	done <<<"$plan"
+	while read -r d n; do
+		kn scale "$d" --replicas 0 >/dev/null || fail "scale $d to 0"
+	done <"$tmp/scaled"
 	local quiet=yes
 	while read -r d n; do
 		kn wait --for=delete pod -l "$(kn get "$d" -o json | jq -r '.spec.selector.matchLabels | to_entries | map("\(.key)=\(.value)") | join(",")')" --timeout=120s >/dev/null 2>&1 || quiet=no
@@ -132,8 +185,8 @@ kind_part() {
 	[ "$quiet" = yes ] && pass "quiesced: load finished; $(wc -l <"$tmp/scaled") app Deployment(s) at 0 replicas ($(awk '{sub("deployment.apps/", "", $1); printf "%s%s", s, $1; s=", "}' "$tmp/scaled"))" ||
 		fail "quiesce: app pods still running"
 
-	out="$(run_job "s45-check-seed$SEED" check --coordinator "$COORD_URL" --json)"
-	code=$?
+	run_job "s45-check-seed$SEED" check --coordinator "$COORD_URL" --json >"$tmp/out"
+	code=$? out="$(cat "$tmp/out")"
 	echo "$out" >"$tmp/check.json"
 	[ "$code" -eq 0 ] && pass "invcheck check: claim invariants clean, no write during the walk (outbox pending per shard $(jq -c "[.report.outbox[]?.pending]" <<<"$out" 2>/dev/null))" || fail "invcheck check" "exit $code: $(head -c 400 <<<"$out")"
 
@@ -142,9 +195,9 @@ kind_part() {
 	for shard in 0 1 2; do
 		addrs=()
 		for pod in $(shard_pods "$shard"); do addrs+=(--addr "$pod.storage-shard-$shard.$NS.svc.cluster.local:8081"); done
-		out="$(audit_job "$shard" "${addrs[@]}" 2>"$tmp/audit-$shard.err")"
-		code=$?
-		{ echo "### shard $shard (storagectl audit exit $code)"; echo "$out"; echo; } >>"$tmp/audits"
+		audit_job "$shard" "${addrs[@]}" >"$tmp/out" 2>"$tmp/audit-$shard.err"
+		code=$? out="$(cat "$tmp/out")"
+		{ [ "$shard" = 0 ] || echo; echo "### shard $shard (storagectl audit exit $code)"; echo "${out:-(no output)}"; } >>"$tmp/audits"
 		verdict="$(jq -r .verdict <<<"$out" 2>/dev/null)"
 		idx="$(jq -r .appliedIndex <<<"$out" 2>/dev/null)"
 		pods="$(jq -r '.pods | length' <<<"$out" 2>/dev/null)"

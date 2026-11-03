@@ -115,7 +115,8 @@ Intel Core Ultra 7 258V, go1.27.2):
   cluster (`make demo-reset`) and never recreates it. It runs a seeded
   `invcheck load` (`SEED`, one per cluster), then `invcheck verify`. It
   quiesces by scaling every Deployment except the coordinator to 0, then runs
-  `invcheck check`. Last, it runs `storagectl audit` for each shard. It passes
+  `invcheck check`. On any exit, including a failure, Ctrl-C or SIGTERM, a
+  trap scales those Deployments back to their replicas in their Helm release. Last, it runs `storagectl audit` for each shard. It passes
   only if every shard is `equal` with three pods at one `appliedIndex` and one
   root, past the index read before the load. It writes
   `docs/evidence/S4.5/kind-<time>.txt`.
