@@ -19,15 +19,149 @@
 # then BenchmarkMerkle (a full digest of a file database), recording the
 # measured cost per row.
 #
-# Kind part (equal roots on every shard of a deployed cluster after a seeded
-# load): not in this script yet; it is added after the 4 Nov gate, when the
-# cluster is free. The evidence file says so.
-#
 # Writes docs/evidence/S4.5/verify-<UTC time>.txt with the result, the code
 # tree hash and whether the tree was dirty, one line per suite and the
 # benchmark. Exits 0 only if every suite passed.
+#
+#   scripts/verify-S4.5.sh --kind
+#
+# Kind part: equal roots on every shard of a deployed cluster after a seeded
+# load. Needs the local kind cluster with deploy/helm/storage installed and the
+# tools image loaded (make demo-reset); it never recreates the cluster.
+#   1. a seeded load: invcheck load as a Job (chaos/scripts/lib.sh), prefix
+#      s45-seed<SEED> (SEED, default 1), WORKERS writers x KEYS keys x OPS
+#      writes each; the key set and every value are a function of the seed.
+#      Seeds are one per cluster: a rerun on the same cluster needs a new SEED.
+#   2. invcheck verify: nothing acknowledged was lost.
+#   3. quiesce: the load has finished; every Deployment except the
+#      coordinator (the app's API and matcher, which hosts the relay) is scaled
+#      to 0 and its pods are gone (restored on exit); then invcheck check
+#      (claim invariants, and no write committed during its walk).
+#   4. storagectl audit per shard, run inside storage-shard-N-0 against the
+#      three replicas' management endpoints: verdict equal, exit 0, three pods
+#      at one appliedIndex with one root, and that index past the load.
+# Writes docs/evidence/S4.5/kind-<UTC time>.txt with each shard's audit JSON.
+# Exits 0 only if every check passed.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+
+kind_part() {
+	local SEED="${SEED:-1}" WORKERS="${WORKERS:-4}" KEYS="${KEYS:-4}" OPS="${OPS:-50}"
+	EXPERIMENT=s45 seed="$SEED"
+	# shellcheck source=chaos/scripts/lib.sh
+	. chaos/scripts/lib.sh
+	local evidence="docs/evidence/S4.5/kind-$(date -u +%Y%m%dT%H%M%SZ).txt"
+	local tmp passes=0 failures=0 prefix="s45-seed$SEED" load_job="s45-load-seed$SEED" shard out code idx
+	tmp="$(mktemp -d)"
+	work="$tmp" && : >"$work/notes"
+	: >"$tmp/results" && : >"$tmp/audits" && : >"$tmp/scaled"
+	run_id="$load_job"
+	restore() {
+		local d n
+		while read -r d n; do kn scale "$d" --replicas "$n" >/dev/null 2>&1; done <"$tmp/scaled"
+		rm -rf "$tmp"
+	}
+	trap restore EXIT
+	pass() { echo "PASS  $1" | tee -a "$tmp/results"; passes=$((passes + 1)); }
+	fail() { echo "FAIL  $1${2:+: $2}" | tee -a "$tmp/results"; failures=$((failures + 1)); }
+
+	kind get clusters 2>/dev/null | grep -qx "$KIND_CLUSTER" || { echo "kind part: no kind cluster $KIND_CLUSTER (make demo-reset)" >&2; return 2; }
+	for shard in 0 1 2; do
+		kn get statefulset "storage-shard-$shard" >/dev/null 2>&1 || { echo "kind part: storage-shard-$shard is not deployed (make demo-reset)" >&2; return 2; }
+	done
+
+	echo "== 1. seeded load ($prefix: $WORKERS writers x $KEYS keys x $OPS writes)"
+	ensure_pvc || { echo "kind part: could not create PVC $PVC" >&2; return 2; }
+	local before=()
+	for shard in 0 1 2; do before[shard]="$(st "storage-shard-$shard-0" | jq -r '.appliedIndex // 0')"; done
+	out="$(run_job "$load_job" load --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --prefix "$prefix" \
+		--workers "$WORKERS" --keys "$KEYS" --ops "$OPS" --timeout 600s --json)"
+	code=$?
+	echo "$out" >"$tmp/load.json"
+	[ "$code" -eq 0 ] && pass "seeded load ran to completion (exit 0)" || fail "seeded load" "exit $code: $(kn logs "job/$load_job" --tail=5 2>&1 | tr '\n' ' ')"
+	out="$(run_job "s45-verify-seed$SEED" verify --coordinator "$COORD_URL" --ledger "/ledger/$load_job.json" --json)"
+	code=$?
+	echo "$out" >"$tmp/verify.json"
+	[ "$code" -eq 0 ] && pass "invcheck verify: nothing acknowledged was lost ($(jq -c '{acked: .ledger.acked, unknown: .ledger.unknown, lost: (.verdict.lost | length)}' <<<"$out" 2>/dev/null))" ||
+		fail "invcheck verify" "exit $code: $(head -c 400 <<<"$out")"
+
+	echo "== 2. quiesce"
+	local d n
+	for d in $(kn get deployments -o name); do
+		[ "$d" = deployment.apps/storage-coordinator ] && continue
+		n="$(kn get "$d" -o jsonpath='{.spec.replicas}')"
+		echo "$d $n" >>"$tmp/scaled"
+		kn scale "$d" --replicas 0 >/dev/null || fail "scale $d to 0"
+	done
+	local quiet=yes
+	while read -r d n; do
+		kn wait --for=delete pod -l "$(kn get "$d" -o json | jq -r '.spec.selector.matchLabels | to_entries | map("\(.key)=\(.value)") | join(",")')" --timeout=120s >/dev/null 2>&1 || quiet=no
+	done <"$tmp/scaled"
+	[ "$quiet" = yes ] && pass "quiesced: load finished; $(wc -l <"$tmp/scaled") writer Deployment(s) at 0 replicas ($(awk '{sub("deployment.apps/", "", $1); printf "%s%s", s, $1; s=", "}' "$tmp/scaled"))" ||
+		fail "quiesce: writer pods still running"
+
+	out="$(run_job "s45-check-seed$SEED" check --coordinator "$COORD_URL" --json)"
+	code=$?
+	echo "$out" >"$tmp/check.json"
+	[ "$code" -eq 0 ] && pass "invcheck check: claim invariants clean, no write during the walk (outbox pending per shard $(jq -c "[.outbox[]?.pending]" <<<"$out" 2>/dev/null))" || fail "invcheck check" "exit $code: $(head -c 400 <<<"$out")"
+
+	echo "== 3. storagectl audit per shard"
+	local pods addrs verdict nidx nroot
+	for shard in 0 1 2; do
+		addrs=()
+		for pod in $(shard_pods "$shard"); do addrs+=(--addr "$pod.storage-shard-$shard.$NS.svc.cluster.local:8081"); done
+		out="$(kn exec "storage-shard-$shard-0" -c storagenode -- /storagectl audit "${addrs[@]}" 2>"$tmp/audit-$shard.err")"
+		code=$?
+		{ echo "### shard $shard (storagectl audit exit $code)"; echo "$out"; echo; } >>"$tmp/audits"
+		verdict="$(jq -r .verdict <<<"$out" 2>/dev/null)"
+		idx="$(jq -r .appliedIndex <<<"$out" 2>/dev/null)"
+		pods="$(jq -r '.pods | length' <<<"$out" 2>/dev/null)"
+		nidx="$(jq -r '[.pods[].appliedIndex] | unique | length' <<<"$out" 2>/dev/null)"
+		nroot="$(jq -r '[.pods[].root] | unique | length' <<<"$out" 2>/dev/null)"
+		if [ "$code" -eq 0 ] && [ "$verdict" = equal ] && [ "$pods" = 3 ] && [ "$nidx" = 1 ] && [ "$nroot" = 1 ] &&
+			[ "$(jq -r '.pods[0].appliedIndex' <<<"$out")" = "$idx" ] && [ "${idx:-0}" -gt "${before[shard]:-0}" ]; then
+			pass "shard $shard: equal, 3 replicas at appliedIndex $idx (was ${before[shard]} before the load), root $(jq -r '.pods[0].root' <<<"$out" | cut -c1-16)"
+		else
+			fail "shard $shard" "exit $code, verdict ${verdict:-none}, pods ${pods:-?}, distinct indexes ${nidx:-?}, distinct roots ${nroot:-?}, index ${idx:-?} (before ${before[shard]}): $(head -c 300 "$tmp/audit-$shard.err")"
+		fi
+	done
+
+	local result
+	if [ "$failures" -eq 0 ]; then result="PASSED ($passes/$passes checks)"; else result="FAILED ($failures of $((passes + failures)) checks failed)"; fi
+	local code_paths=(go.mod go.sum cmd internal loadtest deploy/helm/storage chaos/scripts/lib.sh scripts/verify-S4.5.sh)
+	mkdir -p "$(dirname "$evidence")"
+	{
+		echo "# S4.5 Merkle audit: kind part of the Verify"
+		echo "result:     $result"
+		echo "host:       $(hostname -s)"
+		echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+		echo "cluster:    $CTX, namespace $NS, $(k get nodes --no-headers 2>/dev/null | wc -l) nodes"
+		echo "images:     $(kn get pod storage-shard-0-0 -o jsonpath='{.status.containerStatuses[?(@.name=="storagenode")].imageID}')"
+		echo "code tree:  $(git ls-tree -r HEAD -- "${code_paths[@]}" | git hash-object --stdin | cut -c1-12) (git ls-tree -r HEAD -- ${code_paths[*]} | git hash-object --stdin)"
+		echo "dirty:      $(git status --porcelain -- "${code_paths[@]}" | grep -q . && echo yes || echo no)"
+		echo "commit:     $(git rev-parse --short HEAD)"
+		echo "load:       seed $SEED, prefix $prefix, $WORKERS writers x $KEYS keys x $OPS writes"
+		echo
+		echo "## checks"
+		cat "$tmp/results"
+		echo
+		echo "## invcheck load / verify / check (JSON)"
+		jq -c . "$tmp/load.json" 2>/dev/null || cat "$tmp/load.json"
+		jq -c 'del(.ledger.errors)' "$tmp/verify.json" 2>/dev/null || cat "$tmp/verify.json"
+		jq -c . "$tmp/check.json" 2>/dev/null || cat "$tmp/check.json"
+		echo
+		echo "## storagectl audit, one per shard"
+		cat "$tmp/audits"
+	} >"$evidence"
+	echo "evidence: $evidence"
+	echo "S4.5 kind part: $result"
+	[ "$failures" -eq 0 ]
+}
+
+if [ "${1:-}" = --kind ]; then
+	kind_part
+	exit $?
+fi
 
 EVIDENCE="docs/evidence/S4.5/verify-$(date -u +%Y%m%dT%H%M%SZ).txt"
 tmp="$(mktemp -d)"
@@ -94,7 +228,7 @@ mkdir -p "$(dirname "$EVIDENCE")"
 	echo "${bench_lines:-  not recorded}"
 	echo
 	echo "## kind part"
-	echo "pending: equal roots on every shard of a deployed cluster runs after the 4 Nov gate (the cluster is in use)."
+	echo "separate run: scripts/verify-S4.5.sh --kind writes docs/evidence/S4.5/kind-<time>.txt"
 } >"$EVIDENCE"
 echo "evidence: $EVIDENCE"
 echo "S4.5 Go part: $result"
