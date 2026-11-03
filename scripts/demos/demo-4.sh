@@ -20,7 +20,9 @@
 #   4. /admin/distribution: every shard's counts are known, it holds at least the seeded keys
 #      it owns (logical records, from the leader), and it has three replicas.
 #   5. Replica copies, shown separately: each shard's three replicas settle at one appliedIndex
-#      with identical dumps, and each holds at least the shard's seeded keys.
+#      with identical dumps, and each holds at least the shard's seeded keys. Dumps at
+#      different appliedIndexes (the app wrote between them) are retried for
+#      DEMO4_SETTLE_SECONDS (60); different state at one index fails at once.
 . "$(dirname "$0")/lib.sh"
 demo_begin 4 "Seed a deterministic dataset; logical key counts, replica copies and locate samples"
 # shellcheck source=scripts/demos/kube.sh
@@ -107,10 +109,11 @@ counts_cover && pass "distribution: every shard holds at least its seeded keys (
 for s in "${SHARDS[@]}"; do
 	logical="$(jq --argjson s "$s" '.shards[] | select(.shard == $s) | .records' <<<"$dist")"
 	all_caught_up "$s" 30 || fail "replicas shard-$s: all three caught up at one appliedIndex"
-	d="$(dumps "$s")"
+	agreed_dumps "$s" "${DEMO4_SETTLE_SECONDS:-60}" >/dev/null && equal=1 || equal=""
+	d="$(cat "$DEMO_TMP/dumps-$s")"
 	demo_show "replica copies of shard $s (logical $logical records x 3 replicas = $((logical * 3)) copies)" "$d"
 	short="$(awk -v w="${want[$s]}" '{ split($4, a, "="); if ($2 == "unreachable" || a[2] < w) print }' <<<"$d")"
-	if same_dumps "$s" && [ -z "$short" ]; then
+	if [ -n "$equal" ] && [ -z "$short" ]; then
 		pass "replicas shard-$s: three identical copies at appliedIndex $(awk 'NR == 1 { print $2 }' <<<"$d"), each with at least ${want[$s]} seeded keys"
 	else
 		fail "replicas shard-$s: three identical copies, each with its seeded keys" "$d"

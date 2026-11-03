@@ -26,9 +26,11 @@
 #   6. Same identity: the same serverId (podName/incarnation) as before the stop, and one
 #      leader that all three replicas name.
 #   7. Equal committed state after settling: the three replicas reach one appliedIndex with
-#      identical dumps (storagectl dump sha256).
+#      identical dumps (storagectl dump sha256). Dumps at different appliedIndexes (the app
+#      wrote between them) are retried for DEMO7_SETTLE_SECONDS (60).
 #   8. The writes made while it was down are on the recovered replica: stale reads served by
-#      that pod's own FSM return every one at version 1.
+#      that pod's own FSM return every one at version 1. A read answered 503 "not caught up"
+#      (the app moved the leader commit on) is retried for DEMO7_READ_SECONDS (15).
 #   9. The coordinator reports all nine nodes UP again.
 . "$(dirname "$0")/lib.sh"
 demo_begin 7 "Restart the stopped node; replay, catch-up and equal committed state"
@@ -149,23 +151,31 @@ g="$(group_state "$SHARD")"
 	fail "identity: same serverId as before the stop, one agreed leader" "before ${SERVER_ID:-unknown}, now ${now_id:-unknown}, group ${g:-none}"
 
 # --- 7: equal committed state ------------------------------------------------------------------------
+# The app keeps writing, so the three dumps may land at different appliedIndexes: agreed_dumps
+# retries those for DEMO7_SETTLE_SECONDS (60); different state at one index fails at once.
 all_caught_up "$SHARD" 60 || fail "settle: the three replicas caught up at one appliedIndex"
-d="$(dumps "$SHARD")"
+agreed_dumps "$SHARD" "${DEMO7_SETTLE_SECONDS:-60}" >/dev/null && equal=1 || equal=""
+d="$(cat "$DEMO_TMP/dumps-$SHARD")"
 demo_show "dumps of shard $SHARD after settling" "$d"
-same_dumps "$SHARD" && pass "equal state: the three replicas' dumps are identical at appliedIndex $(awk 'NR == 1 { print $2 }' <<<"$d")" ||
+[ -n "$equal" ] && pass "equal state: the three replicas' dumps are identical at appliedIndex $(awk 'NR == 1 { print $2 }' <<<"$d")" ||
 	fail "equal state: identical dumps on all three replicas after settling" "$d"
 
 # --- 8: the missed writes are on the recovered replica --------------------------------------------------
+# The app's background writes move the leader commit on after the catch-up check, so the replica
+# may briefly answer 503 "not caught up" again: such a read is retried for DEMO7_READ_SECONDS
+# (15). Any other answer is final.
 bad=""
 if forward "pod/${POD:-none}" 8080; then
 	for kk in "${keys[@]}"; do
-		code="$(curl -s -m 5 -o "$DEMO_TMP/stale.json" -w '%{http_code}' "http://127.0.0.1:$FWD_PORT/internal/data/$kk?consistency=stale")"
+		code="$(retry_on 75 "${DEMO7_READ_SECONDS:-15}" stale_get "$FWD_PORT" "$kk" "$DEMO_TMP/stale.json")"
 		[ "$code" = 200 ] && [ "$(jq -r .record.version "$DEMO_TMP/stale.json")" = 1 ] && [ "$(jq -r .read.servedBy "$DEMO_TMP/stale.json")" = "$POD" ] ||
 			bad+="$kk: $code $(cat "$DEMO_TMP/stale.json")"$'\n'
 	done
 else
 	bad="no port-forward to ${POD:-the pod}"
 fi
+retried="$(cat "$DEMO_TMP/retried" 2>/dev/null | grep -c '^stale_get ')"
+demo_note "stale reads of the missed writes on ${POD:-the pod}: $retried retried after a 503 not caught up"
 [ -z "$bad" ] && [ "${#keys[@]}" -gt 0 ] && pass "replayed data: all ${#keys[@]} writes made while it was down are served by ${POD:-the pod}'s own FSM" ||
 	fail "replayed data: the recovered replica serves every write it missed" "$(head -5 <<<"$bad")"
 

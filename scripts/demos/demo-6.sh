@@ -31,7 +31,8 @@
 #   5. The load finishes (exit 0) with acknowledged writes, and some were acknowledged while
 #      the old leader was down (invcheck verify --window from the stop to the load's end).
 #   6. invcheck verify: every acknowledged write survived (0 lost).
-#   7. invcheck check: the stored state is complete, clean and quiescent.
+#   7. invcheck check: the stored state is complete, clean and quiescent. A check that was not
+#      quiescent (exit 3: the app wrote during the walk) is rerun for DEMO6_QUIESCE_SECONDS (90).
 #   8. The old leader stayed down throughout: still the same Pending replacement after the
 #      checks, so every write and read above was the surviving majority's.
 . "$(dirname "$0")/lib.sh"
@@ -123,9 +124,14 @@ in_window="$(jq '.ledger.ackedInWindow // 0' <<<"$verify_json" 2>/dev/null)"
 	fail "load: exit 0 with writes acknowledged while the leader was down" "exit ${load_exit:-?}, acked ${acked:-?}, in the window ${in_window:-?}"
 [ "$verify_exit" = 0 ] && pass "ledger: every acknowledged write survived (invcheck verify, $(jq '.verdict.checked' <<<"$verify_json") checked)" ||
 	fail "ledger: every acknowledged write survived (invcheck verify exit $verify_exit)" "$(jq -c '.verdict.lost[:3] // .incomplete' <<<"$verify_json" 2>/dev/null)"
-check_json="$(run_job "$run_id-check" check --coordinator "$COORD_URL" --json)"
+# invcheck check exits 3 when a write committed during its walk (not quiescent): with the app
+# installed its background writes can do that at any time, so only that exit is retried, with a
+# new Job, for DEMO6_QUIESCE_SECONDS (90). Violations (1) or an incomplete read (2) fail at once.
+check_once() { run_job "$run_id-check-$RETRY_ATTEMPT" check --coordinator "$COORD_URL" --json; }
+check_json="$(retry_on 3 "${DEMO6_QUIESCE_SECONDS:-90}" check_once)"
 check_exit=$?
-run "invcheck check (Job $run_id-check)" jq '{ok, verdict, incomplete}' <<<"$check_json"
+retried="$(cat "$DEMO_TMP/retried" 2>/dev/null | grep -c '^check_once ')"
+run "invcheck check (Jobs $run_id-check-N; $retried retried as not quiescent)" jq '{ok, verdict, incomplete}' <<<"$check_json"
 [ "$check_exit" = 0 ] && pass "invariants: complete, clean and quiescent (invcheck check)" ||
 	fail "invariants: complete, clean and quiescent (invcheck check exit $check_exit)" "$(jq -c '.report.violations[:3] // .incomplete' <<<"$check_json" 2>/dev/null)"
 
