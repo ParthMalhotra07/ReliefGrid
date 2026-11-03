@@ -41,7 +41,7 @@ type command struct {
 // Encode builds the log entry for one command body (a store.CreateEntity,
 // store.CompareAndSet, ... value or pointer).
 func Encode(body any) ([]byte, error) {
-	op, err := opOf(body)
+	op, err := OpOf(body)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,8 @@ func Encode(body any) ([]byte, error) {
 	return json.Marshal(envelope{Op: op, Body: b})
 }
 
-func opOf(body any) (Op, error) {
+// OpOf names the command body would be encoded as.
+func OpOf(body any) (Op, error) {
 	switch body.(type) {
 	case store.CreateEntity, *store.CreateEntity:
 		return OpCreateEntity, nil
