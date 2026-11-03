@@ -8,6 +8,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Profile selects the Raft snapshot settings (M4) and, optionally, timeouts.
@@ -76,6 +77,9 @@ type Config struct {
 	ReadFence ReadFence
 	// Logger receives Raft's own logs; nil logs at info to stderr.
 	Logger hclog.Logger
+	// TracerProvider records raft.apply spans (S4.4); nil uses the global
+	// provider (a no-op unless obs.Init enabled tracing).
+	TracerProvider trace.TracerProvider
 
 	// Admit, if set, decides whether this disk may open its Raft transport
 	// (M7). Open calls it once the disk's identity exists and before the
