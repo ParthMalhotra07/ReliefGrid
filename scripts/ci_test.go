@@ -29,12 +29,13 @@ type workflow struct {
 }
 
 type job struct {
-	Name     string         `yaml:"name"`
-	If       string         `yaml:"if"`
-	Needs    any            `yaml:"needs"` // a string or a list
-	Timeout  int            `yaml:"timeout-minutes"`
-	Strategy map[string]any `yaml:"strategy"`
-	Steps    []step         `yaml:"steps"`
+	Name     string            `yaml:"name"`
+	If       string            `yaml:"if"`
+	Needs    any               `yaml:"needs"` // a string or a list
+	Timeout  int               `yaml:"timeout-minutes"`
+	Strategy map[string]any    `yaml:"strategy"`
+	Outputs  map[string]string `yaml:"outputs"`
+	Steps    []step            `yaml:"steps"`
 }
 
 type step struct {
@@ -123,6 +124,72 @@ func TestCICheckStaysFast(t *testing.T) {
 	}
 	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "make gen-check") }) {
 		t.Error("check has no contract-drift step (make gen-check)")
+	}
+	// S4.6b: the seams and kind builds (vet, lint, race tests and the
+	// default-binary symbol check) cost about 2.5 minutes; they run in the
+	// seams job, only when the seam packages change.
+	out := makeDryRun(t, "check")
+	for _, tagged := range []string{"-tags seams", "--build-tags seams", "-tags kind", "--build-tags kind"} {
+		if strings.Contains(out, tagged) {
+			t.Errorf("make check runs %q; that belongs in make check-seams (the seams job)", tagged)
+		}
+	}
+}
+
+func makeDryRun(t *testing.T, target string) string {
+	t.Helper()
+	out, err := exec.CommandContext(t.Context(), "make", "-C", "..", "-n", target).CombinedOutput()
+	if err != nil {
+		t.Fatalf("make -n %s: %v\n%s", target, err, out)
+	}
+	return string(out)
+}
+
+// seams (S4.6b) vets, lints and race-tests the seams and kind builds and runs
+// the default-binary symbol check, for ready PRs whose diff touches the seam
+// packages (scripts/ci-changes.sh seams=true).
+func TestCISeamsJob(t *testing.T) {
+	w := loadCI(t)
+	j := mustJob(t, w, "seams")
+	for _, cond := range []string{
+		"github.event_name == 'pull_request'",
+		"!github.event.pull_request.draft",
+		"needs.changes.outputs.seams == 'true'",
+	} {
+		if !strings.Contains(j.If, cond) {
+			t.Errorf("seams if: %q does not contain %q", j.If, cond)
+		}
+	}
+	if !slices.Contains(j.needs(), "changes") {
+		t.Errorf("seams needs %v; it must need changes", j.needs())
+	}
+	if j.Timeout == 0 || j.Timeout > 15 {
+		t.Errorf("seams timeout-minutes = %d, want 1..15", j.Timeout)
+	}
+	if !slices.ContainsFunc(j.Steps, func(s step) bool { return strings.Contains(s.Run, "make check-seams") }) {
+		t.Error("seams does not run make check-seams")
+	}
+	if got := mustJob(t, w, "changes").Outputs["seams"]; got != "${{ steps.diff.outputs.seams }}" {
+		t.Error("changes does not output seams from scripts/ci-changes.sh")
+	}
+	out := makeDryRun(t, "check-seams")
+	for _, want := range []string{
+		"go vet -tags seams", "go vet -tags kind ./tests/seams/...",
+		"golangci-lint run --build-tags seams", "golangci-lint run --build-tags kind ./tests/seams/...",
+		"go test -race -tags seams", "./internal/raftstore/...", "./internal/storagenode/...", "./cmd/storagenode/...",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("make -n check-seams has no %q:\n%s", want, out)
+		}
+	}
+	// The symbol check builds storagenode twice; it is seams-tagged so that
+	// go test ./... in check skips it.
+	b, err := os.ReadFile("../cmd/storagenode/seams_build_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(b), "//go:build seams\n") {
+		t.Error("cmd/storagenode/seams_build_test.go is not //go:build seams; check's go test ./... would build storagenode twice")
 	}
 }
 
@@ -418,13 +485,50 @@ func TestCISmokeMakeTarget(t *testing.T) {
 
 // --- scripts/ci-changes.sh ----------------------------------------------------------------
 
-// ci-changes.sh <base> <head> prints code=true when the diff touches what
-// images and smoke test, code=false otherwise.
-func TestCIChanges(t *testing.T) {
+// ciChanges commits files on top of an empty base in a new repo and returns
+// ci-changes.sh's output lines (code=..., seams=...).
+func ciChanges(t *testing.T, files []string) []string {
+	t.Helper()
 	script, err := filepath.Abs("ci-changes.sh")
 	if err != nil {
 		t.Fatal(err)
 	}
+	dir := t.TempDir()
+	git := func(args ...string) string {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), "git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com"}, args...)...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	git("init", "-q")
+	git("commit", "-q", "--allow-empty", "-m", "base")
+	base := git("rev-parse", "HEAD")
+	for _, f := range files {
+		p := filepath.Join(dir, f)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	git("add", "-A")
+	git("commit", "-q", "-m", "change")
+	cmd := exec.CommandContext(t.Context(), "bash", script, base, git("rev-parse", "HEAD"))
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("ci-changes.sh: %v", err)
+	}
+	return strings.Split(strings.TrimSpace(string(out)), "\n")
+}
+
+// ci-changes.sh <base> <head> prints code=true when the diff touches what
+// images and smoke test, code=false otherwise.
+func TestCIChanges(t *testing.T) {
 	for _, tc := range []struct {
 		files []string
 		want  string
@@ -454,38 +558,48 @@ func TestCIChanges(t *testing.T) {
 		{[]string{"internalnotes.md"}, "code=false"},
 	} {
 		t.Run(strings.Join(tc.files, ","), func(t *testing.T) {
-			dir := t.TempDir()
-			git := func(args ...string) string {
-				t.Helper()
-				cmd := exec.CommandContext(t.Context(), "git", append([]string{"-C", dir, "-c", "user.name=t", "-c", "user.email=t@example.com"}, args...)...)
-				out, err := cmd.CombinedOutput()
-				if err != nil {
-					t.Fatalf("git %v: %v\n%s", args, err, out)
-				}
-				return strings.TrimSpace(string(out))
+			lines := ciChanges(t, tc.files)
+			if !slices.Contains(lines, tc.want) {
+				t.Errorf("got %q, want a line %q", lines, tc.want)
 			}
-			git("init", "-q")
-			git("commit", "-q", "--allow-empty", "-m", "base")
-			base := git("rev-parse", "HEAD")
-			for _, f := range tc.files {
-				p := filepath.Join(dir, f)
-				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(p, []byte("x\n"), 0o644); err != nil {
-					t.Fatal(err)
-				}
-			}
-			git("add", "-A")
-			git("commit", "-q", "-m", "change")
-			cmd := exec.CommandContext(t.Context(), "bash", script, base, git("rev-parse", "HEAD"))
-			cmd.Dir = dir
-			out, err := cmd.Output()
-			if err != nil {
-				t.Fatalf("ci-changes.sh: %v", err)
-			}
-			if got := strings.TrimSpace(string(out)); got != tc.want {
-				t.Errorf("got %q, want %q", got, tc.want)
+		})
+	}
+}
+
+// ci-changes.sh also prints seams=true when the diff touches the seam
+// packages, their tests or how they are built and run (S4.6b), so the seams
+// job runs; seams=false otherwise.
+func TestCIChangesSeams(t *testing.T) {
+	for _, tc := range []struct {
+		files []string
+		want  string
+	}{
+		{[]string{"internal/raftstore/node.go"}, "seams=true"},
+		{[]string{"internal/storagenode/server.go"}, "seams=true"},
+		{[]string{"cmd/storagenode/main.go"}, "seams=true"},
+		{[]string{"internal/testseam/testseam.go"}, "seams=true"},
+		{[]string{"internal/fsm/memstore/memstore.go"}, "seams=true"},
+		{[]string{"internal/fsm/codec.go"}, "seams=true"}, // memstore's and raftstore's codec
+		{[]string{"tests/seams/kind_test.go"}, "seams=true"},
+		{[]string{"go.mod"}, "seams=true"},
+		{[]string{"go.sum"}, "seams=true"},
+		{[]string{"Makefile"}, "seams=true"},
+		{[]string{"tools.mk"}, "seams=true"}, // the golangci-lint pin
+		{[]string{".github/workflows/ci.yml"}, "seams=true"},
+		{[]string{"scripts/ci-changes.sh"}, "seams=true"},
+		{[]string{"docs/a.md", "internal/raftstore/x.go"}, "seams=true"},
+		{[]string{"internal/ring/ring.go"}, "seams=false"},
+		{[]string{"cmd/coordinator/main.go"}, "seams=false"},
+		{[]string{"cmd/storagenodex/main.go"}, "seams=false"}, // the directory only
+		{[]string{"internal/fsmx/a.go"}, "seams=false"},
+		{[]string{"scripts/demos/demo-4.sh"}, "seams=false"},
+		{[]string{"docs/operations/test-seams.md"}, "seams=false"},
+		{[]string{"tests/workflow/a_test.go"}, "seams=false"},
+	} {
+		t.Run(strings.Join(tc.files, ","), func(t *testing.T) {
+			lines := ciChanges(t, tc.files)
+			if !slices.Contains(lines, tc.want) {
+				t.Errorf("got %q, want a line %q", lines, tc.want)
 			}
 		})
 	}

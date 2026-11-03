@@ -1,3 +1,5 @@
+//go:build seams
+
 package main
 
 import (
@@ -11,7 +13,9 @@ import (
 // S4.6b: the test seams are compiled out of the default storagenode binary
 // (the image the demo and production run) and present only with -tags
 // seams. Checking both builds keeps the absence check from passing
-// vacuously when the names change.
+// vacuously when the names change. The file itself is seams-tagged: the two
+// builds cost over a minute on a cold CI cache, so the check runs in make
+// check-seams (the seams job, when the seam packages change), not in check.
 func TestSeamsCompiledOutOfDefaultBinary(t *testing.T) {
 	gobin, err := exec.LookPath("go")
 	if err != nil {

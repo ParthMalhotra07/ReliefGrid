@@ -33,7 +33,7 @@ STORAGE_RELEASE ?= storage
 # Branch whitespace errors are measured from where the branch left this ref.
 DIFF_BASE ?= origin/main
 
-.PHONY: help check whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image storage-image-seams coordinator-image tools-image storage-replace storage-reset placement-check
+.PHONY: help check check-seams whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image storage-image-seams coordinator-image tools-image storage-replace storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
 .PHONY: verify-A1.3 verify-A1.4 verify-A2.1 verify-A2.2 verify-S4.6b
 .PHONY: app-images app-deploy e2e-smoke verify-A1.5-static
@@ -43,6 +43,24 @@ help: ## List targets
 
 check: whitespace-check fmt-check vet lint test ## git diff --check, gofmt, go vet, golangci-lint, go test -race (run before every push)
 
+# The seams tag adds the S4.6b test boundaries to the storage node
+# (storagenode:seams image only); the kind tag builds their kind driver,
+# tests/seams. CI runs these in a separate seams job, only when the seam packages
+# change (scripts/ci-changes.sh), so check stays fast. For raftstore only the
+# seam tests run tagged, as the rest is the same code as untagged. The last
+# line includes the default-binary symbol check, seams-tagged so that
+# check's go test ./... skips its two storagenode builds.
+SEAMS_PKGS       := ./internal/raftstore/... ./internal/storagenode/... ./cmd/storagenode/...
+SEAMS_RAFT_TESTS := Seam|LogBarrier|CrashMid|AfterAppend|LogStore
+
+check-seams: ## go vet, golangci-lint and go test -race for the seams and kind builds (run before pushing seam changes)
+	go vet -tags seams $(SEAMS_PKGS)
+	go vet -tags kind ./tests/seams/...
+	golangci-lint run --build-tags seams $(SEAMS_PKGS)
+	golangci-lint run --build-tags kind ./tests/seams/...
+	go test -race -tags seams -run '$(SEAMS_RAFT_TESTS)' ./internal/raftstore/...
+	go test -race -tags seams ./internal/storagenode/... ./cmd/storagenode/...
+
 whitespace-check: ## git diff --check since the merge base with DIFF_BASE (default origin/main)
 	@base="$$(git merge-base $(DIFF_BASE) HEAD)" || { echo "whitespace-check: no merge base with $(DIFF_BASE); run git fetch" >&2; exit 1; }; \
 		git diff --check "$$base"
@@ -50,30 +68,19 @@ whitespace-check: ## git diff --check since the merge base with DIFF_BASE (defau
 fmt-check:
 	@out="$$(gofmt -l .)"; if [ -n "$$out" ]; then echo "gofmt needed on:"; echo "$$out"; exit 1; fi
 
-# The chaos build tag adds `invcheck inject` (tools image only); the seams
-# tag adds the S4.6b test boundaries to the storage node (storagenode:seams
-# image only). Vet, lint and test those builds too; for raftstore only the
-# seam tests run tagged, as the rest is the same code as untagged.
-SEAMS_PKGS       := ./internal/raftstore/... ./internal/storagenode/... ./cmd/storagenode/...
-SEAMS_RAFT_TESTS := Seam|LogBarrier|CrashMid|AfterAppend|LogStore
-
+# The chaos build tag adds `invcheck inject` (tools image only); vet, lint
+# and test that build too.
 vet:
 	go vet ./...
 	go vet -tags chaos ./cmd/invcheck/...
-	go vet -tags seams $(SEAMS_PKGS)
-	go vet -tags kind ./tests/seams/...
 
 lint:
 	golangci-lint run ./...
 	golangci-lint run --build-tags chaos ./cmd/invcheck/...
-	golangci-lint run --build-tags seams $(SEAMS_PKGS)
-	golangci-lint run --build-tags kind ./tests/seams/...
 
-test: ## go test -race ./... (and the chaos and seams builds)
+test: ## go test -race ./... (and the chaos build)
 	go test -race ./...
 	go test -race -tags chaos ./cmd/invcheck/...
-	go test -race -tags seams -run '$(SEAMS_RAFT_TESTS)' ./internal/raftstore/...
-	go test -race -tags seams ./internal/storagenode/... ./cmd/storagenode/...
 	@# CI also proves the real pinned-broker TTL/DLX/consumer path (A1.3).
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.3; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A1.4; fi

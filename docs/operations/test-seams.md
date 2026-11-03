@@ -11,6 +11,10 @@ They are test-only:
   `/mgmt/test/seams` routes. Only `reliefgrid/storagenode:seams` (`make storage-image-seams`)
   has them; the default image is byte-identical to a build without the tag, and
   `TestSeamsCompiledOutOfDefaultBinary` checks that neither marker is in it.
+- **Checks**: `make check-seams` runs go vet, golangci-lint and the race tests for the seams and
+  kind builds, plus the symbol check above. CI runs it in the `seams` job, only for PRs that
+  touch the seam packages (`scripts/ci-changes.sh`), so `make check` stays fast. Run it
+  before you push seam changes.
 
 Hooks receive only positions and IDs. They never change what FSM apply computes (invariant
 2): the apply hold only delays, and only the snapshot streams can be failed, through the error
