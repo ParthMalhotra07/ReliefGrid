@@ -150,6 +150,7 @@ func (c *Coordinator) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/nodes", c.operator(c.adminNodes))
 	mux.HandleFunc("GET /admin/locate/{key}", c.operator(c.adminLocate))
 	mux.HandleFunc("GET /admin/distribution", c.operator(c.adminDistribution))
+	mux.HandleFunc("GET /admin/ring/simulate", c.operator(c.adminRingSimulate))
 	return mux
 }
 
