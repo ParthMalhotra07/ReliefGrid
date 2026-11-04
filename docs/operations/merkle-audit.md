@@ -74,8 +74,23 @@ possible execution.
 |---|---|---|
 | 0 | `equal` | every root is equal at `appliedIndex` |
 | 1 | `divergent` | `tables` lists the differing buckets; `rows` gives each differing key, its kind (`content`, `missing`, `extra`, or `conflict` when no majority agrees) and the pods that disagree |
-| 2 | `incomplete` | a replica failed, or the replicas are not one shard on one ring and schema: no verdict |
+| 2 | `incomplete` | a replica failed, the replicas are not one shard on one ring and schema, or an answer is not a valid observation of the replica asked (below): no verdict |
 | 3 | `not-quiescent` | the replicas did not hold one index: no verdict; quiesce and rerun |
+
+Before comparing, the audit checks each answer is one replica's observation,
+and stops with `incomplete` if one is not:
+
+- **Identity.** Each `--addr` must be given once, and each `/mgmt/status` must
+  name a pod no other address names. One pod reached through two addresses
+  is one replica and is never counted twice. Each digest and bucket answer
+  must name the same pod as that address's status, at the ring version and
+  index compared, and a bucket answer must be the table and bucket asked for.
+- **A whole digest.** The digest must cover exactly `records`,
+  `operation_results`, `attempt_closures` and `outbox`, in that order, with a
+  schema version. Its roots must also rebuild from its parts: each table root
+  from its 256 bucket hashes, the shard root from the table roots, and a
+  table's row count must be zero exactly when all its buckets are empty. A
+  missing, empty or truncated digest therefore never compares as `equal`.
 
 - **One pod at a time:** `storagectl merkle [--at N] [--table T --bucket B]`
   prints a single pod's digest, or one bucket's leaves. Leaving out `--at`
