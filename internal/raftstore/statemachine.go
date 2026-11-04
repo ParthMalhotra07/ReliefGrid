@@ -86,6 +86,7 @@ type stateMachine struct {
 	snapSeq     atomic.Uint64
 	beforeApply atomic.Pointer[func(index uint64)] // tests only: runs before each command
 	beforeSwap  func()                             // tests only: runs in Restore before the swap; set before Raft starts
+	seams       *seamState                         // tests and the seams build only; nil otherwise (seams.go)
 }
 
 var _ raft.FSM = (*stateMachine)(nil)
@@ -159,9 +160,13 @@ func (s *stateMachine) Snapshot() (raft.FSMSnapshot, error) {
 		_ = os.Remove(path)
 		return nil, err
 	}
-	return &fsmSnapshot{path: path, header: snapshotHeader{
+	sn := &fsmSnapshot{path: path, header: snapshotHeader{
 		Format: snapshotFormat, GroupID: s.group, Shard: s.shard, AppliedIndex: s.f.AppliedIndex(),
-	}}, nil
+	}}
+	if h := s.seams.load(); h != nil {
+		sn.pause = h.persistPause
+	}
+	return sn, nil
 }
 
 // fsmSnapshot owns one immutable VACUUM INTO file; Persist may run while
@@ -169,6 +174,7 @@ func (s *stateMachine) Snapshot() (raft.FSMSnapshot, error) {
 type fsmSnapshot struct {
 	path   string
 	header snapshotHeader
+	pause  func(streamPoint) error // test seam: halfway through the image; nil otherwise
 }
 
 func (sn *fsmSnapshot) Persist(sink raft.SnapshotSink) error {
@@ -202,7 +208,12 @@ func (sn *fsmSnapshot) persist(w io.Writer) error {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return fmt.Errorf("raftstore: rewind snapshot image: %w", err)
 	}
-	n, err := io.Copy(w, f)
+	var n int64
+	if sn.pause == nil {
+		n, err = io.Copy(w, f)
+	} else {
+		n, err = copyWithPause(w, f, size, sn.pause, streamPoint{ImageIndex: header.AppliedIndex})
+	}
 	if err != nil {
 		return fmt.Errorf("raftstore: write snapshot image (%d of %d bytes): %w", n, size, err)
 	}
@@ -281,7 +292,11 @@ func (s *stateMachine) stage(r io.Reader, h snapshotHeader, staged, final string
 		return nil, fmt.Errorf("raftstore: create staged snapshot: %w", err)
 	}
 	sum := sha256.New()
-	n, cerr := io.Copy(io.MultiWriter(out, sum), io.LimitReader(r, h.Size))
+	var pause func(streamPoint) error
+	if hs := s.seams.load(); hs != nil {
+		pause = hs.stagePause
+	}
+	n, cerr := copyWithPause(io.MultiWriter(out, sum), r, h.Size, pause, streamPoint{ImageIndex: h.AppliedIndex})
 	if err := errors.Join(cerr, out.Close()); err != nil {
 		return nil, fmt.Errorf("raftstore: stage snapshot: %w", err)
 	}

@@ -9,24 +9,53 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"os"
 	"sync"
 	"sync/atomic"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/testseam"
 )
 
 // Store implements store.Store with one internal/fsm FSM per shard.
 type Store struct {
-	mu          sync.Mutex // serialises Apply across all shards
-	shards      []*shard
-	route       func(key string) int
-	ringVersion uint64
+	shards        []*shard
+	route         func(key string) int
+	ringVersion   uint64
+	checkpointDir string // "" unless WithCheckpointDir
+	workDir       string // live and staged databases after a Restart
+	id            int64
 }
 
+// shard is one FSM and its log. Commands are appended (given the next
+// index) and then applied strictly in index order, so with no seam armed
+// each command applies as soon as it is appended, as before.
 type shard struct {
-	f     *fsm.FSM
-	index uint64 // last log index handed to Apply; guarded by Store.mu
+	mu   sync.RWMutex // f, down and the log; Apply and swaps hold it for writing
+	turn *sync.Cond   // on &mu: signalled whenever applied or gen moves
+	f    *fsm.FSM
+
+	index   uint64 // last log index handed out
+	applied uint64 // last index applied
+	gen     uint64 // bumped by Crash: waiters from an older life give up
+	down    bool
+
+	// With WithCheckpointDir: the entries after the last complete
+	// checkpoint, which Restart replays.
+	log []logEntry
+
+	// Armed seams (seams.go).
+	barrier      *testseam.Barrier
+	ckptPause    *testseam.Hold
+	restorePause *testseam.Hold
+	paused       []*testseam.Hold // holds Crash must abort
+	ckptSeq      uint64
+}
+
+type logEntry struct {
+	index uint64
+	entry []byte
 }
 
 var _ store.Store = (*Store)(nil)
@@ -34,9 +63,10 @@ var _ store.Store = (*Store)(nil)
 type Option func(*config)
 
 type config struct {
-	shards      int
-	route       func(key string) int
-	ringVersion uint64
+	shards        int
+	route         func(key string) int
+	ringVersion   uint64
+	checkpointDir string
 }
 
 // WithShards sets the shard count (default 3).
@@ -67,15 +97,26 @@ func New(ctx context.Context, opts ...Option) (*Store, error) {
 			return int(h.Sum32() % n)
 		}
 	}
-	s := &Store{route: cfg.route, ringVersion: cfg.ringVersion}
-	id := storeSeq.Add(1)
+	s := &Store{route: cfg.route, ringVersion: cfg.ringVersion, checkpointDir: cfg.checkpointDir, id: storeSeq.Add(1)}
+	if s.checkpointDir != "" {
+		if err := os.MkdirAll(s.checkpointDir, 0o750); err != nil {
+			return nil, fmt.Errorf("memstore: checkpoint dir: %w", err)
+		}
+		work, err := os.MkdirTemp("", "memstore-work-")
+		if err != nil {
+			return nil, fmt.Errorf("memstore: work dir: %w", err)
+		}
+		s.workDir = work
+	}
 	for i := range cfg.shards {
-		f, err := fsm.Open(ctx, fmt.Sprintf("file:memstore-%d-shard%d?mode=memory", id, i))
+		f, err := fsm.Open(ctx, fmt.Sprintf("file:memstore-%d-shard%d?mode=memory", s.id, i))
 		if err != nil {
 			_ = s.Close()
 			return nil, fmt.Errorf("memstore: shard %d: %w", i, err)
 		}
-		s.shards = append(s.shards, &shard{f: f})
+		sh := &shard{f: f}
+		sh.turn = sync.NewCond(&sh.mu)
+		s.shards = append(s.shards, sh)
 	}
 	return s, nil
 }
@@ -83,7 +124,18 @@ func New(ctx context.Context, opts ...Option) (*Store, error) {
 func (s *Store) Close() error {
 	var errs []error
 	for _, sh := range s.shards {
-		errs = append(errs, sh.f.Close())
+		sh.mu.Lock()
+		if sh.f != nil {
+			errs = append(errs, sh.f.Close())
+			sh.f = nil
+		}
+		sh.down = true
+		sh.gen++
+		sh.turn.Broadcast()
+		sh.mu.Unlock()
+	}
+	if s.workDir != "" {
+		errs = append(errs, os.RemoveAll(s.workDir))
 	}
 	return errors.Join(errs...)
 }
@@ -98,9 +150,10 @@ func (s *Store) shardFor(key string) (int, error) {
 	return i, nil
 }
 
-// apply encodes body and applies it as the next entry of shard i. An
-// infrastructure failure is reported as an unknown outcome, as a real
-// replica crashing mid-apply would be.
+// apply encodes body, appends it to shard i's log and applies it once
+// every earlier entry has applied. An infrastructure failure, or a crash
+// of the shard between append and apply, is an unknown outcome, as a real
+// replica crashing mid-apply would be: the entry stays in the log.
 func (s *Store) apply(ctx context.Context, i int, body any) (store.Result, error) {
 	if err := ctx.Err(); err != nil {
 		return store.Result{}, fmt.Errorf("%w: %w", store.ErrUnknownOutcome, err)
@@ -109,16 +162,63 @@ func (s *Store) apply(ctx context.Context, i int, body any) (store.Result, error
 	if err != nil {
 		return store.Result{}, err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	sh := s.shards[i]
+
+	// Append.
+	sh.mu.Lock()
+	if sh.down {
+		sh.mu.Unlock()
+		return store.Result{}, fmt.Errorf("memstore: shard %d: %w", i, ErrShardDown)
+	}
 	sh.index++
-	res, err := sh.f.Apply(sh.index, entry)
+	index, gen, barrier := sh.index, sh.gen, sh.barrier
+	if s.checkpointDir != "" {
+		sh.log = append(sh.log, logEntry{index: index, entry: entry})
+	}
+	if barrier != nil {
+		// Under mu, so the barrier knows the index before it can apply.
+		if _, opID, err := fsm.Describe(entry); err == nil {
+			barrier.Appended(index, opID)
+		}
+	}
+
+	// Wait for this entry's turn.
+	for sh.applied != index-1 && sh.gen == gen {
+		sh.turn.Wait()
+	}
+	if sh.gen != gen {
+		sh.mu.Unlock()
+		return store.Result{}, fmt.Errorf("%w: shard %d crashed before index %d applied", store.ErrUnknownOutcome, i, index)
+	}
+	if barrier != nil {
+		sh.mu.Unlock()
+		barrier.BeforeApply(index) // may hold; later entries wait their turn
+		sh.mu.Lock()
+		if sh.gen != gen {
+			sh.mu.Unlock()
+			return store.Result{}, fmt.Errorf("%w: shard %d crashed before index %d applied", store.ErrUnknownOutcome, i, index)
+		}
+	}
+	defer sh.mu.Unlock()
+	res, err := sh.f.Apply(index, entry)
 	if err != nil {
 		return store.Result{}, fmt.Errorf("%w: shard %d: %w", store.ErrUnknownOutcome, i, err)
 	}
+	sh.applied = index
+	sh.turn.Broadcast()
 	res.Shard = i
 	return res, nil
+}
+
+// read runs fn on shard i's FSM unless the shard is down.
+func (s *Store) read(i int, fn func(f *fsm.FSM) error) error {
+	sh := s.shards[i]
+	sh.mu.RLock()
+	defer sh.mu.RUnlock()
+	if sh.down {
+		return fmt.Errorf("memstore: shard %d: %w", i, ErrShardDown)
+	}
+	return fn(sh.f)
 }
 
 func (s *Store) applyKey(ctx context.Context, key string, body any) (store.Result, error) {
@@ -170,7 +270,9 @@ func (s *Store) ReadRecord(ctx context.Context, key string) (store.Record, error
 	if err != nil {
 		return store.Record{}, err
 	}
-	return s.shards[i].f.ReadRecord(ctx, key)
+	var rec store.Record
+	err = s.read(i, func(f *fsm.FSM) (err error) { rec, err = f.ReadRecord(ctx, key); return err })
+	return rec, err
 }
 
 func (s *Store) ReadClosure(ctx context.Context, resourceKey, attemptID string) (store.Closure, error) {
@@ -178,7 +280,9 @@ func (s *Store) ReadClosure(ctx context.Context, resourceKey, attemptID string) 
 	if err != nil {
 		return store.Closure{}, err
 	}
-	return s.shards[i].f.ReadClosure(ctx, resourceKey, attemptID)
+	var c store.Closure
+	err = s.read(i, func(f *fsm.FSM) (err error) { c, err = f.ReadClosure(ctx, resourceKey, attemptID); return err })
+	return c, err
 }
 
 func (s *Store) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult, error) {
@@ -206,14 +310,22 @@ func (s *Store) scan(ctx context.Context, q store.ScanQuery, failed []int) (stor
 	}
 	var out store.ScanResult
 	next := map[int]string{}
-	for i, sh := range s.shards {
+	for i := range s.shards {
 		if _, listed := after[i]; after != nil && !listed {
 			continue // exhausted
 		}
-		var recs []store.Record
+		var (
+			recs    []store.Record
+			applied uint64
+		)
 		err := errShardDown
 		if !down[i] {
-			recs, err = sh.f.Scan(ctx, q, after[i])
+			// A crashed shard is a failed shard: the page is partial.
+			err = s.read(i, func(f *fsm.FSM) (err error) {
+				recs, err = f.Scan(ctx, q, after[i])
+				applied = f.AppliedIndex()
+				return err
+			})
 		}
 		if err != nil {
 			out.Partial = true
@@ -226,7 +338,7 @@ func (s *Store) scan(ctx context.Context, q store.ScanQuery, failed []int) (stor
 		if hasMore {
 			next[i] = recs[len(recs)-1].Key
 		}
-		out.Positions = append(out.Positions, store.ShardPosition{Shard: i, AppliedIndex: sh.f.AppliedIndex(), HasMore: hasMore})
+		out.Positions = append(out.Positions, store.ShardPosition{Shard: i, AppliedIndex: applied, HasMore: hasMore})
 	}
 	if err := ctx.Err(); err != nil {
 		return store.ScanResult{}, err
@@ -264,7 +376,9 @@ func (s *Store) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]store
 	if q.Shard < 0 || q.Shard >= len(s.shards) {
 		return nil, fmt.Errorf("memstore: no shard %d", q.Shard)
 	}
-	return s.shards[q.Shard].f.PendingOutbox(ctx, q.Limit)
+	var out []store.OutboxEvent
+	err := s.read(q.Shard, func(f *fsm.FSM) (err error) { out, err = f.PendingOutbox(ctx, q.Limit); return err })
+	return out, err
 }
 
 func (s *Store) Operation(ctx context.Context, key, operationID string) (store.Result, error) {
@@ -272,8 +386,8 @@ func (s *Store) Operation(ctx context.Context, key, operationID string) (store.R
 	if err != nil {
 		return store.Result{}, err
 	}
-	res, err := s.shards[i].f.Operation(ctx, operationID)
-	if err != nil {
+	var res store.Result
+	if err := s.read(i, func(f *fsm.FSM) (err error) { res, err = f.Operation(ctx, operationID); return err }); err != nil {
 		return store.Result{}, err
 	}
 	res.Shard = i

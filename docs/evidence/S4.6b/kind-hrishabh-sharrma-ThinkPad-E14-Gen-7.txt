@@ -1,0 +1,19 @@
+=== RUN   TestKindSCH01LogBarrier
+    kind_test.go:611: SCH01: A at 5, B at 6, commit 6, applied 4 when reached
+--- PASS: TestKindSCH01LogBarrier (0.33s)
+=== RUN   TestKindSCH12CrashMidSnapshotCreation
+    kind_test.go:630: killed storage-shard-1-1 (crictl)
+    kind_test.go:648: SCH12: paused at &{Indexes:map[] CommitIndex:0 AppliedIndex:0 RaftIndex:0 ImageIndex:22 Bytes:30720 Size:61440}; restored 14; kill crictl
+--- PASS: TestKindSCH12CrashMidSnapshotCreation (3.99s)
+=== RUN   TestKindSCH13aCrashMidInstallTransfer
+    kind_test.go:671: filler: 612 writes on shard 1 in 8.913196332s (isolation networkpolicy+conntrack)
+    kind_test.go:678: killed storage-shard-1-1 (crictl)
+    kind_test.go:696: restore-transfer: paused at &{Indexes:map[] CommitIndex:0 AppliedIndex:0 RaftIndex:636 ImageIndex:0 Bytes:188492 Size:376984}; kill crictl
+--- PASS: TestKindSCH13aCrashMidInstallTransfer (44.23s)
+=== RUN   TestKindSCH13bCrashMidRestoreStage
+    kind_test.go:671: filler: 612 writes on shard 1 in 8.215732557s (isolation networkpolicy+conntrack)
+    kind_test.go:678: killed storage-shard-1-1 (crictl)
+    kind_test.go:696: restore-stage: paused at &{Indexes:map[] CommitIndex:0 AppliedIndex:0 RaftIndex:0 ImageIndex:1249 Bytes:342016 Size:684032}; kill crictl
+--- PASS: TestKindSCH13bCrashMidRestoreStage (53.02s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/seams	101.559s

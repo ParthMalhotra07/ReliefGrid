@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 # CI change gate (S4.6): does a PR's diff touch what the images and smoke jobs test?
 #
-#   scripts/ci-changes.sh <base sha> <head sha>     prints code=true or code=false
+#   scripts/ci-changes.sh <base sha> <head sha>     prints code=true|false and seams=true|false
 #
 # Code is cmd/, internal/, deploy/, contracts/, scripts/, chaos/, loadtest/ (in the tools
 # image), ui/ (built into an image), .github/ (CI itself), and the root Makefile, tools.mk,
 # go.mod, go.sum and .dockerignore (every image's build context). Anything else (docs/, other
-# root files) leaves those jobs skipped. The diff
-# is from the merge base, so commits on the base branch since the PR forked do not count. A
-# base or head it cannot resolve is an error, never "no changes".
+# root files) leaves those jobs skipped.
+#
+# Seams (S4.6b) is what the seams job tests (make check-seams): the seam packages
+# internal/raftstore/, internal/storagenode/, cmd/storagenode/, internal/testseam/ and
+# internal/fsm/ (memstore and the codec both use), the kind driver tests/seams/, and how they
+# are built and run: go.mod, go.sum, the root Makefile, tools.mk (the golangci-lint pin),
+# .github/ and this script.
+#
+# The diff is from the merge base, so commits on the base branch since the PR forked do not
+# count. A base or head it cannot resolve is an error, never "no changes".
 set -euo pipefail
 
 if [ $# -ne 2 ]; then
@@ -19,12 +26,19 @@ base="$(git merge-base "$1" "$2")" || { echo "ci-changes: no merge base for $1 a
 files="$(git diff --name-only "$base" "$2")"
 
 code=false
+seams=false
 while IFS= read -r f; do
 	case "$f" in
 	cmd/* | internal/* | deploy/* | contracts/* | scripts/* | chaos/* | loadtest/* | ui/* | .github/* | Makefile | tools.mk | go.mod | go.sum | .dockerignore)
 		code=true
-		break
+		;;
+	esac
+	case "$f" in
+	internal/raftstore/* | internal/storagenode/* | cmd/storagenode/* | internal/testseam/* | internal/fsm/* | tests/seams/* | \
+		go.mod | go.sum | Makefile | tools.mk | .github/* | scripts/ci-changes.sh)
+		seams=true
 		;;
 	esac
 done <<<"$files"
 echo "code=$code"
+echo "seams=$seams"

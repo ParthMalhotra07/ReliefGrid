@@ -81,6 +81,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      seams: ${{ steps.diff.outputs.seams }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -90,6 +91,28 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+  # seams (S4.6b): make check-seams runs go vet, golangci-lint and go test -race for the seams and kind
+  # builds of the storage node, plus the default-binary symbol check. check used to pay about
+  # 2.5 minutes for this on every PR. Now only ready PRs that touch the seam packages pay it
+  # (ci-changes.sh seams=true).
+  seams:
+    needs: changes
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft && needs.changes.outputs.seams == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - id: pins
+        run: echo "golangci=$(make -s print-GOLANGCI_LINT_VERSION)" >> "$GITHUB_OUTPUT"
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ steps.pins.outputs.golangci }}
+          install-only: true
+      - run: make check-seams
 
   images:
     name: images (${{ matrix.name }})

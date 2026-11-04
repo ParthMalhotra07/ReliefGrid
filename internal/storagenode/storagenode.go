@@ -5,6 +5,7 @@
 package storagenode
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -33,6 +34,9 @@ type Server struct{ s *server }
 
 // New serves n with cfg.
 func New(n *raftstore.Node, cfg Config) *Server {
+	if seamsBuild {
+		slog.Warn("storagenode: built with the seams tag: /mgmt/test/seams can pause this replica; test images only")
+	}
 	return &Server{s: &server{
 		node: n, ring: cfg.Ring, shard: cfg.Shard, podName: cfg.PodName, serverID: string(n.Identity().ServerID()), timeout: cfg.Timeout,
 		leaderHTTP: cfg.LeaderHTTP, operatorToken: cfg.OperatorToken,

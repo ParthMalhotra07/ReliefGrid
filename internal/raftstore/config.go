@@ -87,6 +87,9 @@ type Config struct {
 	// staged and before the database is swapped in.
 	beforeRestoreSwap func()
 
+	// seams, tests only, are the S4.6b test boundaries (seams.go).
+	seams *seamHooks
+
 	// beforeRPC, tests only, runs on every incoming RPC that reaches Raft
 	// through the transport's consumer (not heartbeats), after the commit
 	// fence has observed it and before Raft sees it.

@@ -26,7 +26,7 @@ func TestMgmtStatus(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 	got := decodeJSON[statusResponse](t, rec)
-	want := statusResponse{PodName: testPod, Incarnation: "inc", GroupID: "shard-1", Shard: testShard, ServerID: "storage-1-1/inc",
+	want := statusResponse{Seams: seamsBuild, PodName: testPod, Incarnation: "inc", GroupID: "shard-1", Shard: testShard, ServerID: "storage-1-1/inc",
 		Address: "storage-1-1:7000", State: "Follower", Term: 3, LeaderID: "storage-1-0/x", LeaderAddr: "storage-1-0:7000",
 		CommitIndex: 12, LastLogIndex: 12, RaftAppliedIndex: 12, AppliedIndex: 10, RestoredIndex: 9, LeaderCommitIndex: 14, HasState: true, RingVersion: 1, Admitted: true}
 	if got != want {
