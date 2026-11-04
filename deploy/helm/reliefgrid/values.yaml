@@ -38,6 +38,17 @@ app:
   enabled: false
   coordinatorURL: http://storage-coordinator:8080
   callerNamespace: local-dispatcher
+  # S4.4: off by default. `make tracing-up` installs deploy/helm/tracing and
+  # applies values-tracing.yaml; the API and matcher then export OTLP/HTTP to
+  # the Collector (same namespace). The app has no NetworkPolicy restricting
+  # their egress, so none needs a Collector rule.
+  tracing:
+    enabled: false
+    endpoint: http://otel-collector:4318
+    # Standard OTEL_TRACES_SAMPLER / _ARG, as the storage chart: follow the
+    # caller's decision, else keep this fraction (0.1 under load).
+    sampler: parentbased_traceidratio
+    samplerArg: "1.0"
   nodeSelector:
     role: data
   api:

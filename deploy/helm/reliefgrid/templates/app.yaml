@@ -80,6 +80,18 @@ spec:
             - name: CALLER_NAMESPACE
               value: {{ $.Values.app.callerNamespace | quote }}
             {{- end }}
+            {{- if and $.Values.app.tracing.enabled (ne $name "ui") }}
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: {{ $.Values.app.tracing.endpoint | quote }}
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_SERVICE_NAME
+              value: {{ $name | quote }}
+            - name: OTEL_TRACES_SAMPLER
+              value: {{ $.Values.app.tracing.sampler | quote }}
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: {{ $.Values.app.tracing.samplerArg | toString | quote }}
+            {{- end }}
             {{- if eq $name "matcher" }}
             - name: AMQP_URL
               valueFrom:

@@ -220,17 +220,28 @@ placement-check: ## Fail if two replicas of a storage shard share a worker (or o
 	KUBE_CONTEXT=kind-$(CLUSTER) NAMESPACE=$(STORAGE_NS) scripts/placement-check.sh
 
 # Tracing (S4.4): the Collector and Jaeger (deploy/helm/tracing) on the infra worker, in
-# the storage namespace, and tracing turned on in the storage release (values-tracing.yaml).
-# Changing the pods' environment rolls the coordinator and the storage pods (PDB-bounded).
+# the storage namespace, and tracing turned on in the storage release and, if installed
+# (make app-deploy), the app release (each chart's values-tracing.yaml).
+# Changing the pods' environment rolls the coordinator, storage, API and matcher pods (PDB-bounded).
 # --reset-then-reuse-values: plain --reuse-values would keep the old chart's defaults (no tracing.*).
 TRACING_RELEASE ?= tracing
 TRACING_SAMPLE  ?= 1.0
-tracing-up: ## S4.4: install the Collector + Jaeger and turn tracing on in storage (TRACING_SAMPLE=1.0; 0.1 under load)
+APP_RELEASE     ?= reliefgrid
+APP_NS          ?= $(STORAGE_NS)
+tracing-up: ## S4.4: install the Collector + Jaeger and turn tracing on in storage and the app (TRACING_SAMPLE=1.0; 0.1 under load)
 	helm --kube-context kind-$(CLUSTER) upgrade --install $(TRACING_RELEASE) deploy/helm/tracing -n $(STORAGE_NS) --wait --timeout 5m
 	helm --kube-context kind-$(CLUSTER) upgrade $(STORAGE_RELEASE) deploy/helm/storage -n $(STORAGE_NS) --reset-then-reuse-values \
 		-f deploy/helm/storage/values-tracing.yaml --set-string tracing.samplerArg='$(TRACING_SAMPLE)' --wait --timeout 10m
+	if helm --kube-context kind-$(CLUSTER) status $(APP_RELEASE) -n $(APP_NS) >/dev/null 2>&1; then \
+		helm --kube-context kind-$(CLUSTER) upgrade $(APP_RELEASE) deploy/helm/reliefgrid -n $(APP_NS) --reset-then-reuse-values \
+			-f deploy/helm/reliefgrid/values-tracing.yaml --set-string app.tracing.samplerArg='$(TRACING_SAMPLE)' --wait --timeout 10m; \
+	else echo "tracing-up: no app release $(APP_RELEASE) in $(APP_NS); storage only"; fi
 
-tracing-down: ## S4.4: turn tracing off in storage, then uninstall the Collector and Jaeger
+tracing-down: ## S4.4: turn tracing off in the app (if installed) and storage, then uninstall the Collector and Jaeger
+	if helm --kube-context kind-$(CLUSTER) status $(APP_RELEASE) -n $(APP_NS) >/dev/null 2>&1; then \
+		helm --kube-context kind-$(CLUSTER) upgrade $(APP_RELEASE) deploy/helm/reliefgrid -n $(APP_NS) --reset-then-reuse-values \
+			--set app.tracing.enabled=false --wait --timeout 10m; \
+	fi
 	helm --kube-context kind-$(CLUSTER) upgrade $(STORAGE_RELEASE) deploy/helm/storage -n $(STORAGE_NS) --reset-then-reuse-values \
 		--set tracing.enabled=false --wait --timeout 10m
 	helm --kube-context kind-$(CLUSTER) uninstall $(TRACING_RELEASE) -n $(STORAGE_NS) --ignore-not-found --wait
