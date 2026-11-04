@@ -1,0 +1,420 @@
+[
+  {
+    "createdAt": "2026-11-04T15:00:01.991Z",
+    "details": "Synthetic demo matcher-traffic-0",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "d55e0603-7744-5821-932b-805712b7691c",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.015Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.015Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:02.124Z",
+    "details": "Synthetic demo matcher-traffic-1",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "54d0b411-b050-5252-9b60-3bdae08b0174",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.155Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.155Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:02.256Z",
+    "details": "Synthetic demo matcher-traffic-2",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "465197bd-a803-57a1-92f4-a5142ca69fcd",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.387Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.387Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:02.383Z",
+    "details": "Synthetic demo matcher-traffic-3",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "a4eb009f-8946-558f-aa1f-c971eaf9b5fc",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.42Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.42Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:02.515Z",
+    "details": "Synthetic demo matcher-traffic-4",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "45aa0ff5-02c2-5496-81d0-db4460fbc0bf",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.537Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.537Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:02.638Z",
+    "details": "Synthetic demo matcher-traffic-5",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "e11f91bf-ad03-5735-8e87-d21487bf9ca1",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.661Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.661Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:02.763Z",
+    "details": "Synthetic demo matcher-traffic-6",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "90e4b916-ec76-56b2-b0ed-36c199bcba54",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.808Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.808Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:02.891Z",
+    "details": "Synthetic demo matcher-traffic-7",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "ef05bb4c-08df-5c22-a8fe-bb11d5f48049",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:02.914Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:07.914Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.018Z",
+    "details": "Synthetic demo matcher-traffic-8",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "414ae390-dd21-5be4-8ef3-4a03e8fb7197",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:03.052Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:08.052Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.152Z",
+    "details": "Synthetic demo matcher-traffic-9",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "103be51d-7cac-5197-bd4c-841ee380a192",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:03.283Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:08.283Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.297Z",
+    "details": "Synthetic demo matcher-traffic-10",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "4324b53e-7fab-557a-bedc-7ea7736490e6",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:03.313Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:08.313Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.42Z",
+    "details": "Synthetic demo matcher-traffic-11",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "e3798af8-71d3-500d-a051-61fd3de20ba2",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:03.454Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:08.454Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.548Z",
+    "details": "Synthetic demo matcher-traffic-12",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "39f937f8-35b7-5e29-a689-3829ea467af5",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:03.595Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:08.595Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.68Z",
+    "details": "Synthetic demo matcher-traffic-13",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "30a9982b-b860-5b31-8729-9525d81e597f",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:03.807Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:08.807Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.795Z",
+    "details": "Synthetic demo matcher-traffic-14",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "e43404a0-8258-514e-be61-dbca81ef7f64",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:03.924Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:08.924Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:03.919Z",
+    "details": "Synthetic demo matcher-traffic-15",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "41d9c70c-7f8a-548e-b59e-f6f142068790",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:04.062Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:09.062Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:04.044Z",
+    "details": "Synthetic demo matcher-traffic-16",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "ef6998bf-4389-562a-a05e-37c0ac0b93ce",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:04.085Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:09.085Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:04.174Z",
+    "details": "Synthetic demo matcher-traffic-17",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "8bf645ca-6048-51ba-89c1-b2a9bd7ea611",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:04.203Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:09.203Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:04.3Z",
+    "details": "Synthetic demo matcher-traffic-18",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "10452bc0-c7b1-50bd-b41a-eff94b3d42fe",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:04.331Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:09.331Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:04.429Z",
+    "details": "Synthetic demo matcher-traffic-19",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "2501e85b-7234-5596-ba23-f7b66d7a3a49",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:04.566Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:09.566Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:04.558Z",
+    "details": "Synthetic demo matcher-traffic-20",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "d48a31e5-1bba-5297-8115-3e923cce26ab",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:04.613Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:09.613Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-04T15:00:04.688Z",
+    "details": "Synthetic demo matcher-traffic-21",
+    "location": {
+      "lat": 20,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "a8176f26-1add-5478-8283-932231b66c1b",
+    "requestType": "SHELTER",
+    "status": "WAITING",
+    "updatedAt": "2026-11-04T15:00:04.727Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-04T15:00:09.727Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  }
+]

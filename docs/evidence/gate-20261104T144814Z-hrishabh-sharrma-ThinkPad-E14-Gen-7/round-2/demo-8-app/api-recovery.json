@@ -1,0 +1,1128 @@
+{
+  "deletedAt": 1793804397.6223376,
+  "recoveredAt": 1793804401.0642054,
+  "before": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "creationTimestamp": "2026-11-04T14:55:23Z",
+        "generateName": "reliefgrid-api-9cb9886bc-",
+        "generation": 1,
+        "labels": {
+          "app.kubernetes.io/component": "api",
+          "app.kubernetes.io/instance": "reliefgrid",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "reliefgrid",
+          "helm.sh/chart": "reliefgrid-0.1.0",
+          "pod-template-hash": "9cb9886bc",
+          "reliefgrid.io/coordinator-client": "true"
+        },
+        "name": "reliefgrid-api-9cb9886bc-kbdns",
+        "namespace": "reliefgrid",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "ReplicaSet",
+            "name": "reliefgrid-api-9cb9886bc",
+            "uid": "172243e7-a706-4cfb-b8c2-9ee8e5628f7e"
+          }
+        ],
+        "resourceVersion": "1546",
+        "uid": "57ba2dcd-a95c-4a5c-9c32-fd1e46a936fb"
+      },
+      "spec": {
+        "affinity": {
+          "podAntiAffinity": {
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "podAffinityTerm": {
+                  "labelSelector": {
+                    "matchLabels": {
+                      "app.kubernetes.io/component": "api",
+                      "app.kubernetes.io/instance": "reliefgrid"
+                    }
+                  },
+                  "topologyKey": "kubernetes.io/hostname"
+                },
+                "weight": 100
+              }
+            ]
+          }
+        },
+        "automountServiceAccountToken": false,
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "HTTP_ADDR",
+                "value": ":8080"
+              },
+              {
+                "name": "COORDINATOR_URL",
+                "value": "http://storage-coordinator:8080"
+              },
+              {
+                "name": "CALLER_NAMESPACE",
+                "value": "local-dispatcher"
+              }
+            ],
+            "image": "reliefgrid/api:a15-20261104145515",
+            "imagePullPolicy": "Never",
+            "livenessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "name": "api",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "http",
+                "protocol": "TCP"
+              }
+            ],
+            "readinessProbe": {
+              "failureThreshold": 2,
+              "httpGet": {
+                "path": "/readyz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "readOnlyRootFilesystem": true
+            },
+            "startupProbe": {
+              "failureThreshold": 30,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File"
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": false,
+        "nodeName": "reliefgrid-worker3",
+        "nodeSelector": {
+          "role": "data"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "priority": 0,
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+          "fsGroup": 65532,
+          "runAsGroup": 65532,
+          "runAsNonRoot": true,
+          "runAsUser": 65532,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "serviceAccount": "default",
+        "serviceAccountName": "default",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/not-ready",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          },
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/unreachable",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          }
+        ]
+      },
+      "status": {
+        "allocatedResources": {
+          "cpu": "100m",
+          "memory": "128Mi"
+        },
+        "conditions": [
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodReadyToStartContainers"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:25Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Ready"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:25Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "ContainersReady"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "allocatedResources": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "containerID": "containerd://d6d792ac0303ec6591dc1aceff72cae3df56d04c9a5e514c0ce0957e1562483f",
+            "image": "docker.io/reliefgrid/api:a15-20261104145515",
+            "imageID": "docker.io/library/import-2026-11-04@sha256:ea945d7df64736080040f6b0f3d9a03d98c4e62270d97f81b8d9609b78fdf24b",
+            "lastState": {},
+            "name": "api",
+            "ready": true,
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "restartCount": 0,
+            "started": true,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-04T14:55:23Z"
+              }
+            },
+            "user": {
+              "linux": {
+                "gid": 65532,
+                "supplementalGroups": [
+                  65532
+                ],
+                "uid": 65532
+              }
+            }
+          }
+        ],
+        "hostIP": "172.20.0.6",
+        "hostIPs": [
+          {
+            "ip": "172.20.0.6"
+          }
+        ],
+        "observedGeneration": 1,
+        "phase": "Running",
+        "podIP": "10.244.3.9",
+        "podIPs": [
+          {
+            "ip": "10.244.3.9"
+          }
+        ],
+        "qosClass": "Burstable",
+        "resources": {
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "requests": {
+            "cpu": "79m",
+            "memory": "128Mi"
+          }
+        },
+        "startTime": "2026-11-04T14:55:23Z"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "creationTimestamp": "2026-11-04T14:55:23Z",
+        "generateName": "reliefgrid-api-9cb9886bc-",
+        "generation": 1,
+        "labels": {
+          "app.kubernetes.io/component": "api",
+          "app.kubernetes.io/instance": "reliefgrid",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "reliefgrid",
+          "helm.sh/chart": "reliefgrid-0.1.0",
+          "pod-template-hash": "9cb9886bc",
+          "reliefgrid.io/coordinator-client": "true"
+        },
+        "name": "reliefgrid-api-9cb9886bc-mtbpn",
+        "namespace": "reliefgrid",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "ReplicaSet",
+            "name": "reliefgrid-api-9cb9886bc",
+            "uid": "172243e7-a706-4cfb-b8c2-9ee8e5628f7e"
+          }
+        ],
+        "resourceVersion": "1531",
+        "uid": "586eaee2-1862-4ccd-a018-f1548dd342df"
+      },
+      "spec": {
+        "affinity": {
+          "podAntiAffinity": {
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "podAffinityTerm": {
+                  "labelSelector": {
+                    "matchLabels": {
+                      "app.kubernetes.io/component": "api",
+                      "app.kubernetes.io/instance": "reliefgrid"
+                    }
+                  },
+                  "topologyKey": "kubernetes.io/hostname"
+                },
+                "weight": 100
+              }
+            ]
+          }
+        },
+        "automountServiceAccountToken": false,
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "HTTP_ADDR",
+                "value": ":8080"
+              },
+              {
+                "name": "COORDINATOR_URL",
+                "value": "http://storage-coordinator:8080"
+              },
+              {
+                "name": "CALLER_NAMESPACE",
+                "value": "local-dispatcher"
+              }
+            ],
+            "image": "reliefgrid/api:a15-20261104145515",
+            "imagePullPolicy": "Never",
+            "livenessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "name": "api",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "http",
+                "protocol": "TCP"
+              }
+            ],
+            "readinessProbe": {
+              "failureThreshold": 2,
+              "httpGet": {
+                "path": "/readyz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "readOnlyRootFilesystem": true
+            },
+            "startupProbe": {
+              "failureThreshold": 30,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File"
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": false,
+        "nodeName": "reliefgrid-worker",
+        "nodeSelector": {
+          "role": "data"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "priority": 0,
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+          "fsGroup": 65532,
+          "runAsGroup": 65532,
+          "runAsNonRoot": true,
+          "runAsUser": 65532,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "serviceAccount": "default",
+        "serviceAccountName": "default",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/not-ready",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          },
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/unreachable",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          }
+        ]
+      },
+      "status": {
+        "allocatedResources": {
+          "cpu": "100m",
+          "memory": "128Mi"
+        },
+        "conditions": [
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodReadyToStartContainers"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:25Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Ready"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:25Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "ContainersReady"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "allocatedResources": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "containerID": "containerd://3d7cbf94b69f6c01dd455c8166272582d19938af9fc8f873bda1c7d084612472",
+            "image": "docker.io/reliefgrid/api:a15-20261104145515",
+            "imageID": "docker.io/library/import-2026-11-04@sha256:ea945d7df64736080040f6b0f3d9a03d98c4e62270d97f81b8d9609b78fdf24b",
+            "lastState": {},
+            "name": "api",
+            "ready": true,
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "restartCount": 0,
+            "started": true,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-04T14:55:23Z"
+              }
+            },
+            "user": {
+              "linux": {
+                "gid": 65532,
+                "supplementalGroups": [
+                  65532
+                ],
+                "uid": 65532
+              }
+            }
+          }
+        ],
+        "hostIP": "172.20.0.4",
+        "hostIPs": [
+          {
+            "ip": "172.20.0.4"
+          }
+        ],
+        "observedGeneration": 1,
+        "phase": "Running",
+        "podIP": "10.244.2.10",
+        "podIPs": [
+          {
+            "ip": "10.244.2.10"
+          }
+        ],
+        "qosClass": "Burstable",
+        "resources": {
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "requests": {
+            "cpu": "79m",
+            "memory": "128Mi"
+          }
+        },
+        "startTime": "2026-11-04T14:55:23Z"
+      }
+    }
+  ],
+  "after": [
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "creationTimestamp": "2026-11-04T14:59:57Z",
+        "generateName": "reliefgrid-api-9cb9886bc-",
+        "generation": 1,
+        "labels": {
+          "app.kubernetes.io/component": "api",
+          "app.kubernetes.io/instance": "reliefgrid",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "reliefgrid",
+          "helm.sh/chart": "reliefgrid-0.1.0",
+          "pod-template-hash": "9cb9886bc",
+          "reliefgrid.io/coordinator-client": "true"
+        },
+        "name": "reliefgrid-api-9cb9886bc-mbt59",
+        "namespace": "reliefgrid",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "ReplicaSet",
+            "name": "reliefgrid-api-9cb9886bc",
+            "uid": "172243e7-a706-4cfb-b8c2-9ee8e5628f7e"
+          }
+        ],
+        "resourceVersion": "2808",
+        "uid": "8c148e91-d6bd-4122-b666-a9d5921e13fa"
+      },
+      "spec": {
+        "affinity": {
+          "podAntiAffinity": {
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "podAffinityTerm": {
+                  "labelSelector": {
+                    "matchLabels": {
+                      "app.kubernetes.io/component": "api",
+                      "app.kubernetes.io/instance": "reliefgrid"
+                    }
+                  },
+                  "topologyKey": "kubernetes.io/hostname"
+                },
+                "weight": 100
+              }
+            ]
+          }
+        },
+        "automountServiceAccountToken": false,
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "HTTP_ADDR",
+                "value": ":8080"
+              },
+              {
+                "name": "COORDINATOR_URL",
+                "value": "http://storage-coordinator:8080"
+              },
+              {
+                "name": "CALLER_NAMESPACE",
+                "value": "local-dispatcher"
+              }
+            ],
+            "image": "reliefgrid/api:a15-20261104145515",
+            "imagePullPolicy": "Never",
+            "livenessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "name": "api",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "http",
+                "protocol": "TCP"
+              }
+            ],
+            "readinessProbe": {
+              "failureThreshold": 2,
+              "httpGet": {
+                "path": "/readyz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "readOnlyRootFilesystem": true
+            },
+            "startupProbe": {
+              "failureThreshold": 30,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File"
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": false,
+        "nodeName": "reliefgrid-worker3",
+        "nodeSelector": {
+          "role": "data"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "priority": 0,
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+          "fsGroup": 65532,
+          "runAsGroup": 65532,
+          "runAsNonRoot": true,
+          "runAsUser": 65532,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "serviceAccount": "default",
+        "serviceAccountName": "default",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/not-ready",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          },
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/unreachable",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          }
+        ]
+      },
+      "status": {
+        "allocatedResources": {
+          "cpu": "100m",
+          "memory": "128Mi"
+        },
+        "conditions": [
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:59:58Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodReadyToStartContainers"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:59:57Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T15:00:00Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Ready"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T15:00:00Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "ContainersReady"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:59:57Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "allocatedResources": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "containerID": "containerd://544c5f0911b9842cea0b8d7a506abbd36a1ed7509077d5ca0ff70279322c2276",
+            "image": "docker.io/reliefgrid/api:a15-20261104145515",
+            "imageID": "docker.io/library/import-2026-11-04@sha256:ea945d7df64736080040f6b0f3d9a03d98c4e62270d97f81b8d9609b78fdf24b",
+            "lastState": {},
+            "name": "api",
+            "ready": true,
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "restartCount": 0,
+            "started": true,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-04T14:59:58Z"
+              }
+            },
+            "user": {
+              "linux": {
+                "gid": 65532,
+                "supplementalGroups": [
+                  65532
+                ],
+                "uid": 65532
+              }
+            }
+          }
+        ],
+        "hostIP": "172.20.0.6",
+        "hostIPs": [
+          {
+            "ip": "172.20.0.6"
+          }
+        ],
+        "observedGeneration": 1,
+        "phase": "Running",
+        "podIP": "10.244.3.14",
+        "podIPs": [
+          {
+            "ip": "10.244.3.14"
+          }
+        ],
+        "qosClass": "Burstable",
+        "resources": {
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "requests": {
+            "cpu": "79m",
+            "memory": "128Mi"
+          }
+        },
+        "startTime": "2026-11-04T14:59:57Z"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "metadata": {
+        "creationTimestamp": "2026-11-04T14:55:23Z",
+        "generateName": "reliefgrid-api-9cb9886bc-",
+        "generation": 1,
+        "labels": {
+          "app.kubernetes.io/component": "api",
+          "app.kubernetes.io/instance": "reliefgrid",
+          "app.kubernetes.io/managed-by": "Helm",
+          "app.kubernetes.io/name": "reliefgrid",
+          "helm.sh/chart": "reliefgrid-0.1.0",
+          "pod-template-hash": "9cb9886bc",
+          "reliefgrid.io/coordinator-client": "true"
+        },
+        "name": "reliefgrid-api-9cb9886bc-mtbpn",
+        "namespace": "reliefgrid",
+        "ownerReferences": [
+          {
+            "apiVersion": "apps/v1",
+            "blockOwnerDeletion": true,
+            "controller": true,
+            "kind": "ReplicaSet",
+            "name": "reliefgrid-api-9cb9886bc",
+            "uid": "172243e7-a706-4cfb-b8c2-9ee8e5628f7e"
+          }
+        ],
+        "resourceVersion": "1531",
+        "uid": "586eaee2-1862-4ccd-a018-f1548dd342df"
+      },
+      "spec": {
+        "affinity": {
+          "podAntiAffinity": {
+            "preferredDuringSchedulingIgnoredDuringExecution": [
+              {
+                "podAffinityTerm": {
+                  "labelSelector": {
+                    "matchLabels": {
+                      "app.kubernetes.io/component": "api",
+                      "app.kubernetes.io/instance": "reliefgrid"
+                    }
+                  },
+                  "topologyKey": "kubernetes.io/hostname"
+                },
+                "weight": 100
+              }
+            ]
+          }
+        },
+        "automountServiceAccountToken": false,
+        "containers": [
+          {
+            "env": [
+              {
+                "name": "HTTP_ADDR",
+                "value": ":8080"
+              },
+              {
+                "name": "COORDINATOR_URL",
+                "value": "http://storage-coordinator:8080"
+              },
+              {
+                "name": "CALLER_NAMESPACE",
+                "value": "local-dispatcher"
+              }
+            ],
+            "image": "reliefgrid/api:a15-20261104145515",
+            "imagePullPolicy": "Never",
+            "livenessProbe": {
+              "failureThreshold": 3,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "name": "api",
+            "ports": [
+              {
+                "containerPort": 8080,
+                "name": "http",
+                "protocol": "TCP"
+              }
+            ],
+            "readinessProbe": {
+              "failureThreshold": 2,
+              "httpGet": {
+                "path": "/readyz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "securityContext": {
+              "allowPrivilegeEscalation": false,
+              "capabilities": {
+                "drop": [
+                  "ALL"
+                ]
+              },
+              "readOnlyRootFilesystem": true
+            },
+            "startupProbe": {
+              "failureThreshold": 30,
+              "httpGet": {
+                "path": "/healthz",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 2,
+              "successThreshold": 1,
+              "timeoutSeconds": 1
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File"
+          }
+        ],
+        "dnsPolicy": "ClusterFirst",
+        "enableServiceLinks": false,
+        "nodeName": "reliefgrid-worker",
+        "nodeSelector": {
+          "role": "data"
+        },
+        "preemptionPolicy": "PreemptLowerPriority",
+        "priority": 0,
+        "restartPolicy": "Always",
+        "schedulerName": "default-scheduler",
+        "securityContext": {
+          "fsGroup": 65532,
+          "runAsGroup": 65532,
+          "runAsNonRoot": true,
+          "runAsUser": 65532,
+          "seccompProfile": {
+            "type": "RuntimeDefault"
+          }
+        },
+        "serviceAccount": "default",
+        "serviceAccountName": "default",
+        "terminationGracePeriodSeconds": 30,
+        "tolerations": [
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/not-ready",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          },
+          {
+            "effect": "NoExecute",
+            "key": "node.kubernetes.io/unreachable",
+            "operator": "Exists",
+            "tolerationSeconds": 30
+          }
+        ]
+      },
+      "status": {
+        "allocatedResources": {
+          "cpu": "100m",
+          "memory": "128Mi"
+        },
+        "conditions": [
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodReadyToStartContainers"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:25Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "Ready"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:25Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "ContainersReady"
+          },
+          {
+            "lastProbeTime": null,
+            "lastTransitionTime": "2026-11-04T14:55:23Z",
+            "observedGeneration": 1,
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "allocatedResources": {
+              "cpu": "100m",
+              "memory": "128Mi"
+            },
+            "containerID": "containerd://3d7cbf94b69f6c01dd455c8166272582d19938af9fc8f873bda1c7d084612472",
+            "image": "docker.io/reliefgrid/api:a15-20261104145515",
+            "imageID": "docker.io/library/import-2026-11-04@sha256:ea945d7df64736080040f6b0f3d9a03d98c4e62270d97f81b8d9609b78fdf24b",
+            "lastState": {},
+            "name": "api",
+            "ready": true,
+            "resources": {
+              "limits": {
+                "cpu": "1",
+                "memory": "512Mi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "128Mi"
+              }
+            },
+            "restartCount": 0,
+            "started": true,
+            "state": {
+              "running": {
+                "startedAt": "2026-11-04T14:55:23Z"
+              }
+            },
+            "user": {
+              "linux": {
+                "gid": 65532,
+                "supplementalGroups": [
+                  65532
+                ],
+                "uid": 65532
+              }
+            }
+          }
+        ],
+        "hostIP": "172.20.0.4",
+        "hostIPs": [
+          {
+            "ip": "172.20.0.4"
+          }
+        ],
+        "observedGeneration": 1,
+        "phase": "Running",
+        "podIP": "10.244.2.10",
+        "podIPs": [
+          {
+            "ip": "10.244.2.10"
+          }
+        ],
+        "qosClass": "Burstable",
+        "resources": {
+          "limits": {
+            "cpu": "1",
+            "memory": "512Mi"
+          },
+          "requests": {
+            "cpu": "79m",
+            "memory": "128Mi"
+          }
+        },
+        "startTime": "2026-11-04T14:55:23Z"
+      }
+    }
+  ]
+}

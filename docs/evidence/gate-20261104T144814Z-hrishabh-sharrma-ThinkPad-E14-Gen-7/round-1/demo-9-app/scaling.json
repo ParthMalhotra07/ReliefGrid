@@ -1,0 +1,22 @@
+{
+  "before": [
+    "reliefgrid-api-7c9c94bb94-fjxrm",
+    "reliefgrid-api-7c9c94bb94-klk69"
+  ],
+  "ready": [
+    "reliefgrid-api-7c9c94bb94-26gt7",
+    "reliefgrid-api-7c9c94bb94-8rbcd",
+    "reliefgrid-api-7c9c94bb94-fjxrm",
+    "reliefgrid-api-7c9c94bb94-klk69",
+    "reliefgrid-api-7c9c94bb94-llkxj",
+    "reliefgrid-api-7c9c94bb94-n5xmr"
+  ],
+  "served": [
+    "reliefgrid-api-7c9c94bb94-26gt7",
+    "reliefgrid-api-7c9c94bb94-8rbcd",
+    "reliefgrid-api-7c9c94bb94-fjxrm",
+    "reliefgrid-api-7c9c94bb94-klk69",
+    "reliefgrid-api-7c9c94bb94-llkxj",
+    "reliefgrid-api-7c9c94bb94-n5xmr"
+  ]
+}
