@@ -153,8 +153,10 @@ replica_reads_agree() {
 			| .body |= (try fromjson catch null)] as $r
 		| if $min == null then "1 no strong-read version to compare with"
 		  elif ($r | length) == 0 then "1 no replica reads"
+		  elif ($r | length) != 3 or ([$r[].pod] | unique | length) != 3 then "1 expected three distinct replica reads"
 		  elif any($r[]; .code != "200" or .body.read.servedBy != .pod or .body.record == null) then
 			"1 not served by every replica from its own FSM: \([$r[] | select(.code != "200" or .body.read.servedBy != .pod or .body.record == null) | .pod] | join(", "))"
+		  elif ([$r[].body.record] | group_by(.version) | any(.[]; (map(tojson) | unique | length) > 1)) then "1 different records at the same version"
 		  elif ([$r[].body.record.version] | unique | length) > 1 then
 			"75 replicas at different versions: \([$r[] | "\(.pod)=\(.body.record.version)"] | join(" "))"
 		  elif $r[0].body.record.version < $min then "75 all replicas at version \($r[0].body.record.version), below the strong read'"'"'s \($min)"
@@ -197,7 +199,8 @@ dumps() {
 # one sha256; 75 if they are at different appliedIndexes (the app wrote between dumps); 1 if a
 # replica is unreachable, one is missing, or they differ at the same appliedIndex.
 dumps_agree() {
-	awk '$2 == "unreachable" || NF < 3 { bad = 1 } { n++; idx[$2]; sum[$2 " " $3] }
+	awk '$2 == "unreachable" || NF < 3 { bad = 1 }
+        { n++; idx[$2]; sum[$2 " " $3]; if ($2 in hash && hash[$2] != $3) bad = 1; hash[$2] = $3 }
 		END {
 			if (bad || n != 3) exit 1
 			ni = 0; for (i in idx) ni++

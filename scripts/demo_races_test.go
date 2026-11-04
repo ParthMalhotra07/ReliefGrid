@@ -69,6 +69,10 @@ func TestReplicaReadsAgree(t *testing.T) {
 		{"all behind the strong read", "2", []string{stale("p0", "200", "1", "PENDING"), stale("p1", "200", "1", "PENDING"), stale("p2", "200", "1", "PENDING")}, 75},
 		// Strict: a different record at the same version is a failure now.
 		{"same version, different record", "1", []string{stale("p0", "200", "2", "MATCHED"), stale("p1", "200", "2", "MATCHED"), stale("p2", "200", "2", "PENDING")}, 1},
+		{"mixed versions still reject same-version divergence", "1", []string{stale("p0", "200", "2", "MATCHED"), stale("p1", "200", "2", "PENDING"), stale("p2", "200", "3", "MATCHED")}, 1},
+		{"only one replica", "1", []string{stale("p0", "200", "2", "MATCHED")}, 1},
+		{"only two replicas", "1", []string{stale("p0", "200", "2", "MATCHED"), stale("p1", "200", "2", "MATCHED")}, 1},
+		{"duplicate replica", "1", []string{stale("p0", "200", "2", "MATCHED"), stale("p0", "200", "2", "MATCHED"), stale("p2", "200", "2", "MATCHED")}, 1},
 		{"served by another pod", "1", []string{stale("p0", "200", "1", "PENDING"), stale("p1", "200", "1", "PENDING"), strings.Replace(stale("p2", "200", "1", "PENDING"), `"servedBy":"p2"`, `"servedBy":"p1"`, 1)}, 1},
 		{"a replica without it", "1", []string{stale("p0", "200", "1", "PENDING"), stale("p1", "200", "1", "PENDING"), `p2 404 {"code":"NOT_FOUND"}`}, 1},
 		{"no port-forward", "1", []string{stale("p0", "200", "1", "PENDING"), stale("p1", "200", "1", "PENDING"), "p2 000 "}, 1},
@@ -159,6 +163,7 @@ func TestDumpsAgree(t *testing.T) {
 		{"moved between dumps", []string{"p0 900 aaa records=10", "p1 901 bbb records=11", "p2 901 bbb records=11"}, 75},
 		// Strict: different state at one appliedIndex is divergence.
 		{"diverged at one index", []string{"p0 900 aaa records=10", "p1 900 aaa records=10", "p2 900 ccc records=10"}, 1},
+		{"mixed indexes still reject same-index divergence", []string{"p0 900 aaa records=10", "p1 900 ccc records=10", "p2 901 bbb records=11"}, 1},
 		{"unreachable", []string{"p0 900 aaa records=10", "p1 unreachable", "p2 900 aaa records=10"}, 1},
 		{"two replicas", []string{"p0 900 aaa records=10", "p1 900 aaa records=10"}, 1},
 		{"none", nil, 1},

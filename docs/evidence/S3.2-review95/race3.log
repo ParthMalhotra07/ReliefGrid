@@ -1,0 +1,6 @@
+=== RUN   TestAgreedDumps/never_settles_within_the_bound
+--- PASS: TestAgreedDumps (3.44s)
+    --- PASS: TestAgreedDumps/settles (1.05s)
+    --- PASS: TestAgreedDumps/never_settles_within_the_bound (1.13s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	29.224s
