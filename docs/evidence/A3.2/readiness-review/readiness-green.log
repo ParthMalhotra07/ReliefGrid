@@ -1,0 +1,6 @@
+=== RUN   TestRunCancellationPublishesReadinessBeforeClosingListener
+2026/11/04 06:33:17 INFO API listening addr=127.0.0.1:39861
+    readiness_shutdown_test.go:100: cancelled run served readiness503 and health200 through the propagation window
+--- PASS: TestRunCancellationPublishesReadinessBeforeClosingListener (5.05s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	6.077s

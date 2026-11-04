@@ -108,7 +108,10 @@ func superviseConsumer(ctx context.Context, address, queue string, consumeRun fu
 	backoff := 100 * time.Millisecond
 	for ctx.Err() == nil {
 		started := time.Now()
-		conn, err := mq.Dial(ctx, address)
+		// The dedicated transport must outlive admission cancellation so an
+		// admitted delivery can finish its bounded durable handoff and ack.
+		connectionCtx, closeConnection := context.WithCancel(context.WithoutCancel(ctx))
+		conn, err := mq.Dial(connectionCtx, address)
 		if err == nil {
 			err = mq.Declare(ctx, conn)
 			if err == nil {
@@ -118,6 +121,7 @@ func superviseConsumer(ctx context.Context, address, queue string, consumeRun fu
 			connected(false)
 			_ = conn.CloseDeadline(time.Now().Add(5 * time.Second))
 		}
+		closeConnection()
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

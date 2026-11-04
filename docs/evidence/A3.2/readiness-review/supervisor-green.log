@@ -1,0 +1,11 @@
+=== RUN   TestSupervisorKeepsAdmittedTransportThroughCancellation
+    supervisor_integration_test.go:117: SIGTERM kept the admitted AMQP transport usable until ack, then closed it
+--- PASS: TestSupervisorKeepsAdmittedTransportThroughCancellation (0.25s)
+=== RUN   TestSupervisorKeepsAdmittedTransportThroughCancellation
+    supervisor_integration_test.go:117: SIGTERM kept the admitted AMQP transport usable until ack, then closed it
+--- PASS: TestSupervisorKeepsAdmittedTransportThroughCancellation (0.22s)
+=== RUN   TestSupervisorKeepsAdmittedTransportThroughCancellation
+    supervisor_integration_test.go:117: SIGTERM kept the admitted AMQP transport usable until ack, then closed it
+--- PASS: TestSupervisorKeepsAdmittedTransportThroughCancellation (0.27s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	1.775s

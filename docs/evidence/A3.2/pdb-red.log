@@ -1,0 +1,5 @@
+--- FAIL: TestAppAPIRecoveryBudget (3.52s)
+    app_recovery_test.go:30: API minAvailable=1 PodDisruptionBudget missing
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	3.523s
+FAIL

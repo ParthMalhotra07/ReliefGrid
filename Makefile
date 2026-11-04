@@ -101,6 +101,7 @@ test: ## go test -race ./... (and the chaos build)
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.1; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.2; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.4; fi
+	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A3.2; fi
 
 verify-A2.2: ## Verify state-aware retries and confirmed delayed transport handoffs
 	bash scripts/verify-A2.2.sh
@@ -277,3 +278,7 @@ verify-A3.1-static: ## App demo client, failure propagation and rendered tolerat
 
 verify-A3.1: ## Clean deployment and app demos 2/3/5/8/9, twice (scoped kind reset)
 	bash scripts/verify-A3.1.sh --live
+
+.PHONY: verify-A3.2
+verify-A3.2: ## Verify API readiness propagation and both consumer supervisor drains
+	bash scripts/verify-A3.2.sh

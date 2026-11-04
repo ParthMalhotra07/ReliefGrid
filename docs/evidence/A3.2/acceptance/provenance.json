@@ -1,0 +1,15 @@
+{
+  "run": "a32-acceptance-20261102",
+  "testedCommit": "c414a4f341f4f4292b056f073d116b668d6d5665",
+  "recoveryHead": "3b7acb675d827604bcf94080ff3fe628581522b6",
+  "demoHead": "3fed0d79faa5822af9b53a5b5ed8d1f08ed0211f",
+  "sha256": {
+    "cmd/api/main.go": "659977a1e488db23abcb9611432fa28a0e2f822061e10aca18946ab9572332d2",
+    "cmd/api/health.go": "9fed718ece8222002513349e75e066bd0ff23fd4a1be1bc6046f54ab31207659",
+    "cmd/matcher/main.go": "09c19ffad8d972ecd9b4f137a372cd12b8b6605eda1abe5033c08fbd78db2815",
+    "internal/mq/consumer.go": "93186dd6b568139ba58c3690aaa9985a90c1eaf5dcb073921eb4a84cb782a518",
+    "internal/mq/wakeup.go": "95b6241337424b42c437b56da244055f8661fae9e728999879e679f8a56f93fe",
+    "scripts/demos/app.sh": "a3d339316fb5d3a2e5a2fbb42b228e83b580aea8b67ff1b2619e2e1dd8c6f95b",
+    "scripts/demos/app_demo.py": "1fddd37bf581dc686c2a0ceb3cdd97016c9192985a3b18a052a2c457d26d1918"
+  }
+}
