@@ -1,0 +1,6 @@
+--- FAIL: TestCIGoCache (0.00s)
+    ci_test.go:218: job seams: setup-go has cache: <nil>; want false (the go.sum-only key freezes the cache)
+    ci_test.go:222: job seams sets up Go but does not restore the Go cache (actions/cache/restore@)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.005s
+FAIL
