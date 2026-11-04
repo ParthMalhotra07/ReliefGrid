@@ -39,7 +39,7 @@ func TestRunServesRealFSMAndStops(t *testing.T) {
 		cancel()
 		select {
 		case <-finished:
-		case <-time.After(5 * time.Second):
+		case <-time.After(apiReadinessPropagation + 5*time.Second):
 			t.Error("API process did not shut down")
 		}
 	})
@@ -83,7 +83,7 @@ func TestRunServesRealFSMAndStops(t *testing.T) {
 	cancel()
 	select {
 	case <-finished:
-	case <-time.After(5 * time.Second):
+	case <-time.After(apiReadinessPropagation + 5*time.Second):
 		t.Fatal("API process ignored cancellation")
 	}
 	if err := <-result; err != nil {
@@ -206,7 +206,7 @@ func TestShutdownDrainsAdmittedCreate(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(apiReadinessPropagation + 5*time.Second):
 		t.Fatal("API did not join after drain")
 	}
 }

@@ -1,0 +1,6 @@
+=== RUN   TestSupervisorKeepsAdmittedTransportThroughCancellation
+    supervisor_integration_test.go:101: admitted handoff lost transport: write tcp 127.0.0.1:37136->127.0.0.1:51741: use of closed network connection
+--- FAIL: TestSupervisorKeepsAdmittedTransportThroughCancellation (0.26s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	0.265s
+FAIL

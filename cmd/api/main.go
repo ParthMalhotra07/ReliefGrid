@@ -24,6 +24,11 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
+// Two readiness failures at the chart's 2s probe interval, plus propagation.
+// 5s propagation + 20s Shutdown stays within the pod's 30s grace.
+const apiReadinessPropagation = 5 * time.Second
+const apiShutdownDrain = 20 * time.Second
+
 type config struct {
 	addr        string
 	coordinator string
@@ -128,7 +133,12 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 	case <-ctx.Done():
 	}
 	state.draining.Store(true)
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	if ctx.Err() != nil {
+		// Keep readyz observable while endpoints/Traefik remove this pod.
+		propagation := time.NewTimer(apiReadinessPropagation)
+		<-propagation.C
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), apiShutdownDrain)
 	defer cancel()
 	shutdownErr := srv.Shutdown(shutdownCtx)
 	if shutdownErr != nil {
