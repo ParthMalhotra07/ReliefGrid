@@ -325,7 +325,7 @@ func (m *Matcher) propose(ctx context.Context, rec store.Record) (store.Record, 
 		if rec.Request.Status == store.RequestWaiting {
 			// WAITING -> WAITING is not a domain transition. Preserve the state
 			// with an exact-version RetryWorkflow and its atomic retry outbox.
-			cmd, err := retryCommand(rec, at, "NO_CANDIDATE")
+			cmd, err := retryCommand(ctx, rec, at, "NO_CANDIDATE")
 			if err != nil {
 				return rec, nil, err
 			}
@@ -343,7 +343,7 @@ func (m *Matcher) propose(ctx context.Context, rec store.Record) (store.Record, 
 		cmd.NextAttemptAt = at + retryDelay(rec.Request.RetryCount)
 		cmd.LastError = "NO_CANDIDATE"
 		cmd.OperationID = transitionID(cmd)
-		cmd.Outbox, err = events(rec, cmd, "request.retry", nil)
+		cmd.Outbox, err = events(ctx, rec, cmd, "request.retry", nil)
 		if err != nil {
 			return rec, nil, err
 		}
@@ -364,7 +364,7 @@ func (m *Matcher) propose(ctx context.Context, rec store.Record) (store.Record, 
 	cmd := transition(rec, store.RequestMatching, at)
 	cmd.Attempt = &a
 	cmd.OperationID = transitionID(cmd)
-	cmd.Outbox, err = events(rec, cmd, "match.proposed", &a)
+	cmd.Outbox, err = events(ctx, rec, cmd, "match.proposed", &a)
 	if err != nil {
 		return rec, nil, err
 	}
@@ -384,7 +384,7 @@ func (m *Matcher) confirm(ctx context.Context, rec store.Record, at int64) (Resu
 	cmd := transition(rec, store.RequestMatched, at)
 	cmd.OperationID = transitionID(cmd)
 	var err error
-	cmd.Outbox, err = events(rec, cmd, "match.completed", rec.Request.CurrentAttempt)
+	cmd.Outbox, err = events(ctx, rec, cmd, "match.completed", rec.Request.CurrentAttempt)
 	if err != nil {
 		return Result{}, err
 	}

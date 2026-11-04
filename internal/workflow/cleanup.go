@@ -2,7 +2,6 @@ package workflow
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -96,7 +96,7 @@ func (m *Matcher) cleanup(ctx context.Context, rec store.Record) (Result, error)
 	}
 	cmd := transition(rec, target, rec.UpdatedAt)
 	cmd.OperationID = transitionID(cmd)
-	cmd.Outbox, err = cleanupEvent(rec, cmd)
+	cmd.Outbox, err = cleanupEvent(ctx, rec, cmd)
 	if err != nil {
 		return Result{}, err
 	}
@@ -112,7 +112,7 @@ func (m *Matcher) cleanup(ctx context.Context, rec store.Record) (Result, error)
 	return Result{}, ErrConcurrentChange
 }
 
-func cleanupEvent(rec store.Record, cmd store.TransitionRequest) ([]store.OutboxEvent, error) {
+func cleanupEvent(ctx context.Context, rec store.Record, cmd store.TransitionRequest) ([]store.OutboxEvent, error) {
 	// Use the frozen request.state_changed schema and the existing API routing
 	// convention for the plan's cancelled/fulfilled notification semantics.
 	payload, err := json.Marshal(struct {
@@ -126,11 +126,10 @@ func cleanupEvent(rec store.Record, cmd store.TransitionRequest) ([]store.Outbox
 		return nil, fmt.Errorf("workflow cleanup event payload: %w", err)
 	}
 	eventID := operationID("event", cmd.OperationID, "request.state_changed")
-	trace := sha256.Sum256([]byte(cmd.OperationID))
 	body, err := json.Marshal(eventEnvelope{
 		SchemaVersion: 1, EventID: eventID, EntityID: rec.Request.ID, EntityVersion: rec.Version + 1,
 		EventType: "request.state_changed", OccurredAt: time.UnixMilli(cmd.At).UTC().Format(time.RFC3339Nano),
-		Traceparent: fmt.Sprintf("00-%x-%x-00", trace[:16], trace[16:24]), Payload: payload,
+		Traceparent: obs.Traceparent(ctx, cmd.OperationID), Payload: payload,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("workflow cleanup event envelope: %w", err)

@@ -13,6 +13,7 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/santhosh-tekuri/jsonschema/v6"
+	"go.opentelemetry.io/otel/trace"
 )
 
 //go:embed schemas/*.json
@@ -54,6 +55,8 @@ type WakeupConsumer struct {
 	Retry                    func(context.Context, amqp.Delivery) error
 	ObserveDead              func(int)
 	CallTimeout, WorkTimeout time.Duration
+	// TracerProvider records consumer spans (S4.4); nil uses the global one.
+	TracerProvider trace.TracerProvider
 }
 
 func parseWakeEvent(body []byte) (event, error) {
@@ -126,7 +129,7 @@ func (c WakeupConsumer) validate() error {
 	_, err := wakeSchemas()
 	return err
 }
-func (c WakeupConsumer) Process(ctx context.Context, d amqp.Delivery) error {
+func (c WakeupConsumer) Process(ctx context.Context, d amqp.Delivery) (err error) {
 	if err := c.validate(); err != nil {
 		return err
 	}
@@ -136,6 +139,8 @@ func (c WakeupConsumer) Process(ctx context.Context, d amqp.Delivery) error {
 	call, work := c.timeouts()
 	ctx, cancel := context.WithTimeout(ctx, work)
 	defer cancel()
+	ctx, span := startConsume(ctx, c.TracerProvider, WakeupQueue, d)
+	defer func() { endSpan(span, err) }()
 	if err := ctx.Err(); err != nil {
 		return err
 	}

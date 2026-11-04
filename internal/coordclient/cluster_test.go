@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordinator"
@@ -78,13 +79,20 @@ type cluster struct {
 // leader the coordinator knows.
 func newCluster(t *testing.T, mod func(*coordinator.Config)) *cluster {
 	t.Helper()
+	return newTracedCluster(t, mod, nil)
+}
+
+// newTracedCluster is newCluster recording every component's spans (raft,
+// storage node, coordinator, client) with tp; nil uses the global provider.
+func newTracedCluster(t *testing.T, mod func(*coordinator.Config), tp trace.TracerProvider) *cluster {
+	t.Helper()
 	rg, err := ring.Load("../../contracts/ring.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
 	c := &cluster{t: t, rg: rg}
 
-	cfg := coordinator.Config{Ring: rg, OperatorToken: operatorToken}
+	cfg := coordinator.Config{Ring: rg, OperatorToken: operatorToken, TracerProvider: tp}
 	if mod != nil {
 		mod(&cfg)
 	}
@@ -107,13 +115,14 @@ func newCluster(t *testing.T, mod func(*coordinator.Config)) *cluster {
 				PodName: pod, GroupID: fmt.Sprintf("shard-%d", s), Shard: s,
 				DataDir: filepath.Join(root, "pvc"), FSMDir: filepath.Join(root, "emptydir"),
 				BindAddr: "127.0.0.1:0", AdvertiseAddr: "localhost:0", Profile: fastProfile,
-				Logger: hclog.New(&hclog.LoggerOptions{Name: pod, Level: hclog.Error}),
+				Logger:         hclog.New(&hclog.LoggerOptions{Name: pod, Level: hclog.Error}),
+				TracerProvider: tp,
 			})
 			cancel()
 			if err != nil {
 				t.Fatalf("open %s: %v", pod, err)
 			}
-			srv := storagenode.New(n, storagenode.Config{Ring: rg, Shard: s, PodName: pod, Timeout: 3 * time.Second, OperatorToken: operatorToken,
+			srv := storagenode.New(n, storagenode.Config{Ring: rg, Shard: s, PodName: pod, Timeout: 3 * time.Second, OperatorToken: operatorToken, TracerProvider: tp,
 				LeaderHTTP: func(a raft.ServerAddress) string { hostsMu.Lock(); defer hostsMu.Unlock(); return hosts[a] }})
 			r := &replica{pod: pod, shard: s, node: n, data: httptest.NewServer(c.record(pod, srv.DataRoutes())), mgmt: httptest.NewServer(srv.MgmtRoutes())}
 			hostsMu.Lock()
@@ -152,7 +161,7 @@ func newCluster(t *testing.T, mod func(*coordinator.Config)) *cluster {
 	c.waitAllAdmitted()
 	ctx, cancel := context.WithTimeout(context.Background(), clusterWait)
 	defer cancel()
-	if c.client, err = coordclient.New(ctx, c.coord.URL); err != nil {
+	if c.client, err = coordclient.New(ctx, c.coord.URL, coordclient.WithTracerProvider(tp)); err != nil {
 		t.Fatalf("coordclient: %v", err)
 	}
 	return c

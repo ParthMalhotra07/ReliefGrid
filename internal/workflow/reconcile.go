@@ -71,7 +71,7 @@ func (m *Matcher) Wake(ctx context.Context, id, sourceID string, sourceAt int64)
 	at := max(rec.UpdatedAt, min(sourceAt, m.cfg.Now().UnixMilli()))
 	cmd := store.RetryWorkflow{Meta: store.Meta{At: at}, Key: rec.Key, ExpectedVersion: rec.Version, NextAttemptAt: at + 1, LastError: "RESOURCE_AVAILABLE"}
 	cmd.OperationID = operationID("resource-wake", rec.Key, strconv.FormatUint(rec.Version, 10), sourceID, strconv.FormatInt(at, 10))
-	cmd.Outbox, err = events(rec, store.TransitionRequest{Meta: cmd.Meta, NextAttemptAt: cmd.NextAttemptAt}, "request.retry", nil)
+	cmd.Outbox, err = events(ctx, rec, store.TransitionRequest{Meta: cmd.Meta, NextAttemptAt: cmd.NextAttemptAt}, "request.retry", nil)
 	if err != nil {
 		return err
 	}

@@ -99,7 +99,7 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request, operation string
 	if err != nil {
 		return err
 	}
-	outbox, err := event(eventType, id, 1, command.Meta, r.Header.Get("traceparent"), payload)
+	outbox, err := event(r.Context(), eventType, id, 1, command.Meta, payload)
 	if err != nil {
 		return err
 	}

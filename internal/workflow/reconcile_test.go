@@ -246,7 +246,7 @@ func TestConcurrentMatchingHelperPreservesCommittedCleanupHandoff(t *testing.T) 
 		cmd := transition(rec, store.RequestCancelling, testNow.UnixMilli())
 		cmd.OperationID = "concurrent-cancellation"
 		cmd.Disposition = store.ResourceAvailable
-		cmd.Outbox, err = cleanupEvent(rec, cmd)
+		cmd.Outbox, err = cleanupEvent(ctx, rec, cmd)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -299,7 +299,7 @@ func TestConcurrentHelperPreservesImmediateDurableWakeSchedule(t *testing.T) {
 		trace.beforeTransition = nil
 		rec := read(t, ctx, s, cmd.Key)
 		wake := store.RetryWorkflow{Meta: store.Meta{OperationID: "concurrent-durable-wake", At: clock.UnixMilli()}, Key: rec.Key, ExpectedVersion: rec.Version, NextAttemptAt: clock.UnixMilli() + 1, LastError: "RESOURCE_AVAILABLE"}
-		wake.Outbox, err = events(rec, store.TransitionRequest{Meta: wake.Meta, NextAttemptAt: wake.NextAttemptAt}, "request.retry", nil)
+		wake.Outbox, err = events(ctx, rec, store.TransitionRequest{Meta: wake.Meta, NextAttemptAt: wake.NextAttemptAt}, "request.retry", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
