@@ -48,6 +48,7 @@ spec:
               value: /etc/reliefgrid/ring.yaml
             - name: OPERATOR_TOKEN
               valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
+            {{- include "storage.tracingEnv" (dict "root" . "service" "coordinator") | nindent 12 }}
           ports:
             - name: http
               containerPort: 8080

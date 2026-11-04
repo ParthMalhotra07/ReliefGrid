@@ -17,8 +17,12 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb/v2"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -312,24 +316,77 @@ func (n *Node) Bootstrap(ctx context.Context, servers []raft.Server) error {
 // and returns its committed result. ErrNotLeader means it was never
 // appended. Any other failure, including ctx ending, wraps
 // store.ErrUnknownOutcome: the command may still commit.
-func (n *Node) Apply(ctx context.Context, cmd any) (store.Result, error) {
+//
+// The proposal is the raft.apply span (S4.4), timed here from proposal to
+// the FSM's response and never inside FSM apply (invariant 2): followers
+// apply the entry with no span.
+func (n *Node) Apply(ctx context.Context, cmd any) (res store.Result, err error) {
+	op, _ := fsm.OpOf(cmd) // Encode reports an unknown command
+	ctx, span := obs.Tracer(n.cfg.TracerProvider).Start(ctx, "raft.apply", trace.WithAttributes(
+		attribute.Int("reliefgrid.shard", n.cfg.Shard), attribute.String("raft.op", string(op))))
+	defer span.End()
+	outcome := "UNKNOWN"
+	defer func() {
+		span.SetAttributes(attribute.String("raft.outcome", outcome))
+		if err != nil && outcome != "NOT_LEADER" {
+			span.SetStatus(codes.Error, err.Error())
+		}
+	}()
+	if span.IsRecording() {
+		if events := outboxOf(cmd); len(events) > 0 {
+			ids, types := make([]string, len(events)), make([]string, len(events))
+			for i, e := range events {
+				ids[i], types[i] = e.EventID, e.EventType
+			}
+			span.SetAttributes(attribute.StringSlice("outbox.event_ids", ids), attribute.StringSlice("outbox.event_types", types))
+		}
+	}
+
 	entry, err := fsm.Encode(cmd)
 	if err != nil {
+		outcome = "INVALID_COMMAND"
 		return store.Result{}, err
 	}
 	f := n.raft.Apply(entry, enqueueTimeout(ctx))
 	err = wait(ctx, f)
 	if errors.Is(err, raft.ErrNotLeader) {
+		outcome = "NOT_LEADER"
 		return store.Result{}, n.notLeader()
 	}
 	if err != nil {
 		return store.Result{}, fmt.Errorf("%w: %w", store.ErrUnknownOutcome, err)
 	}
+	span.SetAttributes(attribute.Int64("raft.index", int64(f.Index()))) //nolint:gosec // a Raft index fits in int64
 	res, ok := f.Response().(store.Result)
 	if !ok {
-		return store.Result{}, fmt.Errorf("%w: FSM returned %T", store.ErrUnknownOutcome, f.Response())
+		err = fmt.Errorf("%w: FSM returned %T", store.ErrUnknownOutcome, f.Response())
+		return store.Result{}, err
 	}
+	outcome = string(res.Outcome)
 	return res, nil
+}
+
+// outboxOf is the outbox rows cmd carries, for the raft.apply span.
+func outboxOf(cmd any) []store.OutboxEvent {
+	switch c := cmd.(type) {
+	case store.CreateEntity:
+		return c.Outbox
+	case *store.CreateEntity:
+		return c.Outbox
+	case store.TransitionRequest:
+		return c.Outbox
+	case *store.TransitionRequest:
+		return c.Outbox
+	case store.RetryWorkflow:
+		return c.Outbox
+	case *store.RetryWorkflow:
+		return c.Outbox
+	case store.TransitionResource:
+		return c.Outbox
+	case *store.TransitionResource:
+		return c.Outbox
+	}
+	return nil
 }
 
 // Read runs fn against the FSM. A strong or linearizable read needs this

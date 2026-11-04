@@ -1,0 +1,33 @@
+# Tracing backend (S4.4). Install with `make tracing-up`, which also turns
+# tracing on in the storage release (deploy/helm/storage/values-tracing.yaml).
+# Both run on the infra worker and are private: ClusterIP only, no Traefik
+# route. Open Jaeger with `make tracing-ui` (kubectl port-forward).
+#
+# Images are pinned by multi-arch index digest, looked up with
+#   docker buildx imagetools inspect <repository>:<tag>
+collector:
+  # The core distribution: OTLP receiver, memory_limiter, batch, otlphttp.
+  image:
+    repository: otel/opentelemetry-collector
+    tag: "0.164.0"
+    digest: sha256:28b6d41ac51bff6b41ba5e8fe503569ffb9d6a1ea90f7a78419e86f34e44f750
+  # memory_limiter refuses data above limitMiB (spikeMiB below it starts
+  # dropping); keep it under resources.limits.memory.
+  memoryLimiter:
+    limitMiB: 200
+    spikeLimitMiB: 50
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+jaeger:
+  image:
+    repository: jaegertracing/jaeger
+    tag: "2.22.0"
+    digest: sha256:836b967b5abcf1f7758066aa6b348619267a2f1459f72d472840570f9bd88a17
+  # In-memory store: traces are lost on restart; the oldest are evicted
+  # beyond maxTraces.
+  maxTraces: 20000
+  resources:
+    requests: {cpu: 50m, memory: 128Mi}
+    limits: {cpu: "1", memory: 1Gi}

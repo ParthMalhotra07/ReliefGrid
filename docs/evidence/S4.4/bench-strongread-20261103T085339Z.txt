@@ -1,0 +1,355 @@
+# S4.4 BenchmarkStrongRead (S4.1) rerun: main (c4fc5fc) vs this branch (3152f40)
+Reads are not traced; this checks the branch did not slow the read path.
+command:    go test -c ./internal/raftstore on each tree; 10 rounds alternating main and branch, each
+            raftstore.test -test.run '^$' -test.bench StrongRead -test.benchtime 2000x -test.count 1
+benchstat:  golang.org/x/perf/cmd/benchstat@v0.0.0-20261009192801-be2c69fb417e
+code dirty: no
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7 (8 CPUs, shared: a kind demo gate ran concurrently)
+load:       load after apply:  11.95 8.12 5.56;load after strongread: 12.21 8.63 5.83;
+date:       20261103T085339Z
+
+## benchstat (run 1)
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+                              │     main     │                branch                │
+                              │    sec/op    │    sec/op     vs base                │
+StrongRead/barrier/serial-8     411.0µ ±  8%   403.0µ ±  7%        ~ (p=0.853 n=10)
+StrongRead/barrier/parallel-8   111.9µ ± 11%   112.2µ ± 15%        ~ (p=0.579 n=10)
+StrongRead/fence/serial-8       150.0µ ± 13%   146.1µ ±  6%        ~ (p=0.579 n=10)
+StrongRead/fence/parallel-8     23.06µ ±  6%   26.95µ ± 13%  +16.88% (p=0.005 n=10)
+geomean                         112.3µ         115.5µ         +2.88%
+
+                              │     main     │               branch                │
+                              │  entries/op  │ entries/op  vs base                 │
+StrongRead/barrier/serial-8     1.000 ± 0%     1.000 ± 0%       ~ (p=1.000 n=10) ¹
+StrongRead/barrier/parallel-8   1.000 ± 0%     1.000 ± 0%       ~ (p=1.000 n=10) ¹
+StrongRead/fence/serial-8       0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+StrongRead/fence/parallel-8     0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                                    ²               +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+## confirmation rerun of fence/parallel only (run 1 showed +16.9%, p=0.005, under load ~12)
+load:       load before rerun: 5.72 7.40 5.78;load after rerun: 5.26 7.27 5.75;
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+                            │    main     │            branch             │
+                            │   sec/op    │   sec/op     vs base          │
+StrongRead/fence/parallel-8   26.20µ ± 7%   26.23µ ± 4%  ~ (p=1.000 n=10)
+
+                            │    main    │             branch             │
+                            │ entries/op │ entries/op  vs base            │
+StrongRead/fence/parallel-8   0.000 ± 0%   0.000 ± 0%  ~ (p=1.000 n=10) ¹
+¹ all samples are equal
+
+## raw run 1: main
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    379813 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    101511 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    142602 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23858 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    352656 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    105325 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    130815 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     22297 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    378053 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    117089 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    110907 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23092 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    390381 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    112517 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    139015 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     24180 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    444791 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    124146 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    165552 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     24441 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    401849 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    116176 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    181709 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     30070 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    422694 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    126299 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    161119 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     22290 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    427541 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    100559 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    157319 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23028 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    427819 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	     94754 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    163991 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     21075 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    420066 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    111299 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    134636 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     22800 ns/op	         0 entries/op
+PASS
+
+## raw run 1: branch
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    398613 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    102426 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    138265 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     29068 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    388998 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    102422 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    139909 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23450 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    401692 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    100905 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    144691 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     25734 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    385700 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    116564 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    152339 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     23769 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    430964 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    129195 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    151194 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     29841 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    392088 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    106948 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    152809 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     24660 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    404221 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    111745 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    147588 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     28170 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    431499 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    112750 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    150912 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     33202 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    405431 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    123932 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    137532 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     25616 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/barrier/serial-8         	    2000	    424409 ns/op	         1.000 entries/op
+BenchmarkStrongRead/barrier/parallel-8       	    2000	    129301 ns/op	         1.000 entries/op
+BenchmarkStrongRead/fence/serial-8           	    2000	    131058 ns/op	         0 entries/op
+BenchmarkStrongRead/fence/parallel-8         	    2000	     30393 ns/op	         0 entries/op
+PASS
+
+## raw rerun: main
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     27591 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     24768 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     29642 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     25978 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     24269 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     24297 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     26422 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     25940 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     27493 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     26676 ns/op	         0 entries/op
+PASS
+
+## raw rerun: branch
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     26101 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     26224 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     25225 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     26632 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     27073 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     26329 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     24889 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     25165 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     26242 ns/op	         0 entries/op
+PASS
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkStrongRead/fence/parallel-8         	    2000	     27589 ns/op	         0 entries/op
+PASS

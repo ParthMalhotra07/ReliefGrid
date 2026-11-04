@@ -18,7 +18,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -208,11 +213,12 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 	if c.allDown(shard) {
 		return nil, false, fmt.Sprintf("every member of shard %d is DOWN (no heartbeat for %s)", shard, c.cfg.DownAfter)
 	}
+	n := 0 // attempts made
 	for ctx.Err() == nil {
-		t := next
+		t, hinted := next, next.addr != ""
 		next = target{}
 		if t.addr == "" || tried[t.addr] {
-			t = c.pick(shard, tried)
+			t, hinted = c.pick(shard, tried), false
 		}
 		if t.addr == "" { // every candidate tried this round
 			clear(tried)
@@ -233,7 +239,8 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 		addr := t.addr
 		tried[addr] = true
 
-		a, sent, err := c.attempt(ctx, addr, r, body)
+		n++
+		a, sent, err := c.attempt(ctx, attemptInfo{shard: shard, n: n, t: t, hinted: hinted}, r, body)
 		if err != nil {
 			unknown = unknown || mutation && sent
 			why = fmt.Sprintf("%s: %v", addr, err)
@@ -266,10 +273,39 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 	return nil, unknown, why
 }
 
+// attemptInfo describes one forward for its span.
+type attemptInfo struct {
+	shard  int
+	n      int    // 1-based attempt number within the routed call
+	t      target // where it goes
+	hinted bool   // t came from a NOT_LEADER hint
+}
+
 // attempt sends one forward, bounded by AttemptTimeout. sent reports
 // whether the request headers were written: if not, the node cannot have
-// proposed anything.
-func (c *Coordinator) attempt(ctx context.Context, addr string, r *http.Request, body []byte) (a *answer, sent bool, err error) {
+// proposed anything. Each attempt is a coordinator.forward client span
+// (S4.4) whose context the storage node receives as traceparent.
+func (c *Coordinator) attempt(ctx context.Context, at attemptInfo, r *http.Request, body []byte) (a *answer, sent bool, err error) {
+	addr := at.t.addr
+	attrs := []attribute.KeyValue{attribute.Int("reliefgrid.shard", at.shard), attribute.Int("coordinator.attempt", at.n),
+		attribute.String("server.address", addr), attribute.String("http.request.method", r.Method)}
+	if at.hinted {
+		attrs = append(attrs, attribute.String("coordinator.leader_hint", cmp.Or(at.t.pod, addr)))
+	}
+	ctx, span := obs.Tracer(c.cfg.TracerProvider).Start(ctx, "coordinator.forward",
+		trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(attrs...))
+	defer func() {
+		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+		} else {
+			span.SetAttributes(attribute.Int("http.response.status_code", a.status))
+			if a.status >= 500 {
+				span.SetStatus(codes.Error, http.StatusText(a.status))
+			}
+		}
+		span.End()
+	}()
 	ctx, cancel := context.WithTimeout(ctx, c.cfg.AttemptTimeout)
 	defer cancel()
 	var wrote atomic.Bool
@@ -287,6 +323,7 @@ func (c *Coordinator) attempt(ctx context.Context, addr string, r *http.Request,
 		return nil, false, err
 	}
 	req.Header = forwardHeader(r.Header)
+	obs.InjectHTTP(ctx, req.Header)
 	resp, err := c.cfg.Client.Do(req)
 	if err != nil {
 		return nil, wrote.Load(), err

@@ -1,0 +1,58 @@
+# S4.4 BenchmarkApply: cost of the raft.apply span, 3-node loopback cluster
+configs:    tp=nosdk  no TracerProvider (global no-op; tracing off)
+            tp=sdk100 SDK, ParentBased(TraceIDRatioBased(1.0)), batcher to a discarding exporter
+            tp=sdk10  SDK, ParentBased(TraceIDRatioBased(0.1)), same exporter
+command:    go test -c ./internal/raftstore; raftstore.test -test.run '^$' -test.bench 'Apply$' -test.benchtime 2000x -test.count 10
+            (binary run directly: Raft's stderr logs kept out of the results; -count 10 interleaves the configs)
+benchstat:  golang.org/x/perf/cmd/benchstat@v0.0.0-20261009192801-be2c69fb417e -col /tp
+commit:     3152f40
+code dirty: no
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7 (8 CPUs, shared: a kind demo gate ran concurrently)
+load:       load before apply: 10.22 6.82 4.99;load after apply:  11.95 8.12 5.56;
+date:       20261103T085339Z
+
+## benchstat
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+        │    nosdk     │             sdk100             │             sdk10             │
+        │    sec/op    │    sec/op     vs base          │   sec/op     vs base          │
+Apply-8   807.1µ ± 16%   790.6µ ± 12%  ~ (p=0.912 n=10)   769.9µ ± 7%  ~ (p=0.280 n=10)
+
+## raw
+goos: linux
+goarch: amd64
+pkg: github.com/ParthMalhotra07/ReliefGrid/internal/raftstore
+cpu: Intel(R) Core(TM) Ultra 7 258V
+BenchmarkApply/tp=nosdk-8         	    2000	   1116513 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    884005 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    826193 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    900751 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    939478 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    720509 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    759701 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    700067 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    758464 ns/op
+BenchmarkApply/tp=nosdk-8         	    2000	    787994 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    777205 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    764060 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    737904 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    786372 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    794821 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    883235 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    816578 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	   1034109 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    801629 ns/op
+BenchmarkApply/tp=sdk100-8        	    2000	    767844 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    775430 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    765058 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    831587 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    796387 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    727664 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    725084 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    774746 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    724238 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    824740 ns/op
+BenchmarkApply/tp=sdk10-8         	    2000	    717508 ns/op
+PASS

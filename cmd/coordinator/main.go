@@ -31,16 +31,20 @@ import (
 	"time"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordinator"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
 )
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
-	cfg, err := loadConfig(os.Getenv)
-	if err == nil {
-		err = run(ctx, cfg, nil)
-	}
+	err := withTracing(ctx, "coordinator", func() error {
+		cfg, err := loadConfig(os.Getenv)
+		if err != nil {
+			return err
+		}
+		return run(ctx, cfg, nil)
+	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "coordinator:", err)
 		os.Exit(1)
@@ -141,6 +145,25 @@ func run(ctx context.Context, cfg config, ready chan<- string) error {
 	_ = srv.Shutdown(shutdownCtx)
 	if errors.Is(err, http.ErrServerClosed) {
 		err = nil
+	}
+	return err
+}
+
+// withTracing runs fn with tracing set up from the standard OTEL_*
+// variables (S4.4): with no OTLP endpoint only the W3C propagator, so
+// traceparent still flows. Spans are flushed when fn returns.
+func withTracing(ctx context.Context, service string, fn func() error) error {
+	enabled := obs.EnabledFromEnv()
+	shutdown, err := obs.Init(ctx, obs.Config{ServiceName: service, Enabled: enabled})
+	if err != nil {
+		return err
+	}
+	slog.Info("tracing", "enabled", enabled)
+	err = fn()
+	flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if serr := shutdown(flushCtx); serr != nil {
+		slog.Warn("flushing traces", "err", serr)
 	}
 	return err
 }

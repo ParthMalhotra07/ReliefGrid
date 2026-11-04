@@ -8,8 +8,8 @@
 #   - pods labelled reliefgrid.io/chaos=true: the chaos harness's and demos'
 #     invcheck Jobs (chaos/scripts/lib.sh);
 #   - pods labelled reliefgrid.io/storage-operator=true: operator Jobs.
-# Egress is the storage pods' 8080 (routing; the coordinator calls nothing
-# else) and kube-dns. The egress rule does not exclude
+# Egress is the storage pods' 8080 (routing), kube-dns and, with tracing on
+# (S4.4), the OpenTelemetry Collector's OTLP/HTTP port 4318. The egress rule does not exclude
 # reliefgrid.io/chaos-isolated pods: an isolated or minority replica must
 # still be reachable, so routed calls hit its read fence and are refused.
 # The kubelet's probes come from the node and kubectl port-forward arrives
@@ -68,3 +68,12 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
+    {{- if .Values.tracing.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: otel-collector
+      ports:
+        - port: 4318
+          protocol: TCP
+    {{- end }}

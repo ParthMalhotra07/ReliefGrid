@@ -23,7 +23,10 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
 )
 
@@ -68,6 +71,9 @@ type Config struct {
 	Client *http.Client
 	// Now is the clock for heartbeat ages (default time.Now).
 	Now func() time.Time
+	// TracerProvider records routed calls and forward attempts (S4.4); nil
+	// uses the global provider.
+	TracerProvider trace.TracerProvider
 }
 
 // Coordinator serves contracts/internal.yaml. It is safe for concurrent use.
@@ -117,32 +123,40 @@ func New(cfg Config) (*Coordinator, error) {
 	return &Coordinator{cfg: cfg, ring: cfg.Ring, nodes: map[string]*member{}, leaders: make([]leader, cfg.Ring.Shards()), configs: make([]shardConfig, cfg.Ring.Shards())}, nil
 }
 
-// Handler serves every route of contracts/internal.yaml.
+// Handler serves every route of contracts/internal.yaml. Routed calls and
+// scans are server spans (S4.4); registration, heartbeats, the ring and
+// /admin are not traced (they would bury the request traces).
 func (c *Coordinator) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /internal/nodes/register", c.register)
 	mux.HandleFunc("POST /internal/nodes/heartbeat", c.heartbeat)
 	mux.HandleFunc("GET /internal/ring", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, http.StatusOK, c.ringInfo()) })
-	mux.HandleFunc("GET /internal/scan", c.scan)
+	mux.Handle("GET /internal/scan", c.traced(c.scan))
 
-	mux.HandleFunc("PUT /internal/data/{key}", c.byKey(pathKey, true))
-	mux.HandleFunc("GET /internal/data/{key}", c.byKey(pathKey, false))
-	mux.HandleFunc("DELETE /internal/data/{key}", c.byKey(pathKey, true))
-	mux.HandleFunc("POST /internal/requests/{id}/transition", c.byKey(requestKey, true))
-	mux.HandleFunc("POST /internal/requests/{id}/retry", c.byKey(requestKey, true))
-	mux.HandleFunc("POST /internal/resources/{id}/transition", c.byKey(resourceKey, true))
-	mux.HandleFunc("POST /internal/resources/{id}/claim", c.byKey(resourceKey, true))
-	mux.HandleFunc("POST /internal/resources/{id}/close-attempt", c.byKey(resourceKey, true))
-	mux.HandleFunc("GET /internal/resources/{id}/closures/{attemptId}", c.byKey(resourceKey, false))
-	mux.HandleFunc("GET /internal/operations/{operationId}", c.byKey(queryKey, false))
-	mux.HandleFunc("GET /internal/outbox", c.byShard(false))
-	mux.HandleFunc("POST /internal/outbox/published", c.byShard(true))
+	mux.Handle("PUT /internal/data/{key}", c.traced(c.byKey(pathKey, true)))
+	mux.Handle("GET /internal/data/{key}", c.traced(c.byKey(pathKey, false)))
+	mux.Handle("DELETE /internal/data/{key}", c.traced(c.byKey(pathKey, true)))
+	mux.Handle("POST /internal/requests/{id}/transition", c.traced(c.byKey(requestKey, true)))
+	mux.Handle("POST /internal/requests/{id}/retry", c.traced(c.byKey(requestKey, true)))
+	mux.Handle("POST /internal/resources/{id}/transition", c.traced(c.byKey(resourceKey, true)))
+	mux.Handle("POST /internal/resources/{id}/claim", c.traced(c.byKey(resourceKey, true)))
+	mux.Handle("POST /internal/resources/{id}/close-attempt", c.traced(c.byKey(resourceKey, true)))
+	mux.Handle("GET /internal/resources/{id}/closures/{attemptId}", c.traced(c.byKey(resourceKey, false)))
+	mux.Handle("GET /internal/operations/{operationId}", c.traced(c.byKey(queryKey, false)))
+	mux.Handle("GET /internal/outbox", c.traced(c.byShard(false)))
+	mux.Handle("POST /internal/outbox/published", c.traced(c.byShard(true)))
 
 	mux.HandleFunc("GET /admin/ring", c.operator(c.adminRing))
 	mux.HandleFunc("GET /admin/nodes", c.operator(c.adminNodes))
 	mux.HandleFunc("GET /admin/locate/{key}", c.operator(c.adminLocate))
 	mux.HandleFunc("GET /admin/distribution", c.operator(c.adminDistribution))
 	return mux
+}
+
+// traced wraps a routed handler in a server span. Inside the mux, so the
+// span is named by the route pattern.
+func (c *Coordinator) traced(h http.HandlerFunc) http.Handler {
+	return obs.Handler(h, obs.WithTracerProvider(c.cfg.TracerProvider))
 }
 
 func (c *Coordinator) ringInfo() internalapi.Ring {

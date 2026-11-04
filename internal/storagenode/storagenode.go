@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
@@ -27,6 +28,9 @@ type Config struct {
 	LeaderHTTP func(raft.ServerAddress) string
 	// OperatorToken guards /mgmt/bootstrap; empty disables it (403).
 	OperatorToken string
+	// TracerProvider records data-route server spans (S4.4); nil uses the
+	// global provider.
+	TracerProvider trace.TracerProvider
 }
 
 // Server serves one shard replica.
@@ -39,7 +43,7 @@ func New(n *raftstore.Node, cfg Config) *Server {
 	}
 	return &Server{s: &server{
 		node: n, ring: cfg.Ring, shard: cfg.Shard, podName: cfg.PodName, serverID: string(n.Identity().ServerID()), timeout: cfg.Timeout,
-		leaderHTTP: cfg.LeaderHTTP, operatorToken: cfg.OperatorToken,
+		leaderHTTP: cfg.LeaderHTTP, operatorToken: cfg.OperatorToken, tracerProvider: cfg.TracerProvider,
 	}}
 }
 

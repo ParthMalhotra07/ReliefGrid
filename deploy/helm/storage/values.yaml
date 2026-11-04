@@ -57,3 +57,18 @@ bootstrap:
   # Verify only: sleep after bootstrapping the first group, before recording
   # BOOTSTRAPPED, so the Job can be killed mid-run at a known point.
   debugHoldSeconds: 0
+
+# Tracing (S4.4). Off by default: the services then install only the W3C
+# propagator, so traceparent still flows but nothing is exported. `make
+# tracing-up` installs deploy/helm/tracing and applies values-tracing.yaml.
+# With tracing on, the pods export OTLP/HTTP to the Collector and the
+# coordinator's NetworkPolicy allows egress to it on 4318 (the storage pods'
+# egress is not restricted).
+tracing:
+  enabled: false
+  # The Collector's Service, in this namespace (deploy/helm/tracing).
+  endpoint: http://otel-collector:4318
+  # Standard OTEL_TRACES_SAMPLER / _ARG: follow the caller's decision, else
+  # keep this fraction of new traces (1.0 for the demos, 0.1 under load).
+  sampler: parentbased_traceidratio
+  samplerArg: "1.0"

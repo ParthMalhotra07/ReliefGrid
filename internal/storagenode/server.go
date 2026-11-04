@@ -9,8 +9,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/raft"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -41,6 +44,9 @@ type server struct {
 	// on every data-route answer.
 	serverID string
 	timeout  time.Duration
+	// tracerProvider records data-route server spans (S4.4); nil uses the
+	// global provider.
+	tracerProvider trace.TracerProvider
 	// leaderHTTP turns the Raft leader's address into the address of its
 	// data endpoint for leaderHint when the coordinator has not named it
 	// (production: same host, this replica's HTTP port).
@@ -80,11 +86,13 @@ func (s *server) dataRoutes() http.Handler {
 	mux.HandleFunc("POST /internal/outbox/published", s.markOutboxPublished)
 	mux.HandleFunc("GET /internal/operations/{operationId}", s.getOperation)
 	shard := strconv.Itoa(s.shard)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Each request is a server span continuing the coordinator's attempt
+	// span (S4.4); a proposal under it is raftstore's raft.apply.
+	return obs.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(internalapi.HeaderServerID, s.serverID)
 		w.Header().Set(internalapi.HeaderShard, shard)
 		mux.ServeHTTP(w, r)
-	})
+	}), obs.WithTracerProvider(s.tracerProvider), obs.WithAttributes(attribute.Int("reliefgrid.shard", s.shard)))
 }
 
 // mgmtRoutes is the management endpoint (not in the contract; operator and

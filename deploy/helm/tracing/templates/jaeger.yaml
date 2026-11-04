@@ -1,0 +1,123 @@
+# Jaeger v2: OTLP/HTTP in from the Collector (4318), in-memory storage
+# capped at maxTraces, UI and API on 16686 (ClusterIP; make tracing-ui).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jaeger
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tracing.labels" . | nindent 4 }}
+    app.kubernetes.io/name: jaeger
+data:
+  config.yaml: |
+    service:
+      extensions: [jaeger_storage, jaeger_query, healthcheckv2]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [jaeger_storage_exporter]
+    extensions:
+      healthcheckv2:
+        use_v2: true
+        http:
+          endpoint: 0.0.0.0:13133
+      jaeger_query:
+        storage:
+          traces: memstore
+        http:
+          endpoint: 0.0.0.0:16686
+      jaeger_storage:
+        backends:
+          memstore:
+            memory:
+              max_traces: {{ .Values.jaeger.maxTraces }}
+    receivers:
+      otlp:
+        protocols:
+          http:
+            endpoint: 0.0.0.0:4318
+    processors:
+      batch: {}
+    exporters:
+      jaeger_storage_exporter:
+        trace_storage: memstore
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tracing.labels" . | nindent 4 }}
+    app.kubernetes.io/name: jaeger
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jaeger
+  template:
+    metadata:
+      labels:
+        {{- include "tracing.labels" . | nindent 8 }}
+        app.kubernetes.io/name: jaeger
+      annotations:
+        checksum/config: {{ toJson .Values.jaeger | sha256sum }}
+    spec:
+      {{- include "tracing.infra" . | nindent 6 }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        {{- include "tracing.podSecurity" . | nindent 8 }}
+      containers:
+        - name: jaeger
+          image: {{ include "tracing.image" .Values.jaeger.image }}
+          imagePullPolicy: IfNotPresent
+          args: ["--config=/etc/jaeger/config.yaml"]
+          securityContext:
+            {{- include "tracing.containerSecurity" . | nindent 12 }}
+          ports:
+            - name: otlp-http
+              containerPort: 4318
+            - name: ui
+              containerPort: 16686
+            - name: health
+              containerPort: 13133
+          readinessProbe:
+            httpGet: {path: /status, port: health}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /status, port: health}
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.jaeger.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/jaeger
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: jaeger
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tracing.labels" . | nindent 4 }}
+    app.kubernetes.io/name: jaeger
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: jaeger
+  ports:
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+    - name: ui
+      port: 16686
+      targetPort: ui
