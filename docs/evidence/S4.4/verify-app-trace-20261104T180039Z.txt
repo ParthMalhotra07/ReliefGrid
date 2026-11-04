@@ -1,0 +1,9 @@
+== preconditions
+PASS Collector, Jaeger, API and matcher Ready; API and matcher export to the Collector at ratio 1.0
+== one create
+PASS created request 0440ff28-f648-552c-a1e1-1edc9e4c4723 under traceparent 00-572df8c2bd40ca238db703b639310ce2-4326d8a50b94a09b-01
+== Jaeger trace 572df8c2bd40ca238db703b639310ce2
+PASS one trace holds the API, storage, relay and matcher spans: spans by service: {'matcher': 17, 'storagenode': 22, 'coordinator': 32, 'api': 4}
+PASS evidence docs/evidence/S4.4/app-trace-20261104T180039Z.json
+PASS no port-forward outlived the Verify
+S4.4 Verify: PASS
