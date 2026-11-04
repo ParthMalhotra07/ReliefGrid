@@ -29,15 +29,20 @@ kind get clusters 2>/dev/null | grep -qx "${CTX#kind-}" || { log "no kind cluste
 kn get statefulset "storage-shard-0" >/dev/null 2>&1 || { log "no storage release in $NS (make demo-reset first)"; exit 2; }
 
 rollout() { # rollout <tag>
-	helm --kube-context "$CTX" upgrade "$RELEASE" "$CHART" -n "$NS" --reuse-values --set "image.tag=$1" --wait --timeout 15m >/dev/null &&
+	helm --kube-context "$CTX" upgrade "$RELEASE" "$CHART" -n "$NS" --reset-then-reuse-values --set "image.tag=$1" --wait --timeout 15m >/dev/null &&
 		for s in 0 1 2; do kn rollout status "statefulset/storage-shard-$s" --timeout=600s >/dev/null || return 1; done
 }
 pf_pid=""
 restore() {
+	status=$?
+	cleanup_status=0
+	trap - EXIT
 	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
 	for s in 0 1 2; do for i in 0 1 2; do kn label pod "storage-shard-$s-$i" reliefgrid.io/chaos-isolated- >/dev/null 2>&1; done; done
 	log "restoring the storage release to image tag $DEFAULT_TAG"
-	rollout "$DEFAULT_TAG" || log "RESTORE FAILED: run helm upgrade $RELEASE --reuse-values --set image.tag=$DEFAULT_TAG"
+	rollout "$DEFAULT_TAG" || { log "RESTORE FAILED: run helm upgrade $RELEASE --reset-then-reuse-values --set image.tag=$DEFAULT_TAG"; cleanup_status=1; }
+	if [ "$status" = 0 ]; then status=$cleanup_status; fi
+	exit "$status"
 }
 trap restore EXIT
 

@@ -349,20 +349,43 @@ var Schedules = []ScheduleFixture{
 		Protects: "§16/I2: incomplete snapshot discarded; log replay restores committed state deterministically",
 	},
 
-	// ── SCH13 ──────────────────────────────────────────────────────────────────
+	// ── SCH13a ──────────────────────────────────────────────────────────────────
 	{
-		Tag:    "SCH13_RestartDuringSnapshotRestore",
-		Name:   "Restart during snapshot restore",
+		Tag:    "SCH13a_RestartDuringSnapshotTransfer",
+		Name:   "Restart during snapshot transfer",
 		Source: "restart during snapshot creation/restore",
 		InitialState: []EntityState{
 			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
 			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
 		},
 		Steps: []Step{
-			{Actor: "NewNode", Kind: StepBarrier, Details: "begins installing snapshot from leader"},
-			{Actor: "NewNode", Kind: StepFault, Details: "crashes during snapshot installation"},
+			{Actor: "NewNode", Kind: StepBarrier, Details: "begins receiving InstallSnapshot from leader"},
+			{Actor: "NewNode", Kind: StepFault, Details: "crashes halfway through receiving snapshot; incomplete transfer on disk"},
 			{Actor: "NewNode", Kind: StepBarrier, Details: "restarts; discards incomplete snapshot"},
 			{Actor: "NewNode", Kind: StepBarrier, Details: "requests fresh snapshot from leader"},
+			{Actor: "NewNode", Kind: StepBarrier, Details: "full snapshot installs; remaining log entries applied"},
+		},
+		FinalState: []EntityState{
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
+		},
+		Protects: "§16/I2: node never applies partial snapshot; retries install; matches leader committed state",
+	},
+
+	// ── SCH13b ──────────────────────────────────────────────────────────────────
+	{
+		Tag:    "SCH13b_RestartDuringSnapshotStage",
+		Name:   "Restart during snapshot restore into the FSM",
+		Source: "restart during snapshot creation/restore",
+		InitialState: []EntityState{
+			{Entity: "R", ReqStatus: store.RequestMatching, ActiveClaim: "attemptA", Version: 2},
+			{Entity: "Res", ResStatus: store.ResourceAssigned, ActiveClaim: "attemptA", Version: 2},
+		},
+		Steps: []Step{
+			{Actor: "NewNode", Kind: StepBarrier, Details: "receives a complete snapshot; begins staging the image into the FSM"},
+			{Actor: "NewNode", Kind: StepFault, Details: "crashes halfway through staging the image into the FSM"},
+			{Actor: "NewNode", Kind: StepBarrier, Details: "restarts; wipes partial FSM; keeps the complete snapshot"},
+			{Actor: "NewNode", Kind: StepBarrier, Details: "restores its own complete snapshot before contacting leader"},
 			{Actor: "NewNode", Kind: StepBarrier, Details: "full snapshot installs; remaining log entries applied"},
 		},
 		FinalState: []EntityState{

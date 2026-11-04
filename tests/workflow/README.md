@@ -1,10 +1,23 @@
 # Executable adversarial schedule checkpoint (A2.3)
 
 `make test-schedules SEEDS=50` runs the real M8 FSM first, then a clean local
-kind deployment through the production coordinator client. It currently fails:
-SCH01 needs a log-before-apply barrier, and SCH12/SCH13 need deterministic
-snapshot creation/restore interruption seams from S, tracked in issue #88.
-Missing drivers are failures, never skips or a full-suite PASS.
+kind deployment through the production coordinator client. SCH01 uses #94's
+committed-log/before-apply barrier. SCH12 interrupts snapshot persistence; SCH13
+is split into SCH13a (transfer) and SCH13b (FSM staging), with the original
+workflow states and exact final versions preserved. Missing or expired fault
+boundaries fail the case; no successful run is inferred from an unobserved fault.
+
+There are 18 physical cases for the 17 original source schedules. M8 runs 17:
+SCH13a is explicitly not applicable because M8 has no leader or InstallSnapshot
+transport. Kind runs all 18, with real container SIGKILLs (no pod-delete fallback).
+Both backend results are needed for complete A2.3 acceptance.
+
+Each physical fault must recover in the same pod UID before its assertions
+complete. Only then does teardown normally replace that pod, retaining its PVC,
+and require a new Ready UID with restartCount zero for the next independent case.
+This avoids cross-seed exponential CrashLoopBackOff (the first bulk run reached
+2m40s at seed 5). A failed case is reported before cleanup; replacing the pod is
+never counted as the fault recovery. The runner stops at the first failure.
 
 The implemented drivers cover dropped committed replies, stopped actors before
 and after intent creation, cancellation before/after claim, late claims after
@@ -17,7 +30,7 @@ workflow/messaging helpers, not a second FSM.
 
 SCH01's separate `TestCASProposalBarrierProbe` proves rejection of two
 same-version proposals queued before Store invocation. It cannot prove that both
-commands reached the FSM log before apply and is not counted as SCH01 acceptance.
+commands reached the FSM log before apply and is not counted as SCH01 acceptance; the real seam-backed driver is counted instead.
 SCH10 checks duplicate terminal command replay and one frozen fulfilled outbox
 event; it does not claim a new consumer for state-change events (matching consumes
 created/retry hints). M8 SCH14 checks explicit partial reads and persisted-state
@@ -56,9 +69,13 @@ IDs, proposer timestamps and matcher seed are explicit; cases occupy isolated
 geographic cells so earlier AVAILABLE resources cannot affect later candidates.
 SEEDS is bounded to 1..50 by that fixture grid.
 
-The aggregate Go timeout is 20 minutes: measured coordinator replacements make
-50 physical cases exceed Go's default 10 minutes. Per-case 30-second work and
-the rollout bounds are unchanged. The outer rollback is tested independently
+The aggregate Go timeout is 150 minutes: #94 measured SCH13a at 44.23s and
+SCH13b at 53.02s per run, before the other physical fault cases across 50 seeds.
+Only kind snapshot cases get a three-minute case budget; ordinary workflows keep
+their 30-second limit. Post-assertion fixture teardown has its own 90-second rollback budget so it can still run after a test-work timeout. Storage requests keep their existing deadlines, and the
+SCH01 barrier stays at 2.5s under storage's 3s request deadline. The runner installs
+the seams image only for cases that need it, then restores the captured image tag,
+isolation labels, shard replicas and matcher admission even on failure. The outer rollback is tested independently
 because a Go timeout can bypass `t.Cleanup`. Cleanup still attempts matcher
 restoration if storage restoration fails, and reports the failure.
 

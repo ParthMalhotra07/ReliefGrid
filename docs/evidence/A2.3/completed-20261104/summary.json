@@ -1,0 +1,62 @@
+{
+  "run_id": "full-seams-isolated-20261104",
+  "backends": {
+    "m8": {
+      "passed": 850,
+      "seeds": 50,
+      "counts": {
+        "SCH01_BothCASQueuedBeforeEitherApplies": 50,
+        "SCH02_DroppedResponseAfterCommit": 50,
+        "SCH03_CrashBeforeMatchingStep": 50,
+        "SCH04_CrashAfterMatchingStep": 50,
+        "SCH05_CancelBeforeTryClaim": 50,
+        "SCH06_CancelAfterTryClaim": 50,
+        "SCH07_StaleTryClaimAfterCloseAttempt": 50,
+        "SCH08_ConfirmationRacingWithRetarget": 50,
+        "SCH09_StaleOperationResultReplayAfterClose": 50,
+        "SCH10_DuplicateTerminalEvents": 50,
+        "SCH11_RepeatedCancelFulfillCalls": 50,
+        "SCH12_RestartDuringSnapshotCreation": 50,
+        "SCH13b_RestartDuringSnapshotStage": 50,
+        "SCH14_CoordinatorRestartWithShardUnavailable": 50,
+        "SCH15_BrokerOutageDuringRetryScheduling": 50,
+        "SCH16_PoisonMessages": 50,
+        "SCH17_PartialCandidateScan": 50
+      },
+      "elapsed_seconds": 103.648,
+      "raw_sha256": "2393ed8b5219c45b2b9d8bd8093e5775d8fa19e875763613f584acdef1c762cd",
+      "raw_bytes": 170273
+    },
+    "cluster": {
+      "passed": 900,
+      "seeds": 50,
+      "counts": {
+        "SCH01_BothCASQueuedBeforeEitherApplies": 50,
+        "SCH02_DroppedResponseAfterCommit": 50,
+        "SCH03_CrashBeforeMatchingStep": 50,
+        "SCH04_CrashAfterMatchingStep": 50,
+        "SCH05_CancelBeforeTryClaim": 50,
+        "SCH06_CancelAfterTryClaim": 50,
+        "SCH07_StaleTryClaimAfterCloseAttempt": 50,
+        "SCH08_ConfirmationRacingWithRetarget": 50,
+        "SCH09_StaleOperationResultReplayAfterClose": 50,
+        "SCH10_DuplicateTerminalEvents": 50,
+        "SCH11_RepeatedCancelFulfillCalls": 50,
+        "SCH12_RestartDuringSnapshotCreation": 50,
+        "SCH13a_RestartDuringSnapshotTransfer": 50,
+        "SCH13b_RestartDuringSnapshotStage": 50,
+        "SCH14_CoordinatorRestartWithShardUnavailable": 50,
+        "SCH15_BrokerOutageDuringRetryScheduling": 50,
+        "SCH16_PoisonMessages": 50,
+        "SCH17_PartialCandidateScan": 50
+      },
+      "elapsed_seconds": 5913.169,
+      "raw_sha256": "b65e9a4e3cfbe9d4f33853ff3a27fe8fa0cd6d2d8a452638b2b9ffe58fccd68e",
+      "raw_bytes": 212229
+    }
+  },
+  "real_sigkills": 150,
+  "successful_fixture_recycles": 150,
+  "backend_source_sha256": "db67d1c349197d7439997a722002e318a7359190cc829e8284ac0095115fb6fa",
+  "source_manifest": "source-sha256.json"
+}

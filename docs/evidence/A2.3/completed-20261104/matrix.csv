@@ -1,0 +1,19 @@
+case,m8_passes,kind_passes,applicability
+SCH01_BothCASQueuedBeforeEitherApplies,50,50,M8 and kind
+SCH02_DroppedResponseAfterCommit,50,50,M8 and kind
+SCH03_CrashBeforeMatchingStep,50,50,M8 and kind
+SCH04_CrashAfterMatchingStep,50,50,M8 and kind
+SCH05_CancelBeforeTryClaim,50,50,M8 and kind
+SCH06_CancelAfterTryClaim,50,50,M8 and kind
+SCH07_StaleTryClaimAfterCloseAttempt,50,50,M8 and kind
+SCH08_ConfirmationRacingWithRetarget,50,50,M8 and kind
+SCH09_StaleOperationResultReplayAfterClose,50,50,M8 and kind
+SCH10_DuplicateTerminalEvents,50,50,M8 and kind
+SCH11_RepeatedCancelFulfillCalls,50,50,M8 and kind
+SCH12_RestartDuringSnapshotCreation,50,50,M8 and kind
+SCH13a_RestartDuringSnapshotTransfer,0,50,kind-only transfer
+SCH13b_RestartDuringSnapshotStage,50,50,M8 and kind
+SCH14_CoordinatorRestartWithShardUnavailable,50,50,M8 and kind
+SCH15_BrokerOutageDuringRetryScheduling,50,50,M8 and kind
+SCH16_PoisonMessages,50,50,M8 and kind
+SCH17_PartialCandidateScan,50,50,M8 and kind

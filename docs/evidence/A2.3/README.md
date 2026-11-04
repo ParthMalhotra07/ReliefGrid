@@ -1,4 +1,17 @@
-# A2.3 checkpoint evidence
+# A2.3 schedule evidence
+
+Full local acceptance passed: **850/850 M8 and 900/900 kind executions**,
+all 50 seeds under the race detector. The kind run observed 150 real container
+SIGKILLs followed by same-pod recovery and 150 post-assertion fixture recycles.
+See [completed-20261104](completed-20261104/README.md) for the matrix, real red
+output, command results and source hashes. SCH13a is cluster-only; SCH13b runs
+on both backends. The verified harness was rebased onto main dba92c5 without
+changing any file in its source manifest.
+
+Owner review, merge and post-merge verification remain required. This evidence
+is independent of the official joint demo gate and does not claim a gate result.
+
+## Historical checkpoint (superseded by the completed run above)
 
 Full acceptance is **RED / NOT READY**. `make test-schedules SEEDS=50` still
 fails SCH01 (both commands in the FSM log before apply) and SCH12/SCH13

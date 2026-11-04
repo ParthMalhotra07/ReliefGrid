@@ -14,7 +14,7 @@ case "$hold" in 0) ;;1) [ "${SCHEDULE_IDS:-}" = 14 ] && [ "$backend" = cluster ]
 out="$ROOT/docs/evidence/A2.3/$SCHEDULE_RUN_ID"
 mkdir -p "$out"
 if [ -n "${SCHEDULE_IDS:-}" ];then echo "SUBSET $SCHEDULE_IDS: not complete A2.3 acceptance";fi
-broker="" proxy="" replicas="" shard_replicas=""
+broker="" proxy="" replicas="" shard_replicas="" storage_tag=""
 cleanup(){
  local status=$? cleanup_status=0
  trap - EXIT
@@ -22,6 +22,13 @@ cleanup(){
  if [ -n "$shard_replicas" ];then
   kubectl --context kind-reliefgrid -n reliefgrid scale statefulset/storage-shard-1 --replicas="$shard_replicas" >/dev/null || cleanup_status=1
   kubectl --context kind-reliefgrid -n reliefgrid rollout status statefulset/storage-shard-1 --timeout=90s >/dev/null || cleanup_status=1
+ fi
+ if [ -n "$storage_tag" ];then
+  for shard in 0 1 2;do for replica in 0 1 2;do
+   kubectl --context kind-reliefgrid -n reliefgrid label pod "storage-shard-$shard-$replica" reliefgrid.io/chaos-isolated- >/dev/null 2>&1 || cleanup_status=1
+  done;done
+  helm --kube-context kind-reliefgrid upgrade storage deploy/helm/storage -n reliefgrid --reset-then-reuse-values --set-string "image.tag=$storage_tag" --wait --timeout 15m > "$out/restore-image.log" 2>&1 || cleanup_status=1
+  for shard in 0 1 2;do kubectl --context kind-reliefgrid -n reliefgrid rollout status "statefulset/storage-shard-$shard" --timeout=600s >> "$out/restore-image.log" 2>&1 || cleanup_status=1;done
  fi
  if [ -n "$replicas" ];then kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas="$replicas" >/dev/null || cleanup_status=1;fi
  if [ -n "$broker" ];then docker rm -f "$broker" >/dev/null || cleanup_status=1;fi
@@ -45,7 +52,7 @@ elif [ -z "${MQ_AMQP_URL:-}" ] || [ -z "${MQ_MANAGEMENT_URL:-}" ];then
  echo 'Supply both isolated test broker URLs or neither' >&2;exit 1
 fi
 run_backend(){
- SCHEDULE_BACKEND="$1" go test -timeout=20m -race -count=1 -tags schedules -run '^TestSeededWorkflowSchedules$' -v ./tests/workflow > "$out/$1.log" 2>&1 || { tail -60 "$out/$1.log" >&2;return 1; }
+ SCHEDULE_BACKEND="$1" go test -failfast -timeout=150m -race -count=1 -tags schedules -run '^TestSeededWorkflowSchedules$' -v ./tests/workflow > "$out/$1.log" 2>&1 || { tail -60 "$out/$1.log" >&2;return 1; }
  echo "$1: PASS (run $SCHEDULE_RUN_ID, SEEDS=$SEEDS, selection=${SCHEDULE_IDS:-all})"
 }
 if [ "$backend" != cluster ];then run_backend m8;fi
@@ -54,6 +61,18 @@ if [ "$backend" != m8 ];then
  # can be published into this run's isolated broker vhosts.
  if [ "${SCHEDULE_RESET:-1}" = 1 ];then
   A15_EVIDENCE_DIR="$out/deployment" RESET_CONFIRM=reliefgrid make demo-reset > "$out/deploy.log" 2>&1
+ fi
+ needs_seams=false
+ if [ -z "${SCHEDULE_IDS:-}" ];then needs_seams=true;else
+  case ",${SCHEDULE_IDS}," in *,1,*|*,01,*|*,12,*|*,13,*|*,13a,*|*,13b,*) needs_seams=true;;esac
+ fi
+ if [ "$needs_seams" = true ];then
+  current_image="$(kubectl --context kind-reliefgrid -n reliefgrid get statefulset storage-shard-0 -o jsonpath='{.spec.template.spec.containers[0].image}')"
+  [[ "$current_image" == reliefgrid/storagenode:* ]] || { echo 'Unexpected storage image; refusing to change it' >&2;exit 1; }
+  storage_tag="${current_image##*:}"
+  make storage-image-seams > "$out/seams-image.log" 2>&1
+  helm --kube-context kind-reliefgrid upgrade storage deploy/helm/storage -n reliefgrid --reset-then-reuse-values --set image.tag=seams --wait --timeout 15m > "$out/seams-rollout.log" 2>&1
+  for shard in 0 1 2;do kubectl --context kind-reliefgrid -n reliefgrid rollout status "statefulset/storage-shard-$shard" --timeout=600s >> "$out/seams-rollout.log" 2>&1;done
  fi
  replicas="$(kubectl --context kind-reliefgrid -n reliefgrid get deployment reliefgrid-matcher -o jsonpath='{.spec.replicas}')"
  shard_replicas="$(kubectl --context kind-reliefgrid -n reliefgrid get statefulset storage-shard-1 -o jsonpath='{.spec.replicas}')"
@@ -80,4 +99,10 @@ if [ "$backend" != m8 ];then
  fi
  run_backend cluster
 fi
-if [ -n "${SCHEDULE_IDS:-}" ];then echo 'A2.3 SUBSET PASS; full acceptance still required';else echo 'A2.3 ALL SCHEDULES PASS';fi
+if [ -n "${SCHEDULE_IDS:-}" ];then
+ echo 'A2.3 SUBSET PASS; full acceptance still required'
+elif [ "$backend" = both ] && [ "$SEEDS" = 50 ];then
+ echo 'A2.3 ALL APPLICABLE SCHEDULES PASS: M8=850, cluster=900 (50 seeds; SCH13a is cluster-only)'
+else
+ echo "A2.3 selected backend/seeds PASS: backend=$backend seeds=$SEEDS; full acceptance still required"
+fi

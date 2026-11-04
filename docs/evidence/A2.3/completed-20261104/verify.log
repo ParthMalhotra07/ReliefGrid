@@ -1,0 +1,6 @@
+SEEDS=50 bash scripts/test-schedules.sh
+m8: PASS (run full-seams-isolated-20261104, SEEDS=50, selection=all)
+pod/reliefgrid-matcher-54984765c4-wtzkj condition met
+pod/reliefgrid-matcher-54984765c4-zdx2l condition met
+cluster: PASS (run full-seams-isolated-20261104, SEEDS=50, selection=all)
+A2.3 ALL APPLICABLE SCHEDULES PASS: M8=850, cluster=900 (50 seeds; SCH13a is cluster-only)

@@ -1,25 +1,33 @@
 # A2.3 pre-PR review
 
-- Protocol: harness uses real M8/coordclient Store operations, production
-  workflow and broker helpers. It asserts canonical versions and reciprocal
-  ownership; partial results cannot become empty/NO_CANDIDATE.
-- Retry/dedupe: dropped replies retain operation identity; pre-apply loss is
-  unknown, historical success does not reacquire a claim, RETRYING rejects
-  stale and current-version confirmation, terminal replay emits one result.
-- Concurrency: explicit proposer barrier, bounded contexts, isolated broker
-  vhosts and geographic fixtures. Race count3 passed. Coordinator forward
-  supervisor reconnects and joins its child on exit. Outer rollback attempts
-  both storage and matcher restoration even if one restoration fails.
-- Tests: full missing drivers fail explicitly. Subsets and proposer-only
-  probes are labelled as such. The measured aggregate timeout changed from
-  Go's default 10m to 20m for 50 physical replacements; per-case/rollout bounds
-  and final-state assertions were retained.
-- Scope: A/shared tests, scripts, Makefile and compact evidence only. No
-  S-owned production source, frozen contract, dependency or protocol changes.
-- Hygiene: make check, tagged lint and generation pass. Explicit staging
-  excludes raw logs, local progress/playbooks/PDF and unrelated files.
+Reviewed against main dba92c5 after the full 50-seed run and clean rebase.
 
-Verdict: **NOT READY for full A2.3 acceptance / draft checkpoint only**.
-Owner Hrishabh must expose deterministic log/apply and snapshot boundaries
-in #88. After integration, run all 17 schedules/50 seeds on both backends;
-do not remove a missing-case failure until its real fault driver is tested.
+1. Invariants: real M8/production coordinator-client operations retain exact
+   canonical versions, reciprocal ownership and explicit partial-read failures.
+   No production protocol, ownership, admission or ack invariant was changed.
+2. Idempotency: lost committed responses retain operation IDs; pre-apply loss
+   remains unknown; historical success cannot reacquire ownership. Duplicate
+   terminal commands and stale/current-version confirmations remain asserted.
+3. Concurrency: remote calls have bounded contexts; forwarding children are
+   joined. Full matrix ran under -race; new M8 drivers and shell rollback
+   regressions also passed -race -count=3. Fixture teardown uses a separate
+   bounded context after assertions, including when the test context expires.
+4. Errors: missing/expired seam observations fail. Required SIGKILL errors fail
+   without a pod-delete fallback. Failed cleanup makes the verifier fail, while
+   independent rollback steps still execute. Unknown outcomes remain distinct.
+5. Tests: SCH01 pins committed-log-before-apply; SCH12/13 pin actual partial
+   snapshot boundaries. All 50 seeds passed: 850 M8 + 900 kind executions, with
+   150 physical SIGKILL recoveries. SCH13a is explicitly inapplicable to M8
+   because M8 has no transfer. Ordinary workflows retain 30s; kind snapshot
+   cases allow 3m based on measured owner runs. Aggregate 150m covers the full
+   physical matrix, not an individual recovery. Final row/index assertions
+   are retained; fixture recycling happens afterwards, never as fault recovery.
+6. Scope: A/shared tests, scripts, Makefile and compact evidence only. No
+   S-owned production source, frozen contracts, dependencies or protocols.
+7. Hygiene: full make check, generation, schedules-tag vet/lint and diff checks
+   passed. Source hashes match the successful run after rebase. Explicit staging
+   excludes raw runs, local progress/playbooks/PDF, credentials and attribution.
+
+Verdict: **READY for owner review**. Full local verification passed; this is
+not approval, merge completion or an official joint gate result. The old draft
+checkpoint evidence remains clearly labelled historical.

@@ -1,0 +1,44 @@
+=== RUN   TestSeededWorkflowSchedules
+    execution_test.go:509: run=full-seams-isolated-20261104 backend=m8 seeds=50
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH01_BothCASQueuedBeforeEitherApplies
+    execution_test.go:554: log barrier: first=2 second=3 commit=3 applied=1
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH02_DroppedResponseAfterCommit
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH03_CrashBeforeMatchingStep
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH04_CrashAfterMatchingStep
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH05_CancelBeforeTryClaim
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH06_CancelAfterTryClaim
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH07_StaleTryClaimAfterCloseAttempt
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH08_ConfirmationRacingWithRetarget
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH09_StaleOperationResultReplayAfterClose
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH10_DuplicateTerminalEvents
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH11_RepeatedCancelFulfillCalls
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH12_RestartDuringSnapshotCreation
+    execution_test.go:556: SCH12 partial bytes=26624/53248 restored=4 replayed=5
+=== NAME  TestSeededWorkflowSchedules
+    execution_test.go:547: seed-1 SCH13a NOT APPLICABLE on M8: transfer is covered on cluster
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH13b_RestartDuringSnapshotStage
+    execution_test.go:556: SCH13b partial bytes=26624/53248 restored=2 replayed=3
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH14_CoordinatorRestartWithShardUnavailable
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH15_BrokerOutageDuringRetryScheduling
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH16_PoisonMessages
+2026/11/04 12:34:49 WARN rejected malformed matching event messageId="" error="invalid character 'i' looking for beginning of value"
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH17_PartialCandidateScan
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH01_BothCASQueuedBeforeEitherApplies (0.08s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH02_DroppedResponseAfterCommit (0.08s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH03_CrashBeforeMatchingStep (0.06s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH04_CrashAfterMatchingStep (0.07s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH05_CancelBeforeTryClaim (0.07s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH06_CancelAfterTryClaim (0.07s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH07_StaleTryClaimAfterCloseAttempt (0.07s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH08_ConfirmationRacingWithRetarget (0.09s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH09_StaleOperationResultReplayAfterClose (0.07s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH10_DuplicateTerminalEvents (0.07s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH11_RepeatedCancelFulfillCalls (0.07s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH12_RestartDuringSnapshotCreation (0.13s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH13b_RestartDuringSnapshotStage (0.11s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH14_CoordinatorRestartWithShardUnavailable (0.06s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH15_BrokerOutageDuringRetryScheduling (0.71s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH16_PoisonMessages (0.44s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH17_PartialCandidateScan (0.10s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	103.648s

@@ -411,7 +411,7 @@ Worker resumes: CAS R: MATCHING(v2,attemptA) → MATCHED; writes outbox event
 
 ---
 
-## SCH13 — Restart during snapshot restore
+## SCH13a — Restart during snapshot transfer
 
 **Source:** §27 "restart during snapshot creation/restore"
 
@@ -440,6 +440,38 @@ Confirmed state (R=MATCHING, Res=ASSIGNED) fully present
 
 ### Invariant protected
 **§16 / I2:** A node joining mid-snapshot-install never applies a partial snapshot; it retries the install. FSM state matches the leader's committed state after successful installation.
+
+---
+
+## SCH13b — Restart during snapshot restore into the FSM
+
+**Source:** §27 "restart during snapshot creation/restore"
+
+### Initial state
+| Entity  | Status    | activeClaim | version |
+|---------|-----------|-------------|---------|
+| R       | MATCHING  | attemptA    | 2       |
+| Res     | ASSIGNED  | attemptA    | 2       |
+
+### Interleaving
+```
+Follower receives the complete snapshot on its PVC; starts staging the FSM image (§16)
+── FAULT: node crashes halfway through staging the FSM image ──
+Node restarts; wipes the partially staged FSM image; retains its complete snapshot
+Node restores its own complete snapshot before contacting the leader
+Leader may resend that same snapshot; only a complete image is opened
+Node catches up remaining log entries
+Confirmed state (R=MATCHING, Res=ASSIGNED) fully present
+```
+
+### Expected final state
+| Entity  | Status    | activeClaim | version |
+|---------|-----------|-------------|---------|
+| R       | MATCHING  | attemptA    | 2       |
+| Res     | ASSIGNED  | attemptA    | 2       |
+
+### Invariant protected
+**§16 / I2:** A partially staged FSM image is never opened. Restart restores the complete stored snapshot and replays its tail; committed rows match the leader. M8 models checkpoint restore; it has no snapshot transfer.
 
 ---
 

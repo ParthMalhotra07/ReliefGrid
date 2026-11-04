@@ -133,7 +133,13 @@ func (x *execution) match(a store.Attempt) {
 
 func newExecution(t *testing.T, f ScheduleFixture, seed int, run string) *execution {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	budget := 30 * time.Second
+	// Owner's kind runs measured 44.23s/53.02s for transfer/stage; keep
+	// ordinary workflow limits while allowing bounded physical recovery.
+	if os.Getenv("SCHEDULE_BACKEND") == "cluster" && (scheduleCode(f) == "12" || strings.HasPrefix(scheduleCode(f), "13")) {
+		budget = 3 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), budget)
 	t.Cleanup(cancel)
 	var s store.Store
 	if os.Getenv("SCHEDULE_BACKEND") == "cluster" {
@@ -143,7 +149,7 @@ func newExecution(t *testing.T, f ScheduleFixture, seed int, run string) *execut
 		}
 		s = c
 	} else {
-		opts := []memstore.Option{memstore.WithShards(3)}
+		opts := []memstore.Option{memstore.WithShards(3), memstore.WithCheckpointDir(t.TempDir())}
 		if strings.HasPrefix(f.Tag, "SCH14_") {
 			opts = append(opts, memstore.WithRouter(func(string) int { return 0 }))
 		}
@@ -160,11 +166,17 @@ func newExecution(t *testing.T, f ScheduleFixture, seed int, run string) *execut
 	}
 	x := &execution{t: t, ctx: ctx, s: s, prefix: fmt.Sprintf("%s/%d/%s", run, seed, f.Tag), at: time.Now().UTC(), entities: map[string]string{}, attempts: map[string]store.Attempt{}}
 	x.seed = uint64(seed)
-	number, err := strconv.Atoi(f.Tag[3:5])
-	if err != nil {
-		t.Fatal(err)
+	fixtureIndex := -1
+	for i, candidate := range Schedules {
+		if candidate.Tag == f.Tag {
+			fixtureIndex = i
+			break
+		}
 	}
-	index := (seed-1)*len(Schedules) + number - 1
+	if fixtureIndex < 0 {
+		t.Fatal("fixture missing from canonical schedule list")
+	}
+	index := (seed-1)*len(Schedules) + fixtureIndex
 	location := store.Location{Lat: -60 + float64(index/180)*2, Lng: -179 + float64(index%180)*2}
 	hash, err := geo.Encode(location, 7)
 	if err != nil {
@@ -500,10 +512,16 @@ func TestSeededWorkflowSchedules(t *testing.T) {
 		t.Fatal("SCHEDULE_BACKEND must be m8 or cluster")
 	}
 	if selected != "" {
-		seen := map[int]bool{}
+		seen := map[string]bool{}
 		for _, item := range strings.Split(selected, ",") {
-			id, err := strconv.Atoi(item)
-			if err != nil || id < 1 || id > len(Schedules) || seen[id] {
+			id := item
+			valid := id == "13"
+			for _, fixture := range Schedules {
+				if strings.TrimLeft(scheduleCode(fixture), "0") == strings.TrimLeft(id, "0") {
+					valid = true
+				}
+			}
+			if !valid || seen[id] {
 				t.Fatal("invalid or duplicate SCHEDULE_IDS entry:", item)
 			}
 			seen[id] = true
@@ -511,20 +529,38 @@ func TestSeededWorkflowSchedules(t *testing.T) {
 		t.Log("SUBSET execution; not complete A2.3 acceptance")
 	}
 	for seed := 1; seed <= seeds; seed++ {
-		for i, f := range Schedules {
-			n := i + 1
-			if selected != "" && !strings.Contains(","+selected+",", fmt.Sprintf(",%d,", n)) {
+		for _, f := range Schedules {
+			code := scheduleCode(f)
+			chosen := selected == ""
+			for _, item := range strings.Split(selected, ",") {
+				if strings.TrimLeft(item, "0") == strings.TrimLeft(code, "0") || item == "13" && strings.HasPrefix(code, "13") {
+					chosen = true
+				}
+			}
+			if !chosen {
+				continue
+			}
+			if code == "13a" && os.Getenv("SCHEDULE_BACKEND") != "cluster" {
+				if selected == "13a" {
+					t.Fatal("SCH13a needs the cluster backend; M8 has no transfer")
+				}
+				t.Logf("seed-%d SCH13a NOT APPLICABLE on M8: transfer is covered on cluster", seed)
 				continue
 			}
 			t.Run(fmt.Sprintf("seed-%d/%s", seed, f.Tag), func(t *testing.T) {
-				if n == 1 {
-					t.Fatal("SCH01 requires an FSM-log/apply barrier from S (#88); proposer-only probe is not full acceptance")
-				}
-				if n >= 12 && n <= 13 {
-					t.Fatalf("SCH%02d requires deterministic snapshot interruption seams from S (#88); refusing partial full-suite PASS", n)
-				}
 				x := newExecution(t, f, seed, run)
-				executeWorkflowSchedule(x, n)
+				switch code {
+				case "01":
+					executeLogBarrier(x)
+				case "12", "13a", "13b":
+					executeSnapshotBoundary(x, code)
+				default:
+					n, err := strconv.Atoi(code)
+					if err != nil {
+						t.Fatal(err)
+					}
+					executeWorkflowSchedule(x, n)
+				}
 				assertFixtureFinal(x, f)
 			})
 		}
