@@ -135,6 +135,9 @@ type Node struct {
 	// in the default build).
 	seams *seamState
 	armed armedSeams //nolint:unused // used by the seams build (seams_on.go)
+	// statusGap, tests only, runs inside Status between sampling Raft's
+	// applied index and its commit index (#106).
+	statusGap atomic.Pointer[func()]
 	// cfgScan finds the latest configuration's index (Configuration).
 	cfgScan configScan
 
@@ -483,6 +486,16 @@ func (n *Node) WaitApplyAfter(ctx context.Context, index uint64) {
 }
 
 func (n *Node) Status() Status {
+	// An entry moves commit -> Raft applied -> FSM applied, so sample in the
+	// reverse order: each later read is at least the earlier one, giving
+	// AppliedIndex <= RaftAppliedIndex <= CommitIndex. Reading commit first
+	// could pair a stale commit with a newer Raft applied index and report
+	// CaughtUp with the FSM a committed entry behind (#106).
+	applied := n.sm.appliedIndex()
+	raftApplied := n.raft.AppliedIndex()
+	if fn := n.statusGap.Load(); fn != nil && *fn != nil {
+		(*fn)()
+	}
 	stats := n.raft.Stats()
 	num := func(k string) uint64 {
 		v, _ := strconv.ParseUint(stats[k], 10, 64)
@@ -506,8 +519,8 @@ func (n *Node) Status() Status {
 		LeaderAddr:       leaderAddr,
 		CommitIndex:      num("commit_index"),
 		LastLogIndex:     num("last_log_index"),
-		RaftAppliedIndex: n.raft.AppliedIndex(),
-		AppliedIndex:     n.sm.appliedIndex(),
+		RaftAppliedIndex: raftApplied,
+		AppliedIndex:     applied,
 		RestoredIndex:    n.sm.restoredIndex(),
 		HasState:         has,
 	}
@@ -532,6 +545,8 @@ func (n *Node) Status() Status {
 	}
 	return s
 }
+
+func (n *Node) setStatusGap(fn func()) { n.statusGap.Store(&fn) }
 
 // committedInTerm reports whether the entry at commit, this leader's commit
 // index, is from term. raft v1.8.0 advances a new leader's commit index only
