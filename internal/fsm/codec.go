@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
@@ -118,15 +119,103 @@ func decode(entry []byte) (command, error) {
 		return command{}, fmt.Errorf("%s body: %w", env.Op, err)
 	}
 	c.meta = *meta
-	// The canonical form is the re-encoded typed body, so formatting
-	// differences in the entry do not change the hash.
-	canon, err := json.Marshal(c.body)
+	hash, err := payloadHash(env.Op, c.body)
 	if err != nil {
-		return command{}, fmt.Errorf("%s canonical form: %w", env.Op, err)
+		return command{}, err
 	}
-	sum := sha256.Sum256(append([]byte(string(env.Op)+"\x00"), canon...))
-	c.hash = hex.EncodeToString(sum[:])
+	c.hash = hash
 	return c, nil
+}
+
+// payloadHash is the operationId dedupe hash stored in operation_results.
+// The canonical form is the re-encoded typed body, so formatting differences
+// in the entry do not change the hash. It is persisted replicated state (in
+// every snapshot): changing how it is computed is a state migration.
+func payloadHash(op Op, body any) (string, error) {
+	canon, err := json.Marshal(body)
+	if err != nil {
+		return "", fmt.Errorf("%s canonical form: %w", op, err)
+	}
+	sum := sha256.Sum256(append([]byte(string(op)+"\x00"), canon...))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// outboxOf returns the outbox events of a decoded command body, or nil for
+// commands that carry none.
+func outboxOf(body any) *[]store.OutboxEvent {
+	switch c := body.(type) {
+	case *store.CreateEntity:
+		return &c.Outbox
+	case *store.TransitionRequest:
+		return &c.Outbox
+	case *store.RetryWorkflow:
+		return &c.Outbox
+	case *store.TransitionResource:
+		return &c.Outbox
+	}
+	return nil
+}
+
+// traceField is one top-level "traceparent" member of a JSON object: span is
+// the byte range from just after the key to the end of the value (the colon
+// included), value is the raw value.
+type traceField struct {
+	start, end int
+	value      json.RawMessage
+}
+
+// traceparentField finds the single top-level "traceparent" member of an
+// event envelope. ok is false if p is not one JSON object or has no such
+// member or more than one.
+func traceparentField(p []byte) (traceField, bool) {
+	dec := json.NewDecoder(bytes.NewReader(p))
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('{') {
+		return traceField{}, false
+	}
+	var found []traceField
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return traceField{}, false
+		}
+		key, ok := tok.(string)
+		if !ok {
+			return traceField{}, false
+		}
+		start := int(dec.InputOffset())
+		var v json.RawMessage
+		if err := dec.Decode(&v); err != nil {
+			return traceField{}, false
+		}
+		if key == "traceparent" {
+			found = append(found, traceField{start: start, end: int(dec.InputOffset()), value: v})
+		}
+	}
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('}') {
+		return traceField{}, false
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return traceField{}, false
+	}
+	if len(found) != 1 {
+		return traceField{}, false
+	}
+	return found[0], true
+}
+
+// withTraceparent returns p with the value of its top-level "traceparent"
+// member replaced by value, every other byte unchanged.
+func withTraceparent(p []byte, value json.RawMessage) (json.RawMessage, bool) {
+	f, ok := traceparentField(p)
+	if !ok {
+		return nil, false
+	}
+	out := make([]byte, 0, len(p)-(f.end-f.start)+len(value)+1)
+	out = append(out, p[:f.start]...)
+	out = append(out, ':')
+	out = append(out, value...)
+	out = append(out, p[f.end:]...)
+	return out, true
 }
 
 func strict(b []byte, v any) error {

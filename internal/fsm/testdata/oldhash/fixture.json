@@ -1,0 +1,150 @@
+{
+  "log": [
+    "{\"op\":\"CreateEntity\",\"body\":{\"operationId\":\"c-r1\",\"at\":1792000000000,\"key\":\"res:r1\",\"resource\":{\"id\":\"r1\",\"type\":\"WATER\",\"name\":\"unit r1\",\"location\":{\"lat\":28.61,\"lng\":77.21},\"geohash\":\"ttnfv\",\"availableFrom\":1791996400000,\"availableUntil\":1792086400000,\"status\":\"AVAILABLE\",\"reusable\":true,\"locationRevision\":0,\"createdAt\":0,\"updatedAt\":0}}}",
+    "{\"op\":\"CreateEntity\",\"body\":{\"operationId\":\"c-q1\",\"at\":1792000000000,\"key\":\"req:q1\",\"request\":{\"id\":\"q1\",\"type\":\"WATER\",\"location\":{\"lat\":28.62,\"lng\":77.22},\"geohash\":\"ttnfv\",\"peopleAffected\":4,\"urgency\":2,\"status\":\"PENDING\",\"workflowGeneration\":0,\"retryCount\":0,\"createdAt\":0,\"updatedAt\":0},\"outbox\":[{\"eventId\":\"ev-c-q1\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q1\",\"entityVersion\":1,\"eventId\":\"ev-c-q1\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q1\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"published\":false}]}}",
+    "{\"op\":\"CreateEntity\",\"body\":{\"operationId\":\"c-q2\",\"at\":1792000000000,\"key\":\"req:q2\",\"request\":{\"id\":\"q2\",\"type\":\"WATER\",\"location\":{\"lat\":28.62,\"lng\":77.22},\"geohash\":\"ttnfv\",\"peopleAffected\":4,\"urgency\":2,\"status\":\"PENDING\",\"workflowGeneration\":0,\"retryCount\":0,\"createdAt\":0,\"updatedAt\":0},\"outbox\":[{\"eventId\":\"ev-c-q2\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q2\",\"entityVersion\":1,\"eventId\":\"ev-c-q2\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q2\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"published\":false}]}}",
+    "{\"op\":\"CreateEntity\",\"body\":{\"operationId\":\"c-q1\",\"at\":1792000000000,\"key\":\"req:q1\",\"request\":{\"id\":\"q1\",\"type\":\"WATER\",\"location\":{\"lat\":28.62,\"lng\":77.22},\"geohash\":\"ttnfv\",\"peopleAffected\":4,\"urgency\":2,\"status\":\"PENDING\",\"workflowGeneration\":0,\"retryCount\":0,\"createdAt\":0,\"updatedAt\":0},\"outbox\":[{\"eventId\":\"ev-c-q1\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q1\",\"entityVersion\":1,\"eventId\":\"ev-c-q1\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q1\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01\"},\"published\":false}]}}",
+    "{\"op\":\"TransitionRequest\",\"body\":{\"operationId\":\"t-q1\",\"at\":1792000000000,\"key\":\"req:q1\",\"expectedVersion\":1,\"expectedStatus\":\"PENDING\",\"expectedAttemptId\":\"\",\"to\":\"MATCHING\",\"attempt\":{\"attemptId\":\"a1\",\"resourceId\":\"r1\",\"fingerprint\":\"fp-a1\"},\"outbox\":[{\"eventId\":\"ev-t-q1\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q1\",\"entityVersion\":1,\"eventId\":\"ev-t-q1\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q1\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"published\":false}]}}",
+    "{\"op\":\"TransitionRequest\",\"body\":{\"operationId\":\"t-q1-stale\",\"at\":1792000000000,\"key\":\"req:q1\",\"expectedVersion\":1,\"expectedStatus\":\"PENDING\",\"expectedAttemptId\":\"\",\"to\":\"WAITING\",\"nextAttemptAt\":1792000030000,\"outbox\":[{\"eventId\":\"ev-stale\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q1\",\"entityVersion\":1,\"eventId\":\"ev-stale\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q1\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"published\":false}]}}",
+    "{\"op\":\"TransitionRequest\",\"body\":{\"operationId\":\"t-q2\",\"at\":1792000000000,\"key\":\"req:q2\",\"expectedVersion\":1,\"expectedStatus\":\"PENDING\",\"expectedAttemptId\":\"\",\"to\":\"WAITING\",\"nextAttemptAt\":1792000030000}}",
+    "{\"op\":\"RetryWorkflow\",\"body\":{\"operationId\":\"retry-q2\",\"at\":1792000000000,\"key\":\"req:q2\",\"expectedVersion\":2,\"nextAttemptAt\":1792000060000,\"outbox\":[{\"eventId\":\"ev-retry-q2\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q2\",\"entityVersion\":1,\"eventId\":\"ev-retry-q2\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q2\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"published\":false}]}}",
+    "{\"op\":\"CreateEntity\",\"body\":{\"operationId\":\"c-r2\",\"at\":1792000000000,\"key\":\"res:r2\",\"resource\":{\"id\":\"r2\",\"type\":\"WATER\",\"name\":\"unit r2\",\"location\":{\"lat\":28.61,\"lng\":77.21},\"geohash\":\"ttnfv\",\"availableFrom\":1791996400000,\"availableUntil\":1792086400000,\"status\":\"AVAILABLE\",\"reusable\":true,\"locationRevision\":0,\"createdAt\":0,\"updatedAt\":0}}}",
+    "{\"op\":\"TransitionResource\",\"body\":{\"operationId\":\"tr-r2\",\"at\":1792000000000,\"key\":\"res:r2\",\"expectedVersion\":1,\"status\":\"OFFLINE\",\"outbox\":[{\"eventId\":\"ev-tr-r2\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"r2\",\"entityVersion\":1,\"eventId\":\"ev-tr-r2\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"r2\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"published\":false}]}}",
+    "{\"op\":\"CompareAndSet\",\"body\":{\"operationId\":\"kv-1\",\"at\":1792000000000,\"key\":\"kv:demo\",\"expectedVersion\":0,\"value\":1}}",
+    "{\"op\":\"MarkOutboxPublished\",\"body\":{\"operationId\":\"mark-1\",\"at\":1792000000000,\"shard\":0,\"eventIds\":[\"ev-c-q1\"]}}"
+  ],
+  "results": [
+    {
+      "outcome": "OK",
+      "operationId": "c-r1",
+      "key": "res:r1",
+      "version": 1,
+      "shard": 0,
+      "appliedIndex": 1
+    },
+    {
+      "outcome": "OK",
+      "operationId": "c-q1",
+      "key": "req:q1",
+      "version": 1,
+      "shard": 0,
+      "appliedIndex": 2
+    },
+    {
+      "outcome": "OK",
+      "operationId": "c-q2",
+      "key": "req:q2",
+      "version": 1,
+      "shard": 0,
+      "appliedIndex": 3
+    },
+    {
+      "outcome": "OPERATION_ID_REUSED",
+      "operationId": "c-q1",
+      "key": "req:q1",
+      "version": 0,
+      "reason": "operationId already used with a different payload",
+      "shard": 0,
+      "appliedIndex": 4
+    },
+    {
+      "outcome": "OK",
+      "operationId": "t-q1",
+      "key": "req:q1",
+      "version": 2,
+      "shard": 0,
+      "appliedIndex": 5
+    },
+    {
+      "outcome": "VERSION_CONFLICT",
+      "operationId": "t-q1-stale",
+      "key": "req:q1",
+      "version": 2,
+      "reason": "expected v1 PENDING attempt \"\", have v2 MATCHING attempt \"a1\"",
+      "shard": 0,
+      "appliedIndex": 6
+    },
+    {
+      "outcome": "OK",
+      "operationId": "t-q2",
+      "key": "req:q2",
+      "version": 2,
+      "shard": 0,
+      "appliedIndex": 7
+    },
+    {
+      "outcome": "OK",
+      "operationId": "retry-q2",
+      "key": "req:q2",
+      "version": 3,
+      "shard": 0,
+      "appliedIndex": 8
+    },
+    {
+      "outcome": "OK",
+      "operationId": "c-r2",
+      "key": "res:r2",
+      "version": 1,
+      "shard": 0,
+      "appliedIndex": 9
+    },
+    {
+      "outcome": "OK",
+      "operationId": "tr-r2",
+      "key": "res:r2",
+      "version": 2,
+      "shard": 0,
+      "appliedIndex": 10
+    },
+    {
+      "outcome": "OK",
+      "operationId": "kv-1",
+      "key": "kv:demo",
+      "version": 1,
+      "shard": 0,
+      "appliedIndex": 11
+    },
+    {
+      "outcome": "OK",
+      "operationId": "mark-1",
+      "key": "",
+      "version": 0,
+      "shard": 0,
+      "appliedIndex": 12
+    }
+  ],
+  "dump": {
+    "attempt_closures": null,
+    "meta": [
+      "k=applied_index | v=12",
+      "k=schema_version | v=1"
+    ],
+    "operation_results": [
+      "operation_id=c-q1 | payload_hash=6b274ca8f87e76b1305589b974946b085d0343d83b7d6e8b09b3aa01eae89b5f | key=req:q1 | result={\"outcome\":\"OK\",\"operationId\":\"c-q1\",\"key\":\"req:q1\",\"version\":1,\"shard\":0,\"appliedIndex\":2} | applied_index=2",
+      "operation_id=c-q2 | payload_hash=6d843005c1334ac976453b6f6688aa235a32c06db0e29b718580f4742226fd7c | key=req:q2 | result={\"outcome\":\"OK\",\"operationId\":\"c-q2\",\"key\":\"req:q2\",\"version\":1,\"shard\":0,\"appliedIndex\":3} | applied_index=3",
+      "operation_id=c-r1 | payload_hash=1d48b877350a8a44d6af292931d7b1874b950f722339c085a770091d62fb9c0b | key=res:r1 | result={\"outcome\":\"OK\",\"operationId\":\"c-r1\",\"key\":\"res:r1\",\"version\":1,\"shard\":0,\"appliedIndex\":1} | applied_index=1",
+      "operation_id=c-r2 | payload_hash=903c3f0ed4c2034c109acd59a638ea6329696ab2b00a563beb48f0fd9dcb68d9 | key=res:r2 | result={\"outcome\":\"OK\",\"operationId\":\"c-r2\",\"key\":\"res:r2\",\"version\":1,\"shard\":0,\"appliedIndex\":9} | applied_index=9",
+      "operation_id=kv-1 | payload_hash=8a944aa2b9b9ea4ed66fade17fee05b2bfa493b27d412ee51b6cec6bd2f210d5 | key=kv:demo | result={\"outcome\":\"OK\",\"operationId\":\"kv-1\",\"key\":\"kv:demo\",\"version\":1,\"shard\":0,\"appliedIndex\":11} | applied_index=11",
+      "operation_id=mark-1 | payload_hash=7d565160d35606ae2f03e13ec1afab915d8c39fc237ab3ff3a91446beabc54bc | key= | result={\"outcome\":\"OK\",\"operationId\":\"mark-1\",\"key\":\"\",\"version\":0,\"shard\":0,\"appliedIndex\":12} | applied_index=12",
+      "operation_id=retry-q2 | payload_hash=59c42e79d0881a053b47277db836d16e944e4dc7ccd441cbede9d86e6ffc6070 | key=req:q2 | result={\"outcome\":\"OK\",\"operationId\":\"retry-q2\",\"key\":\"req:q2\",\"version\":3,\"shard\":0,\"appliedIndex\":8} | applied_index=8",
+      "operation_id=t-q1 | payload_hash=5d84ba16218ea41bbf1fbb4ce9db0ac5286f17cda83fb7f07222c68f91387f2c | key=req:q1 | result={\"outcome\":\"OK\",\"operationId\":\"t-q1\",\"key\":\"req:q1\",\"version\":2,\"shard\":0,\"appliedIndex\":5} | applied_index=5",
+      "operation_id=t-q1-stale | payload_hash=df5814bb70d7b93074859cc29f1afd39ffe49e7455f5b3ba0de08da0990b185a | key=req:q1 | result={\"outcome\":\"VERSION_CONFLICT\",\"operationId\":\"t-q1-stale\",\"key\":\"req:q1\",\"version\":2,\"reason\":\"expected v1 PENDING attempt \\\"\\\", have v2 MATCHING attempt \\\"a1\\\"\",\"shard\":0,\"appliedIndex\":6} | applied_index=6",
+      "operation_id=t-q2 | payload_hash=e30d9301a1f272880f0a78fbb0dd8d7ef495c702444cc8df7e57310c022c5640 | key=req:q2 | result={\"outcome\":\"OK\",\"operationId\":\"t-q2\",\"key\":\"req:q2\",\"version\":2,\"shard\":0,\"appliedIndex\":7} | applied_index=7",
+      "operation_id=tr-r2 | payload_hash=8d42bb10233024938c6aeeadec207d27d4053cf40df2286d1ba8703c62f31c11 | key=res:r2 | result={\"outcome\":\"OK\",\"operationId\":\"tr-r2\",\"key\":\"res:r2\",\"version\":2,\"shard\":0,\"appliedIndex\":10} | applied_index=10"
+    ],
+    "outbox": [
+      "seq=1 | event_id=ev-c-q1 | entity_key=req:q1 | entity_version=1 | event={\"eventId\":\"ev-c-q1\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q1\",\"entityVersion\":1,\"eventId\":\"ev-c-q1\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q1\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"entityKey\":\"req:q1\",\"entityVersion\":1,\"createdAt\":1792000000000,\"published\":false} | published=1 | created_at=1792000000000",
+      "seq=2 | event_id=ev-c-q2 | entity_key=req:q2 | entity_version=1 | event={\"eventId\":\"ev-c-q2\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q2\",\"entityVersion\":1,\"eventId\":\"ev-c-q2\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q2\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"entityKey\":\"req:q2\",\"entityVersion\":1,\"createdAt\":1792000000000,\"published\":false} | published=0 | created_at=1792000000000",
+      "seq=3 | event_id=ev-t-q1 | entity_key=req:q1 | entity_version=2 | event={\"eventId\":\"ev-t-q1\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q1\",\"entityVersion\":1,\"eventId\":\"ev-t-q1\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q1\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"entityKey\":\"req:q1\",\"entityVersion\":2,\"createdAt\":1792000000000,\"published\":false} | published=0 | created_at=1792000000000",
+      "seq=4 | event_id=ev-retry-q2 | entity_key=req:q2 | entity_version=3 | event={\"eventId\":\"ev-retry-q2\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"q2\",\"entityVersion\":1,\"eventId\":\"ev-retry-q2\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"q2\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"entityKey\":\"req:q2\",\"entityVersion\":3,\"createdAt\":1792000000000,\"published\":false} | published=0 | created_at=1792000000000",
+      "seq=5 | event_id=ev-tr-r2 | entity_key=res:r2 | entity_version=2 | event={\"eventId\":\"ev-tr-r2\",\"eventType\":\"request.created\",\"schemaVersion\":1,\"exchange\":\"relief.events\",\"routingKey\":\"request.created\",\"payload\":{\"entityId\":\"r2\",\"entityVersion\":1,\"eventId\":\"ev-tr-r2\",\"eventType\":\"request.created\",\"occurredAt\":\"2026-10-30T00:00:00Z\",\"payload\":{\"requestId\":\"r2\",\"status\":\"PENDING\"},\"schemaVersion\":1,\"traceparent\":\"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01\"},\"entityKey\":\"res:r2\",\"entityVersion\":2,\"createdAt\":1792000000000,\"published\":false} | published=0 | created_at=1792000000000"
+    ],
+    "records": [
+      "key=kv:demo | kind=kv | version=1 | deleted=0 | type= | status= | geohash= | body={\"key\":\"kv:demo\",\"kind\":\"kv\",\"version\":1,\"value\":1,\"updatedAt\":1792000000000} | updated_at=1792000000000",
+      "key=req:q1 | kind=request | version=2 | deleted=0 | type=WATER | status=MATCHING | geohash=ttnfv | body={\"key\":\"req:q1\",\"kind\":\"request\",\"version\":2,\"request\":{\"id\":\"q1\",\"type\":\"WATER\",\"location\":{\"lat\":28.62,\"lng\":77.22},\"geohash\":\"ttnfv\",\"peopleAffected\":4,\"urgency\":2,\"status\":\"MATCHING\",\"workflowGeneration\":1,\"currentAttempt\":{\"attemptId\":\"a1\",\"resourceId\":\"r1\",\"fingerprint\":\"fp-a1\"},\"retryCount\":0,\"createdAt\":1792000000000,\"updatedAt\":1792000000000},\"updatedAt\":1792000000000} | updated_at=1792000000000",
+      "key=req:q2 | kind=request | version=3 | deleted=0 | type=WATER | status=WAITING | geohash=ttnfv | body={\"key\":\"req:q2\",\"kind\":\"request\",\"version\":3,\"request\":{\"id\":\"q2\",\"type\":\"WATER\",\"location\":{\"lat\":28.62,\"lng\":77.22},\"geohash\":\"ttnfv\",\"peopleAffected\":4,\"urgency\":2,\"status\":\"WAITING\",\"workflowGeneration\":0,\"nextAttemptAt\":1792000060000,\"retryCount\":2,\"createdAt\":1792000000000,\"updatedAt\":1792000000000},\"updatedAt\":1792000000000} | updated_at=1792000000000",
+      "key=res:r1 | kind=resource | version=1 | deleted=0 | type=WATER | status=AVAILABLE | geohash=ttnfv | body={\"key\":\"res:r1\",\"kind\":\"resource\",\"version\":1,\"resource\":{\"id\":\"r1\",\"type\":\"WATER\",\"name\":\"unit r1\",\"location\":{\"lat\":28.61,\"lng\":77.21},\"geohash\":\"ttnfv\",\"availableFrom\":1791996400000,\"availableUntil\":1792086400000,\"status\":\"AVAILABLE\",\"reusable\":true,\"locationRevision\":0,\"createdAt\":1792000000000,\"updatedAt\":1792000000000},\"updatedAt\":1792000000000} | updated_at=1792000000000",
+      "key=res:r2 | kind=resource | version=2 | deleted=0 | type=WATER | status=OFFLINE | geohash=ttnfv | body={\"key\":\"res:r2\",\"kind\":\"resource\",\"version\":2,\"resource\":{\"id\":\"r2\",\"type\":\"WATER\",\"name\":\"unit r2\",\"location\":{\"lat\":28.61,\"lng\":77.21},\"geohash\":\"ttnfv\",\"availableFrom\":1791996400000,\"availableUntil\":1792086400000,\"status\":\"OFFLINE\",\"reusable\":true,\"locationRevision\":0,\"createdAt\":1792000000000,\"updatedAt\":1792000000000},\"updatedAt\":1792000000000} | updated_at=1792000000000"
+    ]
+  }
+}
