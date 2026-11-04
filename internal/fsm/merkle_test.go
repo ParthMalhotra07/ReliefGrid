@@ -332,6 +332,22 @@ func TestMerkleCoversEverySchemaColumn(t *testing.T) {
 	if got := fsm.MerkleColumns(); !reflect.DeepEqual(got, schema) {
 		t.Fatalf("hashed columns\n %v\nschema\n %v", got, schema)
 	}
+	// The audit, which does not link the FSM, checks digests against
+	// merkle.Tables: the FSM must produce exactly those, in that order.
+	rep, err := f.Merkle(ctx, f.AppliedIndex())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, tb := range rep.Digest.Tables {
+		names = append(names, tb.Name)
+	}
+	if !reflect.DeepEqual(names, merkle.Tables) {
+		t.Fatalf("digest tables %v, merkle.Tables %v", names, merkle.Tables)
+	}
+	if err := rep.Digest.Check(); err != nil {
+		t.Fatalf("the FSM's digest fails Check: %v", err)
+	}
 	if err := f.CorruptRow(ctx, `INSERT INTO meta (k, v) VALUES ('ring_version', '1')`); err != nil {
 		t.Fatal(err)
 	}

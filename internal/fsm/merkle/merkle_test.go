@@ -367,3 +367,52 @@ func TestHashJSONRoundTrip(t *testing.T) {
 		t.Fatalf("leaf round trip = %+v, %v (%s)", l, err, lb)
 	}
 }
+
+// Check accepts a digest only if every root is the one its parts rebuild:
+// a table root over its 256 bucket hashes, the shard root over the table
+// roots. A missing, empty or truncated digest is never valid.
+func TestDigestCheck(t *testing.T) {
+	good := digestOf(t, sampleRows(50), [][]any{{"op-1", "h"}})
+	if err := good.Check(); err != nil {
+		t.Fatalf("a built digest fails Check: %v", err)
+	}
+	for name, bad := range map[string]func(d merkle.Digest) merkle.Digest{
+		"zero value":     func(merkle.Digest) merkle.Digest { return merkle.Digest{} },
+		"no tables":      func(merkle.Digest) merkle.Digest { return merkle.NewDigest() },
+		"shard root":     func(d merkle.Digest) merkle.Digest { d.Root = d.Tables[0].Root; return d },
+		"table root":     func(d merkle.Digest) merkle.Digest { d.Tables[1].Root = d.Tables[0].Root; return d },
+		"bucket changed": func(d merkle.Digest) merkle.Digest { d.Tables[0].Buckets[3] = d.Tables[0].Root; return d },
+		"bucket zeroed":  func(d merkle.Digest) merkle.Digest { d.Tables[0].Buckets[255] = merkle.Hash{}; return d },
+		"zeroed, roots redone": func(d merkle.Digest) merkle.Digest {
+			d.Tables[1].Buckets[255] = merkle.Hash{}
+			d.Tables[1].Root = merkle.TreeRoot(d.Tables[1].Buckets[:])
+			return merkle.NewDigest(d.Tables...)
+		},
+		"rows but empty buckets": func(d merkle.Digest) merkle.Digest {
+			d.Tables[1] = merkle.NewTable("operation_results", 1).Digest()
+			d.Tables[1].Rows = 1
+			return merkle.NewDigest(d.Tables...)
+		},
+		"buckets but no rows": func(d merkle.Digest) merkle.Digest { d.Tables[0].Rows = 0; return d },
+		"negative rows":       func(d merkle.Digest) merkle.Digest { d.Tables[0].Rows = -1; return d },
+		"unnamed table":       func(d merkle.Digest) merkle.Digest { d.Tables[1].Name = ""; return merkle.NewDigest(d.Tables...) },
+		"table twice":         func(d merkle.Digest) merkle.Digest { return merkle.NewDigest(d.Tables[0], d.Tables[0]) },
+	} {
+		d := bad(digestOf(t, sampleRows(50), [][]any{{"op-1", "h"}}))
+		if err := d.Check(); err == nil {
+			t.Errorf("%s: Check accepted %+v", name, d.Root)
+		}
+	}
+}
+
+// DiffBuckets never calls invalid digests equal, however alike they are.
+func TestDiffBucketsRejectsInvalidDigests(t *testing.T) {
+	if diffs, err := merkle.DiffBuckets(map[string]merkle.Digest{"a": {}, "b": {}}); err == nil {
+		t.Fatalf("two zero digests compared: %+v", diffs)
+	}
+	d := digestOf(t, sampleRows(50), nil)
+	d.Root = d.Tables[0].Root
+	if diffs, err := merkle.DiffBuckets(map[string]merkle.Digest{"a": d, "b": d}); err == nil {
+		t.Fatalf("two inconsistent digests compared: %+v", diffs)
+	}
+}

@@ -43,6 +43,11 @@ import (
 // Buckets is the number of fixed buckets per table.
 const Buckets = 256
 
+// Tables are the tables a shard digest covers, in shard-root order. The FSM
+// builds its digest over exactly these (a test in internal/fsm holds it to
+// that); the audit, which does not link the FSM, rejects any other set.
+var Tables = []string{"records", "operation_results", "attempt_closures", "outbox"}
+
 const (
 	tagLeaf   = 0x00
 	tagNode   = 0x01
@@ -312,6 +317,44 @@ func NewDigest(tables ...TableDigest) Digest {
 	return Digest{Root: TreeRoot(roots), Tables: tables}
 }
 
+// Check reports whether d is a digest its parts rebuild: at least one
+// table, each named once, with Rows of zero exactly when every bucket is
+// empty, no zero bucket hash (what a truncated JSON bucket list decodes
+// to), each table root the tree over its buckets and the shard root the
+// tree over the table roots. A missing or truncated digest fails it, so it
+// is never compared as equal.
+func (d Digest) Check() error {
+	if len(d.Tables) == 0 {
+		return errors.New("merkle: digest has no tables")
+	}
+	seen := map[string]bool{}
+	roots := make([]Hash, len(d.Tables))
+	for i, t := range d.Tables {
+		if t.Name == "" || seen[t.Name] {
+			return fmt.Errorf("merkle: table %d is named %q: missing or repeated", i, t.Name)
+		}
+		seen[t.Name] = true
+		empty := true
+		for b, h := range t.Buckets {
+			if h == (Hash{}) {
+				return fmt.Errorf("merkle: %s bucket %d has no hash", t.Name, b)
+			}
+			empty = empty && h == emptyBucket
+		}
+		if t.Rows < 0 || (t.Rows == 0) != empty {
+			return fmt.Errorf("merkle: %s has %d rows, and its buckets empty is %t", t.Name, t.Rows, empty)
+		}
+		if TreeRoot(t.Buckets[:]) != t.Root {
+			return fmt.Errorf("merkle: %s root is not the root of its buckets", t.Name)
+		}
+		roots[i] = t.Root
+	}
+	if TreeRoot(roots) != d.Root {
+		return errors.New("merkle: shard root is not the root of its table roots")
+	}
+	return nil
+}
+
 // TableDiff names a table and the buckets in which replicas disagree.
 type TableDiff struct {
 	Table   string `json:"table"`
@@ -320,12 +363,17 @@ type TableDiff struct {
 
 // DiffBuckets compares replica digests (keyed by pod) and returns, per
 // table, the buckets on which they do not all agree; nil if they agree.
-// Digests over different tables or table orders are an error, not a
-// difference.
+// Digests that fail Check, or over different tables or table orders, are
+// an error, not a difference: alike malformed digests are never equal.
 func DiffBuckets(reps map[string]Digest) ([]TableDiff, error) {
 	pods := sortedKeys(reps)
 	if len(pods) < 2 {
 		return nil, errors.New("merkle: need at least two replicas to compare")
+	}
+	for _, p := range pods {
+		if err := reps[p].Check(); err != nil {
+			return nil, fmt.Errorf("%s: %w", p, err)
+		}
 	}
 	ref := reps[pods[0]]
 	for _, p := range pods[1:] {
