@@ -45,6 +45,10 @@ type Pod struct {
 	RaftAppliedIndex uint64
 	Rows             [][]any // records rows, key first, in key order
 	Down             bool    // answer 503 to everything
+	// Edit, if set, changes a 200 answer before it is sent: kind is
+	// "status", "digest" or "bucket", and resp is the JSON object, whose
+	// "digest" is a merkle.Digest. Tests use it to send malformed answers.
+	Edit func(kind string, resp map[string]any)
 
 	srv     *httptest.Server
 	queries []string // raw query of every /mgmt/merkle request
@@ -149,6 +153,14 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+// reply sends resp as a 200 answer of kind, through Edit if set.
+func (p *Pod) reply(w http.ResponseWriter, kind string, resp map[string]any) {
+	if p.Edit != nil {
+		p.Edit(kind, resp)
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (c *Cluster) serve(p *Pod, w http.ResponseWriter, r *http.Request) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -161,7 +173,7 @@ func (c *Cluster) serve(p *Pod, w http.ResponseWriter, r *http.Request) {
 		if c.OnStatus != nil {
 			c.OnStatus(c, p)
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
+		p.reply(w, "status", map[string]any{
 			"podName": p.Name, "groupId": p.GroupID, "shard": p.Shard, "ringVersion": p.RingVersion,
 			"appliedIndex": p.AppliedIndex, "raftAppliedIndex": p.RaftAppliedIndex, "caughtUp": true,
 		})
@@ -189,7 +201,7 @@ func (c *Cluster) serve(p *Pod, w http.ResponseWriter, r *http.Request) {
 		if q.Has("bucket") {
 			b, _ := strconv.Atoi(q.Get("bucket"))
 			if q.Get("table") != "records" {
-				writeJSON(w, http.StatusOK, map[string]any{"podName": p.Name, "appliedIndex": p.AppliedIndex,
+				p.reply(w, "bucket", map[string]any{"podName": p.Name, "appliedIndex": p.AppliedIndex,
 					"table": q.Get("table"), "bucket": b, "hash": merkle.BucketHash(nil), "leaves": []merkle.Leaf{}})
 				return
 			}
@@ -198,11 +210,11 @@ func (c *Cluster) serve(p *Pod, w http.ResponseWriter, r *http.Request) {
 			if leaves == nil {
 				leaves = []merkle.Leaf{}
 			}
-			writeJSON(w, http.StatusOK, map[string]any{"podName": p.Name, "ringVersion": p.RingVersion, "appliedIndex": p.AppliedIndex,
+			p.reply(w, "bucket", map[string]any{"podName": p.Name, "ringVersion": p.RingVersion, "appliedIndex": p.AppliedIndex,
 				"table": "records", "bucket": b, "hash": tb.Digest().Buckets[b], "leaves": leaves})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
+		p.reply(w, "digest", map[string]any{
 			"podName": p.Name, "ringVersion": p.RingVersion,
 			"summary": map[string]any{"schemaVersion": p.SchemaVersion, "appliedIndex": p.AppliedIndex, "tombstones": 0},
 			"digest":  p.digest(),

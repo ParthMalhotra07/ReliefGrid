@@ -113,6 +113,7 @@ type digestResponse struct {
 }
 
 type bucketResponse struct {
+	PodName      string        `json:"podName"`
 	AppliedIndex uint64        `json:"appliedIndex"`
 	Table        string        `json:"table"`
 	Bucket       int           `json:"bucket"`
@@ -127,7 +128,7 @@ func (e *errMoved) Error() string { return fmt.Sprintf("replica moved to applied
 
 type auditor struct {
 	cfg   Config
-	names []string // pod name per address, unique
+	names []string // pod name per address, from the first statuses; unique
 }
 
 // Run audits the replicas at cfg.Addrs. It never returns an error: every
@@ -138,6 +139,13 @@ func Run(ctx context.Context, cfg Config) Report {
 	}
 	if cfg.Token == "" {
 		return Report{Verdict: Incomplete, Error: "audit: an operator token is required"}
+	}
+	seen := map[string]bool{}
+	for _, addr := range cfg.Addrs {
+		if seen[addr] {
+			return Report{Verdict: Incomplete, Error: fmt.Sprintf("audit: endpoint %s given twice; one replica must not count twice", addr)}
+		}
+		seen[addr] = true
 	}
 	if cfg.Client == nil {
 		cfg.Client = http.DefaultClient
@@ -177,7 +185,7 @@ func (a *auditor) run(ctx context.Context) Report {
 		if err != nil {
 			return a.failed(err)
 		}
-		digests, err := a.digests(ctx, target)
+		digests, err := a.digests(ctx, target, sts)
 		if errors.As(err, &mv) {
 			target = max(mv.Index, target)
 			continue
@@ -211,15 +219,27 @@ func (a *auditor) statuses(ctx context.Context) ([]status, error) {
 			return nil, err
 		}
 	}
+	// A replica is counted by the pod name its status reports, so one pod
+	// reached through two addresses is caught, and an address that starts
+	// answering as another pod mid-audit is not compared.
 	if a.names == nil {
-		seen := map[string]bool{}
+		seen := map[string]string{}
 		for i, s := range sts {
-			name := s.PodName
-			if name == "" || seen[name] {
-				name = a.cfg.Addrs[i]
+			if s.PodName == "" {
+				return nil, fmt.Errorf("audit: %s reports no pod name; cannot tell which replica it is", a.cfg.Addrs[i])
 			}
-			seen[name] = true
-			a.names = append(a.names, name)
+			if prev, ok := seen[s.PodName]; ok {
+				return nil, fmt.Errorf("audit: %s and %s are both %s; one replica must not count twice", prev, a.cfg.Addrs[i], s.PodName)
+			}
+			seen[s.PodName] = a.cfg.Addrs[i]
+		}
+		for _, s := range sts {
+			a.names = append(a.names, s.PodName)
+		}
+	}
+	for i, s := range sts {
+		if s.PodName != a.names[i] {
+			return nil, fmt.Errorf("audit: %s was %s and now reports %q", a.cfg.Addrs[i], a.names[i], s.PodName)
 		}
 	}
 	return sts, nil
@@ -283,14 +303,37 @@ func (a *auditor) waitAt(ctx context.Context, target uint64) ([]status, error) {
 	}
 }
 
-func (a *auditor) digests(ctx context.Context, at uint64) ([]digestResponse, error) {
+// digests asks every replica for its digest at at and accepts an answer
+// only as an observation of that replica: its pod name and ring version
+// those of the replica's status (sts), its index at, a schema version, and
+// a digest over exactly merkle.Tables. merkle.DiffBuckets then checks each
+// digest's roots against its buckets, so a missing, empty or truncated
+// digest is an error, never compared.
+func (a *auditor) digests(ctx context.Context, at uint64, sts []status) ([]digestResponse, error) {
 	out := make([]digestResponse, len(a.cfg.Addrs))
 	for i, addr := range a.cfg.Addrs {
-		if err := a.get(ctx, addr, "/mgmt/merkle?at="+strconv.FormatUint(at, 10), true, &out[i]); err != nil {
+		d := &out[i]
+		if err := a.get(ctx, addr, "/mgmt/merkle?at="+strconv.FormatUint(at, 10), true, d); err != nil {
 			return nil, err
 		}
-		if out[i].Summary.AppliedIndex != at {
-			return nil, fmt.Errorf("audit: %s answered for applied index %d, asked for %d", a.names[i], out[i].Summary.AppliedIndex, at)
+		if d.PodName != a.names[i] {
+			return nil, fmt.Errorf("audit: %s (%s) answered with the digest of %q", a.names[i], addr, d.PodName)
+		}
+		if d.Summary.AppliedIndex != at {
+			return nil, fmt.Errorf("audit: %s answered for applied index %d, asked for %d", a.names[i], d.Summary.AppliedIndex, at)
+		}
+		if d.RingVersion != sts[i].RingVersion {
+			return nil, fmt.Errorf("audit: %s digest is at ring version %d, its status at %d", a.names[i], d.RingVersion, sts[i].RingVersion)
+		}
+		if d.Summary.SchemaVersion == "" {
+			return nil, fmt.Errorf("audit: %s digest has no schema version", a.names[i])
+		}
+		names := make([]string, len(d.Digest.Tables))
+		for j, t := range d.Digest.Tables {
+			names[j] = t.Name
+		}
+		if !slices.Equal(names, merkle.Tables) {
+			return nil, fmt.Errorf("audit: %s digest covers tables %v, want %v", a.names[i], names, merkle.Tables)
 		}
 	}
 	return out, nil
@@ -350,6 +393,12 @@ func (a *auditor) compare(ctx context.Context, at uint64, sts []status, ds []dig
 				}
 				if err != nil {
 					rep.Verdict, rep.Error = Incomplete, err.Error()
+					return rep
+				}
+				if br.PodName != a.names[i] || br.AppliedIndex != at || br.Table != td.Table || br.Bucket != b {
+					rep.Verdict, rep.Error = Incomplete, fmt.Sprintf("audit: %s answered bucket %s/%d at %d from %q, asked for %s/%d at %d",
+						a.names[i], br.Table, br.Bucket, br.AppliedIndex, br.PodName, td.Table, b, at)
+					rep.Rows = nil
 					return rep
 				}
 				if br.Hash != ds[i].Digest.Tables[ti].Buckets[b] || merkle.BucketHash(br.Leaves) != br.Hash {
