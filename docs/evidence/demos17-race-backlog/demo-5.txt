@@ -1,0 +1,49 @@
+# demo-5: Submit a burst; show RabbitMQ queue counts, matching and waiting results
+result:     PASS (2/2 checks)
+runId:      demos17-race-backlog
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-03T08:48:59Z
+finished:   2026-11-03T08:49:43Z
+duration:   43.7 s
+code tree:  aba543813fd9 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: yes (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: c4fc5fccf9e3
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:42ef80bc20fac72bf7890f335c2d15acfe23fa8ce4e760a83200c6e71d21282a
+image reliefgrid/coordinator:dev: sha256:0f63e53e951970ba779a0aca3a34fbeb49a99349e7665f0c2585b094abb32bd7
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/hrishabh-sharrma/code/ReliefGrid-gatefix/docs/evidence/demos17-race-backlog/demo-5-app
+
+## commands
+
+# await strict storage preflight after previous workload
+$ await_app_preflight
+[exit 0, 2.4 s]
+
+# build bounded relay-only handoff drainer
+$ go build -o /tmp/tmp.3RT9P3I2Ej/drain-outbox /home/hrishabh-sharrma/code/ReliefGrid-gatefix/scripts/demos/drain-outbox
+[exit 0, 0.5 s]
+
+# public API assertions and recorded observations
+$ python3 /home/hrishabh-sharrma/code/ReliefGrid-gatefix/scripts/demos/app_demo.py 5 --out /home/hrishabh-sharrma/code/ReliefGrid-gatefix/docs/evidence/demos17-race-backlog/demo-5-app
+PASS  500 distinct request creates acknowledged against 50 seeded resources
+PASS  no resource assigned to two requests
+PASS  burst settles to 50 reciprocal matches and 450 waiting requests
+PASS  matching queue ready/unacked returns to zero within bounded quiescence
+PASS  broker observations show asynchronous work in flight
+PASS  all broker samples completed without hidden observation errors: []
+PASS  all shard outboxes drained before retry admission is paused
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 40.4 s]

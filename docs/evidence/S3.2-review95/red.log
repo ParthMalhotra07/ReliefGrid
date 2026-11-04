@@ -1,0 +1,58 @@
+=== RUN   TestReplicaReadsAgree
+=== RUN   TestReplicaReadsAgree/matcher_moved_it_past_the_strong_read
+=== RUN   TestReplicaReadsAgree/all_at_the_strong_read's_version
+=== RUN   TestReplicaReadsAgree/moved_between_replica_reads
+=== RUN   TestReplicaReadsAgree/all_behind_the_strong_read
+=== RUN   TestReplicaReadsAgree/same_version,_different_record
+=== RUN   TestReplicaReadsAgree/mixed_versions_still_reject_same-version_divergence
+    demo_races_test.go:85: replica_reads_agree = 75, want 1 (replicas at different versions: p0=2 p1=2 p2=3
+        )
+=== RUN   TestReplicaReadsAgree/only_one_replica
+    demo_races_test.go:85: replica_reads_agree = 0, want 1 (all 1 replicas hold the same record at version 2
+        )
+=== RUN   TestReplicaReadsAgree/only_two_replicas
+    demo_races_test.go:85: replica_reads_agree = 0, want 1 (all 2 replicas hold the same record at version 2
+        )
+=== RUN   TestReplicaReadsAgree/duplicate_replica
+    demo_races_test.go:85: replica_reads_agree = 0, want 1 (all 3 replicas hold the same record at version 2
+        )
+=== RUN   TestReplicaReadsAgree/served_by_another_pod
+=== RUN   TestReplicaReadsAgree/a_replica_without_it
+=== RUN   TestReplicaReadsAgree/no_port-forward
+=== RUN   TestReplicaReadsAgree/no_reads
+=== RUN   TestReplicaReadsAgree/no_strong-read_version
+--- FAIL: TestReplicaReadsAgree (0.31s)
+    --- PASS: TestReplicaReadsAgree/matcher_moved_it_past_the_strong_read (0.04s)
+    --- PASS: TestReplicaReadsAgree/all_at_the_strong_read's_version (0.01s)
+    --- PASS: TestReplicaReadsAgree/moved_between_replica_reads (0.02s)
+    --- PASS: TestReplicaReadsAgree/all_behind_the_strong_read (0.02s)
+    --- PASS: TestReplicaReadsAgree/same_version,_different_record (0.06s)
+    --- FAIL: TestReplicaReadsAgree/mixed_versions_still_reject_same-version_divergence (0.02s)
+    --- FAIL: TestReplicaReadsAgree/only_one_replica (0.02s)
+    --- FAIL: TestReplicaReadsAgree/only_two_replicas (0.02s)
+    --- FAIL: TestReplicaReadsAgree/duplicate_replica (0.02s)
+    --- PASS: TestReplicaReadsAgree/served_by_another_pod (0.01s)
+    --- PASS: TestReplicaReadsAgree/a_replica_without_it (0.01s)
+    --- PASS: TestReplicaReadsAgree/no_port-forward (0.02s)
+    --- PASS: TestReplicaReadsAgree/no_reads (0.02s)
+    --- PASS: TestReplicaReadsAgree/no_strong-read_version (0.01s)
+=== RUN   TestDumpsAgree
+=== RUN   TestDumpsAgree/identical
+=== RUN   TestDumpsAgree/moved_between_dumps
+=== RUN   TestDumpsAgree/diverged_at_one_index
+=== RUN   TestDumpsAgree/mixed_indexes_still_reject_same-index_divergence
+    demo_races_test.go:174: dumps_agree = 75, want 1 ()
+=== RUN   TestDumpsAgree/unreachable
+=== RUN   TestDumpsAgree/two_replicas
+=== RUN   TestDumpsAgree/none
+--- FAIL: TestDumpsAgree (0.09s)
+    --- PASS: TestDumpsAgree/identical (0.01s)
+    --- PASS: TestDumpsAgree/moved_between_dumps (0.01s)
+    --- PASS: TestDumpsAgree/diverged_at_one_index (0.01s)
+    --- FAIL: TestDumpsAgree/mixed_indexes_still_reject_same-index_divergence (0.01s)
+    --- PASS: TestDumpsAgree/unreachable (0.01s)
+    --- PASS: TestDumpsAgree/two_replicas (0.01s)
+    --- PASS: TestDumpsAgree/none (0.01s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.406s
+FAIL

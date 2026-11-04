@@ -1,0 +1,4 @@
+GOFLAGS=-p=1 make check passed. Original standard check hit unchanged #75:
+--- FAIL: TestRunKeepsAnUnadmittedDiskOnManagementOnly (10.03s)
+    gate_test.go:112: not opened after admission: raft false, data false; status map[]
+    gate_test.go:87: run: listen tcp 127.0.0.1:43571: bind: address already in use

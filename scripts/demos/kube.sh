@@ -113,16 +113,113 @@ all_caught_up() {
 caught_up_to() {
 	[ -n "$2" ] && jq -e --argjson want "$2" '.caughtUp == true and (.leaderCommitIndex // 0) >= $want' <<<"$1" >/dev/null 2>&1
 }
-# dumps <shard>: one line per replica, "<pod> <appliedIndex> <sha256> records=<n>"
-dumps() {
-	local p d
-	for p in $(pod_names "$1"); do
-		d="$(dump_of "$p")" || { echo "$p unreachable"; continue; }
-		jq -r --arg p "$p" '"\($p) \(.appliedIndex) \(.sha256) records=\(.rows.records)"' <<<"$d"
+# --- comparing replicas while the app writes ---------------------------------------------------
+# With the app installed, its matcher and background writes move records and Raft indexes at
+# any time, so a snapshot (a strong read, a set of dumps, a catch-up check) can be overtaken
+# before the check that uses it. The checks below tell "the app moved it" (exit 75, retried by
+# retry_on within a bound) from a real fault (exit 1, never retried).
+
+# retry_on <exit code> <seconds> <command...>: run the command (RETRY_ATTEMPT=1, 2, ...) while
+# it exits with <exit code> and the bound has not passed. Prints only the last attempt's
+# stdout and returns its status. Each retried attempt is a line in $DEMO_TMP/retried.
+retry_on() {
+	local want="$1" deadline=$((SECONDS + $2)) rc out
+	shift 2
+	out="$(mktemp "$DEMO_TMP/retry.XXXXXX")"
+	RETRY_ATTEMPT=0
+	while :; do
+		RETRY_ATTEMPT=$((RETRY_ATTEMPT + 1))
+		"$@" >"$out"
+		rc=$?
+		[ "$rc" = "$want" ] && [ "$SECONDS" -lt "$deadline" ] || break
+		echo "$1 attempt $RETRY_ATTEMPT: exit $rc" >>"$DEMO_TMP/retried"
+		sleep 0.5
 	done
+	cat "$out"
+	rm -f "$out"
+	return "$rc"
 }
-# same_dumps <shard>: the three replicas' dumps agree (appliedIndex and sha256)
-same_dumps() { [ "$(dumps "$1" | awk '{ print $2, $3 }' | sort -u | wc -l)" = 1 ] && [ "$(dumps "$1" | grep -vc unreachable)" = 3 ]; }
+
+# replica_reads_agree <min version>: stdin has one "<pod> <http code> <stale-read body>" line
+# per replica. 0 if every replica served the record from its own FSM (200, servedBy itself)
+# and all hold the same record at one version >= <min version>; 75 if they are at different
+# versions or all below <min version> (the app moved it between reads, or a replica lags);
+# 1 otherwise (an error, another pod's answer, a different record at the same version). The
+# reason goes to stdout.
+replica_reads_agree() {
+	local r
+	r="$(jq -nrR --argjson min "${1:-null}" '
+		[inputs | select(length > 0) | capture("^(?<pod>\\S+) (?<code>\\S+) ?(?<body>.*)$")
+			| .body |= (try fromjson catch null)] as $r
+		| if $min == null then "1 no strong-read version to compare with"
+		  elif ($r | length) == 0 then "1 no replica reads"
+		  elif ($r | length) != 3 or ([$r[].pod] | unique | length) != 3 then "1 expected three distinct replica reads"
+		  elif any($r[]; .code != "200" or .body.read.servedBy != .pod or .body.record == null) then
+			"1 not served by every replica from its own FSM: \([$r[] | select(.code != "200" or .body.read.servedBy != .pod or .body.record == null) | .pod] | join(", "))"
+		  elif ([$r[].body.record] | group_by(.version) | any(.[]; (map(tojson) | unique | length) > 1)) then "1 different records at the same version"
+		  elif ([$r[].body.record.version] | unique | length) > 1 then
+			"75 replicas at different versions: \([$r[] | "\(.pod)=\(.body.record.version)"] | join(" "))"
+		  elif $r[0].body.record.version < $min then "75 all replicas at version \($r[0].body.record.version), below the strong read'"'"'s \($min)"
+		  elif ([$r[].body.record | tojson] | unique | length) > 1 then "1 different records at version \($r[0].body.record.version)"
+		  else "0 all \($r | length) replicas hold the same record at version \($r[0].body.record.version)"
+		  end' 2>&1)" || { echo "unreadable reads: $r"; return 1; }
+	echo "${r#* }"
+	return "${r%% *}"
+}
+
+# not_caught_up <http code> <body file>: the replica refused a read because it is not caught
+# up with the leader commit (storagenode's 503 STORAGE_UNAVAILABLE "<pod> is not caught up: ...")
+not_caught_up() {
+	[ "$1" = 503 ] && jq -e '.code == "STORAGE_UNAVAILABLE" and (.message | test(" is not caught up: "))' "$2" >/dev/null 2>&1
+}
+# stale_get <local port> <key> <body file>: one stale read from the replica forwarded to
+# <local port>; prints the HTTP code; exit 75 if it answered "not caught up", else 0
+stale_get() {
+	local c
+	c="$(curl -s -m 5 -o "$3" -w '%{http_code}' "http://127.0.0.1:$1/internal/data/$2?consistency=stale")"
+	printf '%s\n' "$c"
+	not_caught_up "$c" "$3" && return 75
+	return 0
+}
+
+# dumps <shard>: one line per replica, "<pod> <appliedIndex> <sha256> records=<n>". The three
+# dumps run at once, so the app has less time to move one past the others.
+dumps() {
+	local p pids=()
+	for p in $(pod_names "$1"); do
+		{
+			d="$(dump_of "$p")" && jq -r --arg p "$p" '"\($p) \(.appliedIndex) \(.sha256) records=\(.rows.records)"' <<<"$d" || echo "$p unreachable"
+		} >"$DEMO_TMP/dump.$p" 2>/dev/null &
+		pids+=($!)
+	done
+	wait "${pids[@]}" # not a bare wait: the demo's port-forwards are background jobs too
+	for p in $(pod_names "$1"); do cat "$DEMO_TMP/dump.$p"; done
+}
+# dumps_agree: stdin has the three lines of dumps. 0 if all three are at one appliedIndex with
+# one sha256; 75 if they are at different appliedIndexes (the app wrote between dumps); 1 if a
+# replica is unreachable, one is missing, or they differ at the same appliedIndex.
+dumps_agree() {
+	awk '$2 == "unreachable" || NF < 3 { bad = 1 }
+        { n++; idx[$2]; sum[$2 " " $3]; if ($2 in hash && hash[$2] != $3) bad = 1; hash[$2] = $3 }
+		END {
+			if (bad || n != 3) exit 1
+			ni = 0; for (i in idx) ni++
+			ns = 0; for (s in sum) ns++
+			if (ni > 1) exit 75
+			exit ns == 1 ? 0 : 1
+		}'
+}
+# agreed_dumps <shard> <seconds>: dump the three replicas until they agree (dumps_agree),
+# retrying only while they are at different appliedIndexes, within <seconds>. The last dumps
+# are in $DEMO_TMP/dumps-<shard>; the number of retried dumps is a line in the evidence.
+agreed_dumps() {
+	local rc
+	_dumps_once() { dumps "$1" >"$DEMO_TMP/dumps-$1"; dumps_agree <"$DEMO_TMP/dumps-$1"; }
+	retry_on 75 "$2" _dumps_once "$1"
+	rc=$?
+	demo_note "dumps of shard $1: $((RETRY_ATTEMPT - 1)) retried at different appliedIndexes"
+	return "$rc"
+}
 
 # preflight: the storage deployment is there and healthy enough to demo on. Runs in this
 # shell (it sets COORD_PORT and OPTOK); sets PREFLIGHT_WHY when it does not hold.

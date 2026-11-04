@@ -1,0 +1,6 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	(cached)
+go test -race -tags chaos ./cmd/invcheck/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	3.266s

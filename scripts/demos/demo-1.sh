@@ -25,7 +25,9 @@
 #   4. The stored record: a strong read of req:<requestId> through the coordinator has the same
 #      ID, location and peopleAffected.
 #   5. Replicas: after settling, each of the shard's three replicas serves the record from its
-#      own FSM (a stale read) at the version the strong read saw.
+#      own FSM (a stale read), all three the same record at one version at or past the strong
+#      read's (the matcher may have moved it on since; reads straddling such a write are
+#      retried for DEMO1_REPLICA_SECONDS, 15).
 . "$(dirname "$0")/lib.sh"
 demo_begin 1 "Create a request, retrieve it, inspect its shard and replicas"
 
@@ -98,19 +100,33 @@ run "strong read of req:$id through the coordinator" jq . <<<"$rec"
 	fail "stored: the record matches the request" "$rcode $rec"
 
 # --- 5: every replica has it ---------------------------------------------------------------------
+# The app's matcher may move the request on (a new version) at any time after the strong read,
+# even between two replicas' reads, so each attempt reads all three and requires one record at
+# one version, at or past the strong read's; reads that straddle a matcher write are retried for
+# up to DEMO1_REPLICA_SECONDS (15). A replica that errs, or serves a different record at the
+# same version, fails at once.
 version="$(field "$rec" .record.version)"
 [[ "$s" =~ ^[0-2]$ ]] && all_caught_up "$s" 30
+declare -A port=()
 bad=""
 for pod in $(pod_names "${s:-0}"); do
-	if forward "pod/$pod" 8080; then
-		c="$(curl -s -m 5 -o "$DEMO_TMP/stale.json" -w '%{http_code}' "http://127.0.0.1:$FWD_PORT/internal/data/req:$id?consistency=stale")"
-		demo_note "$pod: $c $(jq -c '{version: .record.version, servedBy: .read.servedBy, appliedIndex: .read.appliedIndex}' "$DEMO_TMP/stale.json" 2>/dev/null)"
-		[ "$c" = 200 ] && [ "$(jq -r .record.version "$DEMO_TMP/stale.json")" = "$version" ] && [ "$(jq -r .read.servedBy "$DEMO_TMP/stale.json")" = "$pod" ] ||
-			bad+="$pod: $c $(cat "$DEMO_TMP/stale.json")"$'\n'
-	else
-		bad+="$pod: no port-forward"$'\n'
-	fi
+	forward "pod/$pod" 8080 && port[$pod]="$FWD_PORT" || bad+="$pod: no port-forward"$'\n'
 done
-[ -z "$bad" ] && pass "replicas: all three of shard ${s:-?} serve req:$id from their own FSM at version $version" ||
-	fail "replicas: every replica serves the record at the strong read's version" "$bad"
+read_replicas() {
+	local pod c
+	for pod in $(pod_names "${s:-0}"); do
+		c="$(curl -s -m 5 -o "$DEMO_TMP/stale-$pod.json" -w '%{http_code}' "http://127.0.0.1:${port[$pod]:-0}/internal/data/req:$id?consistency=stale")"
+		echo "$pod $c $(jq -c . "$DEMO_TMP/stale-$pod.json" 2>/dev/null)"
+	done >"$DEMO_TMP/replicas"
+	replica_reads_agree "$version" <"$DEMO_TMP/replicas"
+}
+if [ -z "$bad" ]; then
+	why="$(retry_on 75 "${DEMO1_REPLICA_SECONDS:-15}" read_replicas)" && agree=1 || agree=""
+	retried="$(cat "$DEMO_TMP/retried" 2>/dev/null | grep -c '^read_replicas ')"
+	demo_show "stale reads of req:$id on each replica (attempts retried: $retried; last: $why)" \
+		"$(while read -r pod c body; do echo "$pod: $c $(jq -c '{version: .record.version, status: .record.request.status, servedBy: .read.servedBy, appliedIndex: .read.appliedIndex}' <<<"$body" 2>/dev/null)"; done <"$DEMO_TMP/replicas")"
+	[ -n "$agree" ] || bad="$why"$'\n'"$(cat "$DEMO_TMP/replicas")"
+fi
+[ -z "$bad" ] && pass "replicas: shard ${s:-?}'s replicas serve req:$id from their own FSM: $why (strong read: $version)" ||
+	fail "replicas: every replica serves the same record at or past the strong read's version" "$bad"
 demo_end
