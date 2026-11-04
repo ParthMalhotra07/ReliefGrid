@@ -3,6 +3,7 @@ package coordinator_test
 import (
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,6 +73,13 @@ func TestEveryAnswerFromAnotherShardIsNoLeader(t *testing.T) {
 // identity, may come from a replica of this shard that proposed it: a
 // mutation that gets no verified answer is OUTCOME_UNKNOWN; a read is a
 // failed attempt (NO_LEADER).
+//
+// The other members answer as another shard (never proposed), so the call
+// ends once each address has been dialled once, not at the budget: an
+// attempt the deadline cuts off after it was sent is unknown on its own
+// (TestSentAttemptTheLeaderNeverRanIsUnknown), which would let this test
+// pass without the leader's answer, or fail if the leader's server had not
+// run the request yet (issue #91).
 func TestUnverifiedAnswerIsUnknownForMutations(t *testing.T) {
 	h0 := newHarness(t, nil)
 	cases := map[string]*identity{
@@ -87,11 +95,11 @@ func TestUnverifiedAnswerIsUnknownForMutations(t *testing.T) {
 		for _, r := range routedCalls(t, h0, 1) {
 			t.Run(name+"/"+r.name, func(t *testing.T) {
 				t.Parallel()
-				h := newHarness(t, func(c *coordinator.Config) { c.Budget = 200 * time.Millisecond })
+				h := newHarness(t, nil)
 				h.ready()
 				h.nodes[1][0].setClaim(claim)
-				for _, n := range h.nodes[1][1:] {
-					n.setHandler(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false))
+				for i, n := range h.nodes[1][1:] {
+					n.setClaim(&identity{serverID: h.nodes[2][i+1].serverID(), shard: "2"})
 				}
 				want := internalapi.NOLEADER
 				if r.mutate {
@@ -102,8 +110,13 @@ func TestUnverifiedAnswerIsUnknownForMutations(t *testing.T) {
 				if e.OutcomeUnknown != r.mutate {
 					t.Fatalf("error = %+v, want outcomeUnknown=%v", e, r.mutate)
 				}
-				if len(h.nodes[1][0].requests()) == 0 {
-					t.Fatalf("the leader's address was never tried")
+				if !strings.Contains(e.Message, "answered as another server") {
+					t.Fatalf("message = %q; want the call to end once every member answered, not at the budget", e.Message)
+				}
+				for _, n := range h.nodes[1] {
+					if got := len(n.requests()); got != 1 {
+						t.Fatalf("%s dialled %d times, want once", n.pod, got)
+					}
 				}
 			})
 		}
