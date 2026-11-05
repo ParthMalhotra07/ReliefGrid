@@ -32,10 +32,32 @@ strongReadFence: fence
 # Deadline on every Apply and read inside a storage node.
 requestTimeoutMs: 3000
 
+# Cloud profiles (S5.1, values-gke.yaml): fail the render unless image.digest and
+# coordinator.image.digest are set. Off on kind, where images are only kind-loaded by tag.
+requireDigests: false
+
 # Raft log, stable store and snapshots only (M3); the SQLite FSM is an emptyDir.
 persistence:
   storageClassName: standard
   size: 1Gi
+
+# A StorageClass named persistence.storageClassName, made by this chart. Off on kind, which
+# has its own "standard"; values-gke.yaml turns it on (pd-balanced, reclaim Delete, so a
+# helm uninstall plus PVC deletion leaves no disk billing). Cluster-scoped: one release per
+# cluster may create it.
+storageClass:
+  create: false
+  provisioner: ""
+  parameters: {}
+  reclaimPolicy: Delete
+  volumeBindingMode: WaitForFirstConsumer
+  allowVolumeExpansion: true
+
+# sizeLimit of the fsm (derived SQLite FSM) and tmp emptyDirs; empty = no limit (kind). On a
+# cloud node they share the boot disk with images, so the kubelet evicts a pod that exceeds them.
+emptyDir:
+  fsmSizeLimit: ""
+  tmpSizeLimit: ""
 
 # v3.1 §23: storage x9.
 resources:

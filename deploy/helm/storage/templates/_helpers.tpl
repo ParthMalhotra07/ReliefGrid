@@ -55,8 +55,12 @@ spec and never resets an existing one; the chart renders no manifest itself.
 {{- toJson $specs -}}
 {{- end }}
 
-{{/* By digest when image.digest is set (pinned deployments); by tag on kind. */}}
+{{/* By digest when image.digest is set (pinned deployments); by tag on kind. With
+requireDigests (cloud profiles, S5.1) a missing digest fails the render: no deploy by tag. */}}
 {{- define "storage.image" -}}
+{{- if and .Values.requireDigests (not .Values.image.digest) -}}
+{{- fail "requireDigests: set image.digest (sha256:...) for the storage node image" -}}
+{{- end -}}
 {{- if .Values.image.digest -}}
 {{ .Values.image.repository }}@{{ .Values.image.digest }}
 {{- else -}}
@@ -65,6 +69,9 @@ spec and never resets an existing one; the chart renders no manifest itself.
 {{- end }}
 
 {{- define "storage.coordinatorImage" -}}
+{{- if and .Values.requireDigests (not .Values.coordinator.image.digest) -}}
+{{- fail "requireDigests: set coordinator.image.digest (sha256:...) for the coordinator image" -}}
+{{- end -}}
 {{- with .Values.coordinator.image -}}
 {{- if .digest -}}
 {{ .repository }}@{{ .digest }}

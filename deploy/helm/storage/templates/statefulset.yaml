@@ -136,9 +136,19 @@ spec:
               readOnly: true
       volumes:
         - name: fsm
+          {{- if $.Values.emptyDir.fsmSizeLimit }}
+          emptyDir:
+            sizeLimit: {{ $.Values.emptyDir.fsmSizeLimit }}
+          {{- else }}
           emptyDir: {}
+          {{- end }}
         - name: tmp
+          {{- if $.Values.emptyDir.tmpSizeLimit }}
+          emptyDir:
+            sizeLimit: {{ $.Values.emptyDir.tmpSizeLimit }}
+          {{- else }}
           emptyDir: {}
+          {{- end }}
         - name: ring
           configMap:
             name: storage-ring

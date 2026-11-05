@@ -1,0 +1,21 @@
+{{- if .Values.storageClass.create }}
+{{- if not .Values.storageClass.provisioner }}
+{{- fail "storageClass.create needs storageClass.provisioner" }}
+{{- end }}
+# S5.1: the class of the Raft PVCs on a cloud cluster (values-gke.yaml).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.persistence.storageClassName }}
+  labels:
+    app.kubernetes.io/name: storage
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+provisioner: {{ .Values.storageClass.provisioner }}
+{{- with .Values.storageClass.parameters }}
+parameters:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
+volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
+{{- end }}

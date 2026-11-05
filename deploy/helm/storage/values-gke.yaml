@@ -1,0 +1,44 @@
+# GKE profile of the storage chart (S5.1): the same chart as kind, with only the cloud
+# deltas (plan §31): storage class and size, ephemeral limits, image references, pull policy.
+# The image repositories and digests are not here: scripts/gke-deploy.sh passes them from
+# Terraform's registry output and CI's image-digests.json, and requireDigests fails the render
+# if one is missing. The operator token is passed with --set-file from outside the repository.
+
+requireDigests: true
+
+image:
+  pullPolicy: IfNotPresent
+coordinator:
+  image:
+    pullPolicy: IfNotPresent
+
+persistence:
+  storageClassName: reliefgrid-pd
+  # The pd-balanced minimum; a smaller request is billed as 10 GB anyway.
+  size: 10Gi
+
+# WaitForFirstConsumer: the disk is made in the zone of the node the pod is scheduled to.
+# Delete: no disk outlives its PVC (gke-teardown.sh waits for the PVCs to go).
+storageClass:
+  create: true
+  provisioner: pd.csi.storage.gke.io
+  parameters:
+    type: pd-balanced
+  reclaimPolicy: Delete
+  volumeBindingMode: WaitForFirstConsumer
+  allowVolumeExpansion: true
+
+# On the node's 30 GB boot disk, shared with images: bounded, so eviction is predictable.
+emptyDir:
+  fsmSizeLimit: 2Gi
+  tmpSizeLimit: 512Mi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+    ephemeral-storage: 1Gi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+    ephemeral-storage: 3Gi
