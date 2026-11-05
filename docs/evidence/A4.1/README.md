@@ -80,3 +80,9 @@ proxy that injects the credential server-side. Shard availability reflects the
 last complete reads, not pod readiness. Queue counts cover matching requests and
 dead letters, not the full A4.2 metric suite. Native offline support requires a
 secure context (localhost works). Browser CI wiring remains with S in #111.
+
+## Integration after #100 merged
+
+Rebased onto main dd1ea8e (merged #100). Full make check, make gen-check and
+make verify-A4.1 pass again; see after-100-*.txt. Goal source hashes are unchanged.
+The earlier live-kind run remains the recorded run on the stated image IDs.

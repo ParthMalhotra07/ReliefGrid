@@ -1,0 +1,62 @@
+bash scripts/verify-A4.1.sh
+
+added 10 packages in 967ms
+
+> reliefgrid-dispatch@0.1.0 format:check
+> prettier --check src e2e build.mjs playwright.config.js
+
+Checking formatting...
+All matched files use Prettier code style!
+
+> reliefgrid-dispatch@0.1.0 build
+> node build.mjs
+
+Built offline dispatch assets: c4fa6385e0e75e3d
+
+> reliefgrid-dispatch@0.1.0 test
+> node --test src/*.test.js
+
+✔ at-least-once events are deduplicated with bounded memory (0.885093ms)
+✔ missing or partial shard observations never become an empty list (0.459471ms)
+✔ cancelling stays cancelling until a newer authoritative record is observed (0.841143ms)
+✔ an assignment line requires the current reciprocal claim (0.2223ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 58.142172
+
+> reliefgrid-dispatch@0.1.0 test:browser
+> playwright test
+
+
+Running 9 tests using 1 worker
+
+  ✓  1 e2e/dispatch.spec.js:6:1 › dispatch shows authoritative state, assignments, filters and telemetry (609ms)
+  ✓  2 e2e/dispatch.spec.js:47:1 › events trigger authoritative refresh and reconnect recovers a missed update (568ms)
+  ✓  3 e2e/dispatch.spec.js:69:1 › saved list survives disconnected navigation and reconnect refreshes it (551ms)
+  ✓  4 e2e/dispatch.spec.js:101:1 › failed authoritative scan preserves the saved view and marks it stale (459ms)
+  ✓  5 e2e/dispatch.spec.js:116:1 › mobile layout retains the list, map and telemetry without horizontal overflow (619ms)
+  ✓  6 e2e/dispatch.spec.js:139:1 › an offline shell without a saved snapshot reports unknown data (546ms)
+  ✓  7 e2e/dispatch.spec.js:166:1 › duplicate events do not refetch and hints never replace authoritative state (460ms)
+  ✓  8 e2e/dispatch.spec.js:229:1 › cancel uses only the public status endpoint and waits for committed cleanup (534ms)
+  ✓  9 e2e/dispatch.spec.js:265:1 › an unknown write outcome remains visible after a successful reread (442ms)
+
+  9 passed (6.1s)
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	0.020s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.455s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	25.057s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.160s
+=== RUN   TestProjectionCannotMaskMissingDurableWorkQueue
+--- PASS: TestProjectionCannotMaskMissingDurableWorkQueue (0.81s)
+=== RUN   TestProjectionFansOutWithoutConsumingWorkflowDelivery
+    projection_integration_test.go:134: two API copies observed; original work delivery retained
+--- PASS: TestProjectionFansOutWithoutConsumingWorkflowDelivery (0.42s)
+=== RUN   TestProjectionCancellationDuringUnavailableBrokerIsBounded
+--- PASS: TestProjectionCancellationDuringUnavailableBrokerIsBounded (0.00s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	2.279s
+A4.1 VERIFY: ALL PASS
