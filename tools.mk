@@ -11,14 +11,20 @@ HELM_VERSION          := v3.22.1
 OAPI_CODEGEN_VERSION  := v2.8.0
 # Python openapi-spec-validator: verify-A0.1 validates contracts/public.yaml with it.
 OPENAPI_SPEC_VALIDATOR_VERSION := 0.9.0
+# Terraform for infra/gcp (S5.1): fmt and validate in CI, plan/apply by hand only.
+TERRAFORM_VERSION     := 1.17.1
+# crane for CI's copy of each image by digest into a GKE session's Artifact Registry
+# (S5.1). Installed with go install, so the Go checksum database verifies it.
+CRANE_VERSION         := v0.22.1
 
 # sha256 of the linux/amd64 downloads CI installs (scripts/ci-tools.sh): the kind
 # binary, the kubectl binary and the helm tarball. CI checks each download
 # against these, never against a checksum fetched from the same server. Change
-# them together with the version above.
+# them together with the version above. TERRAFORM_SHA256 is the linux_amd64 zip.
 KIND_SHA256           := aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d
 KUBECTL_SHA256        := 65691ff77eb6fa44c908b77a1082c9f092c3b9733b5cefabec0d1104890e21a8
 HELM_SHA256           := 896cf63684a42a723d61c980369d6e588330927deb13676ca0d85006dd6da0ea
+TERRAFORM_SHA256      := 4638628058e71a55212b1c563712eac03b902128f40740f3dc8174df12135061
 
 # The kindest/node image kind $(KIND_VERSION) was released with, pinned by digest
 # as kind's release notes require. Change it together with KIND_VERSION.
