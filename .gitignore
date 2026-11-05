@@ -28,3 +28,6 @@ ui/dist/
 .vscode/
 *.swp
 .DS_Store
+
+ui/test-results/
+ui/playwright-report/

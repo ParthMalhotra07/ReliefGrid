@@ -1,0 +1,11 @@
+Before UI implementation, production Go-served placeholder:
+  ✘  1 e2e/dispatch.spec.js:4:1 › dispatch shows authoritative state, assignments, filters and telemetry (5.2s)
+  1) e2e/dispatch.spec.js:4:1 › dispatch shows authoritative state, assignments, filters and telemetry
+    Error: expect(locator).toBeVisible() failed
+    Locator: getByRole('heading', { name: 'Dispatch overview' })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+      4 | test('dispatch shows authoritative state, assignments, filters and telemetry',async({page})=>{
+  1 failed
+    e2e/dispatch.spec.js:4:1 › dispatch shows authoritative state, assignments, filters and telemetry

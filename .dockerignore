@@ -14,3 +14,7 @@
 **/*_test.go
 **/AGENTS.md
 **/CLAUDE.md
+
+ui/node_modules/
+ui/test-results/
+ui/playwright-report/

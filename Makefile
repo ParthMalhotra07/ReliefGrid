@@ -298,3 +298,10 @@ verify-A3.1: ## Clean deployment and app demos 2/3/5/8/9, twice (scoped kind res
 .PHONY: verify-A3.2
 verify-A3.2: ## Verify API readiness propagation and both consumer supervisor drains
 	bash scripts/verify-A3.2.sh
+
+.PHONY: ui-build verify-A4.1
+ui-build: ## Rebuild the pinned offline React/Leaflet assets (Node version in tools.mk)
+	cd ui && npm ci --ignore-scripts --no-audit --no-fund && npm run build
+
+verify-A4.1: ## Real-browser offline/reconnect UI checks and isolated live-broker projection safety
+	bash scripts/verify-A4.1.sh

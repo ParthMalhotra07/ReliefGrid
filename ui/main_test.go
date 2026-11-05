@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestPlaceholderRoutesDoNotExposeInternalOrAPIFallbacks(t *testing.T) {
+func TestDispatchRoutesDoNotExposeInternalOrAPIFallbacks(t *testing.T) {
 	for _, tc := range []struct {
 		path   string
 		status int
@@ -18,7 +18,7 @@ func TestPlaceholderRoutesDoNotExposeInternalOrAPIFallbacks(t *testing.T) {
 			t.Errorf("%s: status=%d want=%d", tc.path, w.Code, tc.status)
 		}
 		if tc.path == "/" && (!strings.Contains(w.Body.String(), "ReliefGrid") || w.Header().Get("Content-Security-Policy") == "") {
-			t.Fatal("placeholder content or security policy missing")
+			t.Fatal("UI content or security policy missing")
 		}
 	}
 }
