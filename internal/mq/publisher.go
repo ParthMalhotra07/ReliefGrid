@@ -22,10 +22,13 @@ var (
 // the ordered basic.return/confirm pair unambiguous. Unknown outcomes close the
 // transport; callers reconnect and retain the original durable outbox row.
 type ConfirmedPublisher struct {
-	conn    *amqp.Connection
-	channel *amqp.Channel
-	returns <-chan amqp.Return
-	permit  chan struct{}
+	conn             *amqp.Connection
+	channel          *amqp.Channel
+	returns          <-chan amqp.Return
+	permit           chan struct{}
+	projections      chan amqp.Publishing
+	projectionCancel context.CancelFunc
+	projectionDone   chan struct{}
 }
 
 // NewPublisher opens a publisher owned by the lifetime of ctx. Setup is bounded
@@ -40,6 +43,7 @@ func NewPublisher(ctx context.Context, address string) (*ConfirmedPublisher, err
 		_ = p.Close()
 		return nil, err
 	}
+	p.startProjections(ctx, address)
 	return p, nil
 }
 
@@ -112,6 +116,7 @@ func (p *ConfirmedPublisher) Publish(ctx context.Context, e store.OutboxEvent) e
 	if !ack {
 		return fmt.Errorf("%w: event=%s", ErrNack, e.EventID)
 	}
+	p.offerProjection(ctx, e)
 	return nil
 }
 
@@ -135,7 +140,13 @@ func publishing(ctx context.Context, e store.OutboxEvent) (amqp.Publishing, erro
 	return msg, nil
 }
 
-func (p *ConfirmedPublisher) Close() error { return p.conn.CloseDeadline(time.Now().Add(callTimeout)) }
+func (p *ConfirmedPublisher) Close() error {
+	if p.projectionCancel != nil {
+		p.projectionCancel()
+		<-p.projectionDone
+	}
+	return p.conn.CloseDeadline(time.Now().Add(callTimeout))
+}
 
 // EventPriority preserves the public string urgency and internal retry integer
 // urgency on the wire. Events without urgency use explicit NORMAL (1).

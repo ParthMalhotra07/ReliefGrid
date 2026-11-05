@@ -4,7 +4,6 @@ package api
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,7 +30,9 @@ type Config struct {
 	Budget            time.Duration
 	CallTimeout       time.Duration
 	HeartbeatInterval time.Duration
-	StreamToken       string // optional protection of the SSE stub
+	StreamToken       string // optional protection of the SSE projection
+	Events            *EventHub
+	StreamContext     context.Context // ends streams during API shutdown
 }
 
 type Server struct {
@@ -58,6 +59,12 @@ func New(cfg Config) (*Server, error) {
 	}
 	if cfg.Budget <= 0 || cfg.CallTimeout <= 0 || cfg.CallTimeout > cfg.Budget || cfg.HeartbeatInterval <= 0 {
 		return nil, fmt.Errorf("api: invalid request, call or heartbeat budget")
+	}
+	if cfg.Events == nil {
+		cfg.Events = NewEventHub()
+	}
+	if cfg.StreamContext == nil {
+		cfg.StreamContext = context.Background()
 	}
 	m, err := workflow.New(workflow.Config{
 		Store: cfg.Store, Now: cfg.Now, ScanLimit: store.MaxScanLimit,
@@ -243,41 +250,5 @@ func writeJSON(w http.ResponseWriter, status int, value any) {
 	w.WriteHeader(status)
 	if _, err := w.Write(append(body, '\n')); err != nil {
 		slog.Debug("client response interrupted", "error", err)
-	}
-}
-
-func (s *Server) events(w http.ResponseWriter, r *http.Request) error {
-	if s.cfg.StreamToken != "" {
-		bearer, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if !ok || bearer == "" {
-			return issue(401, "UNAUTHORIZED", "stream credentials required")
-		}
-		if subtle.ConstantTimeCompare([]byte(bearer), []byte(s.cfg.StreamToken)) != 1 {
-			return issue(403, "FORBIDDEN", "stream access denied")
-		}
-	}
-	controller := http.NewResponseController(w)
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("X-Accel-Buffering", "no")
-	ticker := time.NewTicker(s.cfg.HeartbeatInterval)
-	defer ticker.Stop()
-	for {
-		if err := controller.SetWriteDeadline(time.Now().Add(s.cfg.Budget)); err != nil {
-			return fmt.Errorf("SSE write deadline: %w", err)
-		}
-		if _, err := fmt.Fprint(w, ": heartbeat\n\n"); err != nil {
-			slog.DebugContext(r.Context(), "SSE client interrupted", "error", err)
-			return nil
-		}
-		if err := controller.Flush(); err != nil {
-			slog.DebugContext(r.Context(), "SSE flush interrupted", "error", err)
-			return nil
-		}
-		select {
-		case <-r.Context().Done():
-			return nil
-		case <-ticker.C:
-		}
 	}
 }
