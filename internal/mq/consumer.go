@@ -9,6 +9,7 @@ import (
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Consumer treats delivery data as a hint. Handle MUST return nil only after
@@ -23,6 +24,8 @@ type Consumer struct {
 	Retry       func(context.Context, amqp.Delivery) error
 	CallTimeout time.Duration
 	WorkTimeout time.Duration
+	// TracerProvider records consumer spans (S4.4); nil uses the global one.
+	TracerProvider trace.TracerProvider
 }
 
 func (c Consumer) validate() error {
@@ -53,7 +56,7 @@ func (c Consumer) timeouts() (time.Duration, time.Duration) {
 // A valid event's failed read/handler may hand off the same hint through Retry.
 // Without a successful confirmed handoff it stays unacknowledged: stop the
 // channel and back off before reconnecting, never nack-loop it.
-func (c Consumer) Process(ctx context.Context, d amqp.Delivery) error {
+func (c Consumer) Process(ctx context.Context, d amqp.Delivery) (err error) {
 	if err := c.validate(); err != nil {
 		return err
 	}
@@ -63,6 +66,8 @@ func (c Consumer) Process(ctx context.Context, d amqp.Delivery) error {
 	call, work := c.timeouts()
 	ctx, cancel := context.WithTimeout(ctx, work)
 	defer cancel()
+	ctx, span := startConsume(ctx, c.TracerProvider, MatchingQueue, d)
+	defer func() { endSpan(span, err) }()
 	if err := ctx.Err(); err != nil {
 		return err
 	}

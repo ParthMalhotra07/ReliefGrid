@@ -4,6 +4,7 @@ package outbox
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +15,11 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/mq"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 )
 
 type Publisher interface {
@@ -25,6 +31,8 @@ type Config struct {
 	Store            store.Store
 	PublisherFactory func(context.Context) (Publisher, error)
 	BatchSize        int
+	// TracerProvider records producer spans (S4.4); nil uses the global one.
+	TracerProvider trace.TracerProvider
 }
 
 type Relay struct {
@@ -35,6 +43,10 @@ type Relay struct {
 type shardState struct {
 	permit chan struct{}
 	mark   *store.MarkOutboxPublished
+	// failed holds rows whose publish failed in this process: their next
+	// publish is a retry, a span linked to the stored trace (S4.4). After a
+	// restart a row's first publish continues that trace again.
+	failed map[string]struct{}
 }
 
 type Report struct{ Read, Published, Marked int }
@@ -54,6 +66,7 @@ func New(config Config) (*Relay, error) {
 	r := &Relay{config: config, shards: make([]shardState, config.Store.Shards())}
 	for i := range r.shards {
 		r.shards[i].permit = make(chan struct{}, 1)
+		r.shards[i].failed = map[string]struct{}{}
 	}
 	return r, nil
 }
@@ -95,10 +108,17 @@ func (r *Relay) Step(ctx context.Context, shard int, p Publisher) (Report, error
 	report.Read = len(rows)
 	var confirmed []store.OutboxEvent
 	var publishErr error
+	pending := make(map[string]struct{}, len(rows))
 	for _, event := range rows {
-		publishCtx, publishCancel := context.WithTimeout(ctx, 5*time.Second)
-		err := p.Publish(publishCtx, event)
-		publishCancel()
+		pending[event.EventID] = struct{}{}
+	}
+	for id := range s.failed {
+		if _, ok := pending[id]; !ok {
+			delete(s.failed, id) // published or gone: forget it
+		}
+	}
+	for _, event := range rows {
+		err := r.publish(ctx, s, p, event)
 		if err != nil {
 			publishErr = errors.Join(publishErr, fmt.Errorf("event %s: %w", event.EventID, err))
 			if errors.Is(err, mq.ErrUnroutable) || errors.Is(err, mq.ErrNack) || errors.Is(err, mq.ErrInvalidEvent) {
@@ -117,6 +137,40 @@ func (r *Relay) Step(ctx context.Context, shard int, p Publisher) (Report, error
 		return report, errors.Join(publishErr, err)
 	}
 	return report, publishErr
+}
+
+// publish sends one row under its producer span: the first attempt
+// continues the trace stored in the row's envelope, a retry is linked to it.
+// The publisher injects the span's context into the message.
+func (r *Relay) publish(ctx context.Context, s *shardState, p Publisher, event store.OutboxEvent) error {
+	_, retry := s.failed[event.EventID]
+	ctx, span := obs.StartPublish(ctx, storedTraceparent(event.Payload), retry, obs.WithTracerProvider(r.config.TracerProvider),
+		obs.WithAttributes(attribute.String("messaging.system", "rabbitmq"),
+			attribute.String("messaging.destination.name", event.Exchange),
+			attribute.String("messaging.rabbitmq.destination.routing_key", event.RoutingKey),
+			attribute.String("messaging.message.id", event.EventID)))
+	defer span.End()
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	err := p.Publish(ctx, event)
+	if err != nil {
+		s.failed[event.EventID] = struct{}{}
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
+	delete(s.failed, event.EventID)
+	return nil
+}
+
+// storedTraceparent is the envelope's top-level traceparent; "" if the
+// payload has none (the publisher rejects such a row as invalid).
+func storedTraceparent(payload []byte) string {
+	var env struct {
+		Traceparent string `json:"traceparent"`
+	}
+	_ = json.Unmarshal(payload, &env)
+	return env.Traceparent
 }
 
 // markCommand depends only on the owning shard and immutable confirmed rows.

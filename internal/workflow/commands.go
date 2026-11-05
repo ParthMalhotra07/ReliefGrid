@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -99,7 +101,7 @@ type eventEnvelope struct {
 	Payload       json.RawMessage `json:"payload"`
 }
 
-func events(rec store.Record, cmd store.TransitionRequest, eventType string, a *store.Attempt) ([]store.OutboxEvent, error) {
+func events(ctx context.Context, rec store.Record, cmd store.TransitionRequest, eventType string, a *store.Attempt) ([]store.OutboxEvent, error) {
 	var payload any
 	if a != nil {
 		payload = struct {
@@ -121,11 +123,10 @@ func events(rec store.Record, cmd store.TransitionRequest, eventType string, a *
 		return nil, fmt.Errorf("workflow event payload: %w", err)
 	}
 	eventID := operationID("event", cmd.OperationID, eventType)
-	trace := sha256.Sum256([]byte(cmd.OperationID))
 	encoded, err := json.Marshal(eventEnvelope{
 		SchemaVersion: 1, EventID: eventID, EntityID: rec.Request.ID, EntityVersion: rec.Version + 1,
 		EventType: eventType, OccurredAt: time.UnixMilli(cmd.At).UTC().Format(time.RFC3339Nano),
-		Traceparent: fmt.Sprintf("00-%x-%x-00", trace[:16], trace[16:24]), Payload: body,
+		Traceparent: obs.Traceparent(ctx, cmd.OperationID), Payload: body,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("workflow event envelope: %w", err)

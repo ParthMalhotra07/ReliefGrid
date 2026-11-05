@@ -1,0 +1,6 @@
+# Overlay: tracing on for the API and matcher (S4.4). Applied by
+# `make tracing-up` to the app release, after it installs deploy/helm/tracing;
+# pass --set-string app.tracing.samplerArg=0.1 under load (TRACING_SAMPLE=0.1).
+app:
+  tracing:
+    enabled: true

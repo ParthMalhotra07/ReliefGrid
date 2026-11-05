@@ -98,7 +98,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	s.mux.ServeHTTP(w, r.WithContext(ctx))
+	inner := r.WithContext(ctx)
+	s.mux.ServeHTTP(w, inner)
+	// Report the matched route to a wrapping obs.Handler, which names its
+	// span by r.Pattern (never the raw path); the mux set it on our copy.
+	r.Pattern = inner.Pattern
 }
 
 type problem struct {

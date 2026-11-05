@@ -21,6 +21,7 @@ import (
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/api"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -102,7 +103,10 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 	}
 	state := &apiHealth{}
 	mux := http.NewServeMux()
-	mux.Handle("/", h)
+	// Only the public API is traced (S4.4): probes would fill Jaeger. The
+	// span continues the caller's traceparent; with tracing off the no-op
+	// span still carries it, so events keep an incoming traceparent.
+	mux.Handle("/", obs.Handler(h))
 	mux.Handle("GET /healthz", state.handler())
 	mux.Handle("GET /readyz", state.handler())
 	// Diagnostic response metadata lets the scaling demo observe Service routing.
@@ -163,10 +167,29 @@ func main() {
 	defer stop()
 	cfg, err := loadConfig(os.Getenv)
 	if err == nil {
-		err = run(ctx, cfg, nil, nil)
+		err = withTracing(ctx, "api", func() error { return run(ctx, cfg, nil, nil) })
 	}
 	if err != nil {
 		slog.Error("API stopped", "error", err)
 		os.Exit(1)
 	}
+}
+
+// withTracing runs fn with tracing set up from the standard OTEL_*
+// variables (S4.4): with no OTLP endpoint only the W3C propagator, so
+// traceparent still flows. Spans are flushed when fn returns.
+func withTracing(ctx context.Context, service string, fn func() error) error {
+	enabled := obs.EnabledFromEnv()
+	shutdown, err := obs.Init(ctx, obs.Config{ServiceName: service, Enabled: enabled})
+	if err != nil {
+		return err
+	}
+	slog.Info("tracing", "enabled", enabled)
+	err = fn()
+	flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if serr := shutdown(flushCtx); serr != nil {
+		slog.Warn("flushing traces", "err", serr)
+	}
+	return err
 }

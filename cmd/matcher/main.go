@@ -15,6 +15,7 @@ import (
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/mq"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/outbox"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/reconcile"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -31,7 +32,10 @@ func main() {
 	if address == "" {
 		address = ":8081"
 	}
-	if err := run(ctx, os.Getenv("COORDINATOR_URL"), os.Getenv("AMQP_URL"), address); err != nil && ctx.Err() == nil {
+	err := withTracing(ctx, "matcher", func() error {
+		return run(ctx, os.Getenv("COORDINATOR_URL"), os.Getenv("AMQP_URL"), address)
+	})
+	if err != nil && ctx.Err() == nil {
 		slog.Error("matcher stopped", "error", err)
 		os.Exit(1)
 	}
@@ -139,4 +143,24 @@ func superviseConsumer(ctx context.Context, address, queue string, consumeRun fu
 		backoff = min(2*backoff, 5*time.Second)
 	}
 	return ctx.Err()
+}
+
+// withTracing runs fn with tracing set up from the standard OTEL_*
+// variables (S4.4): with no OTLP endpoint only the W3C propagator, so
+// traceparent still flows through the relay and consumers. Spans are
+// flushed when fn returns.
+func withTracing(ctx context.Context, service string, fn func() error) error {
+	enabled := obs.EnabledFromEnv()
+	shutdown, err := obs.Init(ctx, obs.Config{ServiceName: service, Enabled: enabled})
+	if err != nil {
+		return err
+	}
+	slog.Info("tracing", "enabled", enabled)
+	err = fn()
+	flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if serr := shutdown(flushCtx); serr != nil {
+		slog.Warn("flushing traces", "err", serr)
+	}
+	return err
 }

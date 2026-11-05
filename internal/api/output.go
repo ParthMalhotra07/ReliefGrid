@@ -1,16 +1,16 @@
 package api
 
 import (
-	"crypto/sha256"
+	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/api/gen"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
@@ -130,13 +130,11 @@ type eventEnvelope struct {
 	Payload       any    `json:"payload"`
 }
 
-var tracePattern = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
-
-func event(eventType, id string, version uint64, meta store.Meta, trace string, payload any) (store.OutboxEvent, error) {
-	if !tracePattern.MatchString(trace) || strings.Contains(trace, "-00000000000000000000000000000000-") || strings.Contains(trace, "-0000000000000000-") {
-		digest := sha256.Sum256([]byte(meta.OperationID))
-		trace = fmt.Sprintf("00-%x-%x-00", digest[:16], digest[16:24])
-	}
+// event is the outbox row for one committed change. Its traceparent is the
+// request's span (obs.Handler continues the caller's trace, S4.4); with no
+// span or remote parent in ctx it is derived from the operationId, as before.
+func event(ctx context.Context, eventType, id string, version uint64, meta store.Meta, payload any) (store.OutboxEvent, error) {
+	trace := obs.Traceparent(ctx, meta.OperationID)
 	eventID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("reliefgrid/api/event/"+meta.OperationID+"/"+eventType)).String()
 	body, err := json.Marshal(eventEnvelope{
 		SchemaVersion: 1, EventID: eventID, EntityID: id, EntityVersion: version,

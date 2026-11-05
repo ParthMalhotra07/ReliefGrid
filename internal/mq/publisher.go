@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -77,16 +78,13 @@ func (p *ConfirmedPublisher) Publish(ctx context.Context, e store.OutboxEvent) e
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	priority, err := EventPriority(e.Payload)
+	msg, err := publishing(ctx, e)
 	if err != nil {
 		return err
 	}
 	stop := closeOnCancel(ctx, p.conn)
 	defer stop()
-	confirmation, err := p.channel.PublishWithDeferredConfirmWithContext(ctx, e.Exchange, e.RoutingKey, true, false, amqp.Publishing{
-		DeliveryMode: amqp.Persistent, ContentType: "application/json", MessageId: e.EventID,
-		Type: e.EventType, Priority: priority, Body: e.Payload,
-	})
+	confirmation, err := p.channel.PublishWithDeferredConfirmWithContext(ctx, e.Exchange, e.RoutingKey, true, false, msg)
 	if err != nil {
 		_ = p.Close()
 		return fmt.Errorf("publish %s: %w", e.EventID, err)
@@ -115,6 +113,26 @@ func (p *ConfirmedPublisher) Publish(ctx context.Context, e store.OutboxEvent) e
 		return fmt.Errorf("%w: event=%s", ErrNack, e.EventID)
 	}
 	return nil
+}
+
+// publishing is the persistent AMQP message for e. It carries ctx's trace
+// context (the relay's producer span, or a consumer's span for a transport
+// retry) as a traceparent header (S4.4); with none, it has no headers.
+func publishing(ctx context.Context, e store.OutboxEvent) (amqp.Publishing, error) {
+	priority, err := EventPriority(e.Payload)
+	if err != nil {
+		return amqp.Publishing{}, err
+	}
+	msg := amqp.Publishing{
+		DeliveryMode: amqp.Persistent, ContentType: "application/json", MessageId: e.EventID,
+		Type: e.EventType, Priority: priority, Body: e.Payload,
+	}
+	headers := amqp.Table{}
+	obs.InjectAMQP(ctx, headers)
+	if len(headers) != 0 {
+		msg.Headers = headers
+	}
+	return msg, nil
 }
 
 func (p *ConfirmedPublisher) Close() error { return p.conn.CloseDeadline(time.Now().Add(callTimeout)) }

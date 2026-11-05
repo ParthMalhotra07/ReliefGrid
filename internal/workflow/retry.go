@@ -101,7 +101,7 @@ func (m *Matcher) ScheduleRetry(ctx context.Context, requestID string, cause err
 	if rec.Request.NextAttemptAt > at {
 		return Result{Outcome: "DEFERRED", NextAttemptAt: rec.Request.NextAttemptAt}, nil
 	}
-	cmd, err := retryCommand(rec, at, retryReason(cause))
+	cmd, err := retryCommand(ctx, rec, at, retryReason(cause))
 	if err != nil {
 		return Result{}, err
 	}
@@ -155,7 +155,7 @@ func (m *Matcher) abandon(ctx context.Context, rec store.Record) (Result, error)
 	}
 	cmd := transition(rec, store.RequestRetrying, rec.UpdatedAt)
 	cmd.OperationID = transitionID(cmd)
-	cmd.Outbox, err = cleanupEvent(rec, cmd)
+	cmd.Outbox, err = cleanupEvent(ctx, rec, cmd)
 	if err != nil {
 		return Result{}, err
 	}
@@ -218,7 +218,7 @@ func (m *Matcher) retrying(ctx context.Context, rec store.Record) (Result, error
 	cmd.NextAttemptAt = at + retryDelay(rec.Request.RetryCount)
 	cmd.LastError = "ATTEMPT_CLOSED"
 	cmd.OperationID = transitionID(cmd)
-	cmd.Outbox, err = events(rec, cmd, "request.retry", nil)
+	cmd.Outbox, err = events(ctx, rec, cmd, "request.retry", nil)
 	if err != nil {
 		return Result{}, err
 	}
@@ -232,13 +232,13 @@ func (m *Matcher) retrying(ctx context.Context, rec store.Record) (Result, error
 	return m.obsolete(current)
 }
 
-func retryCommand(rec store.Record, at int64, reason string) (store.RetryWorkflow, error) {
+func retryCommand(ctx context.Context, rec store.Record, at int64, reason string) (store.RetryWorkflow, error) {
 	cmd := store.RetryWorkflow{Meta: store.Meta{At: at}, Key: rec.Key, ExpectedVersion: rec.Version,
 		NextAttemptAt: at + retryDelay(rec.Request.RetryCount), LastError: reason}
 	cmd.OperationID = operationID("retry", rec.Key, strconv.FormatUint(rec.Version, 10),
 		strconv.FormatInt(cmd.At, 10), strconv.FormatInt(cmd.NextAttemptAt, 10), cmd.LastError)
 	var err error
-	cmd.Outbox, err = events(rec, store.TransitionRequest{Meta: cmd.Meta, NextAttemptAt: cmd.NextAttemptAt}, "request.retry", nil)
+	cmd.Outbox, err = events(ctx, rec, store.TransitionRequest{Meta: cmd.Meta, NextAttemptAt: cmd.NextAttemptAt}, "request.retry", nil)
 	return cmd, err
 }
 

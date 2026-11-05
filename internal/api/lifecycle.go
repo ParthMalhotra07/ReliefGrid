@@ -89,7 +89,7 @@ func (s *Server) updateRequest(w http.ResponseWriter, r *http.Request) error {
 			command.Disposition = data.Disposition
 		}
 	}
-	outbox, err := event("request.state_changed", id, rec.Version+1, command.Meta, r.Header.Get("traceparent"), map[string]any{
+	outbox, err := event(r.Context(), "request.state_changed", id, rec.Version+1, command.Meta, map[string]any{
 		"requestId": id, "previousStatus": string(data.Status), "newStatus": string(command.To), "operationId": command.OperationID,
 	})
 	if err != nil {
@@ -187,7 +187,7 @@ func (s *Server) updateResource(w http.ResponseWriter, r *http.Request) error {
 	if command.Status != "" {
 		newStatus = command.Status
 	}
-	outbox, err := event("resource.state_changed", id, rec.Version+1, command.Meta, r.Header.Get("traceparent"), map[string]any{
+	outbox, err := event(r.Context(), "resource.state_changed", id, rec.Version+1, command.Meta, map[string]any{
 		"resourceId": id, "previousStatus": string(data.Status), "newStatus": string(newStatus), "operationId": command.OperationID,
 	})
 	if err != nil {
