@@ -1,6 +1,6 @@
 # A2.3 pre-PR review
 
-Reviewed against main dba92c5 after the full 50-seed run and clean rebase.
+Reviewed against main 8145ae0 after the full historical 50-seed run, the strict-restart review fix and clean rebase.
 
 1. Invariants: real M8/production coordinator-client operations retain exact
    canonical versions, reciprocal ownership and explicit partial-read failures.
@@ -28,6 +28,16 @@ Reviewed against main dba92c5 after the full 50-seed run and clean rebase.
    passed. Source hashes match the successful run after rebase. Explicit staging
    excludes raw runs, local progress/playbooks/PDF, credentials and attribution.
 
-Verdict: **READY for owner review**. Full local verification passed; this is
+Review-fix audit (5 Nov): kill now requires restartCount == before+1 after
+Ready and before returning to the snapshot assertions. A subprocess regression
+uses the actual helper: one restart passes, an extra startup crash is rejected;
+its red output proves the old helper accepted the extra crash. Fixed tests pass
+race-count3. Five kind seeds of SCH12/13a/13b pass (15 real SIGKILLs, same-pod
+recoveries and fixture recycles), as requested by the owner. No time budget,
+fault observation, final row assertion or cleanup error handling was weakened.
+Tested source hashes remain identical after the documentation-only rebase.
+Non-blocking SCH04 closure/outbox follow-ups are tracked in #109.
+
+Verdict: **READY for owner re-review**. Full local verification passed; this is
 not approval, merge completion or an official joint gate result. The old draft
 checkpoint evidence remains clearly labelled historical.

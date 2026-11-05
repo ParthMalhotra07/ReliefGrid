@@ -1,0 +1,20 @@
+=== RUN   TestKillRejectsExtraRestartBeforeReady
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=0
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=1
+--- PASS: TestKillRejectsExtraRestartBeforeReady (1.21s)
+    --- PASS: TestKillRejectsExtraRestartBeforeReady/extra=0 (1.11s)
+    --- PASS: TestKillRejectsExtraRestartBeforeReady/extra=1 (0.10s)
+=== RUN   TestKillRejectsExtraRestartBeforeReady
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=0
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=1
+--- PASS: TestKillRejectsExtraRestartBeforeReady (1.25s)
+    --- PASS: TestKillRejectsExtraRestartBeforeReady/extra=0 (1.10s)
+    --- PASS: TestKillRejectsExtraRestartBeforeReady/extra=1 (0.15s)
+=== RUN   TestKillRejectsExtraRestartBeforeReady
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=0
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=1
+--- PASS: TestKillRejectsExtraRestartBeforeReady (1.27s)
+    --- PASS: TestKillRejectsExtraRestartBeforeReady/extra=0 (1.15s)
+    --- PASS: TestKillRejectsExtraRestartBeforeReady/extra=1 (0.13s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	4.774s

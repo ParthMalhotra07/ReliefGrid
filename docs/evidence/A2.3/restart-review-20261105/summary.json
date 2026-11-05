@@ -1,0 +1,21 @@
+{
+  "run_id": "restart-exact-five-20261105",
+  "backend": "cluster",
+  "selection": [
+    "12",
+    "13a",
+    "13b"
+  ],
+  "seeds": 5,
+  "passed": 15,
+  "counts": {
+    "SCH12_RestartDuringSnapshotCreation": 5,
+    "SCH13a_RestartDuringSnapshotTransfer": 5,
+    "SCH13b_RestartDuringSnapshotStage": 5
+  },
+  "real_sigkills": 15,
+  "same_pod_recoveries": 15,
+  "post_assertion_recycles": 15,
+  "raw_sha256": "2d223c85902f503945d3b0e921fc2c10dbc4522c610506413c343cf64de67fea",
+  "base_main": "415fa2c4f35b2447235fd249e105a0bdb09eed06"
+}

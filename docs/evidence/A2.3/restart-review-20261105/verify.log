@@ -1,0 +1,6 @@
+SEEDS=5 bash scripts/test-schedules.sh
+SUBSET 12,13a,13b: not complete A2.3 acceptance
+pod/reliefgrid-matcher-57d764654c-6n62w condition met
+pod/reliefgrid-matcher-57d764654c-m6bpq condition met
+cluster: PASS (run restart-exact-five-20261105, SEEDS=5, selection=12,13a,13b)
+A2.3 SUBSET PASS; full acceptance still required

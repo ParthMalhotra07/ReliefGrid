@@ -1,0 +1,76 @@
+=== RUN   TestSeededWorkflowSchedules
+    execution_test.go:509: run=restart-exact-five-20261105 backend=cluster seeds=5
+    execution_test.go:529: SUBSET execution; not complete A2.3 acceptance
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH12_RestartDuringSnapshotCreation
+    cluster_seams_execution_test.go:668: killed storage-shard-0-1 (crictl)
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-0-1 newUID=b7c9b782-0687-42b7-9f45-231dde13ca65 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH13a_RestartDuringSnapshotTransfer
+    cluster_seams_execution_test.go:711: killed storage-shard-2-0 (crictl)
+    cluster_seams_execution_test.go:726: SCH13a filler=19.473944053s partial=268364/536728 restored=866
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-2-0 newUID=fbaf8ce5-9a63-4c80-99ea-c6f1a52fb610 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH13b_RestartDuringSnapshotStage
+    cluster_seams_execution_test.go:711: killed storage-shard-2-0 (crictl)
+    cluster_seams_execution_test.go:726: SCH13b filler=18.797626973s partial=495616/991232 restored=1486
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-2-0 newUID=6faeaa46-4b4c-4fc1-bcd9-b897cf62afba restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-2/SCH12_RestartDuringSnapshotCreation
+    cluster_seams_execution_test.go:668: killed storage-shard-1-2 (crictl)
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-1-2 newUID=16a1fca2-726f-4faa-a163-9757f31e6fc3 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-2/SCH13a_RestartDuringSnapshotTransfer
+    cluster_seams_execution_test.go:711: killed storage-shard-0-1 (crictl)
+    cluster_seams_execution_test.go:726: SCH13a filler=14.075287803s partial=733261/1466522 restored=2126
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-0-1 newUID=a8c71cde-d8aa-406a-a21f-338af50e90c7 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-2/SCH13b_RestartDuringSnapshotStage
+    cluster_seams_execution_test.go:711: killed storage-shard-1-1 (crictl)
+    cluster_seams_execution_test.go:726: SCH13b filler=17.148471386s partial=847872/1695744 restored=2441
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-1-1 newUID=e1067536-cf39-4904-ba10-03ded7e80d40 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-3/SCH12_RestartDuringSnapshotCreation
+    cluster_seams_execution_test.go:668: killed storage-shard-1-0 (crictl)
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-1-0 newUID=0232a7d0-698a-4582-8b24-97531c6c8530 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-3/SCH13a_RestartDuringSnapshotTransfer
+    cluster_seams_execution_test.go:711: killed storage-shard-0-1 (crictl)
+    cluster_seams_execution_test.go:726: SCH13a filler=13.628603292s partial=1249357/2498714 restored=3497
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-0-1 newUID=f8f644c1-eecd-4013-a030-614d6126963b restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-3/SCH13b_RestartDuringSnapshotStage
+    cluster_seams_execution_test.go:711: killed storage-shard-0-1 (crictl)
+    cluster_seams_execution_test.go:726: SCH13b filler=12.758223933s partial=1482752/2965504 restored=4117
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-0-1 newUID=60f382ad-991f-49f8-9812-81a8c5b5c5f5 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-4/SCH12_RestartDuringSnapshotCreation
+    cluster_seams_execution_test.go:668: killed storage-shard-0-0 (crictl)
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-0-0 newUID=6ef2bd2b-aebb-4885-b918-e1cb7b9ece58 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-4/SCH13a_RestartDuringSnapshotTransfer
+    cluster_seams_execution_test.go:711: killed storage-shard-0-0 (crictl)
+    cluster_seams_execution_test.go:726: SCH13a filler=10.955512455s partial=1722445/3444890 restored=4755
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-0-0 newUID=ed2b2e57-9a67-4b10-ab94-a8f08c082dc0 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-4/SCH13b_RestartDuringSnapshotStage
+    cluster_seams_execution_test.go:711: killed storage-shard-2-0 (crictl)
+    cluster_seams_execution_test.go:726: SCH13b filler=11.022076295s partial=1878016/3756032 restored=5142
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-2-0 newUID=efd8356e-8304-46f3-bd7a-c1d34e4aa049 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-5/SCH12_RestartDuringSnapshotCreation
+    cluster_seams_execution_test.go:668: killed storage-shard-0-1 (crictl)
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-0-1 newUID=c96245ed-f56c-44a4-800b-665f558e10f8 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-5/SCH13a_RestartDuringSnapshotTransfer
+    cluster_seams_execution_test.go:711: killed storage-shard-2-0 (crictl)
+    cluster_seams_execution_test.go:726: SCH13a filler=14.942910352s partial=2117709/4235418 restored=5768
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-2-0 newUID=ba0a7f93-6c6a-419d-b960-93f59649cf47 restartCount=0 (PVC retained)
+=== RUN   TestSeededWorkflowSchedules/seed-5/SCH13b_RestartDuringSnapshotStage
+    cluster_seams_execution_test.go:711: killed storage-shard-2-0 (crictl)
+    cluster_seams_execution_test.go:726: SCH13b filler=14.154388018s partial=2349056/4698112 restored=6386
+    cluster_seams_execution_test.go:378: post-assertion fixture recycle: storage-shard-2-0 newUID=569624a5-eb88-406b-b4a6-0f1300ef8a0d restartCount=0 (PVC retained)
+--- PASS: TestSeededWorkflowSchedules (550.37s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH12_RestartDuringSnapshotCreation (19.64s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH13a_RestartDuringSnapshotTransfer (52.18s)
+    --- PASS: TestSeededWorkflowSchedules/seed-1/SCH13b_RestartDuringSnapshotStage (52.42s)
+    --- PASS: TestSeededWorkflowSchedules/seed-2/SCH12_RestartDuringSnapshotCreation (20.25s)
+    --- PASS: TestSeededWorkflowSchedules/seed-2/SCH13a_RestartDuringSnapshotTransfer (37.84s)
+    --- PASS: TestSeededWorkflowSchedules/seed-2/SCH13b_RestartDuringSnapshotStage (48.10s)
+    --- PASS: TestSeededWorkflowSchedules/seed-3/SCH12_RestartDuringSnapshotCreation (21.09s)
+    --- PASS: TestSeededWorkflowSchedules/seed-3/SCH13a_RestartDuringSnapshotTransfer (45.85s)
+    --- PASS: TestSeededWorkflowSchedules/seed-3/SCH13b_RestartDuringSnapshotStage (43.24s)
+    --- PASS: TestSeededWorkflowSchedules/seed-4/SCH12_RestartDuringSnapshotCreation (20.19s)
+    --- PASS: TestSeededWorkflowSchedules/seed-4/SCH13a_RestartDuringSnapshotTransfer (42.42s)
+    --- PASS: TestSeededWorkflowSchedules/seed-4/SCH13b_RestartDuringSnapshotStage (34.76s)
+    --- PASS: TestSeededWorkflowSchedules/seed-5/SCH12_RestartDuringSnapshotCreation (20.72s)
+    --- PASS: TestSeededWorkflowSchedules/seed-5/SCH13a_RestartDuringSnapshotTransfer (45.30s)
+    --- PASS: TestSeededWorkflowSchedules/seed-5/SCH13b_RestartDuringSnapshotStage (46.39s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	551.447s

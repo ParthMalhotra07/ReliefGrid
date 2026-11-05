@@ -1,5 +1,13 @@
 # A2.3 schedule evidence
 
+The latest review fix requires exactly one container restart after Ready.
+The requested five-seed kind delta run passed SCH12/13a/13b (15/15 cases),
+with successful rollback. See [restart-review-20261105](restart-review-20261105/README.md)
+for the red-first regression, strict-count source hashes and complete subset log.
+The earlier 50-seed run below retains its original assertion/source identity;
+it is not presented as a repeat with the stricter restart check. The owner
+explicitly requested this bounded delta verification instead of another full run.
+
 Full local acceptance passed: **850/850 M8 and 900/900 kind executions**,
 all 50 seeds under the race detector. The kind run observed 150 real container
 SIGKILLs followed by same-pod recovery and 150 post-assertion fixture recycles.

@@ -358,8 +358,6 @@ func (c *kindCluster) restartCount(pod string) int {
 // kill SIGKILLs pod's storagenode container through crictl on its kind
 // node, so the kubelet restarts it in the same pod: the PVC and the
 // emptyDir FSM directory both survive, exercising the wipe on start.
-// Fallback (reported): kubectl delete --force, which replaces the pod and
-// so its emptyDir.
 func (c *kindCluster) kill(pod string) string {
 	c.t.Helper()
 	uid, err := c.kubectl("get", "pod", pod, "-o", "jsonpath={.metadata.uid}")
@@ -392,6 +390,9 @@ func (c *kindCluster) kill(pod string) string {
 	}
 	if _, err := c.kubectl("wait", "--for=condition=Ready", "pod/"+pod, "--timeout=180s"); err != nil {
 		c.t.Fatal(err)
+	}
+	if got := c.restartCount(pod); got != before+1 {
+		c.t.Fatalf("%s restart count after Ready: got %d, want exactly %d (one injected SIGKILL)", pod, got, before+1)
 	}
 	after, err := c.kubectl("get", "pod", pod, "-o", "jsonpath={.metadata.uid}")
 	if err != nil || after != uid {
