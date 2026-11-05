@@ -40,6 +40,7 @@ DIFF_BASE ?= origin/main
 
 .PHONY: help check check-seams whitespace-check fmt-check vet lint test gen gen-check gen-public gen-internal ci-smoke dev doctor cluster-up cluster-down storage-image storage-image-seams coordinator-image tools-image storage-replace storage-reset placement-check
 .PHONY: demo-1 demo-2 demo-3 demo-4 demo-5 demo-6 demo-7 demo-8 demo-9 demo-reset gate
+.PHONY: gke-deploy gke-teardown gcp-validate
 .PHONY: verify-A1.3 verify-A1.4 verify-A2.1 verify-A2.2 verify-S4.6b
 .PHONY: app-images app-deploy e2e-smoke verify-A1.5-static
 .PHONY: chaos-install chaos-check chaos-uninstall chaos-suite verify-S4.3
@@ -298,3 +299,14 @@ verify-A3.1: ## Clean deployment and app demos 2/3/5/8/9, twice (scoped kind res
 .PHONY: verify-A3.2
 verify-A3.2: ## Verify API readiness propagation and both consumer supervisor drains
 	bash scripts/verify-A3.2.sh
+
+# S5.1 GKE (infra/gcp, docs: scripts/gke-deploy.sh and scripts/gke-teardown.sh). Nothing here
+# runs terraform apply: the cluster is applied by hand, per session.
+gke-deploy: ## S5.1: deploy storage (and the app) to the GKE cluster in infra/gcp's state, from CI's image-digests.json
+	scripts/gke-deploy.sh
+
+gke-teardown: ## S5.1: uninstall, wait for disks and LBs to go, terraform destroy, then fail on any leftover (asks first)
+	scripts/gke-teardown.sh
+
+gcp-validate: ## S5.1: terraform fmt, validate (offline: no backend, no credentials) and the infra/gcp shape checks
+	REQUIRE_TERRAFORM=1 go test -count=1 -run 'TestGCPTerraform|TestTerraformPinned' ./scripts
