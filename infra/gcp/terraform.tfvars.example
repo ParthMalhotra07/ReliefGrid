@@ -1,0 +1,12 @@
+# Copy to <name>.tfvars (ignored by git) and fill in. D3 is open: no defaults for these.
+project_id      = "reliefgrid-s51-xxxx"
+billing_account = "XXXXXX-XXXXXX-XXXXXX"
+admin_cidrs     = ["198.51.100.7/32"]
+alert_emails    = ["owner-s@example.com", "owner-a@example.com"]
+
+# In the billing account's currency (D3). Plan: about USD 25.
+budget_currency = "INR"
+budget_amount   = 2100
+
+# Free trial (8-vCPU cap): 4 x e2-standard-2.
+# infra_machine_type = "e2-standard-2"
