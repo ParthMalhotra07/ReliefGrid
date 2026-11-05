@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "verdict": "clean",
+  "report": {
+    "requests": 500,
+    "resources": 50,
+    "pages": 2,
+    "partialPages": 0,
+    "violations": null,
+    "outbox": [
+      {
+        "shard": 0,
+        "pending": 0
+      },
+      {
+        "shard": 1,
+        "pending": 0
+      },
+      {
+        "shard": 2,
+        "pending": 0
+      }
+    ],
+    "appliedBefore": {
+      "0": 9387,
+      "1": 7630,
+      "2": 8992
+    },
+    "appliedAfter": {
+      "0": 9387,
+      "1": 7630,
+      "2": 8992
+    },
+    "quiescent": true
+  }
+}

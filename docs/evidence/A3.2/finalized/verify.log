@@ -1,0 +1,15 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	0.023s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	0.017s
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher/replay	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	2.407s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+=== RUN   TestDrainIntegrationFinishesAdmittedDurableHandoff
+    drain_integration_test.go:65: SIGTERM: admitted durable handoff committed and acked before channel closed
+--- PASS: TestDrainIntegrationFinishesAdmittedDurableHandoff (0.76s)
+=== RUN   TestDrainIntegrationWakeupFinishesCommittedHandoff
+    wakeup_drain_integration_test.go:68: admitted wakeup committed and acknowledged before shutdown
+--- PASS: TestDrainIntegrationWakeupFinishesCommittedHandoff (0.49s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	2.287s
+A3.2 VERIFY: ALL PASS

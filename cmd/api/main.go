@@ -24,6 +24,11 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
+// Two readiness failures at the chart's 2s probe interval, plus propagation.
+// 5s propagation + 20s Shutdown stays within the pod's 30s grace.
+const apiReadinessPropagation = 5 * time.Second
+const apiShutdownDrain = 20 * time.Second
+
 type config struct {
 	addr        string
 	coordinator string
@@ -95,18 +100,24 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 	if err != nil {
 		return fmt.Errorf("API listen: %w", err)
 	}
+	state := &apiHealth{}
 	mux := http.NewServeMux()
 	mux.Handle("/", h)
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) })
-	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(200) })
+	mux.Handle("GET /healthz", state.handler())
+	mux.Handle("GET /readyz", state.handler())
 	// Diagnostic response metadata lets the scaling demo observe Service routing.
 	observed := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-ReliefGrid-Pod", hostname)
 		mux.ServeHTTP(w, r)
 	})
+	// Stop admission on SIGTERM, but preserve admitted request contexts until
+	// Shutdown has drained them or reached its bounded deadline.
+	workCtx, stopWork := context.WithCancel(context.WithoutCancel(ctx))
+	defer stopWork()
 	srv := &http.Server{Handler: observed, ReadHeaderTimeout: cfg.api.Budget, ReadTimeout: cfg.api.Budget,
-		BaseContext: func(net.Listener) context.Context { return ctx }}
+		BaseContext: func(net.Listener) context.Context { return workCtx }}
 	done := make(chan error, 1)
+	state.initialized.Store(true)
 	go func() { done <- srv.Serve(listener) }()
 	slog.InfoContext(ctx, "API listening", "addr", listener.Addr().String())
 	if ready != nil {
@@ -115,16 +126,30 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 		case <-ctx.Done():
 		}
 	}
+	served := false
 	select {
 	case err = <-done:
+		served = true
 	case <-ctx.Done():
 	}
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	state.draining.Store(true)
+	if ctx.Err() != nil {
+		// Keep readyz observable while endpoints/Traefik remove this pod.
+		propagation := time.NewTimer(apiReadinessPropagation)
+		<-propagation.C
+	}
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), apiShutdownDrain)
 	defer cancel()
-	if shutdownErr := srv.Shutdown(shutdownCtx); shutdownErr != nil {
-		if closeErr := srv.Close(); closeErr != nil {
-			return fmt.Errorf("API shutdown: %w", errors.Join(shutdownErr, closeErr))
-		}
+	shutdownErr := srv.Shutdown(shutdownCtx)
+	if shutdownErr != nil {
+		shutdownErr = errors.Join(shutdownErr, srv.Close())
+	}
+	// Join Serve even when cancellation wins before Serve registers the listener.
+	_ = listener.Close()
+	if !served {
+		err = <-done
+	}
+	if shutdownErr != nil {
 		return fmt.Errorf("API shutdown: %w", shutdownErr)
 	}
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {

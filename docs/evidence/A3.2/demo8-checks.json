@@ -1,0 +1,70 @@
+[
+  {
+    "passed": true,
+    "assertion": "api: two Ready pods before deletion"
+  },
+  {
+    "passed": true,
+    "assertion": "interrupted create retried and replayed its original result"
+  },
+  {
+    "passed": true,
+    "assertion": "api: a new UID becomes Ready within 90s"
+  },
+  {
+    "passed": true,
+    "assertion": "api: traffic completed with no lost create outcome: []"
+  },
+  {
+    "passed": true,
+    "assertion": "api: successful calls continued during and after pod replacement"
+  },
+  {
+    "passed": true,
+    "assertion": "no resource assigned to two requests"
+  },
+  {
+    "passed": true,
+    "assertion": "api: every successful create replay returned its original result"
+  },
+  {
+    "passed": true,
+    "assertion": "matcher: two Ready pods before deletion"
+  },
+  {
+    "passed": true,
+    "assertion": "matcher: a new UID becomes Ready within 90s"
+  },
+  {
+    "passed": true,
+    "assertion": "matcher: traffic completed with no lost create outcome: []"
+  },
+  {
+    "passed": true,
+    "assertion": "matcher: successful calls continued during and after pod replacement"
+  },
+  {
+    "passed": true,
+    "assertion": "no resource assigned to two requests"
+  },
+  {
+    "passed": true,
+    "assertion": "matcher: every successful create replay returned its original result"
+  },
+  {
+    "passed": true,
+    "assertion": "2 interrupted calls observed; every one recovered using its original key and payload"
+  },
+  {
+    "passed": true,
+    "assertion": "retry admission workers are identified before pausing"
+  },
+  {
+    "passed": true,
+    "assertion": "last committed handoffs drained with routed confirms while admission stays stopped"
+  },
+  {
+    "passed": true,
+    "assertion": "invcheck: complete, reciprocal, no terminal claim and outbox drained"
+  }
+]

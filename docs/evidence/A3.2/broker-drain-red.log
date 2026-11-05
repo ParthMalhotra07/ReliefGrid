@@ -1,0 +1,7 @@
+broker_image=rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e
+=== RUN   TestDrainIntegrationFinishesAdmittedDurableHandoff
+    drain_integration_test.go:55: SIGTERM cancelled admitted durable handoff: &{ID:550e8400-e29b-41d4-a716-446655440000 Type:MEDICINE Location:{Lat:0 Lng:0} Geohash:s000000 PeopleAffected:4 Urgency:2 Details:null Status:PENDING WorkflowGeneration:0 CurrentAttempt:<nil> AssignedResourceID: Disposition: NextAttemptAt:0 RetryCount:0 LastError: CreatedAt:1 UpdatedAt:1} <nil>
+--- FAIL: TestDrainIntegrationFinishesAdmittedDurableHandoff (1.01s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	1.048s
+FAIL

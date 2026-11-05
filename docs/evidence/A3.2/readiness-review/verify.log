@@ -1,0 +1,21 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	15.030s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	0.011s
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher/replay	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	5.389s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
+=== RUN   TestDrainIntegrationFinishesAdmittedDurableHandoff
+    drain_integration_test.go:65: SIGTERM: admitted durable handoff committed and acked before channel closed
+--- PASS: TestDrainIntegrationFinishesAdmittedDurableHandoff (0.77s)
+=== RUN   TestDrainIntegrationWakeupFinishesCommittedHandoff
+    wakeup_drain_integration_test.go:68: admitted wakeup committed and acknowledged before shutdown
+--- PASS: TestDrainIntegrationWakeupFinishesCommittedHandoff (0.82s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	2.634s
+=== RUN   TestSupervisorKeepsAdmittedTransportThroughCancellation
+    supervisor_integration_test.go:117: SIGTERM kept the admitted AMQP transport usable until ack, then closed it
+--- PASS: TestSupervisorKeepsAdmittedTransportThroughCancellation (0.31s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	1.400s
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher/replay	[no test files]
+A3.2 VERIFY: ALL PASS

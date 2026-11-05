@@ -122,7 +122,7 @@ func (c Consumer) Consume(ctx context.Context, conn *amqp.Connection) error {
 	if conn == nil {
 		return fmt.Errorf("mq consumer requires a connection")
 	}
-	call, _ := c.timeouts()
+	call, work := c.timeouts()
 	setupCtx, setupCancel := context.WithTimeout(ctx, call)
 	stop := closeOnCancel(setupCtx, conn)
 	ch, err := conn.Channel()
@@ -164,8 +164,16 @@ func (c Consumer) Consume(ctx context.Context, conn *amqp.Connection) error {
 				}
 				return fmt.Errorf("matching delivery channel closed")
 			}
-			d.Acknowledger = boundedAcknowledger{Acknowledger: d.Acknowledger, ctx: ctx, conn: conn, timeout: call}
-			if err := c.Process(ctx, d); err != nil {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			// Drain only this admitted delivery. Prefetched work stays unacked
+			// and is returned by channel Close after this bounded handoff.
+			deliveryCtx, finish := context.WithTimeout(context.WithoutCancel(ctx), work)
+			d.Acknowledger = boundedAcknowledger{Acknowledger: d.Acknowledger, ctx: deliveryCtx, conn: conn, timeout: call}
+			err := c.Process(deliveryCtx, d)
+			finish()
+			if err != nil {
 				return err
 			}
 		}

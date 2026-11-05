@@ -1,0 +1,6 @@
+2026/11/01 13:50:11 INFO API listening addr=127.0.0.1:41735
+--- FAIL: TestShutdownDrainsAdmittedCreate (0.01s)
+    main_test.go:199: admitted create lost on SIGTERM: HTTP 503, want201
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/api	0.014s
+FAIL
