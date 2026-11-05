@@ -453,6 +453,77 @@ func TestStrongReadWaitsForFSMNotRaftAppliedIndex(t *testing.T) {
 	}
 }
 
+// #106: Status must not sample the commit index and Raft's applied index
+// at different moments such that commit < Raft applied. The hook commits
+// and hands entry op-2 to the paused FSM between the two reads; a stale
+// commit index would then let the FSM, one entry behind, meet its target.
+func TestStatusNotCaughtUpAgainstStaleCommit(t *testing.T) {
+	c := newBootstrappedCluster(t, testProfile)
+	_, l := c.waitLeader()
+	mustApply(t, l, cas("op-1", "kv:a", 0, 1))
+	for deadline := time.Now().Add(waitFor); !l.Status().CaughtUp; time.Sleep(10 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("leader never caught up: %+v", l.Status())
+		}
+	}
+
+	var paused atomic.Bool
+	release := make(chan struct{})
+	l.sm.setBeforeApply(func(uint64) {
+		if paused.Load() {
+			<-release
+		}
+	})
+	paused.Store(true)
+	written := make(chan error, 1)
+	var fired atomic.Bool
+	t.Cleanup(func() {
+		paused.Store(false)
+		close(release)
+		if fired.Load() {
+			if err := <-written; err != nil {
+				t.Errorf("op-2: %v", err)
+			}
+		}
+	})
+
+	l.setStatusGap(func() {
+		if !fired.CompareAndSwap(false, true) {
+			return
+		}
+		before := l.raft.AppliedIndex()
+		go func() {
+			_, err := l.Apply(context.Background(), cas("op-2", "kv:a", 1, 2))
+			written <- err
+		}()
+		deadline := time.Now().Add(waitFor)
+		for l.raft.AppliedIndex() <= before {
+			if time.Now().After(deadline) {
+				t.Errorf("op-2 never reached the paused FSM")
+				return
+			}
+			time.Sleep(time.Millisecond)
+		}
+	})
+
+	s := l.Status()
+	if !fired.Load() {
+		t.Fatal("status hook did not run")
+	}
+	if t.Failed() {
+		t.FailNow()
+	}
+	if ra, fa := l.raft.AppliedIndex(), l.sm.appliedIndex(); ra <= fa || s.AppliedIndex != fa {
+		t.Fatalf("op-2 not held between Raft (%d) and the FSM (%d): %+v", ra, fa, s)
+	}
+	if s.CommitIndex < s.RaftAppliedIndex {
+		t.Errorf("commit index %d behind Raft applied index %d: %+v", s.CommitIndex, s.RaftAppliedIndex, s)
+	}
+	if s.CaughtUp {
+		t.Errorf("node reports caught up with the FSM behind: %+v", s)
+	}
+}
+
 // Invariant 5: when the leader loses its quorum mid-write, the outcome is
 // unknown, not a rejection, and a retry of the same command after recovery
 // gets a stored or fresh result, never OPERATION_ID_REUSED.
