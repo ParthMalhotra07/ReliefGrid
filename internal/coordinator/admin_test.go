@@ -14,7 +14,7 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
 )
 
-var adminPaths = []string{"/admin/ring", "/admin/nodes", "/admin/locate/req:r-1", "/admin/distribution"}
+var adminPaths = []string{"/admin/ring", "/admin/nodes", "/admin/locate/req:r-1", "/admin/distribution", "/admin/ring/simulate?shards=4&sample=100"}
 
 // /admin needs the operator bearer token: 401 without it or with a wrong
 // one, 403 when the coordinator has no token configured.

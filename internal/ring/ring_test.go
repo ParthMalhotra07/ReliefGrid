@@ -366,3 +366,40 @@ func TestLoadMissingFile(t *testing.T) {
 		t.Fatal("Load of a missing file succeeded")
 	}
 }
+
+// Build is the token builder New uses, with the checksum computed rather
+// than published: it reproduces contracts/ring.yaml exactly, and a ring with
+// a shard added keeps every existing token, so keys can only move to the new
+// shard (S4.5b).
+func TestBuildMatchesThePublishedRing(t *testing.T) {
+	r, err := ring.Build(1, 3, 128)
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if r.Checksum() != goldenChecksum || r.Version() != 1 || r.Shards() != 3 || r.VNodesPerShard() != 128 {
+		t.Fatalf("Build(1, 3, 128) = v%d %d×%d %s, want the published ring", r.Version(), r.Shards(), r.VNodesPerShard(), r.Checksum())
+	}
+
+	four, err := ring.Build(2, 4, 128)
+	if err != nil {
+		t.Fatalf("Build 4 shards: %v", err)
+	}
+	if four.Checksum() == goldenChecksum {
+		t.Fatal("a 4-shard ring has the 3-shard checksum")
+	}
+	have := map[ring.Token]bool{}
+	for _, tk := range four.Tokens() {
+		have[tk] = true
+	}
+	for _, tk := range r.Tokens() {
+		if !have[tk] {
+			t.Fatalf("token %+v of the 3-shard ring is missing from the 4-shard ring", tk)
+		}
+	}
+
+	for _, bad := range [][3]int{{0, 3, 128}, {1, 0, 128}, {1, 3, 0}, {1, 1 << 20, 2}} {
+		if _, err := ring.Build(uint64(bad[0]), bad[1], bad[2]); err == nil {
+			t.Errorf("Build%v: no error", bad)
+		}
+	}
+}

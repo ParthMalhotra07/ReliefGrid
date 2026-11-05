@@ -74,7 +74,7 @@ func TestRoutedCallsCoverTheContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	self := []string{"POST /internal/nodes/register", "POST /internal/nodes/heartbeat", "GET /internal/ring", "GET /internal/scan",
-		"GET /admin/ring", "GET /admin/nodes", "GET /admin/locate/{key}", "GET /admin/distribution"}
+		"GET /admin/ring", "GET /admin/nodes", "GET /admin/locate/{key}", "GET /admin/distribution", "GET /admin/ring/simulate"}
 	h := newHarness(t, nil)
 	var covered []string
 	for _, r := range routedCalls(t, h, 0) {

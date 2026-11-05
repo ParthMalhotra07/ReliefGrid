@@ -156,6 +156,24 @@ func (e RingHash) Valid() bool {
 	}
 }
 
+// Defines values for RingSimulationSource.
+const (
+	RingSimulationSourceSample RingSimulationSource = "sample"
+	RingSimulationSourceStored RingSimulationSource = "stored"
+)
+
+// Valid indicates whether the value is a known member of the RingSimulationSource enum.
+func (e RingSimulationSource) Valid() bool {
+	switch e {
+	case RingSimulationSourceSample:
+		return true
+	case RingSimulationSourceStored:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ScanResponseConsistency.
 const (
 	ScanResponseConsistencyLinearizable ScanResponseConsistency = "linearizable"
@@ -207,6 +225,24 @@ const (
 func (e IfNoneMatch) Valid() bool {
 	switch e {
 	case IfNoneMatchAsterisk:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AdminRingSimulateParamsSource.
+const (
+	AdminRingSimulateParamsSourceSample AdminRingSimulateParamsSource = "sample"
+	AdminRingSimulateParamsSourceStored AdminRingSimulateParamsSource = "stored"
+)
+
+// Valid indicates whether the value is a known member of the AdminRingSimulateParamsSource enum.
+func (e AdminRingSimulateParamsSource) Valid() bool {
+	switch e {
+	case AdminRingSimulateParamsSourceSample:
+		return true
+	case AdminRingSimulateParamsSourceStored:
 		return true
 	default:
 		return false
@@ -795,6 +831,44 @@ type Ring struct {
 // RingHash defines model for Ring.Hash.
 type RingHash string
 
+// RingSimulation defines model for RingSimulation.
+type RingSimulation struct {
+	// Candidate The ring that would be published next (ringVersion + 1); never loaded
+	Candidate Ring `json:"candidate"`
+
+	// CurrentRing contracts/ring.yaml as loaded and checksum-verified by internal/ring
+	//
+	// Example: {"checksum":"sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360","hash":"xxhash64","ringVersion":1,"shards":3,"vnodesPerShard":128}
+	CurrentRing Ring `json:"currentRing"`
+
+	// IdealFraction The least any ring can move for this shard-count change:
+	// 1 - S/S' when growing from S to S' shards, 1 - S'/S when
+	// shrinking, 0 when S' = S (a vnode change can still move keys).
+	IdealFraction float64 `json:"idealFraction"`
+
+	// Keys Keys placed on both rings
+	Keys int `json:"keys"`
+
+	// Matrix from shard → to shard → keys, as decimal strings; zero entries omitted
+	Matrix map[string]map[string]int `json:"matrix"`
+
+	// Moved Keys whose shard differs between the rings
+	Moved int `json:"moved"`
+
+	// MovedFraction moved / keys; 0 with no keys
+	MovedFraction float64 `json:"movedFraction"`
+
+	// PerShardAfter Keys per shard on the candidate ring
+	PerShardAfter []int `json:"perShardAfter"`
+
+	// PerShardBefore Keys per shard on the active ring
+	PerShardBefore []int                `json:"perShardBefore"`
+	Source         RingSimulationSource `json:"source"`
+}
+
+// RingSimulationSource defines model for RingSimulation.Source.
+type RingSimulationSource string
+
 // ScanResponse store.ScanResult plus ringVersion and the read mode used
 type ScanResponse struct {
 	Consistency  ScanResponseConsistency `json:"consistency"`
@@ -964,6 +1038,24 @@ type Unauthorized = Error
 
 // Unavailable See contracts/README.md for the code → status mapping.
 type Unavailable = Error
+
+// AdminRingSimulateParams defines parameters for AdminRingSimulate.
+type AdminRingSimulateParams struct {
+	// Shards Candidate shard count
+	Shards int `form:"shards" json:"shards"`
+
+	// Vnodes Candidate virtual nodes per shard; defaults to the active ring's
+	Vnodes *int `form:"vnodes,omitempty" json:"vnodes,omitempty"`
+
+	// Sample Synthetic keys to place; not with source=stored
+	Sample *int `form:"sample,omitempty" json:"sample,omitempty"`
+
+	// Source sample (synthetic keys) or stored (every stored key, complete scan)
+	Source *AdminRingSimulateParamsSource `form:"source,omitempty" json:"source,omitempty"`
+}
+
+// AdminRingSimulateParamsSource defines parameters for AdminRingSimulate.
+type AdminRingSimulateParamsSource string
 
 // DeleteDataParams defines parameters for DeleteData.
 type DeleteDataParams struct {
