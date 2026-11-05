@@ -1,0 +1,41 @@
+# demo-9: Scale the API from 2 to 6 replicas under traffic
+result:     PASS (2/2 checks)
+runId:      gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-04T14:54:09Z
+finished:   2026-11-04T14:54:16Z
+duration:   7.1 s
+code tree:  ecc68871df28 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: dba92c514ef1
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:d8bc2243dfa6fc0d431217f0e34977b349ecfc804cbeb9d3bee411cdb178fd72
+image reliefgrid/coordinator:dev: sha256:ee5a50d03d776c8045ff913b5edbf00fdc444bf702ab8f802a2be390b0c7a0af
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-9-app
+
+## commands
+
+# await strict storage preflight after previous workload
+$ await_app_preflight
+[exit 0, 1.9 s]
+
+# public API assertions and recorded observations
+$ python3 /home/hrishabh-sharrma/code/ReliefGrid/scripts/demos/app_demo.py 9 --out /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-9-app
+PASS  manual API scale demo has no competing HPA
+PASS  API starts at two replicas
+PASS  all six API pods become Ready under traffic
+PASS  every API pod, including all four new pods, serves through the Service
+PASS  Service traffic completed without hidden failures: []
+PASS  API restored to two replicas
+[exit 0, 5.2 s]

@@ -1,0 +1,56 @@
+# demo-2: Register a resource, list it, update its availability and status
+result:     PASS (2/2 checks)
+runId:      gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-04T14:56:04Z
+finished:   2026-11-04T14:56:17Z
+duration:   13.1 s
+code tree:  ecc68871df28 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: dba92c514ef1
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:151580ac1b447ea93fb5237335451810b9fc6fcf3b3a498972b7b57f6d54f4c5
+image reliefgrid/coordinator:dev: sha256:cc100f566e1dfe709fb9afdb5c367a3195583e8fe560b0bbed5b8f4ffe4980b2
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-2-app
+
+## commands
+
+# await strict storage preflight after previous workload
+$ await_app_preflight
+[exit 0, 2.0 s]
+
+# build bounded relay-only handoff drainer
+$ go build -o /tmp/tmp.8xtCH5wx6v/drain-outbox /home/hrishabh-sharrma/code/ReliefGrid/scripts/demos/drain-outbox
+[exit 0, 0.5 s]
+
+# public API assertions and recorded observations
+$ python3 /home/hrishabh-sharrma/code/ReliefGrid/scripts/demos/app_demo.py 2 --out /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-2-app
+PASS  201 resource retains validated type, location, availability and unclaimed state
+PASS  creation timestamps are UTC
+PASS  complete authoritative resource list contains the created resource exactly once
+PASS  invalid registration 0 is a definite 400 refusal
+PASS  invalid registration 1 is a definite 400 refusal
+PASS  invalid registration 2 is a definite 400 refusal
+PASS  invalid registrations create no resources
+PASS  status update persists at a different opaque version
+PASS  partial availability update persists
+PASS  public claim-managed status is a definite 409 refusal
+PASS  public claim-managed status is a definite 409 refusal
+PASS  all refused updates preserve the complete stored record and version
+PASS  strong stored record preserves location and refuses public claim mutations
+PASS  resource create replay retains original body and Location after updates
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 10.2 s]

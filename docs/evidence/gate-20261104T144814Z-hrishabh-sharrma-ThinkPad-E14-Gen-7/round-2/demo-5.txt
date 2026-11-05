@@ -1,0 +1,49 @@
+# demo-5: Submit a burst; show RabbitMQ queue counts, matching and waiting results
+result:     PASS (2/2 checks)
+runId:      gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-04T14:57:24Z
+finished:   2026-11-04T14:58:12Z
+duration:   48.2 s
+code tree:  ecc68871df28 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: dba92c514ef1
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:151580ac1b447ea93fb5237335451810b9fc6fcf3b3a498972b7b57f6d54f4c5
+image reliefgrid/coordinator:dev: sha256:cc100f566e1dfe709fb9afdb5c367a3195583e8fe560b0bbed5b8f4ffe4980b2
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-5-app
+
+## commands
+
+# await strict storage preflight after previous workload
+$ await_app_preflight
+[exit 0, 2.6 s]
+
+# build bounded relay-only handoff drainer
+$ go build -o /tmp/tmp.SyaOPJQeyO/drain-outbox /home/hrishabh-sharrma/code/ReliefGrid/scripts/demos/drain-outbox
+[exit 0, 0.8 s]
+
+# public API assertions and recorded observations
+$ python3 /home/hrishabh-sharrma/code/ReliefGrid/scripts/demos/app_demo.py 5 --out /home/hrishabh-sharrma/code/ReliefGrid/docs/evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-5-app
+PASS  500 distinct request creates acknowledged against 50 seeded resources
+PASS  no resource assigned to two requests
+PASS  burst settles to 50 reciprocal matches and 450 waiting requests
+PASS  matching queue ready/unacked returns to zero within bounded quiescence
+PASS  broker observations show asynchronous work in flight
+PASS  all broker samples completed without hidden observation errors: []
+PASS  all shard outboxes drained before retry admission is paused
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 44.1 s]
