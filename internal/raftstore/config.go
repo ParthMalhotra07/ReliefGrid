@@ -80,6 +80,11 @@ type Config struct {
 	// TracerProvider records raft.apply spans (S4.4); nil uses the global
 	// provider (a no-op unless obs.Init enabled tracing).
 	TracerProvider trace.TracerProvider
+	// Listen opens the Raft listener on BindAddr; nil (production) uses
+	// net.ListenConfig.Listen. Tests set it to listen on a port they hold
+	// reserved (internal/testnet), so the port cannot be taken before the
+	// first open or between a stop and a restart (issues #58, #75).
+	Listen func(ctx context.Context, network, address string) (net.Listener, error)
 
 	// Admit, if set, decides whether this disk may open its Raft transport
 	// (M7). Open calls it once the disk's identity exists and before the
@@ -107,10 +112,6 @@ type Config struct {
 	// afterSend, tests only, runs after an outgoing RPC has succeeded and
 	// before Raft sees the response; blocking in it delays the response.
 	afterSend func(target raft.ServerAddress, req any)
-	// listen, tests only, opens the Raft listener in place of
-	// net.ListenConfig.Listen, so a test can keep a stopped node's port
-	// reserved for its restart (issue #58).
-	listen func(ctx context.Context, network, address string) (net.Listener, error)
 }
 
 // raftConfig builds the library config for this node from the profile.

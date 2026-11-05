@@ -1,9 +1,8 @@
 //go:build linux || darwin
 
-package raftstore
+package testnet
 
 import (
-	"context"
 	"net"
 	"strconv"
 	"syscall"
@@ -12,12 +11,15 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// reservePort holds a loopback port for the whole test (issue #58): a socket
-// bound with SO_REUSEPORT that never listens, so nothing else can bind the
-// port, and a dial is refused as by a dead pod while the node is down. The
-// returned listen opens the node's listener on the same port through
-// SO_REUSEPORT, and can do so again after every restart.
-func reservePort(t testing.TB) (port string, listen func(ctx context.Context, network, address string) (net.Listener, error)) {
+// Supported reports whether Reserve holds the port. Where it is false,
+// Reserve picks and releases the port, as before #58.
+const Supported = true
+
+// Reserve holds a loopback port for the rest of the test: a socket bound with
+// SO_REUSEPORT that never listens, so nothing else can bind the port and a
+// dial is refused. listen opens a listener on the same port through
+// SO_REUSEPORT, and can do so again after a restart.
+func Reserve(t testing.TB) (port string, listen ListenFunc) {
 	t.Helper()
 	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM, 0)
 	if err != nil {
@@ -35,14 +37,15 @@ func reservePort(t testing.TB) (port string, listen func(ctx context.Context, ne
 	if err != nil {
 		t.Fatalf("reserve port: getsockname: %v", err)
 	}
-	lc := net.ListenConfig{Control: func(_, _ string, c syscall.RawConn) error {
-		var serr error
-		if err := c.Control(func(fd uintptr) {
-			serr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-		}); err != nil {
-			return err
-		}
-		return serr
-	}}
-	return strconv.Itoa(sa.(*unix.SockaddrInet4).Port), lc.Listen
+	return strconv.Itoa(sa.(*unix.SockaddrInet4).Port), reusePortListen
 }
+
+var reusePortListen = (&net.ListenConfig{Control: func(_, _ string, c syscall.RawConn) error {
+	var serr error
+	if err := c.Control(func(fd uintptr) {
+		serr = unix.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+	}); err != nil {
+		return err
+	}
+	return serr
+}}).Listen

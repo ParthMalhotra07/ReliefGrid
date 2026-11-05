@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/testnet"
 )
 
 type manifestData struct {
@@ -26,15 +27,49 @@ func (m *manifestData) set(d map[string]string) { m.v.Store(&d) }
 
 func (m *manifestData) Get(context.Context) (map[string]string, error) { return *m.v.Load(), nil }
 
-func freeAddr(t *testing.T) string {
+// reserveAddrs holds the Raft, data and management addresses for the rest
+// of the test (issue #75), and returns the listen function run must open
+// them with. Nothing else can bind them in between, and while held they
+// refuse connections.
+func reserveAddrs(t *testing.T) (raftAddr, dataAddr, mgmtAddr string, listen testnet.ListenFunc) {
 	t.Helper()
-	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
+	var a [3]string
+	for i := range a {
+		var port string
+		port, listen = testnet.Reserve(t)
+		a[i] = "127.0.0.1:" + port
 	}
-	a := ln.Addr().String()
-	_ = ln.Close()
-	return a
+	return a[0], a[1], a[2], listen
+}
+
+// testConfig is a node of shard 1 on the given addresses, with neither an
+// admission source nor ADMISSION=off set.
+func testConfig(t *testing.T, raftAddr, dataAddr, mgmtAddr string, listen testnet.ListenFunc) config {
+	t.Helper()
+	root := t.TempDir()
+	_, raftPort, _ := net.SplitHostPort(raftAddr)
+	_, dataPort, _ := net.SplitHostPort(dataAddr)
+	return config{
+		Raft: raftstore.Config{PodName: "storage-shard-1-2", GroupID: "shard-1", Shard: 1,
+			DataDir: filepath.Join(root, "pvc"), FSMDir: filepath.Join(root, "fsm"),
+			BindAddr: raftAddr, AdvertiseAddr: "localhost:" + raftPort, Profile: raftstore.ProfileDemo},
+		HTTPAddr: dataAddr, HTTPPort: dataPort, MgmtAddr: mgmtAddr, Listen: listen,
+		RingPath: filepath.Join("..", "..", "contracts", "ring.yaml"), RequestTimeout: time.Second,
+	}
+}
+
+// startRun runs the node until the test ends, then checks run returned nil.
+func startRun(t *testing.T, cfg config) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- run(ctx, cfg) }()
+	t.Cleanup(func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Errorf("run: %v", err)
+		}
+	})
 }
 
 func open(addr string) bool {
@@ -64,29 +99,13 @@ func mgmtStatus(t *testing.T, addr string) map[string]any {
 // (nothing can reach the old voter's stable address) until the manifest
 // records admitted[<podName>] = <incarnation>; then both open.
 func TestRunKeepsAnUnadmittedDiskOnManagementOnly(t *testing.T) {
-	root := t.TempDir()
-	raftAddr, dataAddr, mgmtAddr := freeAddr(t), freeAddr(t), freeAddr(t)
-	_, raftPort, _ := net.SplitHostPort(raftAddr)
+	raftAddr, dataAddr, mgmtAddr, listen := reserveAddrs(t)
 	src := &manifestData{}
 	src.set(map[string]string{"groupId": "shard-1", "shard": "1", "phase": "BOOTSTRAPPED",
 		"peerIds": `["storage-shard-1-0/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa","storage-shard-1-1/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"]`})
-	cfg := config{
-		Raft: raftstore.Config{PodName: "storage-shard-1-2", GroupID: "shard-1", Shard: 1,
-			DataDir: filepath.Join(root, "pvc"), FSMDir: filepath.Join(root, "fsm"),
-			BindAddr: raftAddr, AdvertiseAddr: "localhost:" + raftPort, Profile: raftstore.ProfileDemo},
-		HTTPAddr: dataAddr, MgmtAddr: mgmtAddr, RingPath: filepath.Join("..", "..", "contracts", "ring.yaml"),
-		RequestTimeout: time.Second, Admission: src, AdmissionPoll: 10 * time.Millisecond,
-	}
-	_, cfg.HTTPPort, _ = net.SplitHostPort(dataAddr)
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() { done <- run(ctx, cfg) }()
-	t.Cleanup(func() {
-		cancel()
-		if err := <-done; err != nil {
-			t.Errorf("run: %v", err)
-		}
-	})
+	cfg := testConfig(t, raftAddr, dataAddr, mgmtAddr, listen)
+	cfg.Admission, cfg.AdmissionPoll = src, 10*time.Millisecond
+	startRun(t, cfg)
 
 	var st map[string]any
 	deadline := time.Now().Add(10 * time.Second)
@@ -156,26 +175,10 @@ func TestRunWarnsLoudlyWhenAdmissionIsOff(t *testing.T) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, nil)))
 	t.Cleanup(func() { slog.SetDefault(prev) })
 
-	root := t.TempDir()
-	raftAddr, dataAddr, mgmtAddr := freeAddr(t), freeAddr(t), freeAddr(t)
-	_, raftPort, _ := net.SplitHostPort(raftAddr)
-	cfg := config{
-		Raft: raftstore.Config{PodName: "storage-shard-1-2", GroupID: "shard-1", Shard: 1,
-			DataDir: filepath.Join(root, "pvc"), FSMDir: filepath.Join(root, "fsm"),
-			BindAddr: raftAddr, AdvertiseAddr: "localhost:" + raftPort, Profile: raftstore.ProfileDemo},
-		HTTPAddr: dataAddr, MgmtAddr: mgmtAddr, RingPath: filepath.Join("..", "..", "contracts", "ring.yaml"),
-		RequestTimeout: time.Second, AdmissionOff: true,
-	}
-	_, cfg.HTTPPort, _ = net.SplitHostPort(dataAddr)
-	ctx, cancel := context.WithCancel(t.Context())
-	done := make(chan error, 1)
-	go func() { done <- run(ctx, cfg) }()
-	t.Cleanup(func() {
-		cancel()
-		if err := <-done; err != nil {
-			t.Errorf("run: %v", err)
-		}
-	})
+	raftAddr, dataAddr, mgmtAddr, listen := reserveAddrs(t)
+	cfg := testConfig(t, raftAddr, dataAddr, mgmtAddr, listen)
+	cfg.AdmissionOff = true
+	startRun(t, cfg)
 	deadline := time.Now().Add(10 * time.Second)
 	for !open(raftAddr) {
 		if time.Now().After(deadline) {
