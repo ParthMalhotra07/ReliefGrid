@@ -1,0 +1,4 @@
+    cluster_seams_execution_test.go:628: SCH13a filler=12.684116102s partial=2232397/4464794 restored=6353
+=== RUN   TestSeededWorkflowSchedules/seed-5/SCH13b_RestartDuringSnapshotStage
+    cluster_seams_execution_test.go:613: kubectl get pod storage-shard-2-0 -o jsonpath={.status.containerStatuses[?(@.name=="storagenode")].restartCount}: context deadline exceeded:
+=== RUN   TestSeededWorkflowSchedules/seed-5/SCH14_CoordinatorRestartWithShardUnavailable

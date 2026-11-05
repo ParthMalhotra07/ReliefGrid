@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var scheduleHeading = regexp.MustCompile(`(?m)^## (SCH\d{2}) — (.+)$`)
+var scheduleHeading = regexp.MustCompile(`(?m)^## (SCH\d{2}[ab]?) — (.+)$`)
 
 func TestFixturesMatchSchedulesMarkdown(t *testing.T) {
 	markdown, err := os.ReadFile("schedules.md")

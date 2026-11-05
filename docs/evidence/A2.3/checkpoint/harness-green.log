@@ -1,0 +1,26 @@
+=== RUN   TestScheduleForwardReconnectsAndJoinsChild
+--- PASS: TestScheduleForwardReconnectsAndJoinsChild (0.12s)
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission/test-command-fails
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission/shard-restore-fails
+--- PASS: TestSchedulesFailureRestoresShardAndAdmission (0.12s)
+    --- PASS: TestSchedulesFailureRestoresShardAndAdmission/test-command-fails (0.06s)
+    --- PASS: TestSchedulesFailureRestoresShardAndAdmission/shard-restore-fails (0.06s)
+=== RUN   TestScheduleForwardReconnectsAndJoinsChild
+--- PASS: TestScheduleForwardReconnectsAndJoinsChild (0.12s)
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission/test-command-fails
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission/shard-restore-fails
+--- PASS: TestSchedulesFailureRestoresShardAndAdmission (0.09s)
+    --- PASS: TestSchedulesFailureRestoresShardAndAdmission/test-command-fails (0.04s)
+    --- PASS: TestSchedulesFailureRestoresShardAndAdmission/shard-restore-fails (0.05s)
+=== RUN   TestScheduleForwardReconnectsAndJoinsChild
+--- PASS: TestScheduleForwardReconnectsAndJoinsChild (0.12s)
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission/test-command-fails
+=== RUN   TestSchedulesFailureRestoresShardAndAdmission/shard-restore-fails
+--- PASS: TestSchedulesFailureRestoresShardAndAdmission (0.10s)
+    --- PASS: TestSchedulesFailureRestoresShardAndAdmission/test-command-fails (0.04s)
+    --- PASS: TestSchedulesFailureRestoresShardAndAdmission/shard-restore-fails (0.06s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	1.684s

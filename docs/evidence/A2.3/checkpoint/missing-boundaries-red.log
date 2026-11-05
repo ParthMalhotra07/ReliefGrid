@@ -1,0 +1,16 @@
+=== RUN   TestSeededWorkflowSchedules
+    execution_test.go:493: run=mandatory-boundary-red backend=m8 seeds=1
+    execution_test.go:507: SUBSET execution; not complete A2.3 acceptance
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH01_BothCASQueuedBeforeEitherApplies
+    execution_test.go:517: SCH01 requires an FSM-log/apply barrier from S (#88); proposer-only probe is not full acceptance
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH12_RestartDuringSnapshotCreation
+    execution_test.go:520: SCH12 requires deterministic snapshot interruption seams from S (#88); refusing partial full-suite PASS
+=== RUN   TestSeededWorkflowSchedules/seed-1/SCH13_RestartDuringSnapshotRestore
+    execution_test.go:520: SCH13 requires deterministic snapshot interruption seams from S (#88); refusing partial full-suite PASS
+--- FAIL: TestSeededWorkflowSchedules (0.00s)
+    --- FAIL: TestSeededWorkflowSchedules/seed-1/SCH01_BothCASQueuedBeforeEitherApplies (0.00s)
+    --- FAIL: TestSeededWorkflowSchedules/seed-1/SCH12_RestartDuringSnapshotCreation (0.00s)
+    --- FAIL: TestSeededWorkflowSchedules/seed-1/SCH13_RestartDuringSnapshotRestore (0.00s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	0.042s
+FAIL

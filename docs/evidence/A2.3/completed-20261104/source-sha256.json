@@ -1,0 +1,14 @@
+{
+  "Makefile": "dbc04f49daecb0bdce3a7e39f6d311b49378aba7ef148fd80e1213b0d59bb8e9",
+  "scripts/test-schedules.sh": "fcb19de9401a2d301a16754b79610e3336354e3ffe6975c637f4af49a5f62bad",
+  "scripts/verify-A0.2.sh": "84e2240b9100bc57819bf02f361e2900d0e108cf2074b242cd2a0f8f2575d893",
+  "scripts/verify-S4.6b.sh": "efb7849f791c4f13aaa685f8233136b977fdd979509431432e8441b66726f4a7",
+  "tests/workflow/broker_execution_test.go": "1e46e022b893d00ee7064e73e08c758d98c780a0b6d46b9ee691735fe8457ffc",
+  "tests/workflow/cluster_seams_execution_test.go": "1b3b6230ef5f9c845dfe885cb4e5d4d73591162e31509e9435b3d68f82ce1e17",
+  "tests/workflow/coordinator_execution_test.go": "d0766eba26d509aa37c03d1afba2a5e22c1d581c66e28906afa0dcc619028b78",
+  "tests/workflow/execution_test.go": "a582adaef1825c49377339a29c029c1a4fdd7eb6bd35db3f439b0e762558d038",
+  "tests/workflow/fixtures.go": "e6a40227830f42d41c935525e5d08525b7f7bf4c72e6d033798eb07b6ad66a4f",
+  "tests/workflow/fixtures_test.go": "530c38e169c3388c65886fc78f38b19a23893938b61d68fa862db605daeba803",
+  "tests/workflow/m8_seams_execution_test.go": "16ff56dfcb93ccb4d32a45bf1635973f58e84a8870cd251ed02545e600d4e6ed",
+  "tests/workflow/protocol_test.go": "b3855d19fef644af743d83071483685ab7298c9467d8033acd98dceb70cd2d13"
+}

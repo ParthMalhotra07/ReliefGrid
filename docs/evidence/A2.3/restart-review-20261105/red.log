@@ -1,0 +1,15 @@
+=== RUN   TestKillRejectsExtraRestartBeforeReady
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=0
+=== RUN   TestKillRejectsExtraRestartBeforeReady/extra=1
+    kill_restart_test.go:78: extra crash must fail specifically on restart count: error=<nil>
+        === RUN   TestKillRejectsExtraRestartBeforeReady
+            kill_restart_test.go:24: killed storage-shard-0-0 (crictl)
+            cluster_seams_execution_test.go:380: post-assertion fixture recycle: storage-shard-0-0 newUID=new-uid restartCount=0 (PVC retained)
+        --- PASS: TestKillRejectsExtraRestartBeforeReady (0.05s)
+        PASS
+--- FAIL: TestKillRejectsExtraRestartBeforeReady (0.11s)
+    --- PASS: TestKillRejectsExtraRestartBeforeReady/extra=0 (0.06s)
+    --- FAIL: TestKillRejectsExtraRestartBeforeReady/extra=1 (0.06s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	0.125s
+FAIL
