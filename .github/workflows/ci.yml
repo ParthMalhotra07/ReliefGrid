@@ -6,6 +6,9 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
+  # S5.1: re-run publish on main after a GKE session's terraform apply, so the images are
+  # copied into that session's Artifact Registry (publish's WIF steps need the repo variables).
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -82,6 +85,7 @@ jobs:
     outputs:
       code: ${{ steps.diff.outputs.code }}
       seams: ${{ steps.diff.outputs.seams }}
+      infra: ${{ steps.diff.outputs.infra }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -188,8 +192,8 @@ jobs:
         run: |
           scripts/ci-tools.sh "$RUNNER_TEMP/bin"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-      - name: storage chart renders with no duplicate keys (strict YAML, #66)
-        run: go test -count=1 -run TestStorageChartNoDuplicateKeys ./scripts
+      - name: storage chart renders with no duplicate keys (strict YAML, #66) and its GKE profile (S5.1)
+        run: go test -count=1 -run 'TestStorageChartNoDuplicateKeys|TestStorageValues' ./scripts
         env:
           REQUIRE_HELM: "1"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -209,3 +213,158 @@ jobs:
           path: ${{ runner.temp }}/evidence
           retention-days: 14
           if-no-files-found: warn
+
+  # terraform (S5.1): fmt, validate and the shape checks of infra/gcp, offline (no backend, no
+  # cloud credentials), for ready PRs that touch infra/gcp or how it is checked.
+  terraform:
+    needs: changes
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft && needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false # restore-only; the check job saves from main
+      - id: gopaths
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.gopaths.outputs.gocache }}
+            ${{ steps.gopaths.outputs.gomodcache }}
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - name: install terraform (tools.mk pin, sha256-checked)
+        run: |
+          scripts/ci-tools.sh "$RUNNER_TEMP/bin" terraform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: infra/gcp fmt, validate and shape
+        run: go test -count=1 -run 'TestGCPTerraform|TestTerraformPinned' ./scripts
+        env:
+          REQUIRE_TERRAFORM: "1"
+
+  # publish (S5.1): on main only (a push, or a manual run on main), after check passes. Builds
+  # the six images once, pushes them to GHCR tagged with the commit and records each digest
+  # (build-push-action's output). While a GKE session is up (the repository variables
+  # GCP_WORKLOAD_IDENTITY_PROVIDER, GCP_CI_SERVICE_ACCOUNT and GCP_ARTIFACT_REGISTRY are set from
+  # the Terraform outputs), it also copies each image by digest into that session's Artifact
+  # Registry, keyless through Workload Identity Federation (main only, infra/gcp/iam.tf).
+  # CI never deploys (D7).
+  publish:
+    name: publish (${{ matrix.name }})
+    needs: check
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      matrix:
+        include:
+          - name: storagenode
+            dockerfile: cmd/storagenode/Dockerfile
+          - name: coordinator
+            dockerfile: cmd/coordinator/Dockerfile
+          - name: tools
+            dockerfile: cmd/invcheck/Dockerfile
+          - name: api
+            dockerfile: cmd/api/Dockerfile
+          - name: matcher
+            dockerfile: cmd/matcher/Dockerfile
+          - name: ui
+            dockerfile: ui/Dockerfile
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod # go install of the pinned crane (the copy step)
+          cache: false # restore-only; the check job saves from main
+      - id: gopaths
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.gopaths.outputs.gocache }}
+            ${{ steps.gopaths.outputs.gomodcache }}
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          provenance: false # one image manifest, one digest
+          tags: ghcr.io/parthmalhotra07/reliefgrid/${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+      - name: record the digest
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          echo "$DIGEST" | tee "$RUNNER_TEMP/digests/$NAME"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          NAME: ${{ matrix.name }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.name }}
+          path: ${{ runner.temp }}/digests/${{ matrix.name }}
+          retention-days: 1
+          if-no-files-found: error
+      - id: gcp
+        if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_CI_SERVICE_ACCOUNT }}
+          token_format: access_token
+          create_credentials_file: false
+      - name: copy by digest into the session's Artifact Registry
+        if: vars.GCP_WORKLOAD_IDENTITY_PROVIDER != ''
+        run: |
+          go install "github.com/google/go-containerregistry/cmd/crane@$(make -s print-CRANE_VERSION)"
+          crane auth login ghcr.io -u "$GITHUB_ACTOR" --password-stdin <<<"$GHCR_TOKEN"
+          crane auth login "${REGISTRY%%/*}" -u oauth2accesstoken --password-stdin <<<"$AR_TOKEN"
+          crane copy "ghcr.io/parthmalhotra07/reliefgrid/$NAME@$DIGEST" "$REGISTRY/$NAME:$GITHUB_SHA"
+          test "$(crane digest "$REGISTRY/$NAME:$GITHUB_SHA")" = "$DIGEST"
+        env:
+          NAME: ${{ matrix.name }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          REGISTRY: ${{ vars.GCP_ARTIFACT_REGISTRY }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AR_TOKEN: ${{ steps.gcp.outputs.access_token }}
+
+  # digests (S5.1): the six digests of this commit as one image-digests.json, the input of
+  # scripts/gke-deploy.sh.
+  digests:
+    needs: publish
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+      - run: scripts/image-digests.sh "$RUNNER_TEMP/digests" "$GITHUB_SHA" | tee image-digests.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-digests
+          path: image-digests.json
+          retention-days: 90
+          if-no-files-found: error

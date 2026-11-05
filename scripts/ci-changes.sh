@@ -14,6 +14,10 @@
 # are built and run: go.mod, go.sum, the root Makefile, tools.mk (the golangci-lint pin),
 # .github/ and this script.
 #
+# Infra (S5.1) is what the terraform job checks (fmt and validate of infra/gcp, offline):
+# infra/, tools.mk (the terraform pin), .github/, scripts/ci-tools.sh (installs it),
+# scripts/gke_test.go (the checks) and this script.
+#
 # The diff is from the merge base, so commits on the base branch since the PR forked do not
 # count. A base or head it cannot resolve is an error, never "no changes".
 set -euo pipefail
@@ -27,6 +31,7 @@ files="$(git diff --name-only "$base" "$2")"
 
 code=false
 seams=false
+infra=false
 while IFS= read -r f; do
 	case "$f" in
 	cmd/* | internal/* | deploy/* | contracts/* | scripts/* | chaos/* | loadtest/* | ui/* | .github/* | Makefile | tools.mk | go.mod | go.sum | .dockerignore)
@@ -39,6 +44,12 @@ while IFS= read -r f; do
 		seams=true
 		;;
 	esac
+	case "$f" in
+	infra/* | tools.mk | .github/* | scripts/ci-tools.sh | scripts/gke_test.go | scripts/ci-changes.sh)
+		infra=true
+		;;
+	esac
 done <<<"$files"
 echo "code=$code"
 echo "seams=$seams"
+echo "infra=$infra"
