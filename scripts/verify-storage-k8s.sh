@@ -114,6 +114,9 @@
 #   503 NOT_LEADER               (S3.1, #30) leaderHint.address is the leader's advertised
 #                                HTTP_ADVERTISE, not its Raft host with this replica's port
 set -uo pipefail
+# shellcheck source=scripts/kind-guard.sh
+. "$(dirname "$0")/kind-guard.sh"
+require_kind "${KUBE_CONTEXT:-kind-reliefgrid}" scripts/verify-storage-k8s.sh # deletes and recreates kind
 
 CLUSTER=reliefgrid
 CTX="kind-$CLUSTER"

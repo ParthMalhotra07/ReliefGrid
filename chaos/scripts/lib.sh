@@ -23,6 +23,15 @@ set -uo pipefail
 CTX="${CHAOS_CONTEXT:-kind-reliefgrid}"
 NS="${CHAOS_NAMESPACE:-reliefgrid}"
 KIND_CLUSTER="${CTX#kind-}"
+# stop-worker (docker stop of a kind node) and isolate-replica (its conntrack fallback runs on kind
+# nodes) are kind-only; the others use kubectl and Chaos Mesh and run on GKE too.
+case "${EXPERIMENT:-}" in
+stop-worker | isolate-replica)
+	# shellcheck source=scripts/kind-guard.sh
+	. "$(dirname "${BASH_SOURCE[0]}")/../../scripts/kind-guard.sh"
+	require_kind "$CTX" "chaos/scripts/$EXPERIMENT.sh"
+	;;
+esac
 TOOLS_IMAGE="${TOOLS_IMAGE:-reliefgrid/tools:dev}"
 COORD_URL="http://storage-coordinator.$NS.svc.cluster.local:8080"
 PVC=chaos-ledger

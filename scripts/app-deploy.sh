@@ -7,6 +7,12 @@ cluster="${CLUSTER:-reliefgrid}"
 namespace="${NAMESPACE:-reliefgrid}"
 release="${APP_RELEASE:-reliefgrid}"
 context="kind-$cluster"
+# Kind-only (kind load, docker image inspect): as scripts/kind-guard.sh, inline so the script
+# stands alone.
+case "${KUBE_CONTEXT:-$context}" in
+kind-*) ;;
+*) echo "scripts/app-deploy.sh is kind-only (kind, docker or conntrack on kind nodes, or a kind cluster rebuild); refusing context $KUBE_CONTEXT" >&2; exit 2 ;;
+esac
 # Demo/dev storage belongs to its standalone release. CI may explicitly use
 # the full subchart in its isolated namespace.
 with_storage="${APP_WITH_STORAGE:-false}"

@@ -25,6 +25,9 @@
 set -uo pipefail
 # shellcheck source=scripts/demos/common.sh
 . "$(dirname "$0")/common.sh"
+# shellcheck source=scripts/kind-guard.sh
+. "$REPO_ROOT/scripts/kind-guard.sh"
+require_kind "${KUBE_CONTEXT:-kind-$CLUSTER}" "scripts/demos/gate.sh"
 
 DEMOS_DIR="${DEMOS_DIR:-$DEMOS_DIR_SELF}"
 GATE_RESET="${GATE_RESET:-$DEMOS_DIR/reset.sh}"

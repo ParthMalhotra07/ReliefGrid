@@ -21,6 +21,9 @@ set -uo pipefail
 CTX="${CHAOS_CONTEXT:-kind-reliefgrid}"
 NS="${CHAOS_NAMESPACE:-reliefgrid}"
 KIND_CLUSTER="${CTX#kind-}"
+# shellcheck source=scripts/kind-guard.sh
+. "$(dirname "$0")/../../scripts/kind-guard.sh"
+require_kind "$CTX" "chaos/scripts/suite.sh" # docker stats/exec on kind nodes, stop-worker
 SEED_BASE="${SEED_BASE:-430}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
