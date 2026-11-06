@@ -10,6 +10,9 @@ scenario.
 | --- | --- |
 | `lib.js` | dataset replay, tags, error counting, the S5.2 thresholds |
 | `smoke.js` | 0: one VU, 2 ops/s, 1 min. A correctness check and calibration for the later scenarios, not a result. |
+| `step.js` | 2: the arrival rate climbs in steps (`START_RPS`, `STEP_RPS`, `STEPS`, `RAMP_S`, `HOLD_S`); each hold is one measured step, and the saturation point is the last step inside every threshold |
+| `baseline.js` | 1: a constant `RATE` (about half the saturation point) for `DURATION_S` (600 s), the first `WARMUP_SECONDS` (120 s) not measured; the reference for every before/after |
+| `soak.js` | 3: a constant `RATE` (about 70% of saturation) for 1800 s: log growth, snapshots and their cost under the load Raft profile (#33) |
 
 ## Dataset
 
@@ -23,11 +26,23 @@ registrations, 10% `POST /match/{id}`, 65% reads (55% `GET /requests/{id}`,
 inside the matcher's 50 km radius. The run name changes only the
 Idempotency-Keys: `payloadSha256` is equal across runs of one seed.
 
-## Run
+## Deploy and run
 
 ```sh
-loadtest/run.sh smoke          # SEED=52 OPS=200 K6_CPUS=7 K6=k6 (kind only)
+make cluster-down && loadtest/cluster.sh      # fresh kind, load overlays, every pod Guaranteed
+loadtest/run.sh smoke
+START_RPS=10 STEP_RPS=10 STEPS=8 loadtest/run.sh step
+RATE=30 loadtest/run.sh baseline
+go run ./loadtest/cmd/loadreport aggregate -out agg.json docs/evidence/S5.2/<run>...
 ```
+
+`loadtest/cluster.sh` installs both charts with their `values-load.yaml`
+overlays (never the defaults): the load Raft profile, and requests = limits on
+every container, about 5.35 CPU in total. For each run, `run.sh` confines the
+kind node containers to `KIND_CPUS` (0-5, `docker update --cpuset-cpus`), runs
+k6 on `K6_CPUS` (6-7) and sets the power profile to `performance`. All three go
+in the report, and one EXIT trap restores the cpusets and the previous power
+profile whether the run passes, fails or is interrupted.
 
 `loadtest/run.sh` records the host, versions and configuration; generates the
 dataset; scrapes every storage node's and the coordinator's `/metrics` before
@@ -51,6 +66,14 @@ Report figures:
 - **Pods:** peak CPU (a 5 s average) and mean CPU, peak memory and CPU
   throttling per pod.
 - **Ledger:** every acknowledged create reads back 200.
+- **Steps:** each step lists the pods running at their CPU limit (at least 90% of
+  it, or throttled in at least 20% of CFS periods). The saturation point names
+  the first step at which any pod reached its limit, so the curve says which
+  component saturated first.
+
+Repeated runs of one scenario and seed are reported as median plus min/max
+(`loadreport aggregate`). Matching is asynchronous, so matched and waiting
+counts vary between runs even though each run offers the same work.
 
 k6 is pinned in `tools.mk` (`K6_VERSION`). Run it with `taskset` on cores the
 cluster is not using, and record them (`host.k6Cpus` in the report).
