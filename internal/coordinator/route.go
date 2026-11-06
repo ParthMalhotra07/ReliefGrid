@@ -210,10 +210,13 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 	wrong := map[string]bool{} // addresses that answered as another server: not dialled again
 	var next target            // a NOT_LEADER hint to follow first
 	backoff := minBackoff
+	n := 0                      // attempts made
+	outcome := outcomeExhausted // how the call ended, for coordinator_forward_total
+	defer func() { c.metrics.observeForward(shard, outcome, n) }()
 	if c.allDown(shard) {
+		outcome = outcomeAllDown
 		return nil, false, fmt.Sprintf("every member of shard %d is DOWN (no heartbeat for %s)", shard, c.cfg.DownAfter)
 	}
-	n := 0 // attempts made
 	for ctx.Err() == nil {
 		t, hinted := next, next.addr != ""
 		next = target{}
@@ -224,6 +227,7 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 			clear(tried)
 			maps.Copy(tried, wrong)
 			if len(wrong) > 0 && c.pick(shard, tried).addr == "" {
+				outcome = outcomeMisrouted
 				return nil, unknown, fmt.Sprintf("every member of shard %d answered as another server (last: %s)", shard, why)
 			}
 			select {
@@ -232,6 +236,7 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 			}
 			backoff = min(2*backoff, maxBackoff)
 			if c.allDown(shard) {
+				outcome = outcomeAllDown
 				return nil, unknown, fmt.Sprintf("every member of shard %d is DOWN (last: %s)", shard, why)
 			}
 			continue
@@ -254,6 +259,7 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 			continue
 		}
 		if a.status < 500 {
+			outcome = outcomeAnswered
 			return a, false, ""
 		}
 		var e internalapi.Error
@@ -263,6 +269,7 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 		case internalapi.NOTLEADER:
 			if e.LeaderHint != nil {
 				next = c.hint(shard, *e.LeaderHint)
+				c.metrics.observeHint(shard)
 			}
 		case internalapi.NOLEADER, internalapi.STORAGEUNAVAILABLE:
 			// Never proposed: try elsewhere.

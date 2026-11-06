@@ -54,6 +54,7 @@ func main() {
 // config is read from the environment the Deployment sets.
 type config struct {
 	HTTPAddr    string
+	MetricsAddr string // METRICS_ADDR, default :9090: GET /metrics only (docs/operations/storage-metrics.md); "" serves none
 	RingPath    string
 	Coordinator coordinator.Config // without Ring; run loads it from RingPath
 }
@@ -72,7 +73,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 		}
 		return time.Duration(n) * time.Millisecond, nil
 	}
-	cfg := config{HTTPAddr: get("HTTP_ADDR", ":8080"), RingPath: get("RING_PATH", "/etc/reliefgrid/ring.yaml")}
+	cfg := config{HTTPAddr: get("HTTP_ADDR", ":8080"), MetricsAddr: get("METRICS_ADDR", ":9090"), RingPath: get("RING_PATH", "/etc/reliefgrid/ring.yaml")}
 	if _, _, err := net.SplitHostPort(cfg.HTTPAddr); err != nil {
 		return config{}, fmt.Errorf("HTTP_ADDR %q: %w", cfg.HTTPAddr, err)
 	}
@@ -129,8 +130,12 @@ func run(ctx context.Context, cfg config, ready chan<- string) error {
 	mux.Handle("/", c.Handler())
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
-	errc := make(chan error, 1)
+	errc := make(chan error, 2)
 	go func() { errc <- srv.Serve(ln) }()
+	metricsSrv := &http.Server{Addr: cfg.MetricsAddr, Handler: c.MetricsHandler(), ReadHeaderTimeout: 5 * time.Second}
+	if cfg.MetricsAddr != "" {
+		go func() { errc <- metricsSrv.ListenAndServe() }()
+	}
 	slog.Info("serving", "addr", ln.Addr().String(), "ringVersion", rg.Version(), "checksum", rg.Checksum())
 	if ready != nil {
 		ready <- ln.Addr().String()
@@ -143,6 +148,7 @@ func run(ctx context.Context, cfg config, ready chan<- string) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutdownCtx)
+	_ = metricsSrv.Shutdown(shutdownCtx)
 	if errors.Is(err, http.ErrServerClosed) {
 		err = nil
 	}
