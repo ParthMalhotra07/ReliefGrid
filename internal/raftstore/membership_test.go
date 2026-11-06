@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/raft"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/testnet"
 )
 
 func listening(addr string) bool {
@@ -50,12 +51,12 @@ func ids(servers []raft.Server) []raft.ServerID {
 // the same incarnation waits again on the next start.
 func TestOpenWaitsForAdmissionBeforeTransport(t *testing.T) {
 	root := t.TempDir()
-	port, listen := reservePort(t)
+	port, listen := testnet.Reserve(t)
 	cfg := Config{
 		PodName: "storage-1-0", GroupID: "shard-1", Shard: 1,
 		DataDir: root + "/pvc", FSMDir: root + "/emptydir",
 		BindAddr: "127.0.0.1:" + port, AdvertiseAddr: "localhost:" + port, Profile: testProfile,
-		listen: listen,
+		Listen: listen,
 	}
 	type admitCall struct {
 		id       Identity

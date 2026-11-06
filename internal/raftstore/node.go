@@ -244,7 +244,7 @@ func Open(ctx context.Context, cfg Config) (_ *Node, err error) {
 		}
 		n.sm.seams = n.seams
 	}
-	nt, err := newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, cfg.listen, logger.Named("transport"))
+	nt, err := newDNSTransport(cfg.BindAddr, cfg.AdvertiseAddr, cfg.Listen, logger.Named("transport"))
 	if err != nil {
 		return nil, err
 	}

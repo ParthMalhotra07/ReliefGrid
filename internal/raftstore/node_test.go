@@ -17,6 +17,7 @@ import (
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/testnet"
 )
 
 // testProfile elects fast and never snapshots on its own; tests call
@@ -49,7 +50,7 @@ func newTestCluster(t testing.TB, n int, p Profile) *testCluster {
 	c := &testCluster{t: t, cfgs: make([]Config, n), nodes: make([]*Node, n)}
 	for i := range n {
 		root := t.TempDir()
-		port, listen := reservePort(t)
+		port, listen := testnet.Reserve(t)
 		c.cfgs[i] = Config{
 			PodName:       fmt.Sprintf("storage-1-%d", i),
 			GroupID:       "shard-1",
@@ -60,7 +61,7 @@ func newTestCluster(t testing.TB, n int, p Profile) *testCluster {
 			AdvertiseAddr: "localhost:" + port,
 			Profile:       p,
 			Logger:        hclog.New(&hclog.LoggerOptions{Name: fmt.Sprintf("raft-%d", i), Level: hclog.Warn, Output: os.Stderr}),
-			listen:        listen,
+			Listen:        listen,
 		}
 		c.open(i)
 	}

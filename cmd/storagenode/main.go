@@ -77,6 +77,11 @@ type config struct {
 	Admission     admission.Source
 	AdmissionPoll time.Duration
 	AdmissionOff  bool
+
+	// Listen opens the Raft, data and management listeners; nil
+	// (production) uses net.ListenConfig.Listen. Tests set it to listen on
+	// ports they hold reserved (internal/testnet, issue #75).
+	Listen func(ctx context.Context, network, address string) (net.Listener, error)
 }
 
 // loadConfig reads POD_NAME, SHARD, GROUP_ID (default shard-<SHARD>),
@@ -185,6 +190,18 @@ func run(ctx context.Context, cfg config) error {
 	if cfg.AdmissionPoll <= 0 {
 		cfg.AdmissionPoll = 2 * time.Second
 	}
+	listen := cfg.Listen
+	if listen == nil {
+		listen = (&net.ListenConfig{}).Listen
+	}
+	cfg.Raft.Listen = cfg.Listen
+	serve := func(srv *http.Server) error {
+		ln, err := listen(context.Background(), "tcp", srv.Addr)
+		if err != nil {
+			return err
+		}
+		return srv.Serve(ln)
+	}
 
 	// Management serves from the start: gated while the disk waits for
 	// admission, then the full endpoint.
@@ -196,7 +213,7 @@ func run(ctx context.Context, cfg config) error {
 	mgmtSrv := &http.Server{Addr: cfg.MgmtAddr, ReadHeaderTimeout: 5 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { (*mgmt.Load()).ServeHTTP(w, r) })}
 	errc := make(chan error, 2)
-	go func() { errc <- mgmtSrv.ListenAndServe() }()
+	go func() { errc <- serve(mgmtSrv) }()
 
 	gateCtx, stopGate := context.WithCancel(ctx)
 	defer stopGate()
@@ -244,7 +261,7 @@ func run(ctx context.Context, cfg config) error {
 	full := s.MgmtRoutes()
 	mgmt.Store(&full)
 	dataSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: s.DataRoutes(), ReadHeaderTimeout: 5 * time.Second}
-	go func() { errc <- dataSrv.ListenAndServe() }()
+	go func() { errc <- serve(dataSrv) }()
 	servers := []*http.Server{dataSrv, mgmtSrv}
 	hbCtx, stopHeartbeats := context.WithCancel(ctx)
 	hbDone := make(chan struct{})
