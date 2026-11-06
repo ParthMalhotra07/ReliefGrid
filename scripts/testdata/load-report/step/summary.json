@@ -1,0 +1,222 @@
+{
+  "goal": "S5.2",
+  "runId": "S5.2-step-20261110T090000Z",
+  "scenario": "step",
+  "startedAt": "2026-11-10T09:00:00Z",
+  "git": {
+    "sha": "0123456789abcdef0123456789abcdef01234567",
+    "dirty": false
+  },
+  "host": {
+    "cpuModel": "Intel(R) Core(TM) Ultra 7 258V",
+    "logicalCpus": 8,
+    "memTotalGiB": 30.6,
+    "kernel": "7.0.0-38-generic",
+    "powerProfile": "performance",
+    "k6Cpus": "6-7",
+    "swapUsedMiB": 0,
+    "loadAvgStart": 0.4,
+    "cpuMHzStart": 2200,
+    "cpuMHzEnd": 2100
+  },
+  "versions": {
+    "k6": "v1.4.2",
+    "kind": "v0.33.0",
+    "kindNodeImage": "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5",
+    "kubectl": "v1.37.1",
+    "helm": "v3.22.1",
+    "go": "1.27.2",
+    "images": {
+      "storagenode": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "coordinator": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "api": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "matcher": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  },
+  "config": {
+    "raftProfile": "load",
+    "readFence": "fence",
+    "tracing": "off",
+    "autoscaling": "off",
+    "replicas": {
+      "api": 2,
+      "matcher": 2
+    }
+  },
+  "dataset": {
+    "seed": 52,
+    "ops": 20000,
+    "requests": 3000,
+    "resources": 2000,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "load": {
+    "executor": "ramping-arrival-rate",
+    "durationSeconds": 840,
+    "warmupSeconds": 120,
+    "maxVUs": 200,
+    "mix": {
+      "create_request": 0.15,
+      "register_resource": 0.1,
+      "match": 0.1,
+      "read": 0.55,
+      "list": 0.1
+    }
+  },
+  "thresholds": {
+    "writeP99Ms": 1000,
+    "readP99Ms": 250,
+    "listP99Ms": 500,
+    "errorRate": 0.01
+  },
+  "percentiles": "k6 http_req_duration (request sent to last response byte, at the client), per request class (write, read by ID, list), over the measured window after warm-up; p50/p95/p99 by k6's trend interpolation",
+  "results": {
+    "requests": 24000,
+    "throughputRps": 28.6,
+    "classes": {
+      "write": {
+        "count": 8400,
+        "p50Ms": 40,
+        "p95Ms": 300,
+        "p99Ms": 900
+      },
+      "read": {
+        "count": 13200,
+        "p50Ms": 8,
+        "p95Ms": 60,
+        "p99Ms": 200
+      },
+      "list": {
+        "count": 2400,
+        "p50Ms": 30,
+        "p95Ms": 180,
+        "p99Ms": 420
+      }
+    },
+    "errors": {
+      "total": 120,
+      "rate": 0.005,
+      "byStatus": {
+        "409": 20,
+        "503": 100
+      },
+      "byCode": {
+        "VERSION_CONFLICT": 20,
+        "STORAGE_UNAVAILABLE": 100
+      }
+    },
+    "droppedIterations": 0
+  },
+  "match": {
+    "label": "matched only",
+    "matched": 1800,
+    "waiting": 1200,
+    "p50Ms": 900,
+    "p95Ms": 2500,
+    "p99Ms": 4000
+  },
+  "steps": [
+    {
+      "targetRps": 10,
+      "achievedRps": 10.0,
+      "writeP99Ms": 120,
+      "readP99Ms": 40,
+      "errorRate": 0.0,
+      "droppedIterations": 0,
+      "listP99Ms": 90
+    },
+    {
+      "targetRps": 20,
+      "achievedRps": 20.0,
+      "writeP99Ms": 300,
+      "readP99Ms": 90,
+      "errorRate": 0.001,
+      "droppedIterations": 0,
+      "listP99Ms": 150
+    },
+    {
+      "targetRps": 30,
+      "achievedRps": 30.0,
+      "writeP99Ms": 800,
+      "readP99Ms": 200,
+      "errorRate": 0.004,
+      "droppedIterations": 0,
+      "listP99Ms": 380
+    },
+    {
+      "targetRps": 40,
+      "achievedRps": 37.5,
+      "writeP99Ms": 1600,
+      "readP99Ms": 320,
+      "errorRate": 0.02,
+      "droppedIterations": 140,
+      "listP99Ms": 700
+    }
+  ],
+  "saturation": {
+    "rps": 30,
+    "brokenAt": 40,
+    "brokenBy": [
+      "writeP99",
+      "readP99",
+      "listP99",
+      "errorRate",
+      "droppedIterations"
+    ]
+  },
+  "raft": {
+    "shards": [
+      {
+        "shard": 0,
+        "commitP50Ms": 3,
+        "commitP99Ms": 25,
+        "snapshots": 2,
+        "logBytesMax": 41943040
+      },
+      {
+        "shard": 1,
+        "commitP50Ms": 3,
+        "commitP99Ms": 27,
+        "snapshots": 2,
+        "logBytesMax": 40894464
+      },
+      {
+        "shard": 2,
+        "commitP50Ms": 4,
+        "commitP99Ms": 30,
+        "snapshots": 3,
+        "logBytesMax": 44040192
+      }
+    ]
+  },
+  "pods": [
+    {
+      "name": "storage-0-0",
+      "cpuMillicoresMax": 640,
+      "memMiBMax": 180,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "api-0",
+      "cpuMillicoresMax": 900,
+      "memMiBMax": 120,
+      "cpuThrottledPeriods": 12
+    }
+  ],
+  "invariants": {
+    "ledger": "PASS",
+    "invcheck": "PASS"
+  },
+  "raw": [
+    {
+      "path": "raw/k6-points.jsonl.gz",
+      "bytes": 48000000,
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "committed": false
+    },
+    {
+      "path": "k6-summary.json",
+      "committed": true
+    }
+  ]
+}
