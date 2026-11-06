@@ -1,0 +1,5 @@
+{
+  "head": "dd1ea8e0ceef9f642a0e4d4c21572315b065b28b",
+  "changes": "M  Makefile\nA  deploy/helm/autoscaling/keda-values.yaml\nA  deploy/helm/autoscaling/metrics-server-values.yaml\nM  deploy/helm/reliefgrid/templates/app.yaml\nA  deploy/helm/reliefgrid/templates/autoscaling.yaml\nM  deploy/helm/reliefgrid/values.yaml\nAM docs/operations/autoscaling.md\nA  scripts/app_autoscaling_test.go\nA  scripts/autoscaling-install.sh\nA  scripts/autoscaling-load-tool.sh\nA  scripts/autoscaling-load.js\nA  scripts/autoscaling-profile.sh\nA  scripts/autoscaling_profile_test.go\nA  scripts/verify-A4.3-static.sh\nA  scripts/verify-A4.3-test.py\nA  scripts/verify-A4.3.py\nM  tools.mk\n?? docs/evidence/A4.3/\n",
+  "context": "kind-reliefgrid"
+}

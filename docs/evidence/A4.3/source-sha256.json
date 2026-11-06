@@ -1,0 +1,19 @@
+{
+  "Makefile": "9b9ac0caa28dac480338110d2f0584163364e3deec57a5324b94633823283621",
+  "deploy/helm/autoscaling/keda-values.yaml": "0af31673ffc9f7ffae2fc0a88276f64683790ce1c4c6771925eb93266d610924",
+  "deploy/helm/autoscaling/metrics-server-values.yaml": "5630d0c01d222bc62873692ba61565e5e6363cf08f2549a36ba926bd78acb810",
+  "deploy/helm/reliefgrid/templates/app.yaml": "a52c526a7e1ca2ab5ef60a762ae35c432118f8af5e23d6c5c51d095ca1804b61",
+  "deploy/helm/reliefgrid/templates/autoscaling.yaml": "de261ea1f0e504b5eb014314ebe5a6ae63c28ade55ddf6ee1a40eda46a0f62a9",
+  "deploy/helm/reliefgrid/values.yaml": "89e9a80c965beab66125dd0f93c46fee2bdfa3229a04f3490c21b24cf093310b",
+  "docs/operations/autoscaling.md": "e6e42f4b522229229b46c1b063f78008eb5cf4a9e59ce56871c4e9e742f3bbae",
+  "scripts/app_autoscaling_test.go": "37b6091e7d385c66d57fdf1715686aea95edccd9dbcdb015533beb079a8392a2",
+  "scripts/autoscaling-install.sh": "c30df540a79282df32935c44e470428e3669998095bbee3e5a141e50f7a33950",
+  "scripts/autoscaling-load-tool.sh": "31dc269270cae79437aa4e06c288b124b3ff6bdf049ced02c30c0f3931d85f53",
+  "scripts/autoscaling-load.js": "a1b268a774828f90eed1d9b6da3a8f4188e896039275576f4fd4766c4eaf680c",
+  "scripts/autoscaling-profile.sh": "85a448836694f0e90ee1edabb89c480dc5bdb18305141f4b8a86a8836a003363",
+  "scripts/autoscaling_profile_test.go": "e1690f185492ff2572a103099a14455b007e19dc91d2e475024b32419e0a8a5b",
+  "scripts/verify-A4.3-static.sh": "85b6156a6da5060baeaab81f9703f2a6698e716003d7aa5bfffa3a9be6f23452",
+  "scripts/verify-A4.3-test.py": "73d37542473d3c8946edb2d7edfad05e68774d514827479747b96ee14a5c13a2",
+  "scripts/verify-A4.3.py": "e86c7dd5bbae5f8093ef3ebbdde3d803d771b6085a0747e97da3c5e5abd6204f",
+  "tools.mk": "e81e76e4bb91ccc8ce8b0b68ac096cd88f3b39fa5a7ee41aa14524854dfc59cc"
+}

@@ -1,0 +1,24 @@
+{
+  "requestId": "e1e299d7-3348-5793-aef7-b5add744a843",
+  "event": {
+    "schemaVersion": 1,
+    "eventId": "e10c917c-528e-4e1b-8255-74c92a012bda",
+    "entityId": "e1e299d7-3348-5793-aef7-b5add744a843",
+    "entityVersion": 1,
+    "eventType": "request.created",
+    "occurredAt": "2026-11-06T07:13:42.249043+00:00",
+    "traceparent": "00-7666537220354e218cf64e44afe1fca6-281af2d9a143432d-00",
+    "payload": {
+      "requestType": "SHELTER",
+      "details": "Synthetic A4.3 bounded redelivery fixture",
+      "peopleAffected": 1,
+      "urgency": "HIGH",
+      "location": {
+        "lat": -77,
+        "lng": -130
+      },
+      "requestId": "e1e299d7-3348-5793-aef7-b5add744a843",
+      "status": "PENDING"
+    }
+  }
+}

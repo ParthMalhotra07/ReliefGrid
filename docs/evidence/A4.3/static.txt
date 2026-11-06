@@ -1,0 +1,10 @@
+bash scripts/verify-A4.3-static.sh
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	5.175s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.005s
+
+OK
+A4.3 STATIC VERIFY: PASS
