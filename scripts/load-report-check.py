@@ -71,6 +71,20 @@ def need(doc, path, kind):
     return good
 
 
+def cpus(spec):
+    """A cpuset list ("0-5", "6,7") as a set; empty if unparsable."""
+    out = set()
+    if not isinstance(spec, str):
+        return out
+    for part in spec.split(","):
+        lo, _, hi = part.strip().partition("-")
+        try:
+            out.update(range(int(lo), int(hi or lo) + 1))
+        except ValueError:
+            return set()
+    return out
+
+
 def check_files(d, doc):
     sums_path = os.path.join(d, "SHA256SUMS")
     if not os.path.isfile(sums_path):
@@ -222,9 +236,13 @@ def main(argv):
         bad("git.dirty: the run must come from a clean tree")
     for path, kind in (("host.cpuModel", "str"), ("host.logicalCpus", "pos"), ("host.memTotalGiB", "pos"),
                        ("host.kernel", "str"), ("host.powerProfile", "str"), ("host.k6Cpus", "str"),
+                       ("host.kindCpus", "str"), ("host.powerProfileRestored", "str"),
                        ("host.swapUsedMiB", "nonneg"), ("host.loadAvgStart", "nonneg"),
                        ("host.cpuMHzStart", "pos"), ("host.cpuMHzEnd", "pos")):
         need(doc, path, kind)
+    kind_cpus, k6_cpus = cpus(get(doc, "host.kindCpus")), cpus(get(doc, "host.k6Cpus"))
+    if kind_cpus and k6_cpus and kind_cpus & k6_cpus:
+        bad(f"host: k6 CPUs {get(doc, 'host.k6Cpus')} overlap the kind nodes' {get(doc, 'host.kindCpus')}")
     for v in ("k6", "kind", "kindNodeImage", "kubectl", "helm", "go"):
         need(doc, f"versions.{v}", "str")
     images = get(doc, "versions.images")

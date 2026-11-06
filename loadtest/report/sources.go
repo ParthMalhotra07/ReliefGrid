@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
@@ -185,6 +186,7 @@ type CgroupSample struct {
 	TMs         int64  `json:"tMs"`
 	Pod         string `json:"pod"`
 	UsageUsec   int64  `json:"usageUsec"`
+	NrPeriods   int64  `json:"nrPeriods"`
 	NrThrottled int64  `json:"nrThrottled"`
 	MemBytes    int64  `json:"memBytes"`
 }
@@ -249,5 +251,62 @@ func PodUse(samples []CgroupSample) []PodFigures {
 		out = append(out, f)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
+}
+
+// PodAtLimit is a pod running at its CPU limit in a window.
+type PodAtLimit struct {
+	Name           string  `json:"name"`
+	CPUMillicores  float64 `json:"cpuMillicores"`
+	LimitMillicore float64 `json:"limitMillicores"`
+	PctOfLimit     float64 `json:"pctOfLimit"`
+	ThrottledRatio float64 `json:"throttledRatio"` // throttled CFS periods / periods
+}
+
+// At-limit thresholds: a pod uses >= 90% of its CPU limit, or the kernel
+// throttled it in >= 20% of its CFS periods.
+const (
+	atLimitPct       = 90
+	atLimitThrottled = 0.2
+)
+
+// PodsAtLimit are the pods at their CPU limit in w, busiest first. limits
+// is each pod's CPU limit in millicores; a pod without one is judged by
+// throttling alone.
+func PodsAtLimit(samples []CgroupSample, w Window, limits map[string]float64) []PodAtLimit {
+	byPod := map[string][]CgroupSample{}
+	for _, s := range samples {
+		if at := time.UnixMilli(s.TMs); !at.Before(w.From) && !at.After(w.To) {
+			byPod[s.Pod] = append(byPod[s.Pod], s)
+		}
+	}
+	out := []PodAtLimit{}
+	for pod, ss := range byPod {
+		if len(ss) < 2 {
+			continue
+		}
+		slices.SortFunc(ss, func(a, b CgroupSample) int { return int(a.TMs - b.TMs) })
+		first, last := ss[0], ss[len(ss)-1]
+		if last.TMs <= first.TMs {
+			continue
+		}
+		p := PodAtLimit{Name: pod, CPUMillicores: round2(float64(last.UsageUsec-first.UsageUsec) / float64(last.TMs-first.TMs)),
+			LimitMillicore: limits[pod]}
+		if dp := last.NrPeriods - first.NrPeriods; dp > 0 {
+			p.ThrottledRatio = round2(float64(last.NrThrottled-first.NrThrottled) / float64(dp))
+		}
+		if p.LimitMillicore > 0 {
+			p.PctOfLimit = round2(100 * p.CPUMillicores / p.LimitMillicore)
+		}
+		if p.PctOfLimit >= atLimitPct || p.ThrottledRatio >= atLimitThrottled {
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].PctOfLimit != out[j].PctOfLimit {
+			return out[i].PctOfLimit > out[j].PctOfLimit
+		}
+		return out[i].Name < out[j].Name
+	})
 	return out
 }
