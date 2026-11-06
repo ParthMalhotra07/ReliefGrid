@@ -24,7 +24,7 @@ func TestLoadConfig(t *testing.T) {
 		r.BindAddr != ":7000" || r.AdvertiseAddr != base["RAFT_ADVERTISE"] || r.Profile != raftstore.ProfileDemo {
 		t.Fatalf("raft config = %+v", r)
 	}
-	if cfg.HTTPAddr != ":8080" || cfg.MgmtAddr != ":8081" || cfg.HTTPPort != "8080" ||
+	if cfg.HTTPAddr != ":8080" || cfg.MgmtAddr != ":8081" || cfg.MetricsAddr != ":9090" || cfg.HTTPPort != "8080" ||
 		cfg.RingPath != "/etc/reliefgrid/ring.yaml" || cfg.RequestTimeout != 3*time.Second || cfg.OperatorToken != "s3cret" {
 		t.Fatalf("config = %+v", cfg)
 	}

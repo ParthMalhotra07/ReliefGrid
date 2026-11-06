@@ -62,6 +62,7 @@ type config struct {
 	Raft           raftstore.Config
 	HTTPAddr       string        // HTTP_ADDR, default :8080
 	MgmtAddr       string        // MGMT_ADDR, default :8081
+	MetricsAddr    string        // METRICS_ADDR, default :9090: GET /metrics only (docs/operations/storage-metrics.md)
 	HTTPPort       string        // port peers' data endpoints listen on, from HTTP_ADDR; used in leader hints
 	RingPath       string        // RING_PATH, default /etc/reliefgrid/ring.yaml
 	RequestTimeout time.Duration // REQUEST_TIMEOUT_MS, default 3000; the deadline on every Apply and read
@@ -129,6 +130,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 		},
 		HTTPAddr:       get("HTTP_ADDR", ":8080"),
 		MgmtAddr:       get("MGMT_ADDR", ":8081"),
+		MetricsAddr:    get("METRICS_ADDR", ":9090"),
 		RingPath:       get("RING_PATH", "/etc/reliefgrid/ring.yaml"),
 		RequestTimeout: time.Duration(timeoutMS) * time.Millisecond,
 		OperatorToken:  getenv("OPERATOR_TOKEN"),
@@ -212,8 +214,21 @@ func run(ctx context.Context, cfg config) error {
 	mgmt.Store(&starting)
 	mgmtSrv := &http.Server{Addr: cfg.MgmtAddr, ReadHeaderTimeout: 5 * time.Second,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { (*mgmt.Load()).ServeHTTP(w, r) })}
-	errc := make(chan error, 2)
+	errc := make(chan error, 3)
 	go func() { errc <- serve(mgmtSrv) }()
+
+	// Metrics serve from the start too, and the Raft sink is in place
+	// before the node opens, so a start-up restore is counted.
+	metrics := storagenode.NewMetrics(cfg.Raft.Shard, cfg.Raft.PodName)
+	if err := metrics.InstallRaftSink(); err != nil {
+		return fmt.Errorf("metrics: %w", err)
+	}
+	// An empty MetricsAddr (tests that build config by hand) serves none;
+	// loadConfig defaults it to :9090.
+	metricsSrv := &http.Server{Addr: cfg.MetricsAddr, Handler: metrics.Handler(), ReadHeaderTimeout: 5 * time.Second}
+	if cfg.MetricsAddr != "" {
+		go func() { errc <- serve(metricsSrv) }()
+	}
 
 	gateCtx, stopGate := context.WithCancel(ctx)
 	defer stopGate()
@@ -245,6 +260,7 @@ func run(ctx context.Context, cfg config) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = mgmtSrv.Shutdown(shutdownCtx)
+		_ = metricsSrv.Shutdown(shutdownCtx)
 		if ctx.Err() != nil {
 			return nil // stopped while waiting for admission
 		}
@@ -256,13 +272,13 @@ func run(ctx context.Context, cfg config) error {
 	s := storagenode.New(n, storagenode.Config{
 		Ring: rg, Shard: cfg.Raft.Shard, PodName: cfg.Raft.PodName, Timeout: cfg.RequestTimeout,
 		LeaderHTTP:    func(a raft.ServerAddress) string { return storagenode.HTTPAddrFor(a, cfg.HTTPPort) },
-		OperatorToken: cfg.OperatorToken,
+		OperatorToken: cfg.OperatorToken, Metrics: metrics,
 	})
 	full := s.MgmtRoutes()
 	mgmt.Store(&full)
 	dataSrv := &http.Server{Addr: cfg.HTTPAddr, Handler: s.DataRoutes(), ReadHeaderTimeout: 5 * time.Second}
 	go func() { errc <- serve(dataSrv) }()
-	servers := []*http.Server{dataSrv, mgmtSrv}
+	servers := []*http.Server{dataSrv, mgmtSrv, metricsSrv}
 	hbCtx, stopHeartbeats := context.WithCancel(ctx)
 	hbDone := make(chan struct{})
 	if cfg.Heartbeat.CoordinatorURL == "" {
@@ -275,7 +291,7 @@ func run(ctx context.Context, cfg config) error {
 		}()
 	}
 	slog.Info("serving", "pod", cfg.Raft.PodName, "shard", cfg.Raft.Shard, "raft", n.Addr(),
-		"data", cfg.HTTPAddr, "mgmt", cfg.MgmtAddr, "profile", cfg.Raft.Profile.Name, "ringVersion", rg.Version())
+		"data", cfg.HTTPAddr, "mgmt", cfg.MgmtAddr, "metrics", cfg.MetricsAddr, "profile", cfg.Raft.Profile.Name, "ringVersion", rg.Version())
 
 	select {
 	case <-ctx.Done():

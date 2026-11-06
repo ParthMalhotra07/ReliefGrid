@@ -180,7 +180,9 @@ func (s *server) markOutboxPublished(w http.ResponseWriter, r *http.Request) {
 func (s *server) apply(w http.ResponseWriter, r *http.Request, cmd any, genericCAS bool) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.timeout)
 	defer cancel()
+	start := time.Now()
 	res, err := s.node.Apply(ctx, cmd)
+	s.metrics.observeCommand(cmd, err, time.Since(start))
 	if err != nil {
 		s.writeFailure(w, err)
 		return
@@ -381,7 +383,9 @@ func (s *server) read(ctx context.Context, w http.ResponseWriter, mode raftstore
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
+	start := time.Now()
 	info, err := s.node.Read(ctx, mode, fn)
+	s.metrics.observeRead(mode, time.Since(start))
 	if err != nil {
 		s.writeReadFailure(w, err)
 		return internalapi.ReadInfo{}, false

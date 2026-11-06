@@ -31,6 +31,9 @@ type Config struct {
 	// TracerProvider records data-route server spans (S4.4); nil uses the
 	// global provider.
 	TracerProvider trace.TracerProvider
+	// Metrics is the replica's registry (NewMetrics); nil makes a private
+	// one with no Raft sink.
+	Metrics *Metrics
 }
 
 // Server serves one shard replica.
@@ -41,14 +44,21 @@ func New(n *raftstore.Node, cfg Config) *Server {
 	if seamsBuild {
 		slog.Warn("storagenode: built with the seams tag: /mgmt/test/seams can pause this replica; test images only")
 	}
+	if cfg.Metrics == nil {
+		cfg.Metrics = NewMetrics(cfg.Shard, cfg.PodName)
+	}
+	cfg.Metrics.m.attach(n)
 	return &Server{s: &server{
 		node: n, ring: cfg.Ring, shard: cfg.Shard, podName: cfg.PodName, serverID: string(n.Identity().ServerID()), timeout: cfg.Timeout,
-		leaderHTTP: cfg.LeaderHTTP, operatorToken: cfg.OperatorToken, tracerProvider: cfg.TracerProvider,
+		leaderHTTP: cfg.LeaderHTTP, operatorToken: cfg.OperatorToken, tracerProvider: cfg.TracerProvider, metrics: cfg.Metrics.m,
 	}}
 }
 
 // DataRoutes is the storage-node subset of contracts/internal.yaml.
 func (s *Server) DataRoutes() http.Handler { return s.s.dataRoutes() }
+
+// MetricsRoutes is the metrics port: GET /metrics only (docs/operations/storage-metrics.md).
+func (s *Server) MetricsRoutes() http.Handler { return s.s.metricsRoutes() }
 
 // MgmtRoutes is the management endpoint.
 func (s *Server) MgmtRoutes() http.Handler { return s.s.mgmtRoutes() }

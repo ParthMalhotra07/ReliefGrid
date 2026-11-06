@@ -83,6 +83,9 @@ type fakeNode struct {
 	snapErr   error
 	snaps     int // Snapshot calls
 
+	storage    raftstore.StorageInfo // StorageInfo's answer (metrics)
+	storageErr error
+
 	stepDownErr error
 	stepDowns   int // StepDown calls
 

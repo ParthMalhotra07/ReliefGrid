@@ -61,6 +61,8 @@ type server struct {
 	noConfigAt atomic.Int64
 	// operatorToken guards /mgmt/bootstrap; empty disables it (403).
 	operatorToken string
+	// metrics is this replica's registry (S5.2, #113); nil records nothing.
+	metrics *nodeMetrics
 	// seams is the seams build's armed boundaries (empty otherwise).
 	seams seamRegistry //nolint:unused // used by the seams build (seams_on.go)
 }
@@ -94,6 +96,10 @@ func (s *server) dataRoutes() http.Handler {
 		mux.ServeHTTP(w, r)
 	}), obs.WithTracerProvider(s.tracerProvider), obs.WithAttributes(attribute.Int("reliefgrid.shard", s.shard)))
 }
+
+// metricsRoutes is the metrics port (docs/operations/storage-metrics.md):
+// GET /metrics only, read-only, no operator token.
+func (s *server) metricsRoutes() http.Handler { return s.metrics.handler() }
 
 // mgmtRoutes is the management endpoint (not in the contract; operator and
 // kubelet only).
