@@ -22,6 +22,8 @@ spec:
         app.kubernetes.io/component: coordinator
       annotations:
         checksum/ring: {{ .Files.Get "files/ring.yaml" | sha256sum }}
+        # Prometheus discovers the port named metrics (docs/operations/storage-metrics.md).
+        prometheus.io/scrape: "true"
     spec:
       nodeSelector:
         role: infra
@@ -44,6 +46,8 @@ spec:
           env:
             - name: HTTP_ADDR
               value: ":8080"
+            - name: METRICS_ADDR
+              value: ":9090"
             - name: RING_PATH
               value: /etc/reliefgrid/ring.yaml
             - name: OPERATOR_TOKEN
@@ -52,6 +56,8 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            - name: metrics
+              containerPort: 9090
           readinessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 2
