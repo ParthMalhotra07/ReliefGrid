@@ -57,13 +57,13 @@ func TestAutoscalingUsesCPUAndExistingBrokerSecret(t *testing.T) {
 	trigger := triggers[0].(map[string]any)
 	appEqual(t, trigger["type"], "rabbitmq", "matcher scales on RabbitMQ")
 	appEqual(t, appField(t, trigger, "metadata", "queueName"), "matching.requests", "only production matching queue")
-	appEqual(t, appField(t, trigger, "metadata", "protocol"), "amqp", "private AMQP scaler")
+	appEqual(t, appField(t, trigger, "metadata", "protocol"), "http", "private HTTP scaler includes unacked work")
 	appEqual(t, appField(t, trigger, "metadata", "value"), "4", "ready messages per replica")
 	auth := appDocument(t, docs, "TriggerAuthentication", "reliefgrid-matcher")
 	refs := appField(t, auth, "spec", "secretTargetRef").([]any)
 	ref := refs[0].(map[string]any)
 	appEqual(t, ref["name"], "reliefgrid-rabbitmq", "existing Secret, no copied credentials")
-	appEqual(t, ref["key"], "amqp-url", "existing AMQP URL")
+	appEqual(t, ref["key"], "username", "existing broker username")
 	for _, doc := range docs {
 		if doc["kind"] != "ScaledObject" && doc["kind"] != "HorizontalPodAutoscaler" {
 			continue

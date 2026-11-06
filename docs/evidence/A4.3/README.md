@@ -1,29 +1,29 @@
-# A4.3 application autoscaling evidence
+# A4.3 review checkpoint — NOT READY
 
-Final live run: `20261106T071340Z`, **PASS**. Exactly20,000 persistent valid
-duplicate hints routed with zero failed checks, zero failed HTTP requests and
-zero dropped iterations. Ready matchers rose from1 to5
-and returned to1 after both ready/unacknowledged counts drained; peak sampled
-ready backlog1083; no restarts observed. No manual scaling.
+This is a draft checkpoint, not a completed goal. Issue127 records the remaining
+strict acceptance failure. The former cancelled-request no-op evidence has
+been archived locally; it is not offered as proof for this real-workload goal.
 
-The chart configures API CPU HPA2–6/60% and KEDA matcher1–8. Static tests cover
-single controller ownership, default manual demo counts and refusing app-owned
-storage. Five negative/positive acceptance tests reject empty observations,
-desired-but-not-Ready scale-up, missing broker statistics, incomplete drain and
-observed restarts. Final check.txt, gen-check.txt and static.txt are passing real
-command output. The full check's earlier storage failure is retained in
-red-and-diagnostics.txt and S-owned issue122; it is not claimed fixed here.
+Current code: independent API CPU HPA2–6 and HTTP queue KEDA1–8, including
+unacknowledged work;120s stabilization; bounded real lifecycle clients; final
+pod-status watch; API scale observations; values-file image pins with unused
+duplicated tools digests removed. k6 pin names match approved S PR125.
 
-Normal demo ownership was restored after acceptance: API2/matcher2, no app HPA
-or ScaledObject. Nine storage replicas remain Ready. runtime-images.json records
-controller/application image IDs and the unchanged broker PVC identity.
+Local make check, generation and static checks passed (9 acceptance tests).
+Trace-only rejudging of the final real run passes: matcher1→8→1 and API2→6→2,
+no matcher decrease during the heavy arrival window, no observed app restarts.
+The broker continuously ran with0restarts throughout this run.
 
-This is a chart-only acceptance using the already deployed a42-20261106-090066f
-app images (main plus private application observations). KEDA reads RabbitMQ
-and HPA reads metrics-server; neither uses A4.2 application exporters. No A4.2
-source commits are stacked in this branch. This does not claim full A4.2
-storage-dashboard/fault acceptance or a user-request throughput benchmark.
+OVERALL LIVE RESULT IS FAIL:35938/35940 checks passed,2 cancellation responses
+were non-200;2/48882 HTTP calls failed. Raw status/body were not retained by
+that version of the harness, so their cause is not guessed. Diagnostic logging
+and failed-run pod-watch persistence are now present for follow-up. The strict
+load thresholds and terminal/reciprocal postconditions have not been relaxed.
+Complete clean-exit acceptance was not reached and remains unverified.
 
-source.json inside the run records the precommit main head and working-tree
-changes. The PR contains the corresponding implementation and this evidence.
-Only one final round is retained; development rounds are archived locally.
+Three review correction attempts were used; physical reruns stopped. All668
+owned request fixtures were subsequently cancelled and4resources made OFFLINE
+outside acceptance, without resetting storage or touching unrelated claims.
+Normal fixed API2/matcher2 settings are restored. Seven resources from an earlier
+interrupted MEDICINE fixture remain assigned to pre-existing demo requests and
+were deliberately left intact; that development record is archived locally.

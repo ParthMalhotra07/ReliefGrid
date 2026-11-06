@@ -1,6 +1,106 @@
 {
-  "apiVersion": "v1",
-  "items": [
+  "scaledObject": {
+    "apiVersion": "keda.sh/v1alpha1",
+    "kind": "ScaledObject",
+    "metadata": {
+      "annotations": {
+        "meta.helm.sh/release-name": "reliefgrid",
+        "meta.helm.sh/release-namespace": "reliefgrid"
+      },
+      "creationTimestamp": "2026-11-06T12:30:30Z",
+      "finalizers": [
+        "finalizer.keda.sh"
+      ],
+      "generation": 2,
+      "labels": {
+        "app.kubernetes.io/managed-by": "Helm",
+        "scaledobject.keda.sh/name": "reliefgrid-matcher"
+      },
+      "name": "reliefgrid-matcher",
+      "namespace": "reliefgrid",
+      "resourceVersion": "91946",
+      "uid": "c2daf50f-24d4-4508-b195-74525645e8d9"
+    },
+    "spec": {
+      "advanced": {
+        "horizontalPodAutoscalerConfig": {
+          "behavior": {
+            "scaleDown": {
+              "stabilizationWindowSeconds": 120
+            }
+          },
+          "name": "reliefgrid-matcher"
+        },
+        "scalingModifiers": {}
+      },
+      "maxReplicaCount": 8,
+      "minReplicaCount": 1,
+      "scaleTargetRef": {
+        "name": "reliefgrid-matcher"
+      },
+      "triggers": [
+        {
+          "authenticationRef": {
+            "name": "reliefgrid-matcher"
+          },
+          "metadata": {
+            "excludeUnacknowledged": "false",
+            "host": "http://reliefgrid-rabbitmq:15672/",
+            "mode": "QueueLength",
+            "protocol": "http",
+            "queueName": "matching.requests",
+            "value": "4",
+            "vhostName": "/"
+          },
+          "type": "rabbitmq"
+        }
+      ]
+    },
+    "status": {
+      "authenticationsTypes": "reliefgrid-matcher",
+      "conditions": [
+        {
+          "message": "ScaledObject is defined correctly and is ready for scaling",
+          "reason": "ScaledObjectReady",
+          "status": "True",
+          "type": "Ready"
+        },
+        {
+          "status": "Unknown",
+          "type": "Active"
+        },
+        {
+          "message": "No fallbacks are active on this scaled object",
+          "reason": "NoFallbackFound",
+          "status": "False",
+          "type": "Fallback"
+        },
+        {
+          "status": "False",
+          "type": "Paused"
+        }
+      ],
+      "externalMetricNames": [
+        "s0-rabbitmq-matching-requests"
+      ],
+      "hpaName": "reliefgrid-matcher",
+      "originalReplicaCount": 1,
+      "scaleTargetGVKR": {
+        "group": "apps",
+        "kind": "Deployment",
+        "resource": "deployments",
+        "version": "v1"
+      },
+      "scaleTargetKind": "apps/v1.Deployment",
+      "triggersActivity": {
+        "s0-rabbitmq-matching-requests": {
+          "isActive": false
+        }
+      },
+      "triggersTypes": "rabbitmq"
+    }
+  },
+  "hpas": [
     {
       "apiVersion": "autoscaling/v2",
       "kind": "HorizontalPodAutoscaler",
@@ -9,15 +109,15 @@
           "meta.helm.sh/release-name": "reliefgrid",
           "meta.helm.sh/release-namespace": "reliefgrid"
         },
-        "creationTimestamp": "2026-11-06T07:13:35Z",
+        "creationTimestamp": "2026-11-06T12:30:30Z",
         "generation": 1,
         "labels": {
           "app.kubernetes.io/managed-by": "Helm"
         },
         "name": "reliefgrid-api",
         "namespace": "reliefgrid",
-        "resourceVersion": "72963",
-        "uid": "72657864-01a0-4478-b050-3cf0db613e1a"
+        "resourceVersion": "91910",
+        "uid": "bb816e5c-e277-4732-a2f2-634d66f1508d"
       },
       "spec": {
         "behavior": {
@@ -30,7 +130,7 @@
               }
             ],
             "selectPolicy": "Max",
-            "stabilizationWindowSeconds": 30
+            "stabilizationWindowSeconds": 120
           },
           "scaleUp": {
             "policies": [
@@ -72,49 +172,24 @@
       "status": {
         "conditions": [
           {
-            "lastTransitionTime": "2026-11-06T07:13:35Z",
-            "message": "recommended size matches current size",
-            "reason": "ReadyForNewScale",
+            "lastTransitionTime": "2026-11-06T12:30:30Z",
+            "message": "the HPA controller was able to update the target scale to 2",
+            "reason": "SucceededRescale",
             "status": "True",
             "type": "AbleToScale"
           },
           {
-            "lastTransitionTime": "2026-11-06T07:13:35Z",
+            "lastTransitionTime": "2026-11-06T12:30:30Z",
             "message": "the HPA controller did not scale the workload to zero",
             "reason": "NotScaledToZero",
             "status": "False",
             "type": "ScaledToZero"
-          },
-          {
-            "lastTransitionTime": "2026-11-06T07:13:50Z",
-            "message": "the HPA was able to successfully calculate a replica count from cpu resource utilization (percentage of request)",
-            "reason": "ValidMetricFound",
-            "status": "True",
-            "type": "ScalingActive"
-          },
-          {
-            "lastTransitionTime": "2026-11-06T07:13:50Z",
-            "message": "the desired replica count is less than the minimum replica count",
-            "reason": "TooFewReplicas",
-            "status": "True",
-            "type": "ScalingLimited"
           }
         ],
-        "currentMetrics": [
-          {
-            "resource": {
-              "current": {
-                "averageUtilization": 1,
-                "averageValue": "1m"
-              },
-              "name": "cpu"
-            },
-            "type": "Resource"
-          }
-        ],
-        "currentReplicas": 2,
+        "currentMetrics": null,
+        "currentReplicas": 1,
         "desiredReplicas": 2,
-        "lastScaleTime": "2026-11-06T07:13:35Z",
+        "lastScaleTime": "2026-11-06T12:30:30Z",
         "observedGeneration": 1
       }
     },
@@ -126,7 +201,7 @@
           "meta.helm.sh/release-name": "reliefgrid",
           "meta.helm.sh/release-namespace": "reliefgrid"
         },
-        "creationTimestamp": "2026-11-06T07:13:35Z",
+        "creationTimestamp": "2026-11-06T12:30:31Z",
         "generation": 1,
         "labels": {
           "app.kubernetes.io/managed-by": "Helm",
@@ -144,11 +219,11 @@
             "controller": true,
             "kind": "ScaledObject",
             "name": "reliefgrid-matcher",
-            "uid": "94979c1b-db09-4527-84d7-89d463d843dd"
+            "uid": "c2daf50f-24d4-4508-b195-74525645e8d9"
           }
         ],
-        "resourceVersion": "73319",
-        "uid": "ac72ad34-1b93-4530-8ca7-d51f389537a8"
+        "resourceVersion": "91944",
+        "uid": "080029cc-fdab-497a-aa11-31caef4d7ae6"
       },
       "spec": {
         "behavior": {
@@ -161,7 +236,7 @@
               }
             ],
             "selectPolicy": "Max",
-            "stabilizationWindowSeconds": 30
+            "stabilizationWindowSeconds": 120
           },
           "scaleUp": {
             "policies": [
@@ -210,32 +285,25 @@
       "status": {
         "conditions": [
           {
-            "lastTransitionTime": "2026-11-06T07:13:35Z",
-            "message": "recommended size matches current size",
-            "reason": "ReadyForNewScale",
+            "lastTransitionTime": "2026-11-06T12:30:31Z",
+            "message": "recent recommendations were higher than current one, applying the highest recent recommendation",
+            "reason": "ScaleDownStabilized",
             "status": "True",
             "type": "AbleToScale"
           },
           {
-            "lastTransitionTime": "2026-11-06T07:13:35Z",
+            "lastTransitionTime": "2026-11-06T12:30:31Z",
             "message": "the HPA was able to successfully calculate a replica count from external metric s0-rabbitmq-matching-requests(&LabelSelector{MatchLabels:map[string]string{scaledobject.keda.sh/name: reliefgrid-matcher,},MatchExpressions:[]LabelSelectorRequirement{},})",
             "reason": "ValidMetricFound",
             "status": "True",
             "type": "ScalingActive"
           },
           {
-            "lastTransitionTime": "2026-11-06T07:15:05Z",
-            "message": "the desired replica count is less than the minimum replica count",
-            "reason": "TooFewReplicas",
-            "status": "True",
-            "type": "ScalingLimited"
-          },
-          {
-            "lastTransitionTime": "2026-11-06T07:13:50Z",
-            "message": "the HPA controller did not scale the workload to zero",
-            "reason": "NotScaledToZero",
+            "lastTransitionTime": "2026-11-06T12:30:31Z",
+            "message": "the desired count is within the acceptable range",
+            "reason": "DesiredWithinRange",
             "status": "False",
-            "type": "ScaledToZero"
+            "type": "ScalingLimited"
           }
         ],
         "currentMetrics": [
@@ -258,13 +326,8 @@
         ],
         "currentReplicas": 1,
         "desiredReplicas": 1,
-        "lastScaleTime": "2026-11-06T07:15:05Z",
         "observedGeneration": 1
       }
     }
-  ],
-  "kind": "List",
-  "metadata": {
-    "resourceVersion": ""
-  }
+  ]
 }

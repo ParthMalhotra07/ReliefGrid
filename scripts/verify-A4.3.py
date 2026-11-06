@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Bounded kind-only A4.3 load acceptance; no manual replica changes."""
+"""Real kind autoscaling acceptance, including every removed pod's final exit."""
 import base64
+import concurrent.futures
 import contextlib
 import datetime as dt
 import json
@@ -9,39 +10,30 @@ from pathlib import Path
 import re
 import subprocess
 import time
-import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from autoscaling_evidence import PodWatch, no_mid_load_downscale, clean_termination
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def queue_counts(queue):
     values = tuple(queue[name] for name in ('messages_ready', 'messages_unacknowledged'))
-    if not all(type(value) is int and value >= 0 for value in values):
-        raise AssertionError('missing or invalid broker queue observation')
+    assert all(type(value) is int and value >= 0 for value in values), 'invalid broker observation'
     return values
 
 
 def acceptance(samples):
-    if len(samples) < 3:
-        raise AssertionError('missing scaling observations')
-    base = samples[0]
-    if base['desired'] != 1 or base['ready'] != 1:
-        raise AssertionError('matcher must start at one Ready replica')
+    assert len(samples) >= 3, 'missing scaling observations'
+    assert samples[0]['desired'] == samples[0]['ready'] == 1
     up = [s for s in samples if s['ready'] > 1 and s['queueReady'] > 0]
-    if not up:
-        raise AssertionError('no Ready scale-up observed alongside queue load')
+    assert up, 'no Ready matcher scale-up alongside queue load'
     final = samples[-1]
-    if not final['loadFinished'] or final['desired'] != 1 or final['ready'] != 1:
-        raise AssertionError('matcher did not settle back to one Ready replica')
-    if final['queueReady'] or final['unacked']:
-        raise AssertionError('queue did not drain')
-    if not any(s['time'] < final['time'] for s in up):
-        raise AssertionError('scale-down must follow scale-up')
-    if any(s['desired'] < 1 or s['desired'] > 8 or s['restarts'] for s in samples):
-        raise AssertionError('replica bound or restart invariant failed')
+    assert final['loadFinished'] and final['desired'] == final['ready'] == 1
+    assert final['queueReady'] == final['unacked'] == 0, 'queue not drained'
+    assert any(s['time'] < final['time'] for s in up)
+    assert all(1 <= s['desired'] <= 8 and s['restarts'] == 0 for s in samples)
 
 
 def main():
@@ -51,6 +43,9 @@ def main():
     out = Path(os.environ.get('A43_EVIDENCE_DIR', str(ROOT / 'docs/evidence/A4.3' / stamp)))
     out.mkdir(parents=True, exist_ok=False)
     kc = ['kubectl', '--context', context, '--request-timeout=10s', '-n', 'reliefgrid']
+    watch = PodWatch(kc, out)
+    samples, created, resources = [], [], []
+    report = dict(result='FAIL', workload='bounded real lifecycles: 32 VU bulk90s, 1 VU tail120..420s, API CPU120..210s', samples=samples)
 
     def run(args, timeout=20):
         return subprocess.check_output(args, text=True, timeout=timeout)
@@ -59,145 +54,162 @@ def main():
         return json.loads(run(kc + list(args) + ['-o', 'json']))
 
     def save(name, value):
-        (out / name).write_text(json.dumps(value, indent=2) + '\n')
+        (out / name).write_text(json.dumps(value, indent=2)+'\n')
 
     @contextlib.contextmanager
     def forward(service, port):
-        with (out / ('forward-' + service + '.log')).open('w+') as log:
-            p = subprocess.Popen(kc + ['port-forward', 'svc/' + service, ':' + str(port), '--address=127.0.0.1'],
-                                 stdout=log, stderr=subprocess.STDOUT)
+        with (out / ('forward-'+service+'.log')).open('w+') as log:
+            p = subprocess.Popen(kc+['port-forward','svc/'+service,':'+str(port),'--address=127.0.0.1'],stdout=log,stderr=subprocess.STDOUT)
             try:
-                deadline = time.monotonic() + 20
+                deadline = time.monotonic()+20
                 while time.monotonic() < deadline:
                     log.seek(0)
-                    match = re.search(r'Forwarding from 127\.0\.0\.1:(\d+)', log.read())
+                    match = re.search(r'Forwarding from 127\.0\.0\.1:(\d+)',log.read())
                     if match:
-                        yield 'http://127.0.0.1:' + match[1]
+                        yield 'http://127.0.0.1:'+match[1]
                         return
-                    if p.poll() is not None:
-                        raise RuntimeError('port-forward exited: ' + service)
+                    assert p.poll() is None, 'port-forward exited'
                     time.sleep(.2)
-                raise TimeoutError('port-forward did not become ready: ' + service)
+                raise TimeoutError('port-forward unavailable')
             finally:
                 p.terminate()
                 p.wait(timeout=10)
 
-    secret = kube('get', 'secret', 'reliefgrid-rabbitmq')['data']
-    amqp = urllib.parse.urlsplit(base64.b64decode(secret['amqp-url']).decode())
-    user, password = urllib.parse.unquote(amqp.username), urllib.parse.unquote(amqp.password)
-    auth = 'Basic ' + base64.b64encode((user + ':' + password).encode()).decode()
+    secret = kube('get','secret','reliefgrid-rabbitmq')['data']
+    address = urllib.parse.urlsplit(base64.b64decode(secret['amqp-url']).decode())
+    auth = 'Basic '+base64.b64encode((urllib.parse.unquote(address.username)+':'+urllib.parse.unquote(address.password)).encode()).decode()
 
     def http(url, method='GET', body=None, broker=False, key=None):
-        headers = {'Content-Type': 'application/json'}
-        if broker:
-            headers['Authorization'] = auth
-        if key:
-            headers['Idempotency-Key'] = key
-        req = urllib.request.Request(url, method=method, headers=headers,
-                                     data=None if body is None else json.dumps(body).encode())
-        with urllib.request.urlopen(req, timeout=15) as response:
+        headers = {'Content-Type':'application/json'}
+        if broker: headers['Authorization'] = auth
+        if key: headers['Idempotency-Key'] = key
+        request = urllib.request.Request(url, method=method, headers=headers, data=None if body is None else json.dumps(body).encode())
+        with urllib.request.urlopen(request,timeout=15) as response:
             return json.load(response)
 
-    scaled = kube('get', 'scaledobject', 'reliefgrid-matcher')
-    assert scaled['spec']['minReplicaCount'] == 1 and scaled['spec']['maxReplicaCount'] == 8
-    hpas = kube('get', 'hpa')['items']
-    targets = [h['spec']['scaleTargetRef']['name'] for h in hpas]
-    assert sorted(targets) == ['reliefgrid-api', 'reliefgrid-matcher'], targets
-    matcher_hpa = next(h for h in hpas if h['spec']['scaleTargetRef']['name'] == 'reliefgrid-matcher')
-    assert any(o['uid'] == scaled['metadata']['uid'] and o.get('controller') for o in matcher_hpa['metadata']['ownerReferences'])
-    save('controllers.json', {'scaledObject': scaled, 'hpas': hpas})
-    save('source.json', {'head': run(['git', 'rev-parse', 'HEAD']).strip(),
-                         'changes': run(['git', 'status', '--short']), 'context': context})
-    samples = []
-    report = {'result': 'FAIL', 'workload': '20000 valid duplicate hints for one terminal request',
-              'manualReplicaChanges': False, 'samples': samples}
-    k6 = None
-    fixture = None
-    with forward('reliefgrid-rabbitmq', 15672) as broker, forward('reliefgrid-api', 8080) as api:
-        queue = lambda name: http(broker + '/api/queues/%2F/' + name, broker=True)
-        dead_before = queue('matching.dead')['messages']
-
-        def sample(load_finished=False):
-            q = queue('matching.requests')
-            ready_messages, unacked_messages = queue_counts(q)
-            d = kube('get', 'deploy', 'reliefgrid-matcher')
-            pods = kube('get', 'pods', '-l', 'app.kubernetes.io/component=matcher')['items']
-            s = dict(time=dt.datetime.now(dt.timezone.utc).isoformat(), desired=d['spec']['replicas'],
-                     ready=d.get('status', {}).get('readyReplicas', 0), queueReady=ready_messages,
-                     unacked=unacked_messages, loadFinished=load_finished,
-                     restarts=sum(c['restartCount'] for p in pods for c in p.get('status', {}).get('containerStatuses', [])))
-            samples.append(s)
-            save('report.json', report)
-            print(json.dumps(s), flush=True)
-            return s
-
+    scaled = kube('get','scaledobject','reliefgrid-matcher')
+    hpas = kube('get','hpa')['items']
+    assert sorted(h['spec']['scaleTargetRef']['name'] for h in hpas) == ['reliefgrid-api','reliefgrid-matcher']
+    matcher_hpa = next(h for h in hpas if h['spec']['scaleTargetRef']['name']=='reliefgrid-matcher')
+    assert any(o['uid']==scaled['metadata']['uid'] and o.get('controller') for o in matcher_hpa['metadata']['ownerReferences'])
+    save('controllers.json',dict(scaledObject=scaled,hpas=hpas))
+    save('source.json',dict(head=run(['git','rev-parse','HEAD']).strip(),changes=run(['git','status','--short'])))
+    load = None
+    with forward('reliefgrid-rabbitmq',15672) as broker, forward('reliefgrid-traefik',80) as ingress:
+        api = ingress+'/api/v1'
+        queue = lambda name: http(broker+'/api/queues/%2F/'+name,broker=True)
+        dead_before = sum(queue_counts(queue('matching.dead')))
+        watch.start()
         try:
-            # Observe the real controller's idle decision; do not scale manually.
-            deadline = time.monotonic() + 150
+            def sample(phase, done=False):
+                qready, unacked = queue_counts(queue('matching.requests'))
+                deployments = {d['metadata']['name']:d for d in kube('get','deploy')['items']}
+                matcher, apid = deployments['reliefgrid-matcher'], deployments['reliefgrid-api']
+                pods = kube('get','pods','-l','app.kubernetes.io/component in (api,matcher)')['items']
+                s = dict(time=dt.datetime.now(dt.timezone.utc).isoformat(),phase=phase,desired=matcher['spec']['replicas'],
+                    ready=matcher.get('status',{}).get('readyReplicas',0), apiDesired=apid['spec']['replicas'],
+                    apiReady=apid.get('status',{}).get('readyReplicas',0),terminating=sum(bool(p['metadata'].get('deletionTimestamp')) for p in pods),queueReady=qready,unacked=unacked,loadFinished=done,
+                    restarts=sum(c['restartCount'] for p in pods for c in p.get('status',{}).get('containerStatuses',[])))
+                samples.append(s)
+                save('report.json',report)
+                print(json.dumps(s),flush=True)
+                return s
+
+            deadline = time.monotonic()+240
             while True:
-                s = sample()
-                if s['desired'] == s['ready'] == 1 and s['queueReady'] == s['unacked'] == 0:
-                    samples.clear()
-                    samples.append(s)
+                s=sample('baseline')
+                if s['desired']==s['ready']==1 and s['apiDesired']==s['apiReady']==2 and s['queueReady']==s['unacked']==0:
+                    samples[:] = [s]
                     break
-                if time.monotonic() >= deadline:
-                    raise TimeoutError('baseline queue/minimum did not settle')
+                assert time.monotonic()<deadline, 'idle baseline did not settle'
                 time.sleep(3)
-            body = dict(requestType='SHELTER', details='Synthetic A4.3 bounded redelivery fixture',
-                        peopleAffected=1, urgency='HIGH', location=dict(lat=-77, lng=-130))
-            created = http(api + '/api/v1/requests', 'POST', body, key=str(uuid.uuid4()))
-            fixture = created['requestId']
-            http(api + '/api/v1/requests/' + fixture + '/status', 'PUT', {'status': 'CANCELLED'})
-            deadline = time.monotonic() + 90
-            while http(api + '/api/v1/requests/' + fixture)['status'] != 'CANCELLED':
-                if time.monotonic() >= deadline:
-                    raise TimeoutError('fixture cancellation did not commit')
-                time.sleep(1)
-            event = dict(schemaVersion=1, eventId=str(uuid.uuid4()), entityId=fixture, entityVersion=1,
-                         eventType='request.created', occurredAt=dt.datetime.now(dt.timezone.utc).isoformat(),
-                         traceparent='00-' + uuid.uuid4().hex + '-' + uuid.uuid4().hex[:16] + '-00',
-                         payload=dict(body, requestId=fixture, status='PENDING'))
-            # Retain synthetic input, never broker credentials or Secret values.
-            save('fixture.json', {'requestId': fixture, 'event': event})
-            version = run(['make', '-s', 'print-K6_VERSION']).strip()
-            cache = Path(os.environ.get('XDG_CACHE_HOME', str(Path.home() / '.cache'))) / 'reliefgrid-autoscaling'
-            binary = cache / ('k6-v' + version + '-linux-amd64/k6')
-            env = dict(os.environ, BROKER_URL=broker, BROKER_USER=user, BROKER_PASSWORD=password,
-                       REQUEST_EVENT=json.dumps(event))
-            with (out / 'k6.log').open('w') as log:
-                k6 = subprocess.Popen([str(binary), 'run', '--no-usage-report', '--summary-export',
-                                       str(out / 'k6-summary.json'), 'scripts/autoscaling-load.js'],
-                                      env=env, stdout=log, stderr=subprocess.STDOUT)
-                deadline = time.monotonic() + 480
-                stable = 0
-                while time.monotonic() < deadline:
-                    done = k6.poll() is not None
-                    s = sample(done)
-                    stable = stable + 1 if done and s['desired'] == s['ready'] == 1 and s['queueReady'] == s['unacked'] == 0 else 0
-                    if stable >= 3:
-                        break
+
+            existing=http(api+'/requests?type=SHELTER&limit=100')
+            assert existing['partial'] is False and existing['failedShards']==[] and all(not p['hasMore'] for p in existing['positions'])
+            assert all(r['status'] in ('CANCELLED','FULFILLED') for r in existing['items']), 'fixture type has pre-existing unfinished work'
+            now=dt.datetime.now(dt.timezone.utc)
+            def make_resource(n):
+                body=dict(resourceType='SHELTER',name='Synthetic A4.3 '+str(n),location=dict(lat=56,lng=-123),
+                    windowStart=(now-dt.timedelta(minutes=1)).isoformat(),windowEnd=(now+dt.timedelta(hours=2)).isoformat(),reusable=True)
+                value=http(api+'/resources','POST',body,key=str(uuid.uuid4()))
+                return value.get('resourceId',value.get('id'))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+                resources.extend(pool.map(make_resource,range(4)))
+            read_fixture=http(api+'/requests','POST',dict(requestType='WATER',details='x'*4096,peopleAffected=1,urgency='NORMAL',location=dict(lat=79,lng=140)),key=str(uuid.uuid4()))
+            http(api+'/requests/'+read_fixture['requestId']+'/status','PUT',dict(status='CANCELLED'))
+            save('fixtures.json',dict(resources=resources,readRequest=read_fixture['requestId']))
+            version=run(['make','-s','print-K6_VERSION']).strip().removeprefix('v')
+            binary=Path(os.environ.get('XDG_CACHE_HOME',str(Path.home()/'.cache')))/'reliefgrid-autoscaling'/('k6-v'+version+'-linux-amd64/k6')
+            env=dict(os.environ,API_URL=ingress,RUN_ID=str(uuid.uuid4()),READ_REQUEST=read_fixture['requestId'])
+            start=time.monotonic()
+            start_wall=dt.datetime.now(dt.timezone.utc)
+            cleaned=False
+            with (out/'k6.log').open('w') as log:
+                load=subprocess.Popen([str(binary),'run','--no-usage-report','--log-format=json','--summary-export',str(out/'k6-summary.json'),'scripts/autoscaling-load.js'],env=env,stdout=log,stderr=subprocess.STDOUT)
+                deadline=start+780
+                stable=0
+                while time.monotonic()<deadline:
+                    done=load.poll() is not None
+                    phase='bulk' if time.monotonic()-start<90 else 'api' if 120<=time.monotonic()-start<210 else 'tail' if not done else 'settle'
+                    s=sample(phase,done)
+                    if done and not cleaned:
+                        assert load.wait(timeout=10)==0, 'k6 failed: inspect the retained log'
+                        for line in (out/'k6.log').read_text().splitlines():
+                            try: entry=json.loads(line)
+                            except json.JSONDecodeError: continue
+                            if entry.get('msg','').startswith('A43_CREATED '):created.append(json.loads(entry['msg'][12:]))
+                        assert len(created)>=32, 'real-request workload incomplete'
+                        assert len({r['requestId'] for r in created})==len(created), 'duplicate created request IDs'
+                        handoffs=[]
+                        for line in (out/'k6.log').read_text().splitlines():
+                            try: entry=json.loads(line)
+                            except json.JSONDecodeError: continue
+                            if entry.get('msg','').startswith('A43_HANDOFF '):handoffs.append(json.loads(entry['msg'][12:]))
+                        assert {r['requestId'] for r in handoffs}=={r['requestId'] for r in created}, 'a real creation has no durable handoff observation'
+                        assert any(r['status']=='MATCHED' and r['reciprocalVerified'] for r in handoffs), 'no reciprocal real match was observed'
+                        byid={r['requestId']:r for r in handoffs}
+                        for row in created:
+                            assert byid[row['requestId']]['version']!=row['initialVersion']
+                            current=http(api+'/requests/'+row['requestId'])
+                            assert current['status']=='CANCELLED' and not current.get('assignedResourceId'), 'real lifecycle did not finish claim-free'
+                        save('workflows.json',handoffs)
+                        def cancel(row):
+                            rid=row['requestId']
+                            http(api+'/requests/'+rid+'/status','PUT',dict(status='CANCELLED'))
+                            end=time.monotonic()+180
+                            while True:
+                                current=http(api+'/requests/'+rid)
+                                if current['status']=='CANCELLED':
+                                    assert not current.get('assignedResourceId') and not current.get('currentAttempt')
+                                    return
+                                assert time.monotonic()<end, 'fixture cancellation did not settle'
+                                time.sleep(.2)
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:list(pool.map(cancel,created))
+                        for rid in resources:
+                            resource=http(api+'/resources/'+rid+'/status','PUT',dict(status='OFFLINE'))
+                            assert resource['status']=='OFFLINE' and not resource.get('activeClaim')
+                        cleaned=True
+                    idle=done and cleaned and s['desired']==s['ready']==1 and s['apiDesired']==s['apiReady']==2 and s['queueReady']==s['unacked']==0 and s['terminating']==0
+                    stable=stable+1 if idle else 0
+                    if stable>=3:break
                     time.sleep(3)
-                else:
-                    raise TimeoutError('bounded scale-up/drain/scale-down did not finish')
-                assert k6.wait(timeout=10) == 0, 'k6 load/check threshold failed; inspect k6.log'
+                else:raise TimeoutError('real load/downscale/cleanup acceptance exceeded its bound')
             acceptance(samples)
-            summary = json.loads((out / 'k6-summary.json').read_text())
-            assert summary['metrics']['iterations']['count'] == 20000, 'incomplete load window'
-            assert queue('matching.dead')['messages'] == dead_before, 'duplicate hints were rejected'
-            assert http(api + '/api/v1/requests/' + fixture)['status'] == 'CANCELLED'
-            api_hpa = kube('get', 'hpa', 'reliefgrid-api')
-            assert any(m.get('type') == 'Resource' and m.get('resource', {}).get('name') == 'cpu' and type(m.get('resource', {}).get('current', {}).get('averageUtilization')) is int for m in api_hpa['status'].get('currentMetrics', [])), 'API CPU metrics unavailable'
-            save('final-hpas.json', kube('get', 'hpa'))
-            report['result'] = 'PASS'
-            report['peakReadyMatchers'] = max(s['ready'] for s in samples)
-            report['peakQueueReady'] = max(s['queueReady'] for s in samples)
+            no_mid_load_downscale(samples)
+            assert any(s['apiReady']>2 and s['phase'] in ('api','bulk') for s in samples), 'API HPA did not scale up under CPU load'
+            assert sum(queue_counts(queue('matching.dead')))==dead_before, 'matching hints were rejected'
+            pods=kube('get','pods','-l','app.kubernetes.io/component in (api,matcher)')['items']
+            exits=watch.finish({p['metadata']['uid'] for p in pods})
+            for component in ('api','matcher'):
+                assert any(e['component']==component and any(90 <= (dt.datetime.fromisoformat(t['finishedAt'].replace('Z','+00:00'))-start_wall).total_seconds() <= 420 for t in e['exits']) for e in exits), 'no clean '+component+' downscale observed during real tail traffic'
+            report.update(result='PASS',createdRequests=len(created),cleanPodExits=len(exits),peakReadyMatchers=max(s['ready'] for s in samples),peakReadyAPI=max(s['apiReady'] for s in samples))
         finally:
-            if k6 is not None and k6.poll() is None:
-                k6.terminate()
-                k6.wait(timeout=15)
-            save('report.json', report)
-    print('A4.3 LIVE VERIFY: ' + report['result'] + ' evidence=' + str(out))
+            if load is not None and load.poll() is None:
+                load.terminate()
+                load.wait(timeout=15)
+            watch.stop()
+            save('report.json',report)
+    print('A4.3 LIVE VERIFY: '+report['result']+' evidence='+str(out))
 
 
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':main()

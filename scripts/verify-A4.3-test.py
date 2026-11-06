@@ -40,6 +40,31 @@ class ScalingEvidenceTest(unittest.TestCase):
                 module.queue_counts(queue)
         self.assertEqual(module.queue_counts({'messages_ready': 2, 'messages_unacknowledged': 3}), (2, 3))
 
+    def test_mid_load_scale_down_is_not_accepted(self):
+        samples = [self.sample(1, 1, 1, 0), self.sample(2, 5, 5, 50),
+                   self.sample(3, 1, 1, 20), self.sample(4, 1, 1, 0, True)]
+        with self.assertRaises(AssertionError):
+            module.no_mid_load_downscale(samples)
+
+    def test_missing_or_killed_termination_is_not_clean(self):
+        pod = dict(metadata=dict(uid='pod1', name='matcher1', deletionTimestamp='2026-11-06T08:00:30Z', deletionGracePeriodSeconds=30),
+                   spec=dict(terminationGracePeriodSeconds=30), status=dict(containerStatuses=[]))
+        with self.assertRaises(AssertionError):
+            module.clean_termination(pod)
+        pod['status']['containerStatuses'] = [dict(name='matcher', state=dict(terminated=dict(exitCode=137, finishedAt='2026-11-06T08:00:31Z')))]
+        with self.assertRaises(AssertionError):
+            module.clean_termination(pod)
+
+    def test_clean_exit_after_grace_is_rejected(self):
+        pod=dict(metadata=dict(uid='p',name='matcher',deletionTimestamp='2026-11-06T08:00:30Z'),
+                 status=dict(containerStatuses=[dict(name='matcher',state=dict(terminated=dict(exitCode=0,finishedAt='2026-11-06T08:00:31Z')))]))
+        with self.assertRaises(AssertionError): module.clean_termination(pod)
+
+    def test_real_tail_can_downscale_after_bulk(self):
+        samples=[dict(self.sample(1,1,1,0),phase='baseline'),dict(self.sample(2,5,5,50),phase='bulk'),
+                 dict(self.sample(3,1,1,1),phase='tail')]
+        module.no_mid_load_downscale(samples)
+
 
 if __name__ == '__main__':
     unittest.main()

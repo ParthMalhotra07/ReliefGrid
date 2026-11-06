@@ -1,0 +1,4 @@
+{
+  "head": "ffad1acb743aa0c9f1a2ee8cd1ba27d06775bd8f",
+  "changes": " M deploy/helm/reliefgrid/templates/autoscaling.yaml\n M scripts/app_autoscaling_test.go\n M scripts/autoscaling-load-tool.sh\n M scripts/autoscaling-load.js\n M scripts/verify-A4.3-test.py\n M scripts/verify-A4.3.py\n M tools.mk\n?? .local-a43-repair/\n?? docs/evidence/A4.3/20261106T120033Z/\n?? docs/evidence/A4.3/20261106T120954Z/\n?? docs/evidence/A4.3/20261106T123036Z/\n?? scripts/__pycache__/\n?? scripts/autoscaling_evidence.py\n"
+}

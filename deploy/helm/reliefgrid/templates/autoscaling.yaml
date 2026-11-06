@@ -21,7 +21,7 @@ spec:
     scaleUp:
       stabilizationWindowSeconds: 0
     scaleDown:
-      stabilizationWindowSeconds: 30
+      stabilizationWindowSeconds: 120
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
@@ -29,9 +29,12 @@ metadata:
   name: {{ include "reliefgrid.fullname" . }}-matcher
 spec:
   secretTargetRef:
-    - parameter: host
+    - parameter: username
       name: {{ include "reliefgrid.fullname" . }}-rabbitmq
-      key: amqp-url
+      key: username
+    - parameter: password
+      name: {{ include "reliefgrid.fullname" . }}-rabbitmq
+      key: password
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -47,11 +50,14 @@ spec:
       name: {{ include "reliefgrid.fullname" . }}-matcher
       behavior:
         scaleDown:
-          stabilizationWindowSeconds: 30
+          stabilizationWindowSeconds: 120
   triggers:
     - type: rabbitmq
       metadata:
-        protocol: amqp
+        protocol: http
+        host: {{ printf "http://%s-rabbitmq:15672/" (include "reliefgrid.fullname" .) | quote }}
+        vhostName: "/"
+        excludeUnacknowledged: "false"
         mode: QueueLength
         queueName: matching.requests
         value: {{ .Values.app.autoscaling.matcher.queuePerReplica | quote }}
