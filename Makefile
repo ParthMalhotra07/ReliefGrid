@@ -278,6 +278,10 @@ ci-smoke: ## CI's smoke test on a fresh runner: kind, the storage chart from pre
 	bash scripts/ci-smoke.sh
 	bash scripts/app-ci-smoke.sh
 
+.PHONY: ci-schedules
+ci-schedules: ## CI (A2.3): every schedules-tagged test on M8 with a disposable broker; fails on any skip
+	bash scripts/ci-schedules.sh
+
 gate: ## All nine demos from a clean deployment, twice, with a summary table (asks first)
 	bash scripts/demos/gate.sh
 

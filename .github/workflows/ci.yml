@@ -82,6 +82,7 @@ jobs:
     outputs:
       code: ${{ steps.diff.outputs.code }}
       seams: ${{ steps.diff.outputs.seams }}
+      schedules: ${{ steps.diff.outputs.schedules }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -125,6 +126,35 @@ jobs:
           version: ${{ steps.pins.outputs.golangci }}
           install-only: true
       - run: make check-seams
+
+  # schedules (A2.3, #110): make ci-schedules runs every schedules-tagged test in tests/workflow
+  # (the 50-seed M8 matrix and the exact-restart regression) with the race detector against a
+  # disposable broker, and fails if any test is skipped or missing. It is a separate job so
+  # check's runtime does not change, for ready PRs whose diff touches tests/workflow or the
+  # packages it builds (ci-changes.sh schedules=true). No kind cluster.
+  schedules:
+    needs: changes
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft && needs.changes.outputs.schedules == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false # restore-only; the check job saves from main
+      - id: gopaths
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.gopaths.outputs.gocache }}
+            ${{ steps.gopaths.outputs.gomodcache }}
+          key: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ hashFiles('go.sum') }}-
+      - run: make ci-schedules
 
   images:
     name: images (${{ matrix.name }})
