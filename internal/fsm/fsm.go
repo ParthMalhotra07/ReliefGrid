@@ -530,6 +530,25 @@ func readOperation(ctx context.Context, q querier, operationID string) (store.Re
 	return res, hash, true, nil
 }
 
+// OutboxStats is the unpublished part of the outbox: how many rows, and the
+// oldest one's proposer time (unix ms; 0 when none are pending).
+type OutboxStats struct {
+	Pending         int
+	OldestCreatedAt int64
+}
+
+// OutboxStats counts every unpublished outbox row in one read (S5.2, #113:
+// the exact backlog, where PendingOutbox returns a capped batch).
+func (f *FSM) OutboxStats(ctx context.Context) (OutboxStats, error) {
+	var s OutboxStats
+	var oldest sql.NullInt64
+	if err := f.rdb.QueryRowContext(ctx, `SELECT count(*), min(created_at) FROM outbox WHERE published = 0`).Scan(&s.Pending, &oldest); err != nil {
+		return OutboxStats{}, fmt.Errorf("fsm: outbox stats: %w", err)
+	}
+	s.OldestCreatedAt = oldest.Int64
+	return s, nil
+}
+
 // Counts are the FSM's record rows: live rows by kind, and tombstones.
 type Counts struct {
 	Request, Resource, KV, Tombstones int
