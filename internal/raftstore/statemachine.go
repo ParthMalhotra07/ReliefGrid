@@ -32,6 +32,8 @@ type Reader interface {
 	Operation(ctx context.Context, operationID string) (store.Result, error)
 	Dump(ctx context.Context) (map[string][]string, error)
 	Counts(ctx context.Context) (fsm.Counts, error)
+	Merkle(ctx context.Context, at uint64) (fsm.MerkleReport, error)
+	MerkleBucket(ctx context.Context, at uint64, table string, bucket int) (fsm.MerkleBucketReport, error)
 }
 
 var _ Reader = (*fsm.FSM)(nil)

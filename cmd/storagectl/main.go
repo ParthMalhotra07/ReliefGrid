@@ -19,6 +19,16 @@
 //	storagectl dump [--addr host:port] [--timeout d]
 //	                       GET /mgmt/dump with OPERATOR_TOKEN: prints {podName,
 //	                       appliedIndex, sha256, rows} of the local FSM.
+//	storagectl merkle [--addr host:port] [--at N] [--table T --bucket B] [--timeout d]
+//	                       GET /mgmt/merkle with OPERATOR_TOKEN (S4.5): the local
+//	                       FSM's Merkle digest, exactly at command index N if
+//	                       given; with --table and --bucket, that bucket's leaves.
+//	storagectl audit --addr host:port --addr host:port [...] [--attempts n]
+//	                 [--settle d] [--poll d] [--timeout d]
+//	                       compare one shard's replicas at one command index
+//	                       they all hold and print the JSON report. Exit 0
+//	                       equal, 1 divergent (table, key and pod named), 2
+//	                       incomplete, 3 not quiescent. Read only.
 package main
 
 import (
@@ -59,6 +69,10 @@ func main() {
 		err = runDump(ctx, os.Args[2:], os.Getenv, os.Stdout)
 	case "transfer-leader":
 		err = runTransferLeader(ctx, os.Args[2:], os.Getenv, os.Stdout)
+	case "merkle":
+		err = runMerkle(ctx, os.Args[2:], os.Getenv, os.Stdout)
+	case "audit":
+		err = runAudit(ctx, os.Args[2:], os.Getenv, os.Stdout)
 	case "replace":
 		err = runReplace(ctx, os.Args[2:], os.Getenv)
 	default:
@@ -66,6 +80,10 @@ func main() {
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "storagectl:", err)
+		var ec *exitCodeError
+		if errors.As(err, &ec) {
+			os.Exit(ec.code)
+		}
 		if errors.Is(err, errRefused) {
 			os.Exit(exitRefused)
 		}
@@ -74,7 +92,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl replace --shard N --pod NAME [--abort] | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump|transfer-leader [--addr host:port] [--timeout d]")
+	fmt.Fprintln(os.Stderr, "usage: storagectl bootstrap | storagectl replace --shard N --pod NAME [--abort] | storagectl status [--addr host:port] [--timeout d] | storagectl dial --addr host:port [--timeout d] | storagectl snapshot|dump|transfer-leader [--addr host:port] [--timeout d] | storagectl merkle [--addr host:port] [--at N] [--table T --bucket B] | storagectl audit --addr host:port --addr host:port [...] [--attempts n] [--settle d] [--timeout d]")
 	os.Exit(64)
 }
 

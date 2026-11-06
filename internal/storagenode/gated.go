@@ -60,7 +60,7 @@ func (g *Gated) MgmtRoutes() http.Handler {
 	refuse := func(w http.ResponseWriter, _ *http.Request) {
 		writeMgmtError(w, http.StatusConflict, "UNADMITTED: "+g.id.PodName+" has no open Raft transport: "+g.why())
 	}
-	for _, route := range []string{"POST /mgmt/bootstrap", "POST /mgmt/membership", "POST /mgmt/snapshot", "POST /mgmt/transfer-leader", "GET /mgmt/dump"} {
+	for _, route := range []string{"POST /mgmt/bootstrap", "POST /mgmt/membership", "POST /mgmt/snapshot", "POST /mgmt/transfer-leader", "GET /mgmt/dump", "GET /mgmt/merkle"} {
 		mux.HandleFunc(route, refuse)
 	}
 	return mux

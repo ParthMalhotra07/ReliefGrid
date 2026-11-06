@@ -110,6 +110,11 @@ func (s *server) dataRoutes() http.Handler {
 //	                      rows{table: count}}; compare replicas only at equal
 //	                      appliedIndex
 //	GET  /healthz         200 while the process serves
+//	GET  /mgmt/merkle     operator token (S4.5): the local FSM's Merkle digest,
+//	                      ?at=N for exactly command index N (409
+//	                      INDEX_MISMATCH {appliedIndex} otherwise; omit at
+//	                      for any index), &table=T&bucket=B for one bucket's
+//	                      leaves; see mgmt_merkle.go
 //	POST /mgmt/transfer-leader
 //	                      operator token: the leader hands leadership to
 //	                      another voter (raftstore.StepDown); 200 {podName,
@@ -128,6 +133,7 @@ func (s *server) mgmtRoutes() http.Handler {
 	mux.HandleFunc("POST /mgmt/bootstrap", s.bootstrap)
 	mux.HandleFunc("POST /mgmt/snapshot", s.snapshot)
 	mux.HandleFunc("GET /mgmt/dump", s.dump)
+	mux.HandleFunc("GET /mgmt/merkle", s.merkle)
 	mux.HandleFunc("POST /mgmt/transfer-leader", s.transferLeader)
 	mux.HandleFunc("POST /mgmt/membership", s.membership)
 	mux.HandleFunc("GET /healthz", s.healthz)

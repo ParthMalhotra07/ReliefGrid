@@ -31,6 +31,7 @@ var fastProfile = raftstore.Profile{
 // and management listeners.
 type replica struct {
 	pod        string
+	fsmDir     string // the FSM's emptyDir: fsm-<gen>.db
 	node       *raftstore.Node
 	data, mgmt *httptest.Server
 }
@@ -71,7 +72,7 @@ func startReplicas(t *testing.T) []*replica {
 		}
 		s := &server{node: n, ring: rg, shard: testShard, podName: pod, serverID: string(n.Identity().ServerID()), timeout: 3 * time.Second,
 			leaderHTTP: func(a raft.ServerAddress) string { return hosts[a] }, operatorToken: testToken}
-		r := &replica{pod: pod, node: n, data: httptest.NewServer(s.dataRoutes()), mgmt: httptest.NewServer(s.mgmtRoutes())}
+		r := &replica{pod: pod, fsmDir: filepath.Join(root, "emptydir"), node: n, data: httptest.NewServer(s.dataRoutes()), mgmt: httptest.NewServer(s.mgmtRoutes())}
 		hosts[n.Addr()] = r.dataHost()
 		reps = append(reps, r)
 	}

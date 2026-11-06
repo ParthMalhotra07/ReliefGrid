@@ -1,0 +1,24 @@
+# S4.5 Merkle audit: Go part of the Verify
+result:     PASSED (6/6 suites, benchmark recorded)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-11-03T11:12:53Z
+go:         go1.27.2
+cpu:        Intel(R) Core(TM) Ultra 7 258V
+code tree:  c06a84de4da2 (git ls-tree -r HEAD -- go.mod go.sum cmd internal scripts/verify-S4.5.sh | git hash-object --stdin)
+dirty:      no
+commit:     4bd559f
+
+## suites (go test -race -count=1)
+merkle package: PASS (1 s)
+fsm digest and negative control: PASS (3 s)
+raft repair and snapshot install: PASS (4 s)
+mgmt route and real-replica audit: PASS (2 s)
+audit client: PASS (2 s)
+storagectl merkle and audit: PASS (3 s)
+
+## BenchmarkMerkle (file database, full digest, -benchtime 10x; measured, not estimated)
+  5000 rows: 14.6 ms per full digest, 2.92 µs per row
+  50000 rows: 169.6 ms per full digest, 3.39 µs per row
+
+## kind part
+pending: equal roots on every shard of a deployed cluster runs after the 4 Nov gate (the cluster is in use).
