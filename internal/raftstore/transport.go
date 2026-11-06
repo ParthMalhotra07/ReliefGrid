@@ -119,6 +119,13 @@ type fenceTransport struct {
 	afterSend func(target raft.ServerAddress, req any)
 	// seams, tests and the seams build only: the InstallSnapshot pause.
 	seams *seamState
+	// hbMu gates Raft's heartbeat handler, which NetworkTransport runs on
+	// connection goroutines outside Raft's main loop, so Shutdown does not
+	// wait for it. Close takes it exclusively: once Close returns no
+	// heartbeat is running and later ones are refused, so the stores can be
+	// closed under a peer that is still sending.
+	hbMu     sync.RWMutex
+	hbClosed bool
 }
 
 func newFenceTransport(t *raft.NetworkTransport, fence *commitFence, before func(raft.RPC), seams *seamState) *fenceTransport {
@@ -164,8 +171,36 @@ var (
 // Consumer is what Raft reads incoming RPCs from.
 func (t *fenceTransport) Consumer() <-chan raft.RPC { return t.consumeCh }
 
-// Close stops forwarding and closes the network transport.
+// SetHeartbeatHandler installs Raft's heartbeat fast path behind hbMu.
+func (t *fenceTransport) SetHeartbeatHandler(fn func(raft.RPC)) {
+	if fn == nil {
+		t.NetworkTransport.SetHeartbeatHandler(nil)
+		return
+	}
+	t.NetworkTransport.SetHeartbeatHandler(t.gateHeartbeat(fn))
+}
+
+// gateHeartbeat runs fn under hbMu, or refuses the RPC once Close began.
+func (t *fenceTransport) gateHeartbeat(fn func(raft.RPC)) func(raft.RPC) {
+	return func(rpc raft.RPC) {
+		t.hbMu.RLock()
+		defer t.hbMu.RUnlock()
+		if t.hbClosed {
+			rpc.Respond(nil, raft.ErrTransportShutdown)
+			return
+		}
+		fn(rpc)
+	}
+}
+
+// Close waits for in-flight heartbeats and refuses new ones, then stops
+// forwarding and closes the network transport. Raft calls it from
+// Shutdown().Error() after its own goroutines exit, before Node.Close
+// closes the stores.
 func (t *fenceTransport) Close() error {
+	t.hbMu.Lock()
+	t.hbClosed = true
+	t.hbMu.Unlock()
 	t.closeOnce.Do(func() { close(t.done) })
 	return t.NetworkTransport.Close()
 }
