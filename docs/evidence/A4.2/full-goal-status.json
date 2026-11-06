@@ -1,14 +1,12 @@
 {
   "result": "INCOMPLETE",
-  "owner": "S / coDEmaVEriCK06",
-  "issue": 113,
-  "missingStorageFamilies": [
-    "storage_command_latency_seconds_count",
-    "storage_replication_lag_entries",
-    "coordinator_node_state",
-    "relief_outbox_pending",
-    "relief_outbox_oldest_age_seconds"
+  "fullGoalReady": false,
+  "currentBase": "b454dc04af617b42e7520df0bb8c44437b6ecb73",
+  "currentLocalChecks": "PASS:check/gen/static/query-regressions",
+  "applicationLiveEvidence": "historical run live-20261106T063905Z on pre-UI source; not a new full-goal claim",
+  "remaining": [
+    "S storage/coordinator implementation from draft126 on main",
+    "fresh full observed leader-kill health/lag/workflow-age acceptance"
   ],
-  "leaderKillHealthLagAgeEvidence": "not yet executed; requires actual storage metric contract/access",
-  "applicationAcceptance": "live-20261106T063905Z"
+  "metricsContract": "issue113; client_golang1.24.1; private named9090metrics; successful fresh leader outbox observations"
 }

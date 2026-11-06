@@ -134,3 +134,20 @@ The kind loader first pulls an immutable platform digest, gives those verified
 bytes a named local tag for the Docker archive, and loads that tag. The pod still
 uses the immutable digest. This avoids unnamed import references and incomplete
 multi-architecture archives in the local containerd store.
+
+
+## Storage contract integration (#113)
+
+The storage panels now use S's agreed family/label contract from #113 and
+client_golang1.24.1, matching draft #126. Exact outbox counts/ages select the
+leader, require successful observations younger than30s and an up exporter;
+they are per-shard values, not sums across replicas. Failed, missing, stale or
+unreachable observations leave a gap. Application first-batch lower bounds
+remain separately labelled. Coordinator panels use `coordinator_node_state`
+and `coordinator_forward_total`; replication uses the observed lag family.
+
+`verify-storage-promql.py` evaluates the actual dashboard query with pinned
+promtool: a lagging follower cannot inflate the leader count, failed/stale/down
+observations cannot become fresh zero, and an observed empty outbox is zero.
+Full live leader-kill acceptance still awaits the S exporters from #126 on main;
+this contract wiring alone does not complete A4.2.

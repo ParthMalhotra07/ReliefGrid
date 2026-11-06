@@ -38,7 +38,7 @@ type config struct {
 	addr           string
 	coordinator    string
 	api            api.Config
-	amqp string
+	amqp           string
 }
 
 func loadConfig(getenv func(string) string) (config, error) {

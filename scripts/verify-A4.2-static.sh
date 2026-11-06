@@ -14,3 +14,5 @@ A42_PROM_CONFIG="$config/prometheus.yml" REQUIRE_HELM=1 go test -count=1 -tags i
 image="prom/prometheus:$(make -s print-PROMETHEUS_VERSION)@$(make -s print-PROMETHEUS_IMAGE_DIGEST)"
 docker run --rm --network none --user "$(id -u):$(id -g)" --entrypoint /bin/promtool -v "$config/prometheus.yml:/etc/prometheus/prometheus.yml:ro" "$image" check config /etc/prometheus/prometheus.yml
 echo 'A4.2 STATIC: ALL PASS'
+
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/verify-storage-promql.py

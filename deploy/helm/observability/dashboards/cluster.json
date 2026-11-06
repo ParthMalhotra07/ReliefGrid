@@ -433,7 +433,7 @@
       "type": "text",
       "options": {
         "mode": "markdown",
-        "content": "Storage pod readiness, Raft group availability and business progress are distinct. S-owned metrics/scrape access are tracked in **#113**; missing storage observations remain **No observation**."
+        "content": "Storage/coordinator query contract: private named metrics port9090, metrics-scraper NetworkPolicy and client_golang1.24.1. Exporters come from S PR126. Missing values remain No observation; these panels never authorize a workflow action."
       },
       "id": 7,
       "gridPos": {
@@ -444,7 +444,7 @@
       }
     },
     {
-      "title": "Replication convergence (S handoff)",
+      "title": "Observed replication convergence",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -454,7 +454,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by(shard,node) (storage_replication_lag_entries)",
+          "expr": "max by(shard,node) (storage_replication_lag_entries and on(instance,job) (up == 1))",
           "legendFormat": "shard {{shard}} / {{node}}",
           "range": true,
           "instant": false
@@ -495,6 +495,110 @@
         "y": 24,
         "w": 12,
         "h": 8
+      }
+    },
+    {
+      "title": "Coordinator member heartbeat state",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Confirmed shard reads in latest walk; separate from pod health. Consult observation success/timestamp.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard,node,state) (coordinator_node_state and on(instance,job) (up == 1))",
+          "legendFormat": "{{shard}} / {{node}} / {{state}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      }
+    },
+    {
+      "title": "Coordinator forwarding outcomes",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Confirmed shard reads in latest walk; separate from pod health. Consult observation success/timestamp.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(shard,outcome) (rate(coordinator_forward_total[5m]))",
+          "legendFormat": "{{shard}} / {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 10,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
       }
     }
   ]

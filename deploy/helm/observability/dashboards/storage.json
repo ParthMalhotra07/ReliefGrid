@@ -52,7 +52,7 @@
   ],
   "panels": [
     {
-      "title": "Command p95 (S handoff)",
+      "title": "Mutation majority/apply p95",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -106,7 +106,7 @@
       }
     },
     {
-      "title": "Follower lag (S handoff)",
+      "title": "Observed replication lag",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -116,7 +116,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by(shard,node) (storage_replication_lag_entries)",
+          "expr": "max by(shard,node) (storage_replication_lag_entries and on(instance,job) (up == 1))",
           "legendFormat": "shard {{shard}} / {{node}}",
           "range": true,
           "instant": false
@@ -160,17 +160,17 @@
       }
     },
     {
-      "title": "Exact unpublished outbox total (S handoff)",
+      "title": "Leader-observed pending rows by shard",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "reliefgrid"
       },
-      "description": "Requires storage stats, not the first PendingOutbox batch capped at 100. #113 supplies exact counts.",
+      "description": "Exact unpublished row count at the observed leader FSM index. Failed, stale or unreachable observations are absent; replicas are not summed.",
       "targets": [
         {
           "refId": "A",
-          "expr": "max by(shard) (relief_outbox_pending)",
+          "expr": "max by(shard) (relief_outbox_pending and on(shard,node) (storage_raft_leader == 1) and on(shard,node) (relief_outbox_observation_success == 1) and on(shard,node) (time() - relief_outbox_observation_timestamp_seconds < 30) and on(instance,job) (up == 1))",
           "legendFormat": "shard {{shard}}",
           "range": true,
           "instant": false
@@ -214,17 +214,17 @@
       }
     },
     {
-      "title": "Exact oldest pending age (S handoff)",
+      "title": "Leader-observed oldest pending age",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "reliefgrid"
       },
-      "description": "S-owned stats source and validity contract await #113.",
+      "description": "Oldest unpublished proposer timestamp compared with scrape time; subject to clock skew. No observation is distinct from an observed empty outbox.",
       "targets": [
         {
           "refId": "A",
-          "expr": "max by(shard) (relief_outbox_oldest_age_seconds)",
+          "expr": "max by(shard) (relief_outbox_oldest_age_seconds and on(shard,node) (storage_raft_leader == 1) and on(shard,node) (relief_outbox_observation_success == 1) and on(shard,node) (time() - relief_outbox_observation_timestamp_seconds < 30) and on(instance,job) (up == 1))",
           "legendFormat": "shard {{shard}}",
           "range": true,
           "instant": false
