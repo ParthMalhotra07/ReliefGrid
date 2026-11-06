@@ -1,0 +1,448 @@
+{
+  "uid": "reliefgrid-storage",
+  "title": "ReliefGrid / Storage and outbox",
+  "tags": [
+    "ReliefGrid",
+    "A4.2"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "orange",
+        "name": "Fault evidence",
+        "type": "dashboard",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [
+            "A4.2-fault"
+          ],
+          "type": "dashboard"
+        }
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "ReliefGrid dashboards",
+      "tags": [
+        "ReliefGrid"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true
+    }
+  ],
+  "panels": [
+    {
+      "title": "Command p95 (S handoff)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "S-owned family/scrape access awaits #113; no fabricated fallback.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by(le,shard,command) (rate(storage_command_latency_seconds_bucket[5m])))",
+          "legendFormat": "shard {{shard}} / {{command}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Follower lag (S handoff)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "S-owned family/scrape access awaits #113. Must be observed during leader-kill before full A4.2 acceptance.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard,node) (storage_replication_lag_entries)",
+          "legendFormat": "shard {{shard}} / {{node}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Exact unpublished outbox total (S handoff)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Requires storage stats, not the first PendingOutbox batch capped at 100. #113 supplies exact counts.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard) (relief_outbox_pending)",
+          "legendFormat": "shard {{shard}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Exact oldest pending age (S handoff)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "S-owned stats source and validity contract await #113.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard) (relief_outbox_oldest_age_seconds)",
+          "legendFormat": "shard {{shard}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Observed first-batch pending (lower bound)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "At most 100 rows per shard. NOT an exact total; a full batch may have more.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard) (relief_outbox_batch_pending and on(instance,job,shard) (relief_outbox_batch_observation_success == 1))",
+          "legendFormat": "shard {{shard}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Oldest in observed first batch",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Age of the oldest row among the observed first batch only. Invalid observations are omitted.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard) (relief_outbox_batch_oldest_age_seconds and on(instance,job,shard) (relief_outbox_batch_observation_success == 1))",
+          "legendFormat": "shard {{shard}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Application mutation responses / second",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Includes retries. Unknown errors remain distinct from committed rejections; wrapper delegates unchanged commands.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(command,outcome) (rate(relief_store_calls_total[5m]))",
+          "legendFormat": "{{command}} / {{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Read the two backlog scopes correctly",
+      "type": "text",
+      "options": {
+        "mode": "markdown",
+        "content": "**Exact backlog panels** require the S-owned stats handoff in #113. **First-batch panels** are capped observations, explicitly lower bounds. A missing or failed observation is not zero. These dashboards do not prove ownership or replace invcheck."
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      }
+    }
+  ]
+}

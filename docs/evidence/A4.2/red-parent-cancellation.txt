@@ -1,0 +1,6 @@
+=== RUN   TestPrivateMetricsListenerStopsOnParentCancellation
+    metrics_test.go:211: metrics listener outlived parent cancellation; would consume API pod drain budget
+--- FAIL: TestPrivateMetricsListenerStopsOnParentCancellation (3.07s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics	3.074s
+FAIL

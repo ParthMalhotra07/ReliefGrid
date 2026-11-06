@@ -1,0 +1,15 @@
+appRelease: reliefgrid
+prometheus:
+  image: prom/prometheus:v3.16.0@sha256:89c1a644817e9ad70fa2af76c84898e327c1de7063735f962e8313b1e28672c3
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 768Mi}
+grafana:
+  image: grafana/grafana:13.3.0@sha256:6e5d306338670f381a942f1c50d3c266bf71531e5ddd9ee4fc1a133dac5ce63d
+  # Loopback port-forward only. Override by a file or an existing Secret.
+  adminUser: admin
+  adminPassword: reliefgrid-local
+  existingSecret: ""
+  resources:
+    requests: {cpu: 100m, memory: 128Mi}
+    limits: {cpu: "1", memory: 512Mi}
