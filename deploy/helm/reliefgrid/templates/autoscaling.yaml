@@ -1,0 +1,60 @@
+{{- if and .Values.app.enabled .Values.app.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "reliefgrid.fullname" . }}-api
+  minReplicas: {{ .Values.app.autoscaling.api.minReplicas }}
+  maxReplicas: {{ .Values.app.autoscaling.api.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.app.autoscaling.api.cpuUtilization }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+    scaleDown:
+      stabilizationWindowSeconds: 30
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-matcher
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: {{ include "reliefgrid.fullname" . }}-rabbitmq
+      key: amqp-url
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-matcher
+spec:
+  scaleTargetRef:
+    name: {{ include "reliefgrid.fullname" . }}-matcher
+  minReplicaCount: {{ .Values.app.autoscaling.matcher.minReplicas }}
+  maxReplicaCount: {{ .Values.app.autoscaling.matcher.maxReplicas }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      name: {{ include "reliefgrid.fullname" . }}-matcher
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 30
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        mode: QueueLength
+        queueName: matching.requests
+        value: {{ .Values.app.autoscaling.matcher.queuePerReplica | quote }}
+      authenticationRef:
+        name: {{ include "reliefgrid.fullname" . }}-matcher
+{{- end }}

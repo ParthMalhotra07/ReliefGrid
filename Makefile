@@ -328,3 +328,21 @@ verify-A4.2-app: verify-A4.2-static ## Live application metrics/dashboard accept
 
 verify-A4.2: verify-A4.2-static ## Full-goal acceptance: fails INCOMPLETE while the S-owned storage/fault handoff is missing
 	python3 scripts/verify-A4.2-live.py --mode full
+
+
+.PHONY: autoscaling-install autoscaling-up autoscaling-down verify-A4.3-static verify-A4.3
+autoscaling-install: ## Install pinned metrics-server and KEDA on kind only
+	bash scripts/autoscaling-install.sh
+
+autoscaling-up: ## Opt in to API CPU HPA and matcher queue KEDA (existing app release)
+	bash scripts/autoscaling-profile.sh true
+
+autoscaling-down: ## Disable autoscaling and restore fixed demo replica counts
+	bash scripts/autoscaling-profile.sh false
+
+verify-A4.3-static: ## Verify controller ownership and rejecting incomplete scaling evidence
+	bash scripts/verify-A4.3-static.sh
+
+verify-A4.3: ## Observe Ready matcher up/down under bounded k6 redelivery load
+	bash scripts/autoscaling-load-tool.sh
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/verify-A4.3.py
