@@ -1,0 +1,14 @@
+# S5.2 load runs only (loadtest/cluster.sh), never the default: the load
+# Raft profile (M4: library snapshot defaults) and requests = limits on every
+# container, so each pod is Guaranteed and a figure is measured against a
+# stated CPU budget rather than whatever the laptop has spare. With the kind
+# nodes on CPUs 0-5 (k6 on 6-7), the storage and app overlays together claim
+# about 5.35 of those 6 cores; the control plane uses the rest.
+profile: load
+resources:
+  requests: {cpu: 300m, memory: 384Mi}
+  limits: {cpu: 300m, memory: 384Mi}
+coordinator:
+  resources:
+    requests: {cpu: 250m, memory: 128Mi}
+    limits: {cpu: 250m, memory: 128Mi}
