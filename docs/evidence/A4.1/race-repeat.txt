@@ -1,0 +1,4 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	1.131s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	16.064s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	76.997s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	7.239s

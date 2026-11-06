@@ -1,0 +1,13 @@
+{
+  "origin": "http://127.0.0.1:8080",
+  "checks": [
+    "production UI, three shard observations and real broker aggregates",
+    "committed outbox event reached browser through real relay/broker/API SSE",
+    "authoritative reciprocal assignment renders a map line",
+    "real production shell and saved records survive offline reload",
+    "online reconnect refreshes cancellation completed during disconnection"
+  ],
+  "requestId": "e36c2b47-7bf8-597a-aa48-0ef0b994fa95",
+  "resourceId": "fcb8103d-b4c1-53a1-a2e4-63a3417b5dd2",
+  "result": "PASS"
+}

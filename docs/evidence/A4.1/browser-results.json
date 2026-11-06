@@ -1,0 +1,102 @@
+{
+  "stats": {
+    "startTime": "2026-11-05T06:42:28.685Z",
+    "duration": 6351.321,
+    "expected": 9,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "dispatch shows authoritative state, assignments, filters and telemetry",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 663
+        }
+      ]
+    },
+    {
+      "title": "events trigger authoritative refresh and reconnect recovers a missed update",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 542
+        }
+      ]
+    },
+    {
+      "title": "saved list survives disconnected navigation and reconnect refreshes it",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 483
+        }
+      ]
+    },
+    {
+      "title": "failed authoritative scan preserves the saved view and marks it stale",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 337
+        }
+      ]
+    },
+    {
+      "title": "mobile layout retains the list, map and telemetry without horizontal overflow",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 498
+        }
+      ]
+    },
+    {
+      "title": "an offline shell without a saved snapshot reports unknown data",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 626
+        }
+      ]
+    },
+    {
+      "title": "duplicate events do not refetch and hints never replace authoritative state",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 506
+        }
+      ]
+    },
+    {
+      "title": "cancel uses only the public status endpoint and waits for committed cleanup",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 480
+        }
+      ]
+    },
+    {
+      "title": "an unknown write outcome remains visible after a successful reread",
+      "ok": true,
+      "results": [
+        {
+          "status": "passed",
+          "duration": 423
+        }
+      ]
+    }
+  ]
+}

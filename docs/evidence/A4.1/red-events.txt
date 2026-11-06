@@ -1,0 +1,6 @@
+=== RUN   TestSSEConnectRequiresAuthoritativeRefresh
+    events_test.go:37: connected SSE did not request authoritative refresh: context deadline exceeded
+--- FAIL: TestSSEConnectRequiresAuthoritativeRefresh (0.76s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.767s
+FAIL

@@ -1,0 +1,6 @@
+=== RUN   TestProjectionCannotMaskMissingDurableWorkQueue
+    projection_integration_test.go:87: temporary UI subscriber masked missing durable queue: <nil>
+--- FAIL: TestProjectionCannotMaskMissingDurableWorkQueue (0.83s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/mq	0.839s
+FAIL

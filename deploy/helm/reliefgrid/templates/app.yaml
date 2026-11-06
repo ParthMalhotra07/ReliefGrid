@@ -92,12 +92,19 @@ spec:
             - name: OTEL_TRACES_SAMPLER_ARG
               value: {{ $.Values.app.tracing.samplerArg | toString | quote }}
             {{- end }}
-            {{- if eq $name "matcher" }}
+            {{- if ne $name "ui" }}
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ include "reliefgrid.fullname" $ }}-rabbitmq
                   key: amqp-url
+            {{- end }}
+            {{- if eq $name "ui" }}
+            - name: UI_BROKER_MANAGEMENT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "reliefgrid.fullname" $ }}-rabbitmq
+                  key: management-url
             {{- end }}
           startupProbe:
             httpGet: {path: /healthz, port: http}

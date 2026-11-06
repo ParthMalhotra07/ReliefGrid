@@ -21,6 +21,7 @@ import (
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/api"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/mq"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
@@ -34,6 +35,7 @@ type config struct {
 	addr        string
 	coordinator string
 	api         api.Config
+	amqp        string
 }
 
 func loadConfig(getenv func(string) string) (config, error) {
@@ -56,6 +58,13 @@ func loadConfig(getenv func(string) string) (config, error) {
 	}
 	cfg.api.CallerNamespace = get("CALLER_NAMESPACE", "local-dispatcher")
 	cfg.api.StreamToken = getenv("STREAM_TOKEN")
+	cfg.amqp = getenv("AMQP_URL")
+	if cfg.amqp != "" {
+		broker, parseErr := url.Parse(cfg.amqp)
+		if parseErr != nil || broker.Hostname() == "" || (broker.Scheme != "amqp" && broker.Scheme != "amqps") || broker.RawQuery != "" || broker.Fragment != "" {
+			return config{}, fmt.Errorf("AMQP_URL must be an AMQP(S) endpoint")
+		}
+	}
 	for _, field := range []struct {
 		key      string
 		fallback string
@@ -89,6 +98,8 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 		backend = client
 	}
 	cfg.api.Store = backend
+	cfg.api.Events = api.NewEventHub()
+	cfg.api.StreamContext = ctx
 	h, err := api.New(cfg.api)
 	if err != nil {
 		return err
@@ -100,6 +111,16 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", cfg.addr)
 	if err != nil {
 		return fmt.Errorf("API listen: %w", err)
+	}
+	projectionCtx, stopProjection := context.WithCancel(ctx)
+	defer stopProjection()
+	if cfg.amqp != "" {
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			_ = mq.ProjectEvents(projectionCtx, cfg.amqp, cfg.api.Events.Publish, cfg.api.Events.SetAvailable)
+		}()
+		defer func() { stopProjection(); <-done }()
 	}
 	state := &apiHealth{}
 	mux := http.NewServeMux()
