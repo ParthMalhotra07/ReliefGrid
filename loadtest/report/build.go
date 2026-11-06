@@ -74,6 +74,9 @@ type Step struct {
 	ListP99Ms         float64 `json:"listP99Ms"`
 	ErrorRate         float64 `json:"errorRate"`
 	DroppedIterations int     `json:"droppedIterations"`
+	// PodsAtLimit: pods at their CPU limit during the step's hold, busiest
+	// first (which component saturates).
+	PodsAtLimit []PodAtLimit `json:"podsAtLimit"`
 }
 
 // RawFile is one raw data file and whether it is committed beside the report.
@@ -197,7 +200,7 @@ func Build(dir string, opt Options) (map[string]any, error) {
 		"invariants": map[string]any{"ledger": ledger, "invcheck": invcheck, "acknowledgedCreates": len(pts.Created), "unreadable": len(lost)},
 	}
 	if len(facts.Steps) > 0 {
-		steps, sat := stepFigures(pts, facts)
+		steps, sat := stepFigures(pts, facts, samples, podLimits(facts))
 		summary["steps"] = steps
 		if sat != nil {
 			summary["saturation"] = sat
@@ -219,7 +222,20 @@ func Build(dir string, opt Options) (map[string]any, error) {
 	return summary, writeSums(dir)
 }
 
-func stepFigures(pts Points, f Facts) ([]Step, map[string]any) {
+// podLimits reads config.podCpuLimitsMillicores (pod -> CPU limit).
+func podLimits(f Facts) map[string]float64 {
+	out := map[string]float64{}
+	if m, ok := f.Config["podCpuLimitsMillicores"].(map[string]any); ok {
+		for k, v := range m {
+			if n, ok := v.(float64); ok {
+				out[k] = n
+			}
+		}
+	}
+	return out
+}
+
+func stepFigures(pts Points, f Facts, samples []CgroupSample, limits map[string]float64) ([]Step, map[string]any) {
 	var steps []Step
 	for _, s := range f.Steps {
 		w := Window{From: s.From, To: s.To}
@@ -230,14 +246,29 @@ func stepFigures(pts Points, f Facts) ([]Step, map[string]any) {
 		}
 		steps = append(steps, Step{TargetRps: s.TargetRps, AchievedRps: round2(float64(st.Requests) / w.Seconds()),
 			WriteP99Ms: st.Classes["write"].P99Ms, ReadP99Ms: st.Classes["read"].P99Ms, ListP99Ms: st.Classes["list"].P99Ms,
-			ErrorRate: rate, DroppedIterations: st.Dropped})
+			ErrorRate: rate, DroppedIterations: st.Dropped, PodsAtLimit: PodsAtLimit(samples, w, limits)})
+	}
+	var firstAtLimit map[string]any
+	for _, s := range steps {
+		if len(s.PodsAtLimit) > 0 {
+			var names []string
+			for _, p := range s.PodsAtLimit {
+				names = append(names, p.Name)
+			}
+			firstAtLimit = map[string]any{"targetRps": s.TargetRps, "pods": names}
+			break
+		}
 	}
 	for i, s := range steps {
 		if by := brokenBy(s); len(by) > 0 {
 			if i == 0 {
 				return steps, nil // already over at the first step: no saturation point
 			}
-			return steps, map[string]any{"rps": steps[i-1].TargetRps, "brokenAt": s.TargetRps, "brokenBy": by}
+			sat := map[string]any{"rps": steps[i-1].TargetRps, "brokenAt": s.TargetRps, "brokenBy": by}
+			if firstAtLimit != nil {
+				sat["firstAtLimit"] = firstAtLimit
+			}
+			return steps, sat
 		}
 	}
 	return steps, nil // never broken: raise the top step

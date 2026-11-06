@@ -92,7 +92,7 @@ func runDir(t *testing.T, reqs []req, created []string, statuses []report.Status
 		"startedAt": t0, "endedAt": t0.Add(30 * time.Second), "warmupSeconds": 0,
 		"git": map[string]any{"sha": strings.Repeat("ab", 20), "dirty": false},
 		"host": map[string]any{"cpuModel": "Test CPU", "logicalCpus": 8, "memTotalGiB": 30.6, "kernel": "7.0.0", "powerProfile": "performance",
-			"k6Cpus": "6-7", "swapUsedMiB": 0, "loadAvgStart": 0.5, "cpuMHzStart": 2000, "cpuMHzEnd": 1900},
+			"k6Cpus": "6-7", "kindCpus": "0-5", "powerProfileRestored": "balanced", "swapUsedMiB": 0, "loadAvgStart": 0.5, "cpuMHzStart": 2000, "cpuMHzEnd": 1900},
 		"versions": map[string]any{"k6": "v2.3.0", "kind": "v0.33.0", "kindNodeImage": "kindest/node:v1.37.0@sha256:x", "kubectl": "v1.37.1",
 			"helm": "v3.22.1", "go": "1.27.2", "images": map[string]any{"api": "sha256:" + strings.Repeat("1", 64)}},
 		"config": map[string]any{"raftProfile": "load", "readFence": "fence", "tracing": "off", "autoscaling": "off"},
@@ -335,5 +335,62 @@ func TestBuildRejectsSamplesOutsideTheRun(t *testing.T) {
 		fmt.Sprintf(`{"tMs":%d,"pod":"p","usageUsec":1,"nrThrottled":0,"memBytes":1}`+"\n", t0.UnixNano()))
 	if _, err := report.Build(dir, report.Options{}); err == nil || !strings.Contains(err.Error(), "cgroup") {
 		t.Fatalf("Build accepted a sample stamped in nanoseconds: %v", err)
+	}
+}
+
+// Each step names the pods at their CPU limit (>= 90% of it, or throttled in
+// >= 20% of CFS periods), and the saturation names the first step any pod
+// reached it: the curve says which component saturated first.
+func TestBuildNamesPodsAtTheirLimit(t *testing.T) {
+	reqs := append(append(steady(0, 10, map[string]float64{"write": 50, "read": 10, "list": 40}),
+		steady(10, 20, map[string]float64{"write": 80, "read": 20, "list": 60})...),
+		steady(20, 30, map[string]float64{"write": 400, "read": 300, "list": 200})...)
+	dir := runDir(t, reqs, nil, nil, -1)
+	// The broker (limit 750m) uses 300m, 720m, 750m in the three steps; the
+	// API (limit 400m) 100m, 200m, 390m.
+	var cg strings.Builder
+	use := map[string][]int64{"reliefgrid-rabbitmq-0": {300, 720, 750}, "reliefgrid-api-x": {100, 200, 390}}
+	for pod, mc := range use {
+		usage, periods, throttled := int64(0), int64(0), int64(0)
+		for s := 0; s <= 30; s += 5 {
+			fmt.Fprintf(&cg, `{"tMs":%d,"pod":%q,"usageUsec":%d,"nrPeriods":%d,"nrThrottled":%d,"memBytes":1048576}`+"\n",
+				t0.Add(time.Duration(s)*time.Second).UnixMilli(), pod, usage, periods, throttled)
+			step := min(s/10, 2)
+			usage += mc[step] * 5000 // millicores x 5 s = µs
+			periods += 50
+			if mc[step] >= 720 {
+				throttled += 20
+			}
+		}
+	}
+	write(t, filepath.Join(dir, "raw", "cgroup.jsonl"), cg.String())
+	var facts map[string]any
+	b, _ := os.ReadFile(filepath.Join(dir, "facts.json"))
+	_ = json.Unmarshal(b, &facts)
+	facts["config"].(map[string]any)["podCpuLimitsMillicores"] = map[string]any{"reliefgrid-rabbitmq-0": 750, "reliefgrid-api-x": 400}
+	writeJSON(t, filepath.Join(dir, "facts.json"), facts)
+
+	sum, err := report.Build(dir, report.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	steps := sum["steps"].([]report.Step)
+	names := func(i int) string {
+		var n []string
+		for _, p := range steps[i].PodsAtLimit {
+			n = append(n, p.Name)
+		}
+		return strings.Join(n, ",")
+	}
+	if names(0) != "" || names(1) != "reliefgrid-rabbitmq-0" || names(2) != "reliefgrid-rabbitmq-0,reliefgrid-api-x" {
+		t.Fatalf("pods at limit by step: %q %q %q; want none, the broker, then the broker and the API", names(0), names(1), names(2))
+	}
+	sat := sum["saturation"].(map[string]any)
+	first, _ := sat["firstAtLimit"].(map[string]any)
+	if first["targetRps"] != 20.0 || fmt.Sprint(first["pods"]) != "[reliefgrid-rabbitmq-0]" {
+		t.Fatalf("firstAtLimit %v, want the broker at step 20", first)
+	}
+	if code, out := checker(t, dir, "--require-saturation"); code != 0 {
+		t.Fatalf("checker (exit %d):\n%s", code, out)
 	}
 }

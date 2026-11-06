@@ -5,6 +5,9 @@
 //	                                     (raw/statuses.jsonl); prints matched/waiting
 //	loadreport build -dir D [-spill DIR] [-max-commit-bytes N]
 //	                                     write D/summary.json and D/SHA256SUMS
+//	loadreport aggregate -out F D1 D2 ...
+//	                                     median, min and max of the headline figures
+//	                                     across repeated runs of one scenario and seed
 package main
 
 import (
@@ -23,6 +26,23 @@ import (
 func main() {
 	if len(os.Args) < 2 {
 		usage()
+	}
+	if os.Args[1] == "aggregate" {
+		fs := flag.NewFlagSet("aggregate", flag.ExitOnError)
+		out := fs.String("out", "", "output file (required)")
+		_ = fs.Parse(os.Args[2:])
+		if *out == "" || fs.NArg() == 0 {
+			usage()
+		}
+		agg, err := report.Aggregate(fs.Args())
+		if err == nil {
+			err = report.WriteAggregate(*out, agg)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "loadreport:", err)
+			os.Exit(1)
+		}
+		return
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -71,6 +91,6 @@ func statuses(ctx context.Context, dir, api string, parallel int) error {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "usage: loadreport statuses|build -dir <run dir> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: loadreport statuses|build -dir <run dir> [flags] | aggregate -out <file> <run dir>...")
 	os.Exit(2)
 }

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # One S5.2 load run on kind, from dataset to checked report.
 #
-#   loadtest/run.sh smoke            (SEED=52 OPS=200 K6_CPUS=7 K6=k6)
+#   loadtest/run.sh smoke
+#   loadtest/run.sh step       START_RPS=10 STEP_RPS=10 STEPS=8 RAMP_S=10 HOLD_S=110
+#   loadtest/run.sh baseline   RATE=<req/s> DURATION_S=600 WARMUP_SECONDS=120
+#   loadtest/run.sh soak       RATE=<req/s> DURATION_S=1800 WARMUP_SECONDS=120
+# Common: SEED=52 K6=k6 K6_CPUS=6-7 KIND_CPUS=0-5 MAX_VUS=400. The dataset is
+# sized to the offered operations (OPS overrides).
 #
 # 1. Records the facts a figure depends on: host (CPU, RAM, kernel, power
 #    profile, swap, load, clock speed), versions (k6, kind, kubectl, helm,
@@ -18,11 +23,19 @@
 # 6. Builds docs/evidence/S5.2/<runId>/summary.json and SHA256SUMS
 #    (loadreport build; raw files over 5 MiB go to SPILL_DIR) and checks it
 #    with scripts/load-report-check.py.
+# Isolation (decided 2026-11-06): for the run, the kind node containers are
+# confined to KIND_CPUS (docker update --cpuset-cpus, default 0-5), k6 runs
+# on K6_CPUS (default 6-7) and the power profile is performance; all three
+# are recorded in the report. One EXIT trap restores the nodes' cpusets and
+# the previous power profile, whether the run passes, fails or is
+# interrupted. Deploy with loadtest/cluster.sh (Guaranteed pods).
 # Kind only: it refuses any other context. It changes nothing on the cluster
 # but one invcheck Job, deleted afterwards.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=scripts/port-forwards.sh
+source scripts/port-forwards.sh
 
 SCENARIO="${1:?usage: loadtest/run.sh <scenario: smoke>}"
 SCRIPT="loadtest/k6/$SCENARIO.js"
@@ -33,10 +46,39 @@ NS="${NAMESPACE:-reliefgrid}"
 RELEASE="${APP_RELEASE:-reliefgrid}"
 API_URL="${API_URL:-http://127.0.0.1:8080}"
 SEED="${SEED:-52}"
-OPS="${OPS:-200}"
 K6="${K6:-k6}"
-K6_CPUS="${K6_CPUS:-7}"
-WARMUP_SECONDS="${WARMUP_SECONDS:-0}"
+K6_CPUS="${K6_CPUS:-6-7}"
+KIND_CPUS="${KIND_CPUS:-0-5}"
+POWER_PROFILE="${POWER_PROFILE:-performance}"
+# Scenario parameters: what k6 is given (-e), the executor and length the
+# report states, and how many operations the dataset must hold.
+MAX_VUS="${MAX_VUS:-400}"
+K6_ENV=(-e "MAX_VUS=$MAX_VUS")
+STEPS_PLAN="[]" # [{targetRps, fromS, toS}] relative to the k6 start
+case "$SCENARIO" in
+smoke)
+	EXECUTOR=constant-arrival-rate DURATION_S=60 MAX_VUS=1 OFFERED=120 WARMUP_SECONDS="${WARMUP_SECONDS:-0}" ;;
+step)
+	START_RPS="${START_RPS:-10}" STEP_RPS="${STEP_RPS:-10}" STEPS="${STEPS:-8}" RAMP_S="${RAMP_S:-10}" HOLD_S="${HOLD_S:-110}"
+	EXECUTOR=ramping-arrival-rate DURATION_S=$((STEPS * (RAMP_S + HOLD_S))) WARMUP_SECONDS=0
+	K6_ENV+=(-e "START_RPS=$START_RPS" -e "STEP_RPS=$STEP_RPS" -e "STEPS=$STEPS" -e "RAMP_S=$RAMP_S" -e "HOLD_S=$HOLD_S")
+	OFFERED=0
+	STEPS_PLAN="$(python3 -c 'import json, sys
+a, d, n, r, h = map(int, sys.argv[1:])
+print(json.dumps([{"targetRps": a + i * d, "fromS": i * (r + h) + r, "toS": (i + 1) * (r + h)} for i in range(n)]))' \
+		"$START_RPS" "$STEP_RPS" "$STEPS" "$RAMP_S" "$HOLD_S")"
+	for ((i = 0; i < STEPS; i++)); do
+		t=$((START_RPS + i * STEP_RPS)) p=$((START_RPS + (i > 0 ? i - 1 : 0) * STEP_RPS))
+		OFFERED=$((OFFERED + (t + p) * RAMP_S / 2 + t * HOLD_S))
+	done ;;
+baseline | soak)
+	RATE="${RATE:?RATE (req/s) is required for $SCENARIO}"
+	DURATION_S="${DURATION_S:-$([ "$SCENARIO" = baseline ] && echo 600 || echo 1800)}"
+	EXECUTOR=constant-arrival-rate WARMUP_SECONDS="${WARMUP_SECONDS:-120}" OFFERED=$((RATE * DURATION_S))
+	K6_ENV+=(-e "RATE=$RATE" -e "DURATION_S=$DURATION_S") ;;
+*) echo "run: no parameters for scenario $SCENARIO" >&2; exit 2 ;;
+esac
+OPS="${OPS:-$((OFFERED * 105 / 100 + 50))}"
 SAMPLE_SECONDS="${SAMPLE_SECONDS:-5}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-20}"
 SPILL_DIR="${SPILL_DIR:-$HOME/.cache/reliefgrid/S5.2}"
@@ -49,6 +91,7 @@ kc() { kubectl --request-timeout=15s --context "$CTX" "$@"; }
 kn() { kc -n "$NS" "$@"; }
 log() { printf '%s run: %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 die() { log "FAILED: $*"; exit 1; }
+trap 'log "FAILED: line $LINENO: $BASH_COMMAND (exit $?)"' ERR
 
 # --- preflight -------------------------------------------------------------------------------
 [ "$(kubectl config get-contexts -o name | grep -cx "$CTX")" = 1 ] || die "no kube context $CTX"
@@ -57,6 +100,49 @@ got="$("$K6" version | awk '{print $2; exit}')"
 [ "$got" = "$K6_VERSION" ] || die "k6 is $got, the pin is $K6_VERSION"
 command -v taskset >/dev/null || die "taskset is not installed"
 curl -sf -o /dev/null "$API_URL/api/v1/requests?limit=1" || die "the API does not answer at $API_URL"
+
+# --- isolation, restored on any exit ---------------------------------------------------------
+python3 -c 'import sys
+def s(x): return {c for p in x.split(",") for lo, _, hi in [p.partition("-")] for c in range(int(lo), int(hi or lo) + 1)}
+sys.exit(1 if s(sys.argv[1]) & s(sys.argv[2]) else 0)' "$KIND_CPUS" "$K6_CPUS" || die "K6_CPUS $K6_CPUS overlaps KIND_CPUS $KIND_CPUS"
+mapfile -t NODES < <(kind get nodes --name "$CLUSTER")
+[ "${#NODES[@]}" -gt 0 ] || die "no kind nodes for $CLUSTER"
+declare -A CPUSET_BEFORE
+for n in "${NODES[@]}"; do
+	CPUSET_BEFORE[$n]="$(docker inspect -f '{{.HostConfig.CpusetCpus}}' "$n")"
+done
+POWER_BEFORE="$(powerprofilesctl get 2>/dev/null || echo unknown)"
+sampler_pid=""
+restore() {
+	# Runs on every exit. No command here may end it early: errexit and the
+	# ERR trap are off, and each step reports its own failure.
+	set +e
+	trap - ERR
+	local n
+	if [ -n "$sampler_pid" ]; then kill "$sampler_pid" 2>/dev/null; fi
+	if [ -n "${pf:-}" ]; then kill "$pf" 2>/dev/null; fi
+	for n in "${NODES[@]}"; do
+		# An empty cpuset means every CPU; docker update needs it spelled out.
+		docker update --cpuset-cpus "${CPUSET_BEFORE[$n]:-0-$(($(nproc) - 1))}" "$n" >/dev/null 2>&1 ||
+			log "WARNING: could not restore the cpuset of $n"
+	done
+	if [ "$POWER_BEFORE" != unknown ] && [ "$(powerprofilesctl get 2>/dev/null)" != "$POWER_BEFORE" ]; then
+		powerprofilesctl set "$POWER_BEFORE" || log "WARNING: could not restore the power profile $POWER_BEFORE"
+	fi
+	log "restored: node cpusets, power profile $(powerprofilesctl get 2>/dev/null || echo unknown)"
+}
+trap restore EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
+for n in "${NODES[@]}"; do
+	docker update --cpuset-cpus "$KIND_CPUS" "$n" >/dev/null || die "docker update --cpuset-cpus $KIND_CPUS $n"
+	[ "$(docker inspect -f '{{.HostConfig.CpusetCpus}}' "$n")" = "$KIND_CPUS" ] || die "$n did not take cpuset $KIND_CPUS"
+done
+if [ "$POWER_BEFORE" != unknown ]; then
+	powerprofilesctl set "$POWER_PROFILE" || die "powerprofilesctl set $POWER_PROFILE"
+	[ "$(powerprofilesctl get)" = "$POWER_PROFILE" ] || die "power profile is $(powerprofilesctl get), not $POWER_PROFILE"
+fi
+log "isolation: kind nodes on CPUs $KIND_CPUS, k6 on $K6_CPUS, power profile $(powerprofilesctl get 2>/dev/null || echo unknown)"
 
 RUN_ID="S5.2-$SCENARIO-$(date -u +%Y%m%dT%H%M%SZ)"
 DIR="docs/evidence/S5.2/$RUN_ID"
@@ -72,11 +158,13 @@ host_json="$(jq -n \
 	--argjson mem "$(awk -v kb="$(meminfo MemTotal)" 'BEGIN { printf "%.1f", kb / 1048576 }')" \
 	--arg kernel "$(uname -r)" \
 	--arg power "$(powerprofilesctl get 2>/dev/null || echo unknown)" \
-	--arg k6cpus "$K6_CPUS" \
+	--arg k6cpus "$K6_CPUS" --arg kindcpus "$KIND_CPUS" --arg restored "$POWER_BEFORE" \
+	--arg degraded "$(powerprofilesctl list 2>/dev/null | awk -v p="$POWER_PROFILE" '$0 ~ "^[* ] *" p ":" { f = 1; next } f && /Degraded:/ { sub(/^ *Degraded: */, ""); print; exit } /^[* ] *[a-z-]+:$/ { f = 0 }')" \
 	--argjson swap "$(( ($(meminfo SwapTotal) - $(meminfo SwapFree)) / 1024 ))" \
 	--argjson load "$(cut -d' ' -f1 /proc/loadavg)" \
 	--argjson mhz "$(mhz)" \
 	'{cpuModel: $cpu, logicalCpus: $cpus, memTotalGiB: $mem, kernel: $kernel, powerProfile: $power, k6Cpus: $k6cpus,
+	  kindCpus: $kindcpus, powerProfileRestored: $restored, powerProfileDegraded: $degraded,
 	  swapUsedMiB: $swap, loadAvgStart: $load, cpuMHzStart: $mhz}')"
 
 images_json="$(kn get pods -o json | jq '[.items[] | select(.status.phase == "Running") |
@@ -97,9 +185,12 @@ config_json="$(jq -n \
 	--arg autoscaling "$([ -n "$(kn get hpa -o name 2>/dev/null)" ] && echo on || echo off)" \
 	--argjson api "$(kn get "deploy/$RELEASE-api" -o jsonpath='{.spec.replicas}')" \
 	--argjson matcher "$(kn get "deploy/$RELEASE-matcher" -o jsonpath='{.spec.replicas}')" \
-	--arg qos "$(kn get pods -o json | jq -r '[.items[].status.qosClass] | unique | join(",")')" \
+	--arg qos "$(kn get pods --field-selector=status.phase=Running -o json | jq -r '[.items[].status.qosClass] | unique | join(",")')" \
+	--argjson limits "$(kn get pods --field-selector=status.phase=Running -o json | jq '[.items[] | {key: .metadata.name,
+		value: ([.spec.containers[].resources.limits.cpu // empty | if endswith("m") then rtrimstr("m") | tonumber else tonumber * 1000 end] | add // 0)}] | from_entries')" \
 	'{raftProfile: ($profile | if . == "" then "demo" else . end), readFence: ($fence | if . == "" then "fence" else . end),
-	  tracing: $tracing, autoscaling: $autoscaling, replicas: {api: $api, matcher: $matcher}, podQoS: $qos}')"
+	  tracing: $tracing, autoscaling: $autoscaling, replicas: {api: $api, matcher: $matcher}, podQoS: $qos,
+	  podCpuLimitsMillicores: $limits}')"
 git_json="$(jq -n --arg sha "$(git rev-parse HEAD)" --argjson dirty "$([ -z "$(git status --porcelain --untracked-files=no)" ] && echo false || echo true)" \
 	'{sha: $sha, dirty: $dirty}')"
 
@@ -110,10 +201,11 @@ log "dataset: $(jq -c '{seed, ops, requests, resources}' "$DIR/dataset-info.json
 # --- scrapes and cgroup samples --------------------------------------------------------------
 targets() { kn get pods -l app.kubernetes.io/name=storage -o jsonpath='{range .items[?(@.status.phase=="Running")]}{.metadata.name}{"\n"}{end}' | grep -v bootstrap; }
 scrape() { # scrape <dir>
-	local pod port pf
+	local pod port # pf is global: restore() kills a scrape cut short
 	for pod in $(targets); do
 		port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
-		kn port-forward "pod/$pod" "$port:9090" >/dev/null 2>&1 &
+		# kubectl itself in the background, so $! is the process to kill (#50).
+		kubectl --context "$CTX" -n "$NS" port-forward "pod/$pod" "$port:9090" >/dev/null 2>&1 &
 		pf=$!
 		for _ in $(seq 50); do curl -sf -o "$1/$pod.prom" "http://127.0.0.1:$port/metrics" && break; sleep 0.1; done
 		kill "$pf" 2>/dev/null || true
@@ -135,8 +227,9 @@ sample_once() {
 				printf '%s /sys/fs/cgroup/kubelet.slice/kubelet-kubepods.slice/kubelet-kubepods-%s.slice/kubelet-kubepods-%s-pod%s.slice\n' "$pod" "$qos" "$qos" "$uid"
 			fi
 		done | docker exec -i "$node" sh -c 'while read -r pod p; do
-			u=$(awk "/^usage_usec/ {print \$2}" "$p/cpu.stat"); t=$(awk "/^nr_throttled/ {print \$2}" "$p/cpu.stat"); m=$(cat "$p/memory.current")
-			echo "$pod $u $t $m"; done' | awk -v now="$now" '{printf "{\"tMs\":%s,\"pod\":\"%s\",\"usageUsec\":%s,\"nrThrottled\":%s,\"memBytes\":%s}\n", now, $1, $2, $3, $4}'
+			u=$(awk "/^usage_usec/ {print \$2}" "$p/cpu.stat"); n=$(awk "/^nr_periods/ {print \$2}" "$p/cpu.stat")
+			t=$(awk "/^nr_throttled/ {print \$2}" "$p/cpu.stat"); m=$(cat "$p/memory.current")
+			echo "$pod $u $n $t $m"; done' | awk -v now="$now" '{printf "{\"tMs\":%s,\"pod\":\"%s\",\"usageUsec\":%s,\"nrPeriods\":%s,\"nrThrottled\":%s,\"memBytes\":%s}\n", now, $1, $2, $3, $4, $5}'
 	done
 }
 sampler() { while :; do sample_once >> "$DIR/raw/cgroup.jsonl" || true; sleep "$SAMPLE_SECONDS"; done; }
@@ -144,19 +237,28 @@ sampler() { while :; do sample_once >> "$DIR/raw/cgroup.jsonl" || true; sleep "$
 scrape "$DIR/raw/metrics-start"
 sampler &
 sampler_pid=$!
-trap 'kill "$sampler_pid" 2>/dev/null || true' EXIT
 
 # --- k6 ---------------------------------------------------------------------------------------
-started="$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)"
-log "k6 $SCENARIO on CPU $K6_CPUS"
+log "k6 $SCENARIO on CPU $K6_CPUS: ${DURATION_S}s, $OPS ops in the dataset"
 set +e
 taskset -c "$K6_CPUS" "$K6" run --quiet --no-color --out json="$DIR/raw/k6-points.jsonl.gz" \
-	-e API_URL="$API_URL" -e DATASET="$ROOT/$DIR/dataset.json" -e SUMMARY="$ROOT/$DIR/k6-summary.json" "$SCRIPT" 2>"$DIR/raw/k6.log"
+	-e API_URL="$API_URL" -e DATASET="$ROOT/$DIR/dataset.json" -e SUMMARY="$ROOT/$DIR/k6-summary.json" "${K6_ENV[@]}" \
+	"$SCRIPT" 2>"$DIR/raw/k6.log"
 k6_exit=$?
 set -e
-ended="$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)"
-log "k6 exit $k6_exit (99: thresholds crossed; the report says which)"
+log "k6 exit $k6_exit$([ "$k6_exit" = 99 ] && echo ': a threshold was crossed; the report says which')"
 [ "$k6_exit" = 0 ] || [ "$k6_exit" = 99 ] || die "k6 failed: $(tail -5 "$DIR/raw/k6.log")"
+# The test's own start: k6 emits its first vus point at t=0, after the
+# dataset has loaded. Every window (warm-up, steps) counts from it.
+# (grep -m1 closes the pipe early; zcat's SIGPIPE must not end the run.)
+started="$(zcat "$DIR/raw/k6-points.jsonl.gz" | grep -m1 '"metric":"vus","type":"Point"' | jq -r .data.time || true)"
+[ -n "$started" ] || die "no vus point in k6's output"
+ended="$(date -u -d "$started + $DURATION_S seconds" +%Y-%m-%dT%H:%M:%S.%NZ)"
+steps_json="$(python3 -c 'import json, sys
+from datetime import datetime, timedelta
+t0 = datetime.fromisoformat(sys.argv[1])
+print(json.dumps([{"targetRps": s["targetRps"], "from": (t0 + timedelta(seconds=s["fromS"])).isoformat(),
+                   "to": (t0 + timedelta(seconds=s["toS"])).isoformat()} for s in json.loads(sys.argv[2])]))' "$started" "$STEPS_PLAN")"
 sample_once >> "$DIR/raw/cgroup.jsonl"
 kill "$sampler_pid" 2>/dev/null || true
 scrape "$DIR/raw/metrics-end"
@@ -194,13 +296,13 @@ log "invcheck exit $inv_exit"
 jq -n --arg run "$RUN_ID" --arg scenario "$SCENARIO" --arg started "$started" --arg ended "$ended" \
 	--argjson warmup "$WARMUP_SECONDS" --argjson git "$git_json" --argjson host "$host_json" \
 	--argjson versions "$versions_json" --argjson config "$config_json" \
-	--argjson k6opts "$("$K6" inspect -e DATASET="$ROOT/$DIR/dataset.json" "$SCRIPT" | jq '.scenarios | to_entries[0].value')" \
+	--arg executor "$EXECUTOR" --argjson duration "$DURATION_S" --argjson maxvus "$MAX_VUS" --argjson steps "$steps_json" \
 	--argjson inv "${inv_exit:-97}" \
 	'{goal: "S5.2", runId: $run, scenario: $scenario, startedAt: $started, endedAt: $ended, warmupSeconds: $warmup,
 	  git: $git, host: $host, versions: $versions, config: $config,
-	  load: {executor: $k6opts.executor, durationSeconds: (($k6opts.duration // "0s") | rtrimstr("s") | split("m") |
-	           if length == 2 then (.[0] | tonumber) * 60 + ((.[1] | if . == "" then "0" else . end) | tonumber) else (.[0] | tonumber) end),
-	         maxVUs: ($k6opts.maxVUs // $k6opts.vus // 1)},
-	  invcheck: {exitCode: $inv}}' > "$DIR/facts.json"
+	  load: {executor: $executor, durationSeconds: $duration, maxVUs: $maxvus},
+	  steps: $steps, invcheck: {exitCode: $inv}}' > "$DIR/facts.json"
 go run ./loadtest/cmd/loadreport build -dir "$DIR" -spill "$SPILL_DIR" >&2
+leaked="$(repo_port_forwards "$ROOT")"
+[ -z "$leaked" ] || die "port-forwards outlived the run: $leaked"
 python3 -I scripts/load-report-check.py "$DIR"

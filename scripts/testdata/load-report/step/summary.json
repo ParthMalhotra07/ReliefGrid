@@ -17,7 +17,9 @@
     "swapUsedMiB": 0,
     "loadAvgStart": 0.4,
     "cpuMHzStart": 2200,
-    "cpuMHzEnd": 2100
+    "cpuMHzEnd": 2100,
+    "kindCpus": "0-5",
+    "powerProfileRestored": "balanced"
   },
   "versions": {
     "k6": "v1.4.2",
