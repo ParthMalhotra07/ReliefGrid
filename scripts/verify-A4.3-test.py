@@ -60,6 +60,21 @@ class ScalingEvidenceTest(unittest.TestCase):
                  status=dict(containerStatuses=[dict(name='matcher',state=dict(terminated=dict(exitCode=0,finishedAt='2026-11-06T08:00:31Z')))]))
         with self.assertRaises(AssertionError): module.clean_termination(pod)
 
+    def test_terminal_history_does_not_hide_unfinished_fixture_work(self):
+        from urllib.parse import parse_qs, urlsplit
+        active = ['PENDING', 'WAITING', 'MATCHING', 'MATCHED', 'IN_PROGRESS', 'RETRYING', 'CANCELLING', 'FULFILLING']
+        def page(url, bad=None, partial=False):
+            status = parse_qs(urlsplit(url).query).get('status', [None])[0]
+            return dict(items=[dict(status='CANCELLED')] if status is None else ([dict(status=status)] if status == bad else []),
+                        partial=partial, failedShards=[1] if partial else [],
+                        positions=[dict(shard=i, hasMore=status is None) for i in range(3)])
+        module.assert_no_active_requests(page, 'http://api')
+        for status in active:
+            with self.subTest(status=status), self.assertRaises(AssertionError):
+                module.assert_no_active_requests(lambda url: page(url, bad=status), 'http://api')
+        with self.assertRaises(AssertionError):
+            module.assert_no_active_requests(lambda url: page(url, partial=True), 'http://api')
+
     def test_real_tail_can_downscale_after_bulk(self):
         samples=[dict(self.sample(1,1,1,0),phase='baseline'),dict(self.sample(2,5,5,50),phase='bulk'),
                  dict(self.sample(3,1,1,1),phase='tail')]

@@ -1,6 +1,6 @@
-# Local autoscaling (A4.3 draft)
+# Local autoscaling (A4.3)
 
-Current acceptance is NOT READY; see issue127 and docs/evidence/A4.3.
+Real-workload acceptance passed; owner review/merge is pending. See docs/evidence/A4.3.
 
 The opt-in kind profile installs one API CPU HPA(2–6,60%) and one KEDA-owned
 matcher HPA(1–8,4messages/replica). HTTP queue depth includes ready and unacked
@@ -28,7 +28,12 @@ and every removed pod's clean exit before its grace deadline. Both API and
 matcher exits must be observed during real tail traffic. Missing statistics or
 missing final pod statuses fail. No manual replica change creates the result.
 
-The latest run passed the scaling trace but failed two cancel responses, so it
-does not satisfy full acceptance. It is not a throughput benchmark and does
-not certify storage/dashboard A4.2. Restore manual settings with autoscaling-down
-before a course gate. Controllers may remain idle on the infra worker.
+The latest accepted run includes709 real lifecycles, full scale-up/down and11
+observed clean exits. Cancellation retries only a documented known VERSION_CONFLICT
+after an authoritative reread (maximum3 attempts); every conflict is retained in
+the k6 log. Domain conflicts, unknown outcomes, malformed responses and exhausted
+retries fail. Transport thresholds remain strict for unexpected errors.
+
+This is not a throughput benchmark and does not certify A4.2. Runtime chart
+dependencies #129/#133 are recorded explicitly in the evidence. Restore manual
+settings with autoscaling-down before a course gate.

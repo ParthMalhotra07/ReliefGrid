@@ -1,29 +1,35 @@
-# A4.3 review checkpoint — NOT READY
+# A4.3 real-workload acceptance — PASS, owner review pending
 
-This is a draft checkpoint, not a completed goal. Issue127 records the remaining
-strict acceptance failure. The former cancelled-request no-op evidence has
-been archived locally; it is not offered as proof for this real-workload goal.
+Run 20261107T085200Z:709 actual create/handoff/cancel/terminal lifecycles,
+34315/34315 checks,47559 HTTP calls,0 unexpected HTTP failures. Five known
+VERSION_CONFLICT cancellation rejections were logged, reread and retried by the
+client (maximum3 attempts). Both unchanged rate==1 and rate==0 thresholds passed.
+409 is an expected HTTP status only on cancellation; wrong error codes, unknown
+outcomes, failed rereads and exhausted retries remain functional failures.
 
-Current code: independent API CPU HPA2–6 and HTTP queue KEDA1–8, including
-unacknowledged work;120s stabilization; bounded real lifecycle clients; final
-pod-status watch; API scale observations; values-file image pins with unused
-duplicated tools digests removed. k6 pin names match approved S PR125.
+Matcher Ready1→8→1 and API Ready2→6→2. No matcher decrease during the90s bulk
+window. Eleven removed pods had final clean exit0 observed before their grace
+deadlines, including both components during real low-rate tail traffic. All709
+created workflows reached CANCELLED without ownership, queues drained and no app
+restarts occurred. The verifier restored manual API2/matcher2 settings afterward.
 
-Local make check, generation and static checks passed (9 acceptance tests).
-Trace-only rejudging of the final real run passes: matcher1→8→1 and API2→6→2,
-no matcher decrease during the heavy arrival window, no observed app restarts.
-The broker continuously ran with0restarts throughout this run.
+Runtime used main's existing app images plus the exact #129 probe and #133 native
+boot chart merge, recorded in runtime-sources.txt. Neither dependency is silently
+claimed merged. Main must incorporate/rebase these before the final merge chain;
+CI must test the current combined main. No storage images/PVCs were replaced.
 
-OVERALL LIVE RESULT IS FAIL:35938/35940 checks passed,2 cancellation responses
-were non-200;2/48882 HTTP calls failed. Raw status/body were not retained by
-that version of the harness, so their cause is not guessed. Diagnostic logging
-and failed-run pod-watch persistence are now present for follow-up. The strict
-load thresholds and terminal/reciprocal postconditions have not been relaxed.
-Complete clean-exit acceptance was not reached and remains unverified.
+The earlier two unexplained cancellations were diagnosed in a bounded45s run:
+409 VERSION_CONFLICT, outcomeUnknown=false. See diagnosed-cancel-conflict.json.
+API/FSM semantics were correct; the original load client omitted the documented
+reread/retry. No production API change was made to hide a correct rejection.
 
-Three review correction attempts were used; physical reruns stopped. All668
-owned request fixtures were subsequently cancelled and4resources made OFFLINE
-outside acceptance, without resetting storage or touching unrelated claims.
-Normal fixed API2/matcher2 settings are restored. Seven resources from an earlier
-interrupted MEDICINE fixture remain assigned to pre-existing demo requests and
-were deliberately left intact; that development record is archived locally.
+Red-first regressions cover the known-rejection retry (3red then5green cases)
+and retained terminal history in preflight (red then10green acceptance cases).
+Full make check, make gen-check and make verify-A4.3-static PASS. Inputs are hashed
+in source-sha256.json. One full live round is retained; old failed full-run output
+was archived locally. Prior red-case evidence remains for review.
+
+PRE-PR REVIEW: READY for re-review. One controller per workload; no ack/claim/CAS
+invariant change; final exits and observations fail closed; no S-owned or contract
+edits; no credentials or local-only files. This acceptance is not a throughput
+benchmark and does not close the A4.2 storage-metrics handoff. Closes #127 on merge.

@@ -36,6 +36,17 @@ def acceptance(samples):
     assert all(1 <= s['desired'] <= 8 and s['restarts'] == 0 for s in samples)
 
 
+def assert_no_active_requests(http, api):
+    # Query every nonterminal status separately. Old terminal history may span
+    # many pages, but must neither block a new run nor hide unfinished work.
+    for status in ('PENDING', 'WAITING', 'MATCHING', 'MATCHED', 'IN_PROGRESS',
+                   'RETRYING', 'CANCELLING', 'FULFILLING'):
+        page = http(api+'/requests?type=SHELTER&status='+status+'&limit=100')
+        assert page['partial'] is False and page['failedShards'] == [], 'incomplete fixture scan'
+        assert {p['shard'] for p in page['positions']} == {0, 1, 2}, 'missing fixture shard'
+        assert not page['items'] and all(p['hasMore'] is False for p in page['positions']), 'fixture type has pre-existing unfinished work'
+
+
 def main():
     os.chdir(ROOT)
     context = 'kind-' + os.environ.get('CLUSTER', 'reliefgrid')
@@ -124,9 +135,7 @@ def main():
                 assert time.monotonic()<deadline, 'idle baseline did not settle'
                 time.sleep(3)
 
-            existing=http(api+'/requests?type=SHELTER&limit=100')
-            assert existing['partial'] is False and existing['failedShards']==[] and all(not p['hasMore'] for p in existing['positions'])
-            assert all(r['status'] in ('CANCELLED','FULFILLED') for r in existing['items']), 'fixture type has pre-existing unfinished work'
+            assert_no_active_requests(http, api)
             now=dt.datetime.now(dt.timezone.utc)
             def make_resource(n):
                 body=dict(resourceType='SHELTER',name='Synthetic A4.3 '+str(n),location=dict(lat=56,lng=-123),

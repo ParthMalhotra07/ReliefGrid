@@ -1,6 +1,7 @@
 import http from 'k6/http';
 import {check, sleep} from 'k6';
 import exec from 'k6/execution';
+import {cancelRequest} from './autoscaling-client.js';
 
 // Closed-loop real lifecycles bound unfinished work to the VU count. CPU and
 // workflow peaks are separate, so this measures autoscalers rather than the
@@ -39,7 +40,15 @@ export function lifecycle(){
   }
   check(reciprocal,{'current match has reciprocal claim':r=>!!r});
   console.log('A43_HANDOFF '+JSON.stringify({requestId:rid,status,version:current.json('version'),reciprocalVerified:!!reciprocal}));
-  const cancelled=http.put(base+'/requests/'+rid+'/status',JSON.stringify({status:'CANCELLED'}),{headers:{'Content-Type':'application/json'},timeout:'10s',tags:{name:'cancel-workflow'}});
+  // A VERSION_CONFLICT is a documented known rejection, not a completed
+  // cancellation. Keep every occurrence visible and require a successful
+  // reread + bounded retry, then the unchanged terminal/no-claim proof.
+  const cancelled=cancelRequest(
+    ()=>http.put(base+'/requests/'+rid+'/status',JSON.stringify({status:'CANCELLED'}),{
+      headers:{'Content-Type':'application/json'},timeout:'10s',tags:{name:'cancel-workflow'},
+      responseCallback:http.expectedStatuses(200,409)}),
+    ()=>http.get(base+'/requests/'+rid,{timeout:'10s',tags:{name:'reread-cancel-conflict'}}),
+    r=>console.log('A43_CAS_RETRY '+JSON.stringify({requestId:rid,status:r.status,body:r.body})));
   if(cancelled.status!==200)console.error('A43_CANCEL_FAILURE '+JSON.stringify({requestId:rid,status:cancelled.status,body:cancelled.body}));
   if(!check(cancelled,{'cancel accepted':r=>r.status===200}))return;
   // The documented complete reconciler walk is125s; allow one full walk plus
