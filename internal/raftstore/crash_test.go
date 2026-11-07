@@ -1,6 +1,7 @@
 package raftstore
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,6 +33,86 @@ func writeKeys(t *testing.T, l *Node, prefix string, n int) store.Result {
 		}
 	}
 	return last
+}
+
+// writeKeys applies n fresh keys prefix0..prefixN-1 through whichever node
+// leads at each write, and returns the command index that node had applied
+// once the last write committed: the index every replica must reach.
+func (c *testCluster) writeKeys(t *testing.T, prefix string, n int) uint64 {
+	t.Helper()
+	var at uint64
+	for i := range n {
+		var res store.Result
+		res, at = c.applyOnLeader(t, cas(fmt.Sprintf("op-%s%d", prefix, i), fmt.Sprintf("kv:%s%d", prefix, i), 0, i))
+		if res.Outcome != store.OutcomeOK {
+			t.Fatalf("%s%d: %+v", prefix, i, res)
+		}
+	}
+	return at
+}
+
+// applyOnLeader proposes cmd through the node that leads now. A leader
+// found before a fault may have stepped down since (issue #122), so the
+// leader is looked up again for every attempt. ErrNotLeader means the
+// command was never appended; ErrUnknownOutcome means it may or may not
+// commit (a leader can lose its lease between appending and committing).
+// Either way the same command, with the same operationId, is proposed
+// again, as the Store contract asks (invariant 5): the FSM applies it once
+// and answers a repeat with the stored result (Replayed). Any other error,
+// or the deadline, fails the test; callers check the outcome.
+//
+// It returns the committed result and the command index the answering node
+// had applied by then. A replayed result carries the index the command
+// first committed at, but the repeat is a later command on the log, so
+// only the second index says how far every replica must get.
+func (c *testCluster) applyOnLeader(t *testing.T, cmd any) (store.Result, uint64) {
+	t.Helper()
+	ctx := testCtx(t)
+	for {
+		_, l := c.waitLeader()
+		res, err := l.Apply(ctx, cmd)
+		if err == nil {
+			// The FSM records its applied index before Apply answers.
+			return res, max(res.AppliedIndex, l.Status().AppliedIndex)
+		}
+		retryable := errors.Is(err, ErrNotLeader) || errors.Is(err, store.ErrUnknownOutcome)
+		if !retryable || ctx.Err() != nil {
+			t.Fatalf("Apply(%T): %v", cmd, err)
+		}
+		t.Logf("Apply(%T) on %s: %v; proposing the same command again through the current leader", cmd, l.Identity().ServerID(), err)
+	}
+}
+
+// compactLiveNodes snapshots every live node once it has applied the
+// command at applied, and checks that each one's log now starts after
+// next, the entry a stopped follower needs next. Whichever node leads when
+// that follower rejoins must then send it a snapshot (InstallSnapshot): a
+// node with the entries still in its log would replicate them instead
+// (issue #122). It returns the snapshot, which is the same command index on
+// every node.
+func (c *testCluster) compactLiveNodes(t *testing.T, applied, next uint64) SnapshotInfo {
+	t.Helper()
+	var snap SnapshotInfo
+	for i, n := range c.nodes {
+		if n == nil {
+			continue
+		}
+		if err := n.WaitApplied(testCtx(t), applied); err != nil {
+			t.Fatal(err)
+		}
+		s, err := n.Snapshot(testCtx(t))
+		if err != nil {
+			t.Fatalf("snapshot node %d: %v", i, err)
+		}
+		if s.AppliedIndex != applied {
+			t.Fatalf("node %d snapshot %+v, want one at applied index %d", i, s, applied)
+		}
+		if first, err := n.logs.FirstIndex(); err != nil || first <= next {
+			t.Fatalf("node %d log first index %d (err %v): the follower's next entry %d was not compacted", i, first, err, next)
+		}
+		snap = s
+	}
+	return snap
 }
 
 // derivedFiles lists the FSM directory's files other than n's open database
@@ -68,9 +149,35 @@ func tmpSnapshots(t *testing.T, dataDir string) []string {
 // checks that their rows are equal at that index.
 func catchUpAndCompare(t *testing.T, l, n *Node) {
 	t.Helper()
-	final := mustApply(t, l, cas(fmt.Sprintf("op-final-%d", l.Status().CommitIndex), fmt.Sprintf("kv:final-%d", l.Status().CommitIndex), 0, 1))
+	final := mustApply(t, l, finalWrite(l))
+	compareAt(t, l, n, final.AppliedIndex)
+}
+
+// catchUpAndCompare commits one more command through whichever node leads
+// now, waits until n and the current leader have applied it, and checks
+// that their rows are equal at that index.
+func (c *testCluster) catchUpAndCompare(t *testing.T, n *Node) {
+	t.Helper()
+	_, l := c.waitLeader()
+	final, at := c.applyOnLeader(t, finalWrite(l))
+	if final.Outcome != store.OutcomeOK {
+		t.Fatalf("final write: %+v", final)
+	}
+	_, l = c.waitLeader()
+	compareAt(t, l, n, at)
+}
+
+func finalWrite(l *Node) store.CompareAndSet {
+	at := l.Status().CommitIndex
+	return cas(fmt.Sprintf("op-final-%d", at), fmt.Sprintf("kv:final-%d", at), 0, 1)
+}
+
+// compareAt waits until l and n have applied the command at index and checks
+// that their rows are equal there.
+func compareAt(t *testing.T, l, n *Node, index uint64) {
+	t.Helper()
 	for _, x := range []*Node{l, n} {
-		if err := x.WaitApplied(testCtx(t), final.AppliedIndex); err != nil {
+		if err := x.WaitApplied(testCtx(t), index); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -90,21 +197,21 @@ func catchUpAndCompare(t *testing.T, l, n *Node) {
 // log replayed, and the next snapshot succeeds.
 func TestCrashDuringSnapshotKeepsPriorSnapshot(t *testing.T) {
 	c := newBootstrappedCluster(t, testProfile)
-	li, l := c.waitLeader()
+	li, _ := c.waitLeader()
 	fi, f := c.follower(li)
-	last := writeKeys(t, l, "a", 8)
-	if err := f.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
+	last := c.writeKeys(t, "a", 8)
+	if err := f.WaitApplied(testCtx(t), last); err != nil {
 		t.Fatal(err)
 	}
 	prior, err := f.Snapshot(testCtx(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if prior.AppliedIndex != last.AppliedIndex {
-		t.Fatalf("prior snapshot %+v, want a new one at applied index %d", prior, last.AppliedIndex)
+	if prior.AppliedIndex != last {
+		t.Fatalf("prior snapshot %+v, want a new one at applied index %d", prior, last)
 	}
-	last = writeKeys(t, l, "b", 8) // the tail the restart must replay
-	if err := f.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
+	last = c.writeKeys(t, "b", 8) // the tail the restart must replay
+	if err := f.WaitApplied(testCtx(t), last); err != nil {
 		t.Fatal(err)
 	}
 	crashIndex, crashTerm := f.Status().LastLogIndex, f.Status().Term
@@ -154,7 +261,7 @@ func TestCrashDuringSnapshotKeepsPriorSnapshot(t *testing.T) {
 	if extra := derivedFiles(t, f, cfg.FSMDir); len(extra) != 0 {
 		t.Fatalf("FSM directory kept %v after restart", extra)
 	}
-	catchUpAndCompare(t, l, f) // the tail replayed from the log
+	c.catchUpAndCompare(t, f) // the tail replayed from the log
 
 	next, err := f.Snapshot(testCtx(t))
 	if err != nil {
@@ -174,25 +281,20 @@ func TestCrashDuringSnapshotKeepsPriorSnapshot(t *testing.T) {
 // in (and a later stage was half-written). On restart the FSM directory is
 // rebuilt from scratch: the staged generation is never opened, the node
 // restores the installed snapshot from its own store, and its rows equal the
-// leader's at the same index.
+// leader's at the same index. Both live nodes compact their logs while the
+// replica is down, so the snapshot comes whichever of them leads.
 func TestCrashDuringRestoreRebuildsCleanly(t *testing.T) {
 	c := newBootstrappedCluster(t, testProfile)
-	li, l := c.waitLeader()
+	li, _ := c.waitLeader()
 	fi, f := c.follower(li)
-	last := writeKeys(t, l, "a", 3)
-	if err := f.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
+	last := c.writeKeys(t, "a", 3)
+	if err := f.WaitApplied(testCtx(t), last); err != nil {
 		t.Fatal(err)
 	}
 	followerLast := f.Status().LastLogIndex
 	c.kill(fi)
-	writeKeys(t, l, "b", 5*int(testProfile.TrailingLogs))
-	leaderSnap, err := l.Snapshot(testCtx(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if first, err := l.logs.FirstIndex(); err != nil || first <= followerLast+1 {
-		t.Fatalf("leader log first index %d (err %v): the follower's next entry %d was not compacted", first, err, followerLast+1)
-	}
+	last = c.writeKeys(t, "b", 5*int(testProfile.TrailingLogs))
+	snap := c.compactLiveNodes(t, last, followerLast+1)
 
 	// At the swap, copy the FSM directory: that is what the crash leaves.
 	cfg := c.cfgs[fi]
@@ -205,7 +307,7 @@ func TestCrashDuringRestoreRebuildsCleanly(t *testing.T) {
 	}
 	c.open(fi)
 	f = c.nodes[fi]
-	if err := f.WaitApplied(testCtx(t), leaderSnap.AppliedIndex); err != nil {
+	if err := f.WaitApplied(testCtx(t), snap.AppliedIndex); err != nil {
 		t.Fatal(err)
 	}
 	c.kill(fi)
@@ -242,8 +344,8 @@ func TestCrashDuringRestoreRebuildsCleanly(t *testing.T) {
 	// Open returns after Raft restored the newest local snapshot: the one
 	// InstallSnapshot persisted before the crash.
 	st := f.Status()
-	if st.RestoredIndex != leaderSnap.AppliedIndex || st.AppliedIndex != leaderSnap.AppliedIndex {
-		t.Fatalf("after restart: restored %d, applied %d; want the installed snapshot at %d", st.RestoredIndex, st.AppliedIndex, leaderSnap.AppliedIndex)
+	if st.RestoredIndex != snap.AppliedIndex || st.AppliedIndex != snap.AppliedIndex {
+		t.Fatalf("after restart: restored %d, applied %d; want the installed snapshot at %d", st.RestoredIndex, st.AppliedIndex, snap.AppliedIndex)
 	}
 	if extra := derivedFiles(t, f, cfg.FSMDir); len(extra) != 0 {
 		t.Fatalf("FSM directory kept %v: a staged or half-swapped database survived the restart", extra)
@@ -257,53 +359,47 @@ func TestCrashDuringRestoreRebuildsCleanly(t *testing.T) {
 	if now, err := os.Stat(f.sm.dbPath(f.sm.gen)); err != nil || os.SameFile(now, stagedBefore) {
 		t.Fatalf("the restarted node opened the staged file the crash left (err %v)", err)
 	}
-	catchUpAndCompare(t, l, f)
+	c.catchUpAndCompare(t, f)
 }
 
-// A replica restarts behind the leader's compacted log: it restores its own
-// older snapshot, replays its log, finds the entries it needs next
-// compacted away, and installs the leader's snapshot. Its rows then equal
-// the leader's at the same index.
+// A replica restarts behind a compacted log: it restores its own older
+// snapshot, replays its log, finds the entries it needs next compacted away
+// on both live nodes, and installs the leader's snapshot, whichever of them
+// leads. Its rows then equal the leader's at the same index.
 func TestRestartBehindCompactedGapInstallsSnapshot(t *testing.T) {
 	c := newBootstrappedCluster(t, testProfile)
-	li, l := c.waitLeader()
+	li, _ := c.waitLeader()
 	fi, f := c.follower(li)
-	last := writeKeys(t, l, "a", 6)
-	if err := f.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
+	last := c.writeKeys(t, "a", 6)
+	if err := f.WaitApplied(testCtx(t), last); err != nil {
 		t.Fatal(err)
 	}
 	own, err := f.Snapshot(testCtx(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	last = writeKeys(t, l, "b", 3) // in the follower's log, after its snapshot
-	if err := f.WaitApplied(testCtx(t), last.AppliedIndex); err != nil {
+	last = c.writeKeys(t, "b", 3) // in the follower's log, after its snapshot
+	if err := f.WaitApplied(testCtx(t), last); err != nil {
 		t.Fatal(err)
 	}
 	followerLast := f.Status().LastLogIndex
 	c.kill(fi)
 
-	writeKeys(t, l, "c", 5*int(testProfile.TrailingLogs))
-	leaderSnap, err := l.Snapshot(testCtx(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if first, err := l.logs.FirstIndex(); err != nil || first <= followerLast+1 {
-		t.Fatalf("leader log first index %d (err %v): no gap after the follower's %d", first, err, followerLast)
-	}
+	last = c.writeKeys(t, "c", 5*int(testProfile.TrailingLogs))
+	snap := c.compactLiveNodes(t, last, followerLast+1)
 
 	c.open(fi)
 	f = c.nodes[fi]
 	if got := f.Status().RestoredIndex; got != own.AppliedIndex {
 		t.Fatalf("at open: restored %d, want its own snapshot at %d", got, own.AppliedIndex)
 	}
-	if err := f.WaitApplied(testCtx(t), leaderSnap.AppliedIndex); err != nil {
+	if err := f.WaitApplied(testCtx(t), snap.AppliedIndex); err != nil {
 		t.Fatal(err)
 	}
-	if got := f.Status().RestoredIndex; got != leaderSnap.AppliedIndex {
-		t.Fatalf("after catching up: restored %d, want the leader's snapshot at %d (InstallSnapshot)", got, leaderSnap.AppliedIndex)
+	if got := f.Status().RestoredIndex; got != snap.AppliedIndex {
+		t.Fatalf("after catching up: restored %d, want the snapshot at %d (InstallSnapshot)", got, snap.AppliedIndex)
 	}
-	catchUpAndCompare(t, l, f)
+	c.catchUpAndCompare(t, f)
 }
 
 // Snapshot reports the snapshot it took. raft v1.8.0 takes a new snapshot on
