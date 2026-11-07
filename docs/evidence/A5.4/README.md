@@ -1,22 +1,7 @@
-# A5.4 draft checkpoint — NOT READY
+# A5.4 offline acceptance — PASS
 
-Revisioned source, pinned image identities/archives, packaged charts, prebuilt
-outbox drainer and isolated runner are implemented. Integrity/path/name/drainer/
-precise-export-failure unit tests PASS5cases. Full makecheck/genPASS. Red-first
-output and compact integration results are retained here. Large artifacts remain
-outsideGit; no kubeconfig/Secret/binary/archive is committed.
+Accepted source9b2480e46f5d, artifact manifest checksum and image roles recorded in accepted-20261107/artifact-proof.json. All nine unchanged demonstrations passed in order on a fresh isolated cluster, with external access denied to runner and all five nodes. Post-run node probes remained blocked. Reports and real runner output retained; full verbose evidence remains in the local immutable kit.
 
-Live bootstrap eventually proved all5nodesReady on an internal Docker network,
-with a local DNS anchor and private API access. Source tests reject missing/corrupt
-assets and prevent silently falling back to networked Go builds. Default demos
-continue to build the helper normally. Actual source/image identities are recorded
-in each local artifact manifest, not guessed from a mutable tag.
+The Traefik schema error is fixed by removing the inherited digest for the exact locally tagged image; pinned chart rendering is tested. The runner uses a managed API loopback forward and cleans it on exit. Native RabbitMQ boot comes from merged #133. Ten safety/regression tests, make check and generation checks pass. The branch was rebased from the former #133 parent to merged main with an empty tree diff against the accepted code revision; evidence/docs additions do not change runtime code.
 
-Full acceptance is INCOMPLETE: image archive import hit a Docker/containerd
-multi-platform content hole. All9offline demos have NOT run. Three integration
-attempts were used; the next batch must export complete Linux/amd64 archives,
-validate their closure first and rerun the real offline acceptance. See the
-linked A5.4 follow-up issue. No invariant or offline check was weakened.
-
-PRE-PR REVIEW: NOT READY for merge. Draft PR preserves the tested implementation
-and exact remaining failure. Original development cluster/PVCs were not reset.
+Previous failures under resumed-20261107 are historical, not relabelled as success. PRE-PR REVIEW: READY. See docs/operations/offline-kit.md for preparation, installation, acceptance and cleanup. Goal completion still awaits owner review/merge and main verification.
