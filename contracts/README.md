@@ -63,10 +63,11 @@ a quoted strong ETag. Explicit If-Match failures, including an intervening commi
 CAS rejection, return 412; a transport timeout is still an unknown 503.
 
 Request/resource lists accept an opaque cursor and may return nextCursor. Tokens
-bind endpoint, filters, limit and ring version. They are continuations, not access
+bind endpoint, filters and limit, and retain the opaque storage continuation. They are continuations, not access
 credentials or global snapshots. Under a static dataset a complete walk visits
 each matching item once, including filtered spatial pages. Malformed/mismatched
-tokens fail rather than restarting silently; a ring change requires restarting.
+tokens fail rather than restarting silently; a reported storage ring change requires restarting.
+The deployed M1 ring is fixed; these cursors do not claim migration snapshot semantics.
 
 Internal authentication is coordinated separately with S in issue #29; this PR
 does not modify the internal contract or authorize S-owned handler changes.
