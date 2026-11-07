@@ -5,5 +5,9 @@ metadata:
   labels:
     {{- include "reliefgrid.rabbitmqLabels" . | nindent 4 }}
 data:
+  rabbitmq.conf: |
+    definitions.import_backend = local_filesystem
+    definitions.local.path = /etc/reliefgrid/definitions.json
+    definitions.skip_if_unchanged = true
   definitions.json: |
     {{- .Files.Get "files/rabbitmq-definitions.json" | nindent 4 }}

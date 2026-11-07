@@ -1,0 +1,8 @@
+--- FAIL: TestAppBrokerNativeBootImport (2.73s)
+    --- FAIL: TestAppBrokerNativeBootImport/reliefgrid (2.14s)
+        app_broker_boot_test.go:29: boot import must not run in a concurrent postStart CLI
+    --- FAIL: TestAppBrokerNativeBootImport/boot-test (0.59s)
+        app_broker_boot_test.go:29: boot import must not run in a concurrent postStart CLI
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.731s
+FAIL

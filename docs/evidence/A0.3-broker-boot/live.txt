@@ -1,0 +1,4 @@
+Isolated native boot verification: broker-boot-de3f326b
+PASS fresh PVC: restartCount=0; custom credentials; canonical topology; durable publish
+PASS same PVC restart: new pod; restartCount=0; topology and persistent message retained
+Isolated namespace cleanup requested: broker-boot-de3f326b
