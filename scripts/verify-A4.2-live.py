@@ -10,7 +10,6 @@ import math
 import os
 from pathlib import Path
 import re
-import selectors
 import subprocess
 import time
 import urllib.error
@@ -59,37 +58,29 @@ def eventually(fn, description, timeout=45):
 def forward(context, namespace, service, port, output):
     argv = ["kubectl", "--context", context, "-n", namespace, "port-forward",
             "--address=127.0.0.1", "svc/" + service, ":" + str(port)]
-    proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    selector = selectors.DefaultSelector()
-    assert proc.stdout is not None
-    selector.register(proc.stdout, selectors.EVENT_READ)
-    lines = []
-    try:
-        deadline = time.monotonic() + 20
-        origin = None
-        while time.monotonic() < deadline and proc.poll() is None:
-            for _, _ in selector.select(.25):
-                line = proc.stdout.readline()
-                lines.append(line)
-                match = re.search(r"Forwarding from 127\.0\.0\.1:(\d+) ->", line)
+    # A pipe left undrained after startup blocks kubectl under sustained load.
+    # A separate reader avoids sharing the writer's file offset while polling.
+    with output.open("w") as log:
+        proc = subprocess.Popen(argv, stdout=log, stderr=subprocess.STDOUT, text=True)
+        try:
+            deadline = time.monotonic() + 20
+            origin = None
+            while time.monotonic() < deadline and proc.poll() is None:
+                match = re.search(r"Forwarding from 127\.0\.0\.1:(\d+) ->", output.read_text())
                 if match:
                     origin = "http://127.0.0.1:" + match.group(1)
                     break
-            if origin:
-                break
-        if not origin:
-            raise RuntimeError(f"port forward unavailable: {service}")
-        yield origin
-    finally:
-        selector.close()
-        proc.terminate()
-        try:
-            proc.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=3)
-        output.write_text("".join(lines))
-        proc.stdout.close()
+                time.sleep(.05)
+            if not origin:
+                raise RuntimeError(f"port forward unavailable: {service}")
+            yield origin
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=3)
 
 
 @contextlib.contextmanager

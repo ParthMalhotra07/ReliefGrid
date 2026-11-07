@@ -18,3 +18,5 @@ echo 'A4.2 STATIC: ALL PASS'
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/verify-storage-promql.py
 
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/metrics-fault-test.py
+
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/metrics-forward-test.py
