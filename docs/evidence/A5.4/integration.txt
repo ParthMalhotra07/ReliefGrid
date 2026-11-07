@@ -1,0 +1,10 @@
+Offline batch integration result: INCOMPLETE, three attempts used.
+Attempt1: kind boot failed. Exact node log:
+iptables-restore v1.8.11 (nf_tables): host/network `' not found
+Fixed local DNS anchor; node reached Multi-User System with external access denied.
+Attempt2: all5nodes Ready; final external kubeconfig export failed on missing
+Docker Desktop port mapping. Independently verified all5Ready via private API.
+Installer now requires that private postcondition and runs Helm on that network.
+Attempt3: PASS all five nodes Ready through the private API; image import failed:
+ctr: content digest sha256:3039098aece3a18a4ceebbb528411e0f3de8e955f09cba3d60e5fbae05e36194: not found
+No app/demo acceptance PASS is claimed. Original kind-reliefgrid stayed intact.
