@@ -104,4 +104,24 @@ class OfflineKitTest(unittest.TestCase):
 
 
 
+ def test_runner_api_forward_exports_loopback_and_is_stopped(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);binary=root/'kubectl'
+   binary.write_text('#!/usr/bin/env python3\n'+"""from http.server import HTTPServer,BaseHTTPRequestHandler
+class Handler(BaseHTTPRequestHandler):
+ def do_GET(self):
+  self.send_response(200);self.end_headers();self.wfile.write(b'{}')
+ def log_message(self,*args):pass
+s=HTTPServer(('127.0.0.1',0),Handler)
+print('Forwarding from 127.0.0.1:'+str(s.server_port)+' -> 80',flush=True)
+s.serve_forever()
+""")
+   binary.chmod(0o755)
+   env=dict(os.environ,PATH=str(root)+os.pathsep+os.environ['PATH'],EVIDENCE_ROOT=tmp,KUBE_CONTEXT='kind-test',NAMESPACE='test')
+   helper=module.ROOT/'deploy/offline/forward-api.sh'
+   script='source "$1"; trap cleanup_api_forward EXIT; start_api_forward; saved="$API_FORWARD_PID"; [[ "$API_URL" == http://127.0.0.1:*/api/v1 ]]; cleanup_api_forward; ! kill -0 "$saved" 2>/dev/null'
+   subprocess.run(['bash','-euc',script,'test',str(helper)],env=env,check=True,timeout=10)
+
+
+
 if __name__=='__main__':unittest.main()

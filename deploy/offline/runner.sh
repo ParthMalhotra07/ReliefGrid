@@ -16,7 +16,9 @@ export COORDINATOR_IMAGE="$(python3 -c 'import json;print(json.load(open("/kit/m
 export TOOLS_IMAGE="$(python3 -c 'import json;print(json.load(open("/kit/manifest.json"))["roles"]["tools"])')"
 cd /kit/source
 source scripts/demos/common.sh
-trap restore_demo_cordons EXIT
+source deploy/offline/forward-api.sh
+trap 'cleanup_api_forward; restore_demo_cordons' EXIT
+start_api_forward
 for n in {1..9}; do
  echo "Running offline demo-$n"
  make CLUSTER="$cluster" NAMESPACE=reliefgrid TOOLS_IMAGE="$TOOLS_IMAGE" "demo-$n" > "/evidence/demo-$n.log" 2>&1
