@@ -1,0 +1,18 @@
+
+> reliefgrid-dispatch@0.1.0 test
+> node --test src/*.test.js
+
+✔ an overlapping refresh waits for the requested fresh reread (1.73087ms)
+✔ overlapping callers coalesce into one reread and recover after failure (1.175743ms)
+✔ at-least-once events are deduplicated with bounded memory (1.092502ms)
+✔ missing or partial shard observations never become an empty list (0.584794ms)
+✔ cancelling stays cancelling until a newer authoritative record is observed (0.757333ms)
+✔ an assignment line requires the current reciprocal claim (0.212911ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.996941

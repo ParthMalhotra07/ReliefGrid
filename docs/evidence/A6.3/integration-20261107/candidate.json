@@ -1,0 +1,106 @@
+{
+  "main": "0fa3a63cbddb283a8ddb5f73b100a3afa967202f",
+  "purpose": "local integration audit only; no merge or push to main",
+  "sources": [
+    {
+      "pr": 121,
+      "branch": "a/A4.2-metrics-and-dashboards",
+      "base": "0fa3a63cbddb283a8ddb5f73b100a3afa967202f",
+      "head": "aadcc3dcd96cb2ca7efe1bada55cd234a12090f5",
+      "result": 0
+    },
+    {
+      "pr": 146,
+      "branch": "a/A6.1-metrics-recovery",
+      "base": "aadcc3dcd96cb2ca7efe1bada55cd234a12090f5",
+      "head": "e4cb3dd7779751df90389c88b810bdd7dd51210a",
+      "result": 0
+    },
+    {
+      "pr": 123,
+      "branch": "a/A4.3-autoscaling",
+      "base": "acc020ad0f7ce435ad1655287d5b81072fcd6b04",
+      "head": "7264d3cbfdddf43b184cdbec3eac0ff4485348dd",
+      "result": 0,
+      "resolution": "retain independent metrics/scaling targets, values and pins"
+    },
+    {
+      "pr": 140,
+      "head": "9d971970c60c2b98b2ebfcc6656514974cc8b2cd",
+      "base": "acc020ad0f7ce435ad1655287d5b81072fcd6b04",
+      "result": 0
+    },
+    {
+      "pr": 128,
+      "head": "393f90a33b53141ce8dceb05db0531ae374b172e",
+      "base": "acc020ad0f7ce435ad1655287d5b81072fcd6b04",
+      "result": 0,
+      "resolution": "retain independent named Makefile targets"
+    },
+    {
+      "pr": 147,
+      "head": "6d161aa90cf36dd423d45fb6f49f7d13c6705fda",
+      "base": "0fa3a63cbddb283a8ddb5f73b100a3afa967202f",
+      "result": 0
+    },
+    {
+      "pr": 148,
+      "head": "4a92caeaf60d8c6ec3e988247454159f04b5c2bb",
+      "base": "0fa3a63cbddb283a8ddb5f73b100a3afa967202f",
+      "result": 0
+    },
+    {
+      "pr": 139,
+      "head": "b4ae2487df19c18d0cc44d2f6e1dd5225fba4701",
+      "base": "0fa3a63cbddb283a8ddb5f73b100a3afa967202f",
+      "result": 0
+    },
+    {
+      "pr": 134,
+      "head": "0dbf3efdd4cbee7cd30a8a8a58efa960cc4b8b29",
+      "base": "acc020ad0f7ce435ad1655287d5b81072fcd6b04",
+      "result": 0
+    },
+    {
+      "pr": 136,
+      "head": "fe55d3b768befa0b06294c0c12b21cb91a51b514",
+      "base": "0dbf3efdd4cbee7cd30a8a8a58efa960cc4b8b29",
+      "result": 0,
+      "resolution": "retain metrics observer; use conditional-update error mapping for ETag/412"
+    },
+    {
+      "pr": 137,
+      "head": "51b1c025b8759eb4e97bc938bbf88309857e3d43",
+      "base": "acc020ad0f7ce435ad1655287d5b81072fcd6b04",
+      "result": 0
+    },
+    {
+      "pr": 144,
+      "head": "68da993ad37a119b402ec8497129a46bb1cd979c",
+      "base": "acc020ad0f7ce435ad1655287d5b81072fcd6b04",
+      "result": 0
+    },
+    {
+      "pr": 145,
+      "head": "01d14c2c7645bd11fcf765759d5d48610c065ce2",
+      "base": "acc020ad0f7ce435ad1655287d5b81072fcd6b04",
+      "result": 0
+    },
+    {
+      "pr": 149,
+      "base": "0fa3a63cbddb283a8ddb5f73b100a3afa967202f",
+      "head": "d121312880ca85ce8602fa3ec86342628599bd42",
+      "result": 0
+    }
+  ],
+  "result": "PASS",
+  "candidate_tree": "c4a426525ce10f798566c337426ff88471c79a73",
+  "physical_combined_gate": false,
+  "note": "Local combined source audit. PR145 input is the prior immutable README head; the current evidence is added afterwards, not a self-referential runtime change.",
+  "resolution_sha256": {
+    "Makefile": "e968519907d59bf2df0df2563c7fabddbc78b771383da18a63ae27aea75dc6aa",
+    "tools.mk": "07509dc2a0d8c29db122f875784b3123cdd12201939d9f2c3a5f45882aef5794",
+    "deploy/helm/reliefgrid/values.yaml": "d2d1bdf9aaa0bd47981de1e56c717cbcbabe7a460b377cbef8ec35b4fb75778c",
+    "internal/api/lifecycle.go": "47d9f443466e37e7469d16ccda205d5b42a942d5e6623fad5bbf5dea8e772d7d"
+  }
+}
