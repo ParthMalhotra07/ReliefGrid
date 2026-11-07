@@ -102,6 +102,12 @@ func (s *Server) updateRequest(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return remoteError(err, true)
 	}
+	if s.cfg.Observer != nil {
+		s.cfg.Observer.Transition(data, command, result)
+		if result.Outcome == store.OutcomeOK && !result.Replayed && (command.To == store.RequestCancelled || command.To == store.RequestFulfilled) {
+			s.cfg.Observer.Attempt(string(command.To), nil)
+		}
+	}
 	if err := committed(result); err != nil {
 		return err
 	}

@@ -1,0 +1,6 @@
+=== RUN   TestAppMetricsArePrivateAndOnlyApplicationWorkersExposeThem
+    app_metrics_chart_test.go:33: api metrics port=false env=false, want true
+--- FAIL: TestAppMetricsArePrivateAndOnlyApplicationWorkersExposeThem (2.31s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.315s
+FAIL
