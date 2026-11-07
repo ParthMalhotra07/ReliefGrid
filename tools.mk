@@ -11,6 +11,11 @@ HELM_VERSION          := v3.22.1
 OAPI_CODEGEN_VERSION  := v2.8.0
 # Python openapi-spec-validator: verify-A0.1 validates contracts/public.yaml with it.
 OPENAPI_SPEC_VALIDATOR_VERSION := 0.9.0
+# k6 for the S5.2 load report (loadtest/k6), run on the host and pinned to fixed cores
+# with taskset. Not checked by make doctor: only the load runs need it. K6_SHA256 is the
+# linux-amd64 tarball's, from the release's k6-<version>-checksums.txt.
+K6_VERSION            := v2.3.0
+K6_SHA256             := 39c3117b6af817592dcd0ce4242105c0a7af10948c2a425306f0be8f7a8a8ab1
 
 # sha256 of the linux/amd64 downloads CI installs (scripts/ci-tools.sh): the kind
 # binary, the kubectl binary and the helm tarball. CI checks each download
