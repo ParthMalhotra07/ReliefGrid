@@ -28,6 +28,52 @@ def digest(path):
     return value.hexdigest()
 
 
+
+def verify_image_archive(path):
+    """Reject incomplete Docker/OCI exports before an offline deployment."""
+    with tarfile.open(path) as archive:
+        members={member.name:member for member in archive.getmembers()}
+        def read(name):
+            member=members.get(name)
+            if member is None or not member.isfile():
+                raise ValueError('image archive is missing a regular file: '+name)
+            return archive.extractfile(member)
+        seen=set()
+        def descriptor(value):
+            digest=value.get('digest','')
+            if not re.fullmatch(r'sha256:[0-9a-f]{64}',digest):
+                raise ValueError('unsupported image descriptor digest')
+            if digest in seen: return
+            seen.add(digest)
+            name='blobs/sha256/'+digest.split(':')[1]
+            checksum=hashlib.sha256();size=0
+            with read(name) as stream:
+                for block in iter(lambda:stream.read(1024*1024),b''):
+                    checksum.update(block);size+=len(block)
+            if checksum.hexdigest()!=digest.split(':')[1] or size!=value.get('size'):
+                raise ValueError('image descriptor content mismatch: '+name)
+            media=value.get('mediaType','')
+            if 'manifest' in media or 'index' in media:
+                with read(name) as stream: document=json.load(stream)
+                for child in document.get('manifests',[]): descriptor(child)
+                if 'config' in document: descriptor(document['config'])
+                for child in document.get('layers',[]): descriptor(child)
+        found=False
+        if 'index.json' in members:
+            with read('index.json') as stream: index=json.load(stream)
+            if not index.get('manifests'): raise ValueError('empty OCI image archive')
+            for value in index['manifests']: descriptor(value)
+            found=True
+        if 'manifest.json' in members:
+            with read('manifest.json') as stream: images=json.load(stream)
+            if not images: raise ValueError('empty Docker image archive')
+            for image in images:
+                for name in [image['Config'],*image['Layers']]:
+                    with read(name): pass
+            found=True
+        if not found: raise ValueError('no image manifest in archive')
+
+
 def verify_files(root):
     root = root.resolve()
     manifest = json.loads((root / 'manifest.json').read_text())
@@ -42,6 +88,8 @@ def verify_files(root):
             raise ValueError('missing or escaping asset: ' + name)
         if digest(path) != checksum:
             raise ValueError('corrupt asset: ' + name)
+    for name in ("runtime-images.tar", "host-images.tar"):
+        if name in files: verify_image_archive(root/name)
     return manifest
 
 
@@ -143,8 +191,8 @@ def prepare(output):
         with tarfile.open(output / 'source.tar.gz', 'w:gz') as archive:
             archive.add(source, arcname='source')
     runtime = [image for image in images if image not in (roles['node'], roles['runner'])]
-    run('docker', 'save', '-o', str(output / 'runtime-images.tar'), *runtime, timeout=600)
-    run('docker', 'save', '-o', str(output / 'host-images.tar'), roles['node'], roles['runner'], timeout=600)
+    run('docker', 'save', '--platform=linux/amd64', '-o', str(output / 'runtime-images.tar'), *runtime, timeout=600)
+    run('docker', 'save', '--platform=linux/amd64', '-o', str(output / 'host-images.tar'), roles['node'], roles['runner'], timeout=600)
     manifest = dict(version=1, source=revision, roles=roles, images=images,
                     runtime=runtime, files={})
     manifest['files'] = {f.relative_to(output).as_posix(): digest(f) for f in sorted(output.rglob('*')) if f.is_file()}

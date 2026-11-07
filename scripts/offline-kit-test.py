@@ -1,4 +1,6 @@
 import hashlib
+import io
+import tarfile
 import importlib.util
 import json
 import os
@@ -50,6 +52,23 @@ class OfflineKitTest(unittest.TestCase):
   for name in ['reliefgrid','production','../bad','reliefgrid-offline;evil']:
    with self.subTest(name=name),self.assertRaises(ValueError):module.check_cluster_name(name)
   module.check_cluster_name('reliefgrid-offline-check')
+
+
+ def test_missing_oci_blob_is_rejected_before_cluster_creation(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);archive=root/'images.tar'
+   config=b'{"architecture":"amd64","os":"linux"}'
+   checksum=hashlib.sha256(config).hexdigest()
+   index=json.dumps({'manifests':[{'mediaType':'application/vnd.oci.image.config.v1+json','digest':'sha256:'+checksum,'size':len(config)}]}).encode()
+   def write(include):
+    with tarfile.open(archive,'w') as output:
+     for name,data in [('index.json',index)]+([('blobs/sha256/'+checksum,config)] if include else []):
+      member=tarfile.TarInfo(name);member.size=len(data);output.addfile(member,io.BytesIO(data))
+   validate=getattr(module,'verify_image_archive',lambda path:None)
+   write(True);validate(archive)
+   write(False)
+   with self.assertRaises(ValueError):validate(archive)
+
 
 
 if __name__=='__main__':unittest.main()
