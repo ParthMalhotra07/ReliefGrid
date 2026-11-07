@@ -20,12 +20,7 @@ func (s *Server) getRequest(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	response, err := renderRequest(rec)
-	if err != nil {
-		return err
-	}
-	writeJSON(w, 200, response)
-	return nil
+	return respondRequest(w, rec)
 }
 
 func (s *Server) updateRequest(w http.ResponseWriter, r *http.Request) error {
@@ -49,6 +44,9 @@ func (s *Server) updateRequest(w http.ResponseWriter, r *http.Request) error {
 	}
 	if rec.Request == nil {
 		return issue(404, "NOT_FOUND", "request not found")
+	}
+	if err := checkIfMatch(r, rec.Version); err != nil {
+		return err
 	}
 	data := *rec.Request
 	if data.Status == to || (to == store.RequestCancelled && data.Status == store.RequestCancelling) ||
@@ -108,7 +106,7 @@ func (s *Server) updateRequest(w http.ResponseWriter, r *http.Request) error {
 			s.cfg.Observer.Attempt(string(command.To), nil)
 		}
 	}
-	if err := committed(result); err != nil {
+	if err := committedUpdate(r, result); err != nil {
 		return err
 	}
 	// Report this committed transition, not a later unrelated mutation. No claim
@@ -126,6 +124,7 @@ func respondRequest(w http.ResponseWriter, rec store.Record) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("ETag", entityTag(rec.Version))
 	writeJSON(w, 200, response)
 	return nil
 }
@@ -161,6 +160,9 @@ func (s *Server) updateResource(w http.ResponseWriter, r *http.Request) error {
 	}
 	if rec.Resource == nil {
 		return issue(404, "NOT_FOUND", "resource not found")
+	}
+	if err := checkIfMatch(r, rec.Version); err != nil {
+		return err
 	}
 	data := *rec.Resource
 	if data.Status == store.ResourceAssigned || data.ActiveClaim != nil {
@@ -206,7 +208,7 @@ func (s *Server) updateResource(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return remoteError(err, true)
 	}
-	if err := committed(result); err != nil {
+	if err := committedUpdate(r, result); err != nil {
 		return err
 	}
 	data.Status, data.UpdatedAt = newStatus, command.At
@@ -218,6 +220,7 @@ func (s *Server) updateResource(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("ETag", entityTag(rec.Version))
 	writeJSON(w, 200, response)
 	return nil
 }

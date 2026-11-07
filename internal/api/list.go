@@ -30,6 +30,7 @@ type listQuery struct {
 	limit  int
 	near   *store.Location
 	radius float64
+	after  string
 }
 
 // Same accepted coordinate text as the frozen public near parameter.
@@ -41,7 +42,7 @@ func parseList(r *http.Request, kind store.Kind) (listQuery, error) {
 		return listQuery{}, invalid("query", "invalid query encoding")
 	}
 	for field, values := range query {
-		allowed := field == "type" || field == "limit" ||
+		allowed := field == "type" || field == "limit" || field == "cursor" ||
 			(kind == store.KindRequest && field == "status") ||
 			(kind == store.KindResource && (field == "near" || field == "radiusKm"))
 		if !allowed || len(values) != 1 {
@@ -97,61 +98,75 @@ func parseList(r *http.Request, kind store.Kind) (listQuery, error) {
 			return listQuery{}, invalid("near", "cannot cover this search")
 		}
 	}
+	if query.Has("cursor") {
+		if err := decodePublicCursor(&q, query.Get("cursor")); err != nil {
+			return listQuery{}, err
+		}
+	}
 	return q, nil
 }
 
-func (s *Server) list(ctx context.Context, q listQuery) ([]store.Record, []gen.ShardPosition, error) {
+func (s *Server) list(ctx context.Context, q listQuery) ([]store.Record, []gen.ShardPosition, string, error) {
 	rows := make([]store.Record, 0, q.limit)
 	positions := make(map[int]store.ShardPosition)
-	seen := make(map[string]bool)
+	finish := func(next string) ([]store.Record, []gen.ShardPosition, string, error) {
+		out := make([]gen.ShardPosition, 0, len(positions))
+		for shard := 0; shard < s.cfg.Store.Shards(); shard++ {
+			if pos, ok := positions[shard]; ok {
+				more := pos.HasMore || next != ""
+				out = append(out, gen.ShardPosition{Shard: shard, AppliedIndex: pos.AppliedIndex, HasMore: &more})
+			}
+		}
+		return rows, out, next, nil
+	}
 	for page := 0; page < 32; page++ {
-		result, err := invoke(ctx, s.cfg.CallTimeout, func(ctx context.Context) (store.ScanResult, error) {
-			return s.cfg.Store.Scan(ctx, q.scan)
-		})
+		before := q.scan.Cursor
+		result, err := invoke(ctx, s.cfg.CallTimeout, func(ctx context.Context) (store.ScanResult, error) { return s.cfg.Store.Scan(ctx, q.scan) })
 		if err != nil {
-			return nil, nil, remoteError(err, false)
+			return nil, nil, "", remoteError(err, false)
 		}
-		if result.Partial || len(result.FailedShards) != 0 {
-			return nil, nil, unavailable("STORAGE_UNAVAILABLE", false)
+		if result.Partial || len(result.FailedShards) != 0 || len(result.Positions) == 0 {
+			return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
 		}
+		current := make(map[int]bool)
 		for _, pos := range result.Positions {
+			if pos.Shard < 0 || pos.Shard >= s.cfg.Store.Shards() || current[pos.Shard] {
+				return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+			}
+			current[pos.Shard] = true
 			positions[pos.Shard] = pos
 		}
+		if before == "" && len(current) != s.cfg.Store.Shards() {
+			return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+		}
 		sort.Slice(result.Records, func(i, j int) bool { return result.Records[i].Key < result.Records[j].Key })
-		for _, rec := range result.Records {
-			if seen[rec.Key] || rec.Deleted {
+		for i, rec := range result.Records {
+			if rec.Deleted || rec.Key <= q.after {
 				continue
 			}
-			seen[rec.Key] = true
 			if q.near != nil && (rec.Resource == nil || geo.HaversineKM(*q.near, rec.Resource.Location) > q.radius) {
 				continue
 			}
 			rows = append(rows, rec)
-		}
-		if len(rows) >= q.limit || result.NextCursor == "" {
-			truncated := len(rows) > q.limit || result.NextCursor != ""
-			if len(rows) > q.limit {
-				rows = rows[:q.limit]
-			}
-			out := make([]gen.ShardPosition, 0, len(positions))
-			for shard := 0; shard < s.cfg.Store.Shards(); shard++ {
-				pos, ok := positions[shard]
-				if !ok {
-					return nil, nil, unavailable("STORAGE_UNAVAILABLE", false)
+			if len(rows) == q.limit {
+				next := ""
+				if i+1 < len(result.Records) {
+					next = encodePublicCursor(q, before, rec.Key)
+				} else if result.NextCursor != "" {
+					next = encodePublicCursor(q, result.NextCursor, "")
 				}
-				// A bounded merged page is not proof that any source is
-				// exhausted. Be conservative when the public limit truncates it.
-				more := pos.HasMore || truncated
-				out = append(out, gen.ShardPosition{Shard: shard, AppliedIndex: pos.AppliedIndex, HasMore: &more})
+				return finish(next)
 			}
-			return rows, out, nil
 		}
-		if result.NextCursor == q.scan.Cursor {
-			return nil, nil, unavailable("STORAGE_UNAVAILABLE", false)
+		if result.NextCursor == "" {
+			return finish("")
 		}
-		q.scan.Cursor = result.NextCursor
+		if result.NextCursor == before {
+			return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+		}
+		q.scan.Cursor, q.after = result.NextCursor, ""
 	}
-	return nil, nil, unavailable("STORAGE_UNAVAILABLE", false)
+	return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
 }
 
 func (s *Server) listRequests(w http.ResponseWriter, r *http.Request) error {
@@ -159,7 +174,7 @@ func (s *Server) listRequests(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	rows, positions, err := s.list(r.Context(), q)
+	rows, positions, next, err := s.list(r.Context(), q)
 	if err != nil {
 		return err
 	}
@@ -177,7 +192,8 @@ func (s *Server) listRequests(w http.ResponseWriter, r *http.Request) error {
 		Partial      bool                `json:"partial"`
 		FailedShards []int               `json:"failedShards"`
 		Consistency  string              `json:"consistency"`
-	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: "strong"})
+		NextCursor   string              `json:"nextCursor,omitempty"`
+	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: "strong", NextCursor: next})
 	return nil
 }
 
@@ -186,7 +202,7 @@ func (s *Server) listResources(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	rows, positions, err := s.list(r.Context(), q)
+	rows, positions, next, err := s.list(r.Context(), q)
 	if err != nil {
 		return err
 	}
@@ -204,6 +220,7 @@ func (s *Server) listResources(w http.ResponseWriter, r *http.Request) error {
 		Partial      bool                `json:"partial"`
 		FailedShards []int               `json:"failedShards"`
 		Consistency  string              `json:"consistency"`
-	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: "strong"})
+		NextCursor   string              `json:"nextCursor,omitempty"`
+	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: "strong", NextCursor: next})
 	return nil
 }
