@@ -2,6 +2,8 @@ package api_test
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -41,7 +43,11 @@ func TestAPIConditionalUpdatesUseCommittedVersion(t *testing.T) {
 	if updated.Header().Get("ETag") != `"v2"` {
 		t.Fatal("update did not expose committed version")
 	}
-	expectError(t, conditional(ctx, h, path+"/status", `{"status":"CANCELLED"}`, `"v1"`), 412, "PRECONDITION_FAILED", false, false)
+	stale := conditional(ctx, h, path+"/status", `{"status":"CANCELLED"}`, `"v1"`)
+	expectError(t, stale, 412, "PRECONDITION_FAILED", false, false)
+	if stale.Header().Get("ETag") != `"v2"` {
+		t.Fatal("412 missing current ETag")
+	}
 	replay := call(ctx, h, "POST", "/api/v1/requests", requestBody, fixtureKey("etag-create"))
 	object(t, replay, 201)
 	if replay.Header().Get("ETag") != `"v1"` {
@@ -77,6 +83,9 @@ func TestAPIConditionalCASRaceAndUnknownOutcomeStayDistinct(t *testing.T) {
 				expectError(t, reply, 503, "OUTCOME_UNKNOWN", true, true)
 			} else {
 				expectError(t, reply, 412, "PRECONDITION_FAILED", false, false)
+				if reply.Header().Get("ETag") != `"v2"` {
+					t.Fatal("committed conflict missing current ETag")
+				}
 			}
 			rec, err := raw.ReadRecord(ctx, store.RequestKey(rid))
 			if err != nil {
@@ -199,4 +208,96 @@ func TestAPISpatialCursorWalkFiltersEveryPage(t *testing.T) {
 	first := object(t, call(ctx, h, "GET", path, "", ""), 200)
 	token := first["nextCursor"].(string)
 	expectError(t, call(ctx, h, "GET", strings.Replace(path, "radiusKm=1", "radiusKm=2", 1)+"&cursor="+url.QueryEscape(token), "", ""), 400, "INVALID", false, false)
+}
+
+type changingRingStore struct {
+	store.Store
+	other   store.Store
+	changed bool
+}
+
+func (s *changingRingStore) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult, error) {
+	if s.changed {
+		return s.other.Scan(ctx, q)
+	}
+	return s.Store.Scan(ctx, q)
+}
+func TestAPICursorRingAndFailedShardAfterContinuation(t *testing.T) {
+	ctx, raw := realStore(t)
+	newer, err := memstore.New(ctx, memstore.WithShards(3), memstore.WithRingVersion(2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := newer.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	switched := &changingRingStore{Store: raw, other: newer}
+	h := handler(t, switched, now, "dispatcher-a")
+	for i := 0; i < 15; i++ {
+		object(t, call(ctx, h, "POST", "/api/v1/requests", requestBody, ""), 201)
+	}
+	for _, limit := range []string{"1", "2"} {
+		t.Run("limit"+limit, func(t *testing.T) {
+			defer func() { switched.changed = false }()
+			path := "/api/v1/requests?limit=" + limit
+			first := object(t, call(ctx, h, "GET", path, "", ""), 200)
+			token := first["nextCursor"].(string)
+			data, err := base64.RawURLEncoding.DecodeString(token)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var public struct {
+				Scan string `json:"s"`
+			}
+			if err := json.Unmarshal(data, &public); err != nil {
+				t.Fatal(err)
+			}
+			if public.Scan == "" {
+				t.Error("first-page continuation lost ring binding")
+			}
+			switched.changed = true
+			expectError(t, call(ctx, h, "GET", path+"&cursor="+url.QueryEscape(token), "", ""), 503, "RING_VERSION_MISMATCH", true, false)
+			switched.changed = false
+			// Walk until the underlying storage cursor advances beyond the first page.
+			advanced := false
+			for i := 0; i < 20; i++ {
+				data, _ := base64.RawURLEncoding.DecodeString(token)
+				_ = json.Unmarshal(data, &public)
+				if public.Scan != "" {
+					inner, err := store.DecodeScanCursor(public.Scan)
+					if err != nil {
+						t.Fatal(err)
+					}
+					for _, after := range inner.After {
+						if after != "" {
+							advanced = true
+						}
+					}
+				}
+				if advanced {
+					break
+				}
+				body := object(t, call(ctx, h, "GET", path+"&cursor="+url.QueryEscape(token), "", ""), 200)
+				token, _ = body["nextCursor"].(string)
+				if token == "" {
+					break
+				}
+			}
+			if !advanced {
+				t.Fatal("did not exercise a nonempty storage continuation")
+			}
+			switched.changed = true
+			expectError(t, call(ctx, h, "GET", path+"&cursor="+url.QueryEscape(token), "", ""), 503, "RING_VERSION_MISMATCH", true, false)
+			switched.changed = false
+			broken := memstore.WithFaults(raw, func(c memstore.Call) memstore.Fault {
+				if c.Method == "Scan" {
+					return memstore.Fault{FailShards: []int{1}}
+				}
+				return memstore.Fault{}
+			})
+			expectError(t, call(ctx, handler(t, broken, now, "dispatcher-a"), "GET", path+"&cursor="+url.QueryEscape(token), "", ""), 503, "STORAGE_UNAVAILABLE", true, false)
+		})
+	}
 }

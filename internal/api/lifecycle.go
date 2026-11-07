@@ -45,7 +45,7 @@ func (s *Server) updateRequest(w http.ResponseWriter, r *http.Request) error {
 	if rec.Request == nil {
 		return issue(404, "NOT_FOUND", "request not found")
 	}
-	if err := checkIfMatch(r, rec.Version); err != nil {
+	if err := checkIfMatch(w, r, rec.Version); err != nil {
 		return err
 	}
 	data := *rec.Request
@@ -106,7 +106,7 @@ func (s *Server) updateRequest(w http.ResponseWriter, r *http.Request) error {
 			s.cfg.Observer.Attempt(string(command.To), nil)
 		}
 	}
-	if err := committedUpdate(r, result); err != nil {
+	if err := committedUpdate(w, r, result); err != nil {
 		return err
 	}
 	// Report this committed transition, not a later unrelated mutation. No claim
@@ -161,7 +161,7 @@ func (s *Server) updateResource(w http.ResponseWriter, r *http.Request) error {
 	if rec.Resource == nil {
 		return issue(404, "NOT_FOUND", "resource not found")
 	}
-	if err := checkIfMatch(r, rec.Version); err != nil {
+	if err := checkIfMatch(w, r, rec.Version); err != nil {
 		return err
 	}
 	data := *rec.Resource
@@ -208,7 +208,7 @@ func (s *Server) updateResource(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return remoteError(err, true)
 	}
-	if err := committedUpdate(r, result); err != nil {
+	if err := committedUpdate(w, r, result); err != nil {
 		return err
 	}
 	data.Status, data.UpdatedAt = newStatus, command.At

@@ -12,7 +12,7 @@ func entityTag(version uint64) string { return fmt.Sprintf(`"v%d"`, version) }
 
 // checkIfMatch uses strong comparison. The eventual committed CAS is still
 // authoritative: a matching initial read alone never authorizes a mutation.
-func checkIfMatch(r *http.Request, version uint64) error {
+func checkIfMatch(w http.ResponseWriter, r *http.Request, version uint64) error {
 	values := r.Header.Values("If-Match")
 	if len(values) == 0 {
 		return nil
@@ -56,13 +56,15 @@ func checkIfMatch(r *http.Request, version uint64) error {
 		}
 	}
 	if !matched {
+		w.Header().Set("ETag", entityTag(version))
 		return issue(412, "PRECONDITION_FAILED", "entity changed; reread before a conditional update")
 	}
 	return nil
 }
 
-func committedUpdate(r *http.Request, result store.Result) error {
+func committedUpdate(w http.ResponseWriter, r *http.Request, result store.Result) error {
 	if len(r.Header.Values("If-Match")) > 0 && result.Outcome == store.OutcomeVersionConflict {
+		w.Header().Set("ETag", entityTag(result.Version))
 		return issue(412, "PRECONDITION_FAILED", "entity changed before the conditional update committed")
 	}
 	return committed(result)

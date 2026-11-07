@@ -119,6 +119,45 @@ func (s *Server) list(ctx context.Context, q listQuery) ([]store.Record, []gen.S
 		}
 		return rows, out, next, nil
 	}
+
+	// A one-row probe obtains a ring-bearing storage cursor even when a full
+	// first page would exhaust every shard. Bind the actual scan before reading
+	// the public page; a ring change between probe and scan is rejected by Store.
+	if q.scan.Cursor == "" {
+		probe := q.scan
+		probe.Limit = 1
+		result, err := invoke(ctx, s.cfg.CallTimeout, func(ctx context.Context) (store.ScanResult, error) { return s.cfg.Store.Scan(ctx, probe) })
+		if err != nil {
+			return nil, nil, "", remoteError(err, false)
+		}
+		if result.Partial || len(result.FailedShards) > 0 || len(result.Positions) != s.cfg.Store.Shards() {
+			return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+		}
+		for _, pos := range result.Positions {
+			if pos.Shard < 0 || pos.Shard >= s.cfg.Store.Shards() {
+				return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+			}
+			if _, exists := positions[pos.Shard]; exists {
+				return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+			}
+			positions[pos.Shard] = pos
+		}
+		if result.NextCursor == "" {
+			if len(result.Records) != 0 {
+				return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+			}
+			return finish("")
+		}
+		token, err := store.DecodeScanCursor(result.NextCursor)
+		if err != nil || token.Query != store.ScanQueryHash(probe) {
+			return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+		}
+		after := make(map[int]string)
+		for shard := 0; shard < s.cfg.Store.Shards(); shard++ {
+			after[shard] = ""
+		}
+		q.scan.Cursor = store.EncodeScanCursor(store.ScanCursor{RingVersion: token.RingVersion, Query: store.ScanQueryHash(q.scan), After: after})
+	}
 	for page := 0; page < 32; page++ {
 		before := q.scan.Cursor
 		result, err := invoke(ctx, s.cfg.CallTimeout, func(ctx context.Context) (store.ScanResult, error) { return s.cfg.Store.Scan(ctx, q.scan) })
@@ -136,8 +175,14 @@ func (s *Server) list(ctx context.Context, q listQuery) ([]store.Record, []gen.S
 			current[pos.Shard] = true
 			positions[pos.Shard] = pos
 		}
-		if before == "" && len(current) != s.cfg.Store.Shards() {
+		expected, decodeErr := store.DecodeScanCursor(before)
+		if decodeErr != nil || len(current) != len(expected.After) {
 			return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+		}
+		for shard := range current {
+			if _, ok := expected.After[shard]; !ok {
+				return nil, nil, "", unavailable("STORAGE_UNAVAILABLE", false)
+			}
 		}
 		sort.Slice(result.Records, func(i, j int) bool { return result.Records[i].Key < result.Records[j].Key })
 		for i, rec := range result.Records {
