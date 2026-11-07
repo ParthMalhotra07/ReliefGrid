@@ -479,6 +479,58 @@ paths:
         "409": {$ref: "#/components/responses/TransitionConflict"}
         "503": {$ref: "#/components/responses/Unavailable"}
 
+  /internal/requests/{id}/age:
+    parameters:
+      - $ref: "#/components/parameters/RequestID"
+    post:
+      tags: [data]
+      operationId: ageRequest
+      summary: Transactionally raise effective urgency and wake eligible work
+      description: |
+        PENDING/WAITING with no intent or assignment only. Checks expectedVersion
+        inside apply. Whole agingIntervalMS intervals since CreatedAt raise original
+        urgency, capped at 3, without lowering effective urgency. An achieved target
+        is OK with no entity update or event. A strict increase advances the entity
+        version and shortens nextAttemptAt to proposer at, atomically with one wake
+        event. Original urgency, retry count, generation and ownership are preserved.
+        This version change invalidates a stale public If-Match (412 under A4.4).
+        Proposed immediate wake is request.retry on relief.requests; topology
+        agreement with A is pending. Retry uncertainty with identical command bytes.
+      x-store-method: AgeRequest
+      x-store-result: result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/AgeRequestBody"}
+            example:
+              operationId: age-r-1001
+              at: 1792800060000
+              ringVersion: 1
+              expectedVersion: 2
+              agingIntervalMS: 60000
+              outbox:
+                - eventId: age-event-r-1001
+                  eventType: request.retry
+                  schemaVersion: 1
+                  exchange: relief.requests
+                  routingKey: request.retry
+                  payload: {schemaVersion: 1, eventId: age-event-r-1001, entityId: r-1001, entityVersion: 3, eventType: request.retry, payload: {requestId: r-1001, workflowGeneration: 0, nextAttemptAt: 1792800060000, urgency: 2}}
+                  published: false
+      responses:
+        "200":
+          description: Committed increase or achieved-target no-op
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MutationResponse"}
+              example:
+                ringVersion: 1
+                result: {outcome: OK, operationId: age-r-1001, key: "req:r-1001", version: 3, shard: 1, appliedIndex: 4191}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/TransitionConflict"}
+        "503": {$ref: "#/components/responses/Unavailable"}
+
   /internal/resources/{id}/transition:
     parameters:
       - $ref: "#/components/parameters/ResourceIDAsKey"
@@ -1286,6 +1338,7 @@ components:
         geohash: {type: string}
         peopleAffected: {type: integer}
         urgency: {type: integer}
+        effectiveUrgency: {type: integer, minimum: 1, maximum: 3, description: "Absent means original urgency; raised only by AgeRequest"}
         details: {description: Opaque request details (JSON)}
         status: {$ref: "#/components/schemas/RequestStatus"}
         workflowGeneration: {type: integer, format: uint64}
@@ -1431,6 +1484,20 @@ components:
         nextAttemptAt: {type: integer, format: int64}
         lastError: {type: string}
         outbox: *outboxProp
+    AgeRequestBody:
+      type: object
+      required: [operationId, at, ringVersion, expectedVersion, agingIntervalMS, outbox]
+      properties:
+        operationId: *operationIdProp
+        at: *atProp
+        ringVersion: *ringVersionProp
+        expectedVersion: {type: integer, format: uint64}
+        agingIntervalMS: {type: integer, format: int64, minimum: 1}
+        outbox:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: {$ref: "#/components/schemas/OutboxEvent"}
     RetryWorkflowBody:
       type: object
       required: [operationId, at, ringVersion, expectedVersion, nextAttemptAt]
