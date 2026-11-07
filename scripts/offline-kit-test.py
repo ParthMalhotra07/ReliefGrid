@@ -1,3 +1,4 @@
+import ipaddress
 import hashlib
 import io
 import tarfile
@@ -76,6 +77,16 @@ class OfflineKitTest(unittest.TestCase):
   with patch.object(module,'run',return_value='[{}]') as command:
    module.inspect('example:tag')
   self.assertIn('--platform=linux/amd64',command.call_args.args)
+
+
+
+ def test_internal_bridge_contains_routed_pods_but_not_external_destinations(self):
+  network=ipaddress.ip_network(getattr(module,'OFFLINE_SUBNET','172.22.0.0/16'))
+  pods=ipaddress.ip_network('10.244.0.0/16')
+  nodes=ipaddress.ip_network(getattr(module,'OFFLINE_NODE_POOL','172.22.0.0/24'))
+  self.assertTrue(pods.subnet_of(network),'Docker internal filtering drops routed pod traffic outside its subnet')
+  self.assertTrue(nodes.subnet_of(network));self.assertFalse(nodes.overlaps(pods))
+  self.assertNotIn(ipaddress.ip_address('1.1.1.1'),network)
 
 
 

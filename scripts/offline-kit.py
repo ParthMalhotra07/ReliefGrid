@@ -12,6 +12,10 @@ import tarfile
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+# Internal bridge filtering must include routed pod addresses, not just nodes.
+# Allocate node addresses outside the fixed kind pod CIDR within this envelope.
+OFFLINE_SUBNET = '10.240.0.0/12'
+OFFLINE_NODE_POOL = '10.240.0.0/24'
 
 
 def run(*args, cwd=ROOT, timeout=600, env=None, capture=False):
@@ -227,7 +231,7 @@ def install(output, cluster):
     with tarfile.open(output / 'source.tar.gz') as archive:
         archive.extractall(output, filter='data')
     network = cluster + '-net'
-    run('docker', 'network', 'create', '--internal', '--label', 'reliefgrid.io/offline-cluster=' + cluster, network)
+    run('docker', 'network', 'create', '--internal', '--subnet', OFFLINE_SUBNET, '--ip-range', OFFLINE_NODE_POOL, '--label', 'reliefgrid.io/offline-cluster=' + cluster, network)
     net = json.loads(run('docker', 'network', 'inspect', network, capture=True))[0]
     if not net['Internal']:
         raise ValueError('offline network has external connectivity')
