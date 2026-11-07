@@ -1,0 +1,1 @@
+REAL FSM RECOVERY INJECTION PASS: one original operation replayed unchanged, one current-version CAS cleanup, no live owned keys, failed-run error retained.
