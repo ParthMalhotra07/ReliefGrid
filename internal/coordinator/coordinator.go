@@ -142,6 +142,7 @@ func (c *Coordinator) Handler() http.Handler {
 	mux.Handle("DELETE /internal/data/{key}", c.traced(c.byKey(pathKey, true)))
 	mux.Handle("POST /internal/requests/{id}/transition", c.traced(c.byKey(requestKey, true)))
 	mux.Handle("POST /internal/requests/{id}/retry", c.traced(c.byKey(requestKey, true)))
+	mux.Handle("POST /internal/requests/{id}/age", c.traced(c.byKey(requestKey, true)))
 	mux.Handle("POST /internal/resources/{id}/transition", c.traced(c.byKey(resourceKey, true)))
 	mux.Handle("POST /internal/resources/{id}/claim", c.traced(c.byKey(resourceKey, true)))
 	mux.Handle("POST /internal/resources/{id}/close-attempt", c.traced(c.byKey(resourceKey, true)))

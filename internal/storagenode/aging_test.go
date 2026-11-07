@@ -10,7 +10,7 @@ func TestAgeRequestRoutePreservesCommand(t *testing.T) {
 	rg := loadRing(t)
 	key, id := keyOn(t, rg, testShard, "req:", "age")
 	n := newFakeNode(t)
-	body := map[string]any{"operationId": "age-route", "at": t0, "ringVersion": 1, "expectedVersion": 7, "agingIntervalMS": 1000, "outbox": []any{map[string]any{"eventId": "age-event", "eventType": "request.retry", "schemaVersion": 1, "exchange": "relief.requests", "routingKey": "request.retry", "payload": map[string]any{"urgency": 2}}}}
+	body := map[string]any{"operationId": "age-route", "at": t0, "ringVersion": 1, "expectedVersion": 7, "agingIntervalMS": 1000, "outbox": []any{map[string]any{"eventId": "age-event", "eventType": "request.retry", "schemaVersion": 1, "exchange": "relief.requests", "routingKey": "request.retry", "published": false, "payload": map[string]any{"urgency": 2}}}}
 	answer := do(t, newTestServer(t, n).dataRoutes(), call{method: http.MethodPost, path: "/internal/requests/" + id + "/age", body: body})
 	if answer.Code != http.StatusOK {
 		t.Fatalf("age route status=%d: %s", answer.Code, answer.Body.String())

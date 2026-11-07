@@ -183,6 +183,7 @@ func TestAgeRequestCancellationBothOrderings(t *testing.T) {
 			} else {
 				expectOutcome(t, "age", applyAging(h, age), store.OutcomeOK)
 				expectOutcome(t, "stale cancel", h.apply(cancel), store.OutcomeVersionConflict)
+				cancel.OperationID = "cancel-fresh"
 				cancel.ExpectedVersion = h.read(before.Key).Version
 				expectOutcome(t, "fresh cancel", h.apply(cancel), store.OutcomeOK)
 				terminal := h.read(before.Key)
@@ -262,7 +263,7 @@ func TestAgeRequestReplayAndSnapshotPreserveState(t *testing.T) {
 	if err := h.f.VacuumInto(context.Background(), path); err != nil {
 		t.Fatal(err)
 	}
-	restored, err := fsm.Open(context.Background(), path)
+	restored, err := fsm.OpenImage(context.Background(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +294,7 @@ func TestAgeRequestOutboxFailureRollsBack(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
-	if _, err := db.Exec(`CREATE TRIGGER reject_aging_event BEFORE INSERT ON outbox BEGIN SELECT RAISE(ABORT, 'injected outbox failure'); END`); err != nil {
+	if _, err := db.ExecContext(context.Background(), `CREATE TRIGGER reject_aging_event BEFORE INSERT ON outbox BEGIN SELECT RAISE(ABORT, 'injected outbox failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	cmd := agingBody(t, before, "age", t0+1000, 1000, 2)
