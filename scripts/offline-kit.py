@@ -179,6 +179,14 @@ def install(output, cluster):
     if not net['Internal']:
         raise ValueError('offline network has external connectivity')
     (output / 'network-proof.json').write_text(json.dumps({'network': network, 'internal': net['Internal']}) + '\n')
+    # kind's entrypoint needs a non-loopback host.docker.internal address for
+    # its embedded-DNS NAT rules. An internal network has no default route and
+    # does not resolve Desktop's external host alias. This local alias supplies
+    # only an address; DNS is still Docker's embedded resolver, with no egress.
+    run('docker', 'run', '--detach', '--pull=never', '--network', network,
+        '--network-alias', 'host.docker.internal', '--name', cluster + '-dns-anchor',
+        '--label', 'reliefgrid.io/offline-cluster=' + cluster, '--entrypoint', '/bin/sleep',
+        manifest['roles']['runner'], 'infinity')
     previous = run('kubectl', 'config', 'current-context', capture=True)
     try:
         run('kind', 'create', 'cluster', '--name', cluster, '--image', manifest['roles']['node'],
