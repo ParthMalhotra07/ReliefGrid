@@ -148,19 +148,10 @@ def prepare(output):
     print('OFFLINE KIT PREPARED: ' + str(output), flush=True)
 
 
-def block_nodes(cluster):
+def verify_node_isolation(cluster):
     nodes = run('kind', 'get', 'nodes', '--name', cluster, capture=True).splitlines()
     script = """set -eu
-iptables -N RELIEFGRID_OFFLINE
-for net in 127.0.0.0/8 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do iptables -A RELIEFGRID_OFFLINE -d "$net" -j RETURN; done
-iptables -A RELIEFGRID_OFFLINE -j REJECT
-iptables -I OUTPUT 1 -j RELIEFGRID_OFFLINE
-iptables -I FORWARD 1 -j RELIEFGRID_OFFLINE
-ip6tables -N RELIEFGRID_OFFLINE
-for net in ::1/128 fc00::/7 fe80::/10; do ip6tables -A RELIEFGRID_OFFLINE -d "$net" -j RETURN; done
-ip6tables -A RELIEFGRID_OFFLINE -j REJECT
-ip6tables -I OUTPUT 1 -j RELIEFGRID_OFFLINE
-ip6tables -I FORWARD 1 -j RELIEFGRID_OFFLINE
+command -v curl >/dev/null
 if curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi
 echo 'PASS: external HTTPS blocked'
 """
@@ -182,12 +173,19 @@ def install(output, cluster):
             raise ValueError('loaded image identity mismatch: ' + image)
     with tarfile.open(output / 'source.tar.gz') as archive:
         archive.extractall(output, filter='data')
+    network = cluster + '-net'
+    run('docker', 'network', 'create', '--internal', '--label', 'reliefgrid.io/offline-cluster=' + cluster, network)
+    net = json.loads(run('docker', 'network', 'inspect', network, capture=True))[0]
+    if not net['Internal']:
+        raise ValueError('offline network has external connectivity')
+    (output / 'network-proof.json').write_text(json.dumps({'network': network, 'internal': net['Internal']}) + '\n')
     previous = run('kubectl', 'config', 'current-context', capture=True)
     try:
         run('kind', 'create', 'cluster', '--name', cluster, '--image', manifest['roles']['node'],
-            '--config', str(output / 'kind.json'), '--wait', '120s', timeout=300)
+            '--config', str(output / 'kind.json'), '--wait', '120s', timeout=300,
+            env=dict(os.environ, KIND_EXPERIMENTAL_DOCKER_NETWORK=network))
         run('kind', 'load', 'image-archive', '--name', cluster, str(output / 'runtime-images.tar'), timeout=900)
-        block_nodes(cluster)
+        verify_node_isolation(cluster)
         context = 'kind-' + cluster
         for release, chart, values in [('storage','storage','storage'), ('reliefgrid','reliefgrid','app')]:
             packages = list((output / 'charts').glob(chart + '-*.tgz'))
@@ -209,7 +207,7 @@ def acceptance(output, cluster):
     config = run('kind', 'get', 'kubeconfig', '--name', cluster, '--internal', capture=True)
     with tempfile.TemporaryDirectory(prefix='reliefgrid-offline-kube-') as temp:
         kubeconfig = Path(temp) / 'config'; kubeconfig.write_text(config); kubeconfig.chmod(0o600)
-        run('docker', 'run', '--rm', '--pull=never', '--cap-add=NET_ADMIN', '--network=kind',
+        run('docker', 'run', '--rm', '--pull=never', '--network=' + cluster + '-net',
             '--mount', 'type=bind,src=' + str(output) + ',dst=/kit,readonly',
             '--mount', 'type=bind,src=' + str(evidence) + ',dst=/evidence',
             '--mount', 'type=bind,src=' + str(kubeconfig) + ',dst=/kubeconfig,readonly',
