@@ -1,8 +1,15 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./app.css";
+import { coalescedRefresh } from "./refresh.js";
 import {
   EventIDs,
   list,
@@ -61,73 +68,65 @@ function useDispatch() {
     [loading, setLoading] = useState(false),
     [offlineReady, setOfflineReady] = useState(false);
   const current = useRef(snapshot),
-    running = useRef(false),
-    queued = useRef(false),
     alive = useRef(true),
     active = useRef(null);
-  const refresh = useCallback(async () => {
-    if (!alive.current || !navigator.onLine) return;
-    if (running.current) {
-      queued.current = true;
-      return;
-    }
-    running.current = true;
-    setLoading(true);
-    const controller = new AbortController();
-    active.current = controller;
-    try {
-      const signal = AbortSignal.any([
-        controller.signal,
-        AbortSignal.timeout(6000),
-      ]);
-      const [requests, resources] = await Promise.all([
-        json("/api/v1/requests?limit=100", { signal }),
-        json("/api/v1/resources?limit=100", { signal }),
-      ]);
-      list(requests, "request");
-      list(resources, "resource");
-      let queue = { available: false };
-      try {
-        queue = await json("/ui/status", { signal });
-      } catch {
-        /* Counts remain unavailable, never fabricated as zero. */
-      }
-      const next = {
-        schema: 1,
-        requests,
-        resources,
-        queue,
-        savedAt: new Date().toISOString(),
-        history: observe(current.current?.history || {}, requests.items),
-      };
-      if (!alive.current) return;
-      current.current = next;
-      setSnapshot(next);
-      setStale(false);
-      setError("");
-      try {
-        localStorage.setItem(CACHE, JSON.stringify(next));
-      } catch {
-        setError(
-          "Live data loaded. Offline saving is unavailable on this device.",
-        );
-      }
-    } catch (e) {
-      if (alive.current) {
-        setStale(true);
-        setError(
-          `Could not confirm current state (${e.message}). ${current.current ? "Showing saved data." : "Try refreshing when the service is available."}`,
-        );
-      }
-    } finally {
-      running.current = false;
-      if (alive.current) setLoading(false);
-      if (queued.current && alive.current) {
-        queued.current = false;
-        queueMicrotask(refresh);
-      }
-    }
-  }, []);
+  const refresh = useMemo(
+    () =>
+      coalescedRefresh(async () => {
+        if (!alive.current || !navigator.onLine) return;
+        setLoading(true);
+        const controller = new AbortController();
+        active.current = controller;
+        try {
+          const signal = AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(6000),
+          ]);
+          const [requests, resources] = await Promise.all([
+            json("/api/v1/requests?limit=100", { signal }),
+            json("/api/v1/resources?limit=100", { signal }),
+          ]);
+          list(requests, "request");
+          list(resources, "resource");
+          let queue = { available: false };
+          try {
+            queue = await json("/ui/status", { signal });
+          } catch {
+            /* Counts remain unavailable, never fabricated as zero. */
+          }
+          const next = {
+            schema: 1,
+            requests,
+            resources,
+            queue,
+            savedAt: new Date().toISOString(),
+            history: observe(current.current?.history || {}, requests.items),
+          };
+          if (!alive.current) return;
+          current.current = next;
+          setSnapshot(next);
+          setStale(false);
+          setError("");
+          try {
+            localStorage.setItem(CACHE, JSON.stringify(next));
+          } catch {
+            setError(
+              "Live data loaded. Offline saving is unavailable on this device.",
+            );
+          }
+        } catch (e) {
+          if (alive.current) {
+            setStale(true);
+            setError(
+              `Could not confirm current state (${e.message}). ${current.current ? "Showing saved data." : "Try refreshing when the service is available."}`,
+            );
+          }
+        } finally {
+          if (alive.current) setLoading(false);
+        }
+      }),
+    [],
+  );
   useEffect(() => {
     alive.current = true;
     let source;
@@ -621,7 +620,9 @@ function App() {
                   {!d.snapshot
                     ? !d.online
                       ? "No saved request data on this device."
-                      : "Loading requests…"
+                      : d.error && !d.loading
+                        ? "Request data unavailable. Use Refresh to retry."
+                        : "Loading requests…"
                     : "No requests match these filters."}
                 </div>
               )}
@@ -805,7 +806,9 @@ function App() {
                       ? "No resources match."
                       : !d.online
                         ? "No saved resource data on this device."
-                        : "Loading resources…"}
+                        : d.error && !d.loading
+                          ? "Resource data unavailable. Use Refresh to retry."
+                          : "Loading resources…"}
                   </div>
                 )}
               </div>

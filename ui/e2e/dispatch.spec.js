@@ -287,3 +287,20 @@ test("an unknown write outcome remains visible after a successful reread", async
     "WAITING",
   );
 });
+
+test("first read failure reports unavailable lists instead of endless loading", async ({
+  page,
+  request,
+}) => {
+  await request.post("/__test/state", { data: { fail: true } });
+  await page.goto("/");
+  await expect(page.getByRole("alert")).toContainText(
+    "Could not confirm current state",
+  );
+  await expect(page.getByRole("region", { name: "Requests" })).toContainText(
+    "Request data unavailable",
+  );
+  await expect(page.getByRole("region", { name: "Resources" })).toContainText(
+    "Resource data unavailable",
+  );
+});

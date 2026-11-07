@@ -1,0 +1,47 @@
+
+> reliefgrid-dispatch@0.1.0 test:browser
+> playwright test --grep first read failure
+
+
+Running 1 test using 1 worker
+
+  ✘  1 e2e/dispatch.spec.js:291:1 › first read failure reports unavailable lists instead of endless loading (5.4s)
+
+
+  1) e2e/dispatch.spec.js:291:1 › first read failure reports unavailable lists instead of endless loading
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('region', { name: 'Requests' })
+    Expected substring: "Request data unavailable"
+    Received string:    "Requests —SAVED VIEWLoading requests…"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('region', { name: 'Requests' }) with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Requests' })
+        14 × locator resolved to <section aria-label="Requests" class="panel requests-panel">…</section>
+           - unexpected value "Requests —SAVED VIEWLoading requests…"
+
+
+      293 |   await page.goto("/");
+      294 |   await expect(page.getByRole("alert")).toContainText("Could not confirm current state");
+    > 295 |   await expect(page.getByRole("region", { name: "Requests" })).toContainText("Request data unavailable");
+          |                                                                ^
+      296 |   await expect(page.getByRole("region", { name: "Resources" })).toContainText("Resource data unavailable");
+      297 | });
+      298 |
+        at <checkout>/ui/e2e/dispatch.spec.js:295:64
+
+    Error Context: test-results/dispatch-first-read-failur-7cd51--instead-of-endless-loading/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/dispatch-first-read-failur-7cd51--instead-of-endless-loading/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/dispatch-first-read-failur-7cd51--instead-of-endless-loading/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    e2e/dispatch.spec.js:291:1 › first read failure reports unavailable lists instead of endless loading
