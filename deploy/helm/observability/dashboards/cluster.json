@@ -444,13 +444,13 @@
       }
     },
     {
-      "title": "Observed replication convergence",
+      "title": "Observed Raft-to-FSM index gap",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "reliefgrid"
       },
-      "description": "Storage-family query awaits #113. Missing observations are never replaced with zero.",
+      "description": "Leader commit index minus last FSM command index. Includes Raft barriers/no-ops; a positive gap alone does not mean unapplied business data. Recovery verification separately checks authoritative caughtUp on all nine storage members. Unreachable observations are absent.",
       "targets": [
         {
           "refId": "A",

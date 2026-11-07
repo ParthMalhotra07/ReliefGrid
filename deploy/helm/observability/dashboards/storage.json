@@ -58,7 +58,7 @@
         "type": "prometheus",
         "uid": "reliefgrid"
       },
-      "description": "S-owned family/scrape access awaits #113; no fabricated fallback.",
+      "description": "Private storage exporter observation from the #113/#130 contract. Missing or unreachable observations remain absent.",
       "targets": [
         {
           "refId": "A",
@@ -106,13 +106,13 @@
       }
     },
     {
-      "title": "Observed replication lag",
+      "title": "Observed Raft-to-FSM index gap",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "reliefgrid"
       },
-      "description": "S-owned family/scrape access awaits #113. Must be observed during leader-kill before full A4.2 acceptance.",
+      "description": "Leader commit index minus last FSM command index. Includes Raft barriers/no-ops; a positive gap alone does not mean unapplied business data. Recovery verification separately checks authoritative caughtUp on all nine storage members. Unreachable observations are absent.",
       "targets": [
         {
           "refId": "A",

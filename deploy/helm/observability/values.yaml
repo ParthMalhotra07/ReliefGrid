@@ -1,5 +1,7 @@
 appRelease: reliefgrid
 prometheus:
+  scrapeInterval: 5s
+  scrapeTimeout: 3s
   image: prom/prometheus:v3.16.0@sha256:89c1a644817e9ad70fa2af76c84898e327c1de7063735f962e8313b1e28672c3
   resources:
     requests: {cpu: 100m, memory: 256Mi}

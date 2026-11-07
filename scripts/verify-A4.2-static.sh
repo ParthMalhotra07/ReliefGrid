@@ -16,3 +16,5 @@ docker run --rm --network none --user "$(id -u):$(id -g)" --entrypoint /bin/prom
 echo 'A4.2 STATIC: ALL PASS'
 
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/verify-storage-promql.py
+
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/metrics-fault-test.py

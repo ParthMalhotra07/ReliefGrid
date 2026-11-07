@@ -1,15 +1,11 @@
 # A4.2 draft status — full goal INCOMPLETE
 
-Current draft is rebased onto merged UI main b454dc0. Private metrics and the
-UI event projection coexist; current full check, generation and static checks
-pass. Storage dashboard queries now implement S113's exact contract, including
-leader/success/freshness/reachability filtering, and coordinator heartbeat/
-forwarding families. Pinned promtool tests prove a lagging follower cannot
-inflate the leader count and failed/stale/down observations are absent rather
-than fresh zero. An observed empty outbox remains0.
+Private metrics, three provisioned dashboards, bounded application labels and the S113/S130 outbox query contract are implemented. Application live checks passed on 7 Nov: four exporters, seven canonical queues, complete authoritative walks, every dashboard query, a real asynchronous match, cancellation cleanup and growing unfinished workflow age.
 
-The live application screenshots/results under live-20261106T063905Z are
-historical evidence from before this rebase. They are not presented as a new
-full-goal fault run. Full acceptance still needs S's exporters from draft126 on
-main, then a fresh observed leader-kill health/lag/workflow-age run. Draft121
-must not be marked complete or merge-ready solely from this query wiring.
+The storage integration used independently reviewed PR #130 at fceb26e, plus the native broker boot fix from #133. These runtime sources are recorded in fault-checkpoint-20261107/runtime-sources.txt; they are not represented as merged main.
+
+Three full-run development attempts failed. First, a zero raw-lag assumption was invalid because Raft barriers/no-ops advance the Raft index without advancing the FSM command index. The verifier now requires authoritative caughtUp on all nine members, and the dashboards explain the raw index gap. Second, the scratch-load helper decoded a flat Result instead of the documented nested MutationResponse; an envelope regression now pins operation/key/ring/version. Third, an undrained kubectl port-forward stdout pipe blocked the high-volume scratch load. The fault itself observed a DOWN member, a replacement leader, index-gap movement and eventual nine-member reachability, but the load/recovery proof failed. It remains FAIL, not full acceptance.
+
+The current batch stops this goal at the three-attempt cap. Next attempt needs a failing-first noisy-port-forward regression, file-backed or continuously drained forwarding output, and a safe durable scratch-intent recovery path before another full run. All pending original operations from the failed run were replayed with their original metadata; remaining owned scratch keys were CAS-deleted. A complete strong scan confirmed zero live keys for that exact test prefix. All five nodes and nine storage pods are Ready, with no retained cordon.
+
+Compact failure output, actual observations and cleanup evidence are in fault-checkpoint-20261107. Full development journals are local only. Earlier application screenshots under live-20261106T063905Z are historical and do not establish new full-goal fault acceptance. PR #121 stays draft until a clean fault run, authoritative catchup proof and three inspected screenshots pass. PRE-PR REVIEW: NOT READY for merge.

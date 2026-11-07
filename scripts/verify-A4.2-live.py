@@ -18,6 +18,8 @@ import urllib.parse
 import urllib.request
 import uuid
 
+from metrics_fault import run_fault
+
 ROOT = Path(__file__).resolve().parents[1]
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
@@ -223,10 +225,11 @@ def main():
                 get(graf, "/api/annotations", method="POST", auth=auth,
                     data={"dashboardUID": uid, "time": int(time.time() * 1000),
                           "tags": ["A4.2-check"], "text": "A4.2 application acceptance " + stamp})
-            if args.screenshots:
-                script = ROOT / "scripts/capture-A4.2.mjs"
-                subprocess.run(["node", str(script), graf, str(out)], check=True, cwd=ROOT)
-                passed("three live Grafana screenshots captured")
+            def capture():
+                if args.screenshots:
+                    script = ROOT / "scripts/capture-A4.2.mjs"
+                    subprocess.run(["node", str(script), graf, str(out)], check=True, cwd=ROOT, timeout=120)
+                    passed("three live Grafana screenshots captured")
             families = ["storage_command_latency_seconds_count", "storage_replication_lag_entries",
                         "coordinator_node_state", "relief_outbox_pending", "relief_outbox_oldest_age_seconds"]
             missing = [name for name in families if not query(name)]
@@ -236,11 +239,21 @@ def main():
                     report["result"] = "INCOMPLETE"
                     print("A4.2 FULL ACCEPTANCE INCOMPLETE: S-owned #113 missing " + ", ".join(missing), flush=True)
                     return 2
-                # Full acceptance also requires observed fault evidence; never pass
-                # merely because a server happened to answer all baseline scrapes.
-                report["result"] = "INCOMPLETE"
-                print("A4.2 FULL ACCEPTANCE INCOMPLETE: run and attach the observed leader-kill health/lag/age evidence after the #113 handoff", flush=True)
-                return 2
+                def current_leader():
+                    rows = query('storage_raft_leader{shard="0"} == 1 and on(instance,job) (up == 1)')
+                    return rows[0]["metric"]["node"] if len(rows)==1 else None
+                old_leader = eventually(current_leader, "unique observed shard0 leader")
+                for uid in sorted(wanted):
+                    get(graf, "/api/annotations", method="POST", auth=auth,
+                        data={"dashboardUID":uid,"time":int(time.time()*1000),"tags":["A4.2-fault"],"text":"Leader kill/hold/recover " + stamp})
+                with forward(context, namespace, "storage-coordinator", 8080, out / "coordinator-forward.txt") as coord:
+                    report["faultProof"] = run_fault(context, namespace, old_leader, number, query, get, coord, out)
+                passed("real leader loss, DOWN member, raw index-gap movement, growing workflow age and authoritative catchup observed")
+                capture()
+                report["result"] = "PASS"
+                print("A4.2 FULL ACCEPTANCE: PASS", flush=True)
+                return 0
+            capture()
             report["result"] = "APPLICATION_PASS"
             print("A4.2 APPLICATION ACCEPTANCE: PASS; full storage/leader-kill gate remains #113", flush=True)
             return 0
