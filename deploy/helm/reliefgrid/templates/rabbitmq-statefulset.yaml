@@ -81,22 +81,36 @@ spec:
                 secretKeyRef:
                   name: {{ include "reliefgrid.fullname" . }}-rabbitmq
                   key: erlang-cookie
+          # No probe execs a command: each rabbitmq-diagnostics call boots a whole
+          # Erlang CLI VM (about 1.45 CPU-seconds on kind), which at these periods
+          # cost the broker about 0.45-0.65 CPU at idle and, under a 750m limit,
+          # took as long as its own 5 s timeout.
+          # Startup and readiness: the AMQP listener, which opens only once the
+          # broker has booted and closes if the rabbit application stops.
           startupProbe:
-            exec:
-              command: [rabbitmq-diagnostics, -q, ping]
+            tcpSocket:
+              port: amqp
             failureThreshold: 36
             periodSeconds: 5
-            timeoutSeconds: 5
+            timeoutSeconds: 2
           readinessProbe:
-            exec:
-              command: [rabbitmq-diagnostics, -q, check_running]
+            tcpSocket:
+              port: amqp
             periodSeconds: 5
-            timeoutSeconds: 5
+            timeoutSeconds: 2
+          # Liveness must be answered by the broker's VM: a TCP check is not
+          # enough, as the kernel completes the handshake on a listening socket
+          # even when the VM is frozen (checked with SIGSTOP on kind). GET / on the
+          # management listener is a static page served by that VM. A hung VM is
+          # restarted after about a minute; a broker busy under load is not
+          # killed for one slow answer.
           livenessProbe:
-            exec:
-              command: [rabbitmq-diagnostics, -q, ping]
-            periodSeconds: 10
-            timeoutSeconds: 5
+            httpGet:
+              path: /
+              port: management
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 4
           resources:
             {{- toYaml .Values.rabbitmq.resources | nindent 12 }}
           volumeMounts:
