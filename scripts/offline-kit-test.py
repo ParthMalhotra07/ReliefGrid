@@ -41,6 +41,11 @@ class OfflineKitTest(unittest.TestCase):
    binary.unlink()
    result=subprocess.run(['bash',str(script),str(target)],env=env,capture_output=True,timeout=5)
    self.assertNotEqual(result.returncode,0);self.assertFalse(marker.exists())
+ def test_only_the_external_export_failure_can_use_private_api_recovery(self):
+  known='failed to get api server port: .NetworkSettings.Ports: slice index out of range'
+  self.assertTrue(module.external_export_unavailable(known))
+  for failure in ['bootstrap failed','node not Ready','failed to get api server port','slice index out of range']:
+   self.assertFalse(module.external_export_unavailable(failure))
  def test_only_new_isolated_kind_names_are_allowed(self):
   for name in ['reliefgrid','production','../bad','reliefgrid-offline;evil']:
    with self.subTest(name=name),self.assertRaises(ValueError):module.check_cluster_name(name)

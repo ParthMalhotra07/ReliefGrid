@@ -45,6 +45,11 @@ def verify_files(root):
     return manifest
 
 
+def external_export_unavailable(error):
+    return all(fragment in error for fragment in
+        ('failed to get api server port', '.NetworkSettings.Ports', 'slice index out of range'))
+
+
 def check_cluster_name(name):
     if not re.fullmatch(r'reliefgrid-offline(?:-[a-z0-9][a-z0-9-]{0,24})?', name):
         raise ValueError('only new reliefgrid-offline[-suffix] clusters are permitted')
@@ -187,24 +192,42 @@ def install(output, cluster):
         '--network-alias', 'host.docker.internal', '--name', cluster + '-dns-anchor',
         '--label', 'reliefgrid.io/offline-cluster=' + cluster, '--entrypoint', '/bin/sleep',
         manifest['roles']['runner'], 'infinity')
-    previous = run('kubectl', 'config', 'current-context', capture=True)
-    try:
-        run('kind', 'create', 'cluster', '--name', cluster, '--image', manifest['roles']['node'],
-            '--config', str(output / 'kind.json'), '--wait', '120s', timeout=300,
+    with tempfile.TemporaryDirectory(prefix='reliefgrid-offline-install-') as temp:
+        external = Path(temp) / 'external-config'
+        command = ['kind','create','cluster','--name',cluster,'--image',manifest['roles']['node'],
+                   '--config',str(output/'kind.json'),'--wait','120s','--kubeconfig',str(external)]
+        created = subprocess.run(command, text=True, capture_output=True, timeout=300,
             env=dict(os.environ, KIND_EXPERIMENTAL_DOCKER_NETWORK=network))
-        run('kind', 'load', 'image-archive', '--name', cluster, str(output / 'runtime-images.tar'), timeout=900)
+        print(created.stdout, end=''); print(created.stderr, end='')
+        if created.returncode and not external_export_unavailable(created.stderr):
+            raise RuntimeError('kind bootstrap failed; inspect the retained output')
+        # --internal deliberately has no host-published API port on Desktop.
+        # Recover that specific export failure by using the internal endpoint,
+        # then independently require all five nodes Ready; never ignore a
+        # bootstrap failure or assume that a Ready-looking log was sufficient.
+        config = run('kind','get','kubeconfig','--name',cluster,'--internal',capture=True)
+        kubeconfig = Path(temp)/'internal-config'; kubeconfig.write_text(config); kubeconfig.chmod(0o600)
+        def inside(tool, *args, capture=False):
+            return run('docker','run','--rm','--pull=never','--network',network,
+                '--mount','type=bind,src='+str(output)+',dst=/kit,readonly',
+                '--mount','type=bind,src='+str(kubeconfig)+',dst=/kubeconfig,readonly',
+                '-e','KUBECONFIG=/kubeconfig','--entrypoint','/usr/local/bin/'+tool,
+                manifest['roles']['runner'],*args,capture=capture,timeout=480)
+        inside('kubectl','wait','--for=condition=Ready','nodes','--all','--timeout=120s')
+        nodes = json.loads(inside('kubectl','get','nodes','-o','json',capture=True))['items']
+        if len(nodes) != 5 or not all(any(c['type']=='Ready' and c['status']=='True' for c in n['status']['conditions']) for n in nodes):
+            raise ValueError('isolated Kubernetes bootstrap is not fully Ready')
+        print('PASS: all five nodes Ready through the private API',flush=True)
+        run('kind','load','image-archive','--name',cluster,str(output/'runtime-images.tar'),timeout=900)
         verify_node_isolation(cluster)
-        context = 'kind-' + cluster
-        for release, chart, values in [('storage','storage','storage'), ('reliefgrid','reliefgrid','app')]:
-            packages = list((output / 'charts').glob(chart + '-*.tgz'))
-            if len(packages) != 1:
-                raise ValueError('ambiguous packaged chart: ' + chart)
-            run('helm', '--kube-context', context, 'install', release, str(packages[0]),
-                '-n', 'reliefgrid', '--create-namespace', '-f', str(output / ('values/' + values + '.json')),
-                '--wait', '--wait-for-jobs', '--timeout', '6m', timeout=420)
-        print('OFFLINE KIT INSTALLED: ' + context, flush=True)
-    finally:
-        run('kubectl', 'config', 'use-context', previous)
+        for release, chart, values in [('storage','storage','storage'),('reliefgrid','reliefgrid','app')]:
+            packages = list((output/'charts').glob(chart+'-*.tgz'))
+            if len(packages)!=1:
+                raise ValueError('ambiguous packaged chart: '+chart)
+            inside('helm','install',release,'/kit/charts/'+packages[0].name,'-n','reliefgrid',
+                '--create-namespace','-f','/kit/values/'+values+'.json',
+                '--wait','--wait-for-jobs','--timeout','6m')
+        print('OFFLINE KIT INSTALLED: kind-'+cluster,flush=True)
 
 
 def acceptance(output, cluster):
