@@ -2,7 +2,7 @@
 
 ReliefGrid matches emergency requests to geographically suitable resources using
 Raft-backed sharded storage and asynchronous workflows. This report describes the
-implemented core on main b454dc0. It distinguishes measured evidence from planned
+implemented core, refreshed against main acc020a. It distinguishes measured evidence from planned
 enhancements; owner review and the instructor's required final report length are
 still pending.
 
@@ -14,6 +14,8 @@ still pending.
 4. [Deployment and live demonstration](deployment-and-demo.md)
 5. [ADR004: attempt closure](../adr/004-attempt-closure.md) and
    [ADR005: outbox handoff](../adr/005-outbox-handoff.md)
+
+6. [Additional engineering validation and limits](validation-addendum.md)
 
 ## Scope and attribution
 
