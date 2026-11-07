@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import tempfile
+from demos.app_demo import Demo
 import time
 import urllib.parse
 import urllib.request
@@ -45,6 +47,52 @@ def assert_no_active_requests(http, api):
         assert page['partial'] is False and page['failedShards'] == [], 'incomplete fixture scan'
         assert {p['shard'] for p in page['positions']} == {0, 1, 2}, 'missing fixture shard'
         assert not page['items'] and all(p['hasMore'] is False for p in page['positions']), 'fixture type has pre-existing unfinished work'
+
+
+
+def post_round_audit(kc, forward, context, out, demo_type=Demo):
+    """Reuse the demos' pause/drain/strict audit, with KEDA paused first.
+
+    Only after the measured round: pausing cannot contribute scaling evidence.
+    The previous annotation and child-process environment are always restored.
+    """
+    annotation='autoscaling.keda.sh/paused-replicas'
+    def command(*args):
+        return subprocess.check_output(kc+list(args),text=True,timeout=25)
+    scaled=json.loads(command('get','scaledobject','reliefgrid-matcher','-o','json'))
+    annotations=scaled['metadata'].get('annotations',{})
+    assert annotation not in annotations and 'autoscaling.keda.sh/paused' not in annotations, 'autoscaling was already paused'
+    with tempfile.TemporaryDirectory(prefix='reliefgrid-a43-drain-') as directory:
+        drainer=str(Path(directory)/'drain-outbox')
+        subprocess.check_output(['go','build','-o',drainer,'./scripts/demos/drain-outbox'],text=True,timeout=90)
+        try:
+            command('patch','scaledobject','reliefgrid-matcher','--type=merge','-p',json.dumps({'metadata':{'annotations':{annotation:'0'}}}))
+            end=time.monotonic()+90
+            while True:
+                deployment=json.loads(command('get','deployment','reliefgrid-matcher','-o','json'))
+                pods=json.loads(command('get','pods','-l','app.kubernetes.io/component=matcher','-o','json'))['items']
+                if deployment['spec']['replicas']==0 and not pods:
+                    break
+                assert time.monotonic()<end, 'KEDA pause did not stop admission workers'
+                time.sleep(.25)
+            with forward('storage-coordinator',8080) as coordinator, forward('reliefgrid-rabbitmq',5672) as broker:
+                updates=dict(KUBE_CONTEXT=context,NAMESPACE='reliefgrid',APP_RELEASE='reliefgrid',
+                    DEMO_COORD_URL=coordinator,DEMO_OPERATOR_TOKEN='',DEMO_AMQP_ENDPOINT=broker.replace('http:','amqp:'),
+                    DEMO_OUTBOX_DRAIN=drainer)
+                before={key:os.environ.get(key) for key in updates}
+                try:
+                    os.environ.update(updates)
+                    demo=demo_type(43,out/'audit')
+                    demo.audit_without_admission()
+                    audit=json.loads((out/'audit/invcheck.log').read_text())
+                    assert audit.get('ok') is True and audit.get('verdict')=='clean' and audit.get('report',{}).get('quiescent') is True, 'strict invcheck did not return a clean quiescent verdict'
+                    return audit
+                finally:
+                    for key,value in before.items():
+                        if value is None: os.environ.pop(key,None)
+                        else: os.environ[key]=value
+        finally:
+            command('patch','scaledobject','reliefgrid-matcher','--type=merge','-p',json.dumps({'metadata':{'annotations':{annotation:None}}}))
 
 
 def main():
@@ -211,6 +259,8 @@ def main():
             exits=watch.finish({p['metadata']['uid'] for p in pods})
             for component in ('api','matcher'):
                 assert any(e['component']==component and any(90 <= (dt.datetime.fromisoformat(t['finishedAt'].replace('Z','+00:00'))-start_wall).total_seconds() <= 420 for t in e['exits']) for e in exits), 'no clean '+component+' downscale observed during real tail traffic'
+            audit=post_round_audit(kc,forward,context,out)
+            report['invcheck']=dict(ok=audit['ok'],verdict=audit['verdict'],quiescent=audit['report']['quiescent'])
             report.update(result='PASS',createdRequests=len(created),cleanPodExits=len(exits),peakReadyMatchers=max(s['ready'] for s in samples),peakReadyAPI=max(s['apiReady'] for s in samples))
         finally:
             if load is not None and load.poll() is None:

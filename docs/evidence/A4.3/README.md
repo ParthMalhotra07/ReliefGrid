@@ -1,35 +1,9 @@
-# A4.3 real-workload acceptance — PASS, owner review pending
+# A4.3 latest acceptance — PASS
 
-Run 20261107T085200Z:709 actual create/handoff/cancel/terminal lifecycles,
-34315/34315 checks,47559 HTTP calls,0 unexpected HTTP failures. Five known
-VERSION_CONFLICT cancellation rejections were logged, reread and retried by the
-client (maximum3 attempts). Both unchanged rate==1 and rate==0 thresholds passed.
-409 is an expected HTTP status only on cancellation; wrong error codes, unknown
-outcomes, failed rereads and exhausted retries remain functional failures.
+Latest retained round: 20261107T131600Z. 637 real request lifecycles, matcher Ready 1→8→1, API Ready 2→6→2, no bulk matcher downscale, zero application restarts during the round, 12 clean pod exits. Exit timestamps are compared with the first observed positive-grace deadline, retained per UID; the final kubelet grace-0 rewrite cannot extend it. A missing first positive-grace observation fails closed.
 
-Matcher Ready1→8→1 and API Ready2→6→2. No matcher decrease during the90s bulk
-window. Eleven removed pods had final clean exit0 observed before their grace
-deadlines, including both components during real low-rate tail traffic. All709
-created workflows reached CANCELLED without ownership, queues drained and no app
-restarts occurred. The verifier restored manual API2/matcher2 settings afterward.
+The final audit pauses KEDA, uses the demos' pause-and-drain path and runs strict invcheck. Actual result: ok=true, verdict=clean, quiescent=true, no pending outbox. Workers, KEDA annotation and process environment are restored in finally, including on failure. The normal fixed API2/matcher2 profile was restored after the round.
 
-Runtime used main's existing app images plus the exact #129 probe and #133 native
-boot chart merge, recorded in runtime-sources.txt. Neither dependency is silently
-claimed merged. Main must incorporate/rebase these before the final merge chain;
-CI must test the current combined main. No storage images/PVCs were replaced.
+Red regressions caught late exit accepted under rewritten deadline, wrong deadline retained, missing grace accepted and duplicate k6 definitions. All 15 verifier regressions and five client tests pass. make check, generation and static chart verification passed before the live round. Current-main verification is repeated before push. Runtime uses branch-built api/matcher/tools plus the native broker fix from approved #133; storage PVCs and images were not replaced. Previous rounds and full verbose logs are archived locally; one full round is retained here.
 
-The earlier two unexplained cancellations were diagnosed in a bounded45s run:
-409 VERSION_CONFLICT, outcomeUnknown=false. See diagnosed-cancel-conflict.json.
-API/FSM semantics were correct; the original load client omitted the documented
-reread/retry. No production API change was made to hide a correct rejection.
-
-Red-first regressions cover the known-rejection retry (3red then5green cases)
-and retained terminal history in preflight (red then10green acceptance cases).
-Full make check, make gen-check and make verify-A4.3-static PASS. Inputs are hashed
-in source-sha256.json. One full live round is retained; old failed full-run output
-was archived locally. Prior red-case evidence remains for review.
-
-PRE-PR REVIEW: READY for re-review. One controller per workload; no ack/claim/CAS
-invariant change; final exits and observations fail closed; no S-owned or contract
-edits; no credentials or local-only files. This acceptance is not a throughput
-benchmark and does not close the A4.2 storage-metrics handoff. Closes #127 on merge.
+PRE-PR REVIEW: READY for re-review. No contract/S-owned changes, no relaxed thresholds or skipped tests. The invariant audit occurs after measured scaling and cannot contribute to its scale/downscale evidence. This remains scaling/drain acceptance rather than a throughput benchmark or A4.2 verification.

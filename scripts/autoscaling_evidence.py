@@ -16,7 +16,10 @@ def no_mid_load_downscale(samples):
 
 def clean_termination(pod):
     meta, status = pod['metadata'], pod['status']
-    deadline = dt.datetime.fromisoformat(meta['deletionTimestamp'].replace('Z', '+00:00'))
+    first = meta.get('firstDeletionTimestamp')
+    grace = meta.get('firstDeletionGracePeriodSeconds')
+    assert first and type(grace) is int and grace > 0, 'first positive-grace deletion deadline was not observed'
+    deadline = dt.datetime.fromisoformat(first.replace('Z', '+00:00'))
     containers = status.get('containerStatuses', [])
     assert containers, 'deleted pod has no observed container exit'
     exits = []
@@ -26,13 +29,14 @@ def clean_termination(pod):
         finished = dt.datetime.fromisoformat(term['finishedAt'].replace('Z', '+00:00'))
         assert finished <= deadline, 'pod exceeded its deletion grace deadline'
         exits.append(dict(container=container['name'], **term))
-    return dict(uid=meta['uid'], name=meta['name'], deadline=meta['deletionTimestamp'], exits=exits)
+    return dict(uid=meta['uid'], name=meta['name'], deadline=first, firstGracePeriodSeconds=grace, exits=exits)
 
 
 class PodWatch:
     def __init__(self, kc, out):
         self.kc, self.out = kc, out
         self.pods, self.deleted, self.errors = {}, {}, []
+        self.first_deletions = {}
         self.lock = threading.Lock()
 
     def start(self):
@@ -62,7 +66,13 @@ class PodWatch:
                         ('name', 'uid', 'labels', 'deletionTimestamp', 'deletionGracePeriodSeconds')},
                         spec=dict(terminationGracePeriodSeconds=pod['spec']['terminationGracePeriodSeconds']), status=pod['status'])
                     with self.lock:
-                        self.pods[pod['metadata']['uid']] = record
+                        uid = pod['metadata']['uid']
+                        if record['metadata'].get('deletionTimestamp'):
+                            first = self.first_deletions.setdefault(uid, dict(
+                                firstDeletionTimestamp=record['metadata']['deletionTimestamp'],
+                                firstDeletionGracePeriodSeconds=record['metadata'].get('deletionGracePeriodSeconds')))
+                            record['metadata'].update(first)
+                        self.pods[uid] = record
                         if event['type'] == 'DELETED':
                             self.deleted[pod['metadata']['uid']] = record
         except Exception as error:

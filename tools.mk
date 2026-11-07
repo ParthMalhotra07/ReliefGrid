@@ -55,5 +55,3 @@ KEDA_CHART_VERSION := 2.21.0
 KEDA_CHART_SHA256 := a7da56bf41a33dad9d2fc82a6fdecee552fff947d80bf1e1dbcf4db0f9e26dee
 
 # k6 official v2.3.0 linux/amd64 release archive.
-K6_VERSION := v2.3.0
-K6_SHA256 := 39c3117b6af817592dcd0ce4242105c0a7af10948c2a425306f0be8f7a8a8ab1

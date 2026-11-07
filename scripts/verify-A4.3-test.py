@@ -1,6 +1,14 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import copy
+import io
+import json
+import tempfile
+from types import SimpleNamespace
+from unittest.mock import patch
+import contextlib
+import os
 
 spec = importlib.util.spec_from_file_location('acceptance', Path(__file__).with_name('verify-A4.3.py'))
 module = importlib.util.module_from_spec(spec)
@@ -47,7 +55,7 @@ class ScalingEvidenceTest(unittest.TestCase):
             module.no_mid_load_downscale(samples)
 
     def test_missing_or_killed_termination_is_not_clean(self):
-        pod = dict(metadata=dict(uid='pod1', name='matcher1', deletionTimestamp='2026-11-06T08:00:30Z', deletionGracePeriodSeconds=30),
+        pod = dict(metadata=dict(uid='pod1', name='matcher1', deletionTimestamp='2026-11-06T08:00:30Z', deletionGracePeriodSeconds=30,firstDeletionTimestamp='2026-11-06T08:00:30Z',firstDeletionGracePeriodSeconds=30),
                    spec=dict(terminationGracePeriodSeconds=30), status=dict(containerStatuses=[]))
         with self.assertRaises(AssertionError):
             module.clean_termination(pod)
@@ -56,7 +64,7 @@ class ScalingEvidenceTest(unittest.TestCase):
             module.clean_termination(pod)
 
     def test_clean_exit_after_grace_is_rejected(self):
-        pod=dict(metadata=dict(uid='p',name='matcher',deletionTimestamp='2026-11-06T08:00:30Z'),
+        pod=dict(metadata=dict(uid='p',name='matcher',deletionTimestamp='2026-11-06T08:00:30Z',firstDeletionTimestamp='2026-11-06T08:00:30Z',firstDeletionGracePeriodSeconds=30),
                  status=dict(containerStatuses=[dict(name='matcher',state=dict(terminated=dict(exitCode=0,finishedAt='2026-11-06T08:00:31Z')))]))
         with self.assertRaises(AssertionError): module.clean_termination(pod)
 
@@ -79,6 +87,70 @@ class ScalingEvidenceTest(unittest.TestCase):
         samples=[dict(self.sample(1,1,1,0),phase='baseline'),dict(self.sample(2,5,5,50),phase='bulk'),
                  dict(self.sample(3,1,1,1),phase='tail')]
         module.no_mid_load_downscale(samples)
+
+
+    def watched(self, finished, initial=True):
+        pod=dict(metadata=dict(uid='p',name='matcher',labels={'app.kubernetes.io/component':'matcher'}),
+                 spec=dict(terminationGracePeriodSeconds=30),status=dict(containerStatuses=[]))
+        events=[]
+        if initial:
+            pod['metadata'].update(deletionTimestamp='2026-11-06T08:00:30Z',deletionGracePeriodSeconds=30)
+            events.append(dict(type='MODIFIED',object=copy.deepcopy(pod)))
+        pod['metadata'].update(deletionTimestamp='2026-11-06T08:00:40Z',deletionGracePeriodSeconds=0)
+        pod['status']['containerStatuses']=[dict(name='matcher',state=dict(terminated=dict(exitCode=0,finishedAt=finished)))]
+        events.append(dict(type='DELETED',object=pod))
+        watch=module.PodWatch([],Path('.'))
+        watch.process=SimpleNamespace(stdout=io.StringIO(''.join(json.dumps(e)+'\n' for e in events)))
+        watch._read()
+        self.assertEqual(watch.errors,[])
+        return watch.deleted['p']
+
+    def test_final_zero_grace_rewrite_cannot_hide_late_clean_exit(self):
+        with self.assertRaises(AssertionError):
+            module.clean_termination(self.watched('2026-11-06T08:00:35Z'))
+
+    def test_early_clean_exit_uses_first_observed_deadline(self):
+        proof=module.clean_termination(self.watched('2026-11-06T08:00:25Z'))
+        self.assertEqual(proof['deadline'],'2026-11-06T08:00:30Z')
+
+    def test_missing_positive_grace_observation_cannot_pass(self):
+        with self.assertRaises(AssertionError):
+            module.clean_termination(self.watched('2026-11-06T08:00:25Z',initial=False))
+
+    def test_k6_pin_has_one_owner(self):
+        import re
+        text=(Path(__file__).resolve().parents[1]/'tools.mk').read_text()
+        for name in ('K6_VERSION','K6_SHA256'):
+            self.assertEqual(len(re.findall(r'^'+name+r'\s*:?=',text,re.M)),1,name+' is duplicated')
+
+
+    def test_post_round_audit_restores_pause_and_environment_after_failure(self):
+        commands=[]
+        def run(command, **kwargs):
+            commands.append(command)
+            if 'scaledobject' in command and 'get' in command:
+                return json.dumps(dict(metadata=dict(annotations={})))
+            if 'deployment' in command and 'get' in command:
+                return json.dumps(dict(spec=dict(replicas=0)))
+            if 'get' in command:
+                return json.dumps(dict(items=[]))
+            return ''
+        @contextlib.contextmanager
+        def forward(*args):
+            yield 'http://127.0.0.1:1234'
+        class FailedDemo:
+            def __init__(self,*args): pass
+            def audit_without_admission(self): raise RuntimeError('strict audit failed')
+        before=dict(os.environ)
+        with tempfile.TemporaryDirectory() as directory, patch('subprocess.check_output',side_effect=run):
+            with self.assertRaisesRegex(RuntimeError,'strict audit failed'):
+                module.post_round_audit(['kubectl','--context','kind-reliefgrid','-n','reliefgrid'],forward,
+                    'kind-reliefgrid',Path(directory),demo_type=FailedDemo)
+        self.assertEqual(dict(os.environ),before)
+        updates=[json.loads(c[-1]) for c in commands if 'patch' in c]
+        self.assertEqual(updates[0]['metadata']['annotations']['autoscaling.keda.sh/paused-replicas'],'0')
+        self.assertIsNone(updates[-1]['metadata']['annotations']['autoscaling.keda.sh/paused-replicas'])
+
 
 
 if __name__ == '__main__':

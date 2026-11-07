@@ -1,4 +1,0 @@
-{
-"head":"1cb704f64cb76bd5e082f24150c028455f4c3280",
-"changes":" M scripts/autoscaling-load.js\n M scripts/verify-A4.3-static.sh\n M scripts/verify-A4.3-test.py\n M scripts/verify-A4.3.py\n?? docs/evidence/A4.3/20261107T085200Z/\n?? scripts/autoscaling-client-test.mjs\n?? scripts/autoscaling-client.js\n"
-}
