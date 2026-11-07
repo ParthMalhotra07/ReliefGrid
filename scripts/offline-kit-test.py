@@ -90,4 +90,18 @@ class OfflineKitTest(unittest.TestCase):
 
 
 
+ def test_generated_offline_values_render_the_exact_local_traefik_tag(self):
+  roles={'rabbitmq':'local/rabbit:revision'}
+  values=module.offline_app_values(roles,'offline-test')
+  with tempfile.TemporaryDirectory() as tmp:
+   path=Path(tmp)/'values.json';path.write_text(json.dumps(values))
+   result=subprocess.run(['helm','template','reliefgrid','deploy/helm/reliefgrid','-f',str(path)],
+      cwd=module.ROOT,capture_output=True,text=True,timeout=30)
+   self.assertEqual(result.returncode,0,result.stderr)
+   import yaml
+   deployment=next(d for d in yaml.safe_load_all(result.stdout) if d and d.get('kind')=='Deployment' and d['metadata']['name']=='reliefgrid-traefik')
+   self.assertEqual(deployment['spec']['template']['spec']['containers'][0]['image'],'docker.io/reliefgrid-offline/traefik:offline-test')
+
+
+
 if __name__=='__main__':unittest.main()

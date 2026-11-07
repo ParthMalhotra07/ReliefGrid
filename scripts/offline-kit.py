@@ -115,6 +115,17 @@ def pin(name):
     return run('make', '-s', 'print-' + name, capture=True)
 
 
+def offline_app_values(roles, tag):
+    app_values = {'app': {'enabled': True}, 'storage': {'enabled': False},
+        'rabbitmq': {'image': roles['rabbitmq']},
+        'traefik': {'image': {'registry': 'docker.io', 'repository': 'reliefgrid-offline/traefik', 'tag': tag, 'digest': None, 'pullPolicy': 'Never'},
+            'ingressClass': {'name': 'traefik'}, 'service': {'spec': {'type': 'NodePort'}},
+            'ports': {'web': {'nodePort': 30080}, 'websecure': {'nodePort': 30443}}}}
+    for component in ('api', 'matcher', 'ui'):
+        app_values['app'][component] = {'image': {'tag': tag, 'pullPolicy': 'Never'}}
+    return app_values
+
+
 def prepare(output):
     # Preparation downloads/builds; acceptance never calls this path offline.
     import yaml  # host preparation dependency only; runner uses stdlib
@@ -172,13 +183,7 @@ def prepare(output):
         env=dict(os.environ, CGO_ENABLED='0', GOTOOLCHAIN='local'))
     for chart in ('storage', 'reliefgrid'):
         run('helm', 'package', 'deploy/helm/' + chart, '-d', str(output / 'charts'))
-    app_values = {'app': {'enabled': True}, 'storage': {'enabled': False},
-        'rabbitmq': {'image': roles['rabbitmq']},
-        'traefik': {'image': {'registry': '', 'repository': 'reliefgrid-offline/traefik', 'tag': tag, 'digest': '', 'pullPolicy': 'Never'},
-            'ingressClass': {'name': 'traefik'}, 'service': {'spec': {'type': 'NodePort'}},
-            'ports': {'web': {'nodePort': 30080}, 'websecure': {'nodePort': 30443}}}}
-    for component in ('api', 'matcher', 'ui'):
-        app_values['app'][component] = {'image': {'tag': tag, 'pullPolicy': 'Never'}}
+    app_values = offline_app_values(roles, tag)
     storage_values = {'image': {'tag': tag, 'pullPolicy': 'Never'}, 'coordinator': {'image': {'tag': tag, 'pullPolicy': 'Never'}}}
     (output / 'values/app.json').write_text(json.dumps(app_values))
     (output / 'values/storage.json').write_text(json.dumps(storage_values))
