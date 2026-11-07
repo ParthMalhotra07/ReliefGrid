@@ -291,13 +291,59 @@ func TestAPICursorRingAndFailedShardAfterContinuation(t *testing.T) {
 			switched.changed = true
 			expectError(t, call(ctx, h, "GET", path+"&cursor="+url.QueryEscape(token), "", ""), 503, "RING_VERSION_MISMATCH", true, false)
 			switched.changed = false
+			encoded, _ := base64.RawURLEncoding.DecodeString(token)
+			if err := json.Unmarshal(encoded, &public); err != nil {
+				t.Fatal(err)
+			}
+			active, err := store.DecodeScanCursor(public.Scan)
+			if err != nil {
+				t.Fatal(err)
+			}
+			failed := raw.Shards()
+			for shard := range active.After {
+				failed = min(failed, shard)
+			}
+			if failed == raw.Shards() {
+				t.Fatal("no active continuation shard")
+			}
 			broken := memstore.WithFaults(raw, func(c memstore.Call) memstore.Fault {
 				if c.Method == "Scan" {
-					return memstore.Fault{FailShards: []int{1}}
+					return memstore.Fault{FailShards: []int{failed}}
 				}
 				return memstore.Fault{}
 			})
 			expectError(t, call(ctx, handler(t, broken, now, "dispatcher-a"), "GET", path+"&cursor="+url.QueryEscape(token), "", ""), 503, "STORAGE_UNAVAILABLE", true, false)
 		})
+	}
+}
+
+func TestAPIResourceConflictETagFromCommittedVersion(t *testing.T) {
+	ctx, raw := realStore(t)
+	h := handler(t, raw, now, "dispatcher-a")
+	first := object(t, call(ctx, h, "POST", "/api/v1/resources", resourceBody, ""), 201)
+	rid := id(t, first, "resourceId")
+	var once atomic.Bool
+	wrapped := memstore.WithFaults(raw, func(c memstore.Call) memstore.Fault {
+		if c.Method != "TransitionResource" || !once.CompareAndSwap(false, true) {
+			return memstore.Fault{}
+		}
+		return memstore.Fault{Before: func(ctx context.Context) error {
+			result, err := raw.TransitionResource(ctx, store.TransitionResource{Meta: store.Meta{OperationID: fixtureKey("resource-etag-race"), At: now.UnixMilli()}, Key: c.Key, ExpectedVersion: 1, Status: store.ResourceOffline})
+			if err == nil && result.Outcome != store.OutcomeOK {
+				t.Fatalf("resource race setup: %+v", result)
+			}
+			return err
+		}}
+	})
+	path := "/api/v1/resources/" + rid + "/status"
+	reply := conditional(ctx, handler(t, wrapped, now, "dispatcher-a"), path, `{"status":"OFFLINE"}`, `"v1"`)
+	expectError(t, reply, 412, "PRECONDITION_FAILED", false, false)
+	if reply.Header().Get("ETag") != `"v2"` {
+		t.Fatal("resource committed conflict missing current ETag")
+	}
+	early := conditional(ctx, h, path, `{"status":"AVAILABLE"}`, `"v1"`)
+	expectError(t, early, 412, "PRECONDITION_FAILED", false, false)
+	if early.Header().Get("ETag") != `"v2"` {
+		t.Fatal("resource early conflict missing current ETag")
 	}
 }
