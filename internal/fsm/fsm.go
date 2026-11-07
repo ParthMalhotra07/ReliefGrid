@@ -530,6 +530,37 @@ func readOperation(ctx context.Context, q querier, operationID string) (store.Re
 	return res, hash, true, nil
 }
 
+// OutboxStats is the unpublished part of the outbox: how many rows, and the
+// oldest one's proposer time (unix ms; 0 when none are pending), as of
+// AppliedIndex, the meta applied_index of the same read snapshot.
+type OutboxStats struct {
+	Pending         int
+	OldestCreatedAt int64
+	AppliedIndex    uint64
+}
+
+// OutboxStats counts every unpublished outbox row in one read (S5.2, #113:
+// the exact backlog, where PendingOutbox returns a capped batch). The index
+// is read by the same statement, so an apply committing alongside cannot
+// pair a newer count with an older index (#132); f.AppliedIndex() would.
+func (f *FSM) OutboxStats(ctx context.Context) (OutboxStats, error) {
+	var (
+		s       OutboxStats
+		oldest  sql.NullInt64
+		applied string
+	)
+	if err := f.rdb.QueryRowContext(ctx, `SELECT (SELECT v FROM meta WHERE k = 'applied_index'), count(*), min(created_at)
+		FROM outbox WHERE published = 0`).Scan(&applied, &s.Pending, &oldest); err != nil {
+		return OutboxStats{}, fmt.Errorf("fsm: outbox stats: %w", err)
+	}
+	idx, err := strconv.ParseUint(applied, 10, 64)
+	if err != nil {
+		return OutboxStats{}, fmt.Errorf("fsm: outbox stats: applied_index %q: %w", applied, err)
+	}
+	s.OldestCreatedAt, s.AppliedIndex = oldest.Int64, idx
+	return s, nil
+}
+
 // Counts are the FSM's record rows: live rows by kind, and tombstones.
 type Counts struct {
 	Request, Resource, KV, Tombstones int

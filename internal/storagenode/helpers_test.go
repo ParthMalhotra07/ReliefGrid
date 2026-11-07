@@ -83,6 +83,9 @@ type fakeNode struct {
 	snapErr   error
 	snaps     int // Snapshot calls
 
+	storage    raftstore.StorageInfo // StorageInfo's answer (metrics)
+	storageErr error
+
 	stepDownErr error
 	stepDowns   int // StepDown calls
 
@@ -91,6 +94,9 @@ type fakeNode struct {
 	waitedInRead bool          // WaitApplyAfter ran inside a Read
 	onWait       func()        // if set, WaitApplyAfter runs it and returns (a commit)
 	waitDone     chan struct{} // closed when a WaitApplyAfter returns
+	// inRead, if set, runs inside Read after ReadInfo.AppliedIndex is taken
+	// and before fn: an apply committing in that window (#132).
+	inRead func()
 }
 
 var fakeSeq atomic.Int64
@@ -148,6 +154,9 @@ func (n *fakeNode) Read(ctx context.Context, mode raftstore.ReadMode, fn func(co
 		info.Consistency, info.StalePossible = "stale", true
 	case raftstore.ReadLinearizable:
 		info.Consistency = "linearizable"
+	}
+	if n.inRead != nil {
+		n.inRead()
 	}
 	n.setReading(true)
 	defer n.setReading(false)

@@ -2,7 +2,8 @@
 {{- range $s := until (int $ring.shards) }}
 ---
 # Ingress to shard {{ $s }}: data from the namespace, management (bootstrap,
-# status) only from operator pods (v3.1 §11). Raft is in storage-shard-{{ $s }}-raft.
+# status) only from operator pods (v3.1 §11), metrics (9090, GET /metrics
+# only) only from pods labelled reliefgrid.io/metrics-scraper=true. Raft is in storage-shard-{{ $s }}-raft.
 # The kubelet's probes also use the mgmt port (8081). They come from the node,
 # not a pod, and the CNIs we use (kindnet, Calico, Cilium) let a node reach its
 # own pods regardless of policy; a CNI that doesn't would fail every probe.
@@ -32,6 +33,13 @@ spec:
               reliefgrid.io/storage-operator: "true"
       ports:
         - port: 8081
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              reliefgrid.io/metrics-scraper: "true"
+      ports:
+        - port: 9090
           protocol: TCP
 ---
 # Raft (7000) to shard {{ $s }} only from its own group. A pod labelled

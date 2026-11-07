@@ -8,6 +8,8 @@
 #   - pods labelled reliefgrid.io/chaos=true: the chaos harness's and demos'
 #     invcheck Jobs (chaos/scripts/lib.sh);
 #   - pods labelled reliefgrid.io/storage-operator=true: operator Jobs.
+# Port 9090 (GET /metrics only) accepts only pods labelled
+# reliefgrid.io/metrics-scraper=true (docs/operations/storage-metrics.md).
 # Egress is the storage pods' 8080 (routing), kube-dns and, with tracing on
 # (S4.4), the OpenTelemetry Collector's OTLP/HTTP port 4318. The egress rule does not exclude
 # reliefgrid.io/chaos-isolated pods: an isolated or minority replica must
@@ -46,6 +48,13 @@ spec:
               reliefgrid.io/storage-operator: "true"
       ports:
         - port: 8080
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              reliefgrid.io/metrics-scraper: "true"
+      ports:
+        - port: 9090
           protocol: TCP
   egress:
     - to:

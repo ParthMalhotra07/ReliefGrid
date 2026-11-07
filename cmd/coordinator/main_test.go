@@ -22,7 +22,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("loadConfig: %v", err)
 	}
 	c := cfg.Coordinator
-	if cfg.HTTPAddr != ":8080" || cfg.RingPath != "/etc/reliefgrid/ring.yaml" || c.OperatorToken != "s3cret" ||
+	if cfg.HTTPAddr != ":8080" || cfg.MetricsAddr != ":9090" || cfg.RingPath != "/etc/reliefgrid/ring.yaml" || c.OperatorToken != "s3cret" ||
 		c.SuspectAfter != 3*time.Second || c.DownAfter != 5*time.Second || c.Budget != 4*time.Second || c.AttemptTimeout != 3500*time.Millisecond {
 		t.Fatalf("defaults = %+v", cfg)
 	}

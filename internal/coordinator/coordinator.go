@@ -89,6 +89,8 @@ type Coordinator struct {
 	nodes   map[string]*member // by pod name
 	leaders []leader           // by shard
 	configs []shardConfig      // by shard: the newest committed Raft configuration reported
+
+	metrics *coordMetrics // docs/operations/storage-metrics.md
 }
 
 // New checks cfg and fills its defaults.
@@ -120,7 +122,9 @@ func New(cfg Config) (*Coordinator, error) {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
-	return &Coordinator{cfg: cfg, ring: cfg.Ring, nodes: map[string]*member{}, leaders: make([]leader, cfg.Ring.Shards()), configs: make([]shardConfig, cfg.Ring.Shards())}, nil
+	c := &Coordinator{cfg: cfg, ring: cfg.Ring, nodes: map[string]*member{}, leaders: make([]leader, cfg.Ring.Shards()), configs: make([]shardConfig, cfg.Ring.Shards())}
+	c.metrics = newCoordMetrics(c)
+	return c, nil
 }
 
 // Handler serves every route of contracts/internal.yaml. Routed calls and
