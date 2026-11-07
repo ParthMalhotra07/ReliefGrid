@@ -104,7 +104,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "reliefgrid.fullname" $ }}-rabbitmq
-                  key: management-url
+                  key: ui-management-url
             {{- end }}
           startupProbe:
             httpGet: {path: /healthz, port: http}
