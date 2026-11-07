@@ -344,6 +344,7 @@ function App() {
     [busy, setBusy] = useState(false),
     [actionError, setActionError] = useState(""),
     [uncertain, setUncertain] = useState(null);
+  const actionPending = useRef(false);
   const requests = d.snapshot?.requests.items || [],
     resources = d.snapshot?.resources.items || [];
   const query = search.trim().toLowerCase();
@@ -372,7 +373,7 @@ function App() {
     ...(d.snapshot?.resources.positions || []),
   ].some((p) => p.hasMore);
   const action = async (next) => {
-    if (!chosen || !canAct) return;
+    if (!chosen || !canAct || actionPending.current) return;
     if (
       (next === "CANCELLED" || next === "FULFILLED") &&
       !confirm(
@@ -382,6 +383,7 @@ function App() {
       )
     )
       return;
+    actionPending.current = true;
     setBusy(true);
     setActionError("");
     setUncertain(null);
@@ -409,6 +411,7 @@ function App() {
       if (e.unknown !== false)
         setUncertain({ id: chosen.requestId, version: chosen.version });
     } finally {
+      actionPending.current = false;
       setBusy(false);
     }
   };
@@ -768,6 +771,7 @@ function App() {
                   Resources{" "}
                   <span>{d.snapshot ? visibleResources.length : "—"}</span>
                 </h2>
+                <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
               </div>
               <div className="resource-cards">
                 {visibleResources.map((r) => (
