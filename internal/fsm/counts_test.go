@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm"
@@ -53,7 +54,58 @@ func TestOutboxStats(t *testing.T) {
 	}
 	expectOutcome(t, "mark", h.apply(store.MarkOutboxPublished{Meta: meta("mark"), Shard: 0, EventIDs: []string{"ev-q000", "ev-q001"}}), store.OutcomeOK)
 	s, err := h.f.OutboxStats(ctx)
-	if want := (fsm.OutboxStats{Pending: 148, OldestCreatedAt: t0 + 2000}); err != nil || s != want {
+	if want := (fsm.OutboxStats{Pending: 148, OldestCreatedAt: t0 + 2000, AppliedIndex: h.idx}); err != nil || s != want {
 		t.Fatalf("outbox stats = %+v, %v; want %+v", s, err, want)
+	}
+}
+
+// OutboxStats reads applied_index in the same SQLite snapshot as COUNT/MIN
+// (#132), so the index it returns is the one the count was taken at, even
+// while applies commit concurrently. Every apply here adds exactly one
+// unpublished row, so a paired observation always has Pending == AppliedIndex.
+func TestOutboxStatsPairedWithAppliedIndex(t *testing.T) {
+	ctx := context.Background()
+	f, err := fsm.Open(ctx, "file:"+filepath.Join(t.TempDir(), "fsm-0.db")) // WAL: reads run beside the writer
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	const n = 200
+	done := make(chan error, 1)
+	go func() {
+		for i := range n {
+			id := fmt.Sprintf("p%03d", i)
+			entry, err := fsm.Encode(store.CreateEntity{Meta: meta("c-" + id), Key: store.RequestKey(id), Request: request(id, store.TypeWater),
+				Outbox: []store.OutboxEvent{{EventID: "ev-" + id, EventType: "request.created", SchemaVersion: 1, Exchange: "relief.events",
+					RoutingKey: "request.created", Payload: json.RawMessage(`{}`)}}})
+			if err == nil {
+				_, err = f.Apply(uint64(i+1), entry)
+			}
+			if err != nil {
+				done <- err
+				return
+			}
+		}
+		done <- nil
+	}()
+	for observed := 0; ; observed++ {
+		s, err := f.OutboxStats(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if uint64(s.Pending) != s.AppliedIndex {
+			t.Fatalf("observation %d: pending %d at applied index %d; the pair is from two snapshots", observed, s.Pending, s.AppliedIndex)
+		}
+		select {
+		case err := <-done:
+			if err != nil {
+				t.Fatal(err)
+			}
+			if s, err := f.OutboxStats(ctx); err != nil || s.Pending != n || s.AppliedIndex != n {
+				t.Fatalf("final stats = %+v, %v; want %d pending at index %d", s, err, n, n)
+			}
+			return
+		default:
+		}
 	}
 }

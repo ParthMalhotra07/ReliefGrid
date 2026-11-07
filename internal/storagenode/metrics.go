@@ -166,7 +166,7 @@ var (
 	descOutboxAge      = newDesc("relief_outbox_oldest_age_seconds", "Scrape time minus the oldest unpublished row's proposer time; 0 when none pending; absent if the observation failed.")
 	descOutboxOK       = newDesc("relief_outbox_observation_success", "1 if the outbox observation succeeded at this scrape.")
 	descOutboxAt       = newDesc("relief_outbox_observation_timestamp_seconds", "When the outbox observation was taken (Unix seconds).")
-	descOutboxObserved = newDesc("relief_outbox_observed_applied_index", "FSM applied index the outbox count was read at.")
+	descOutboxObserved = newDesc("relief_outbox_observed_applied_index", "FSM applied index of the SQLite snapshot the outbox count and oldest age were read from.")
 )
 
 // newDesc declares a gauge with no variable labels: shard and node come
@@ -216,7 +216,9 @@ func (c *nodeCollector) Collect(ch chan<- prometheus.Metric) {
 	ctx, cancel := context.WithTimeout(context.Background(), outboxStatsTimeout)
 	defer cancel()
 	var stats fsm.OutboxStats
-	info, err := n.Read(ctx, raftstore.ReadStale, func(ctx context.Context, rd raftstore.Reader) (err error) {
+	// ReadInfo.AppliedIndex is taken before the query runs; the stats carry
+	// the index of their own snapshot (#132).
+	_, err := n.Read(ctx, raftstore.ReadStale, func(ctx context.Context, rd raftstore.Reader) (err error) {
 		stats, err = rd.OutboxStats(ctx)
 		return err
 	})
@@ -232,7 +234,7 @@ func (c *nodeCollector) Collect(ch chan<- prometheus.Metric) {
 		age = max(0, float64(now.UnixMilli()-stats.OldestCreatedAt)/1000)
 	}
 	g(descOutboxAge, age)
-	g(descOutboxObserved, float64(info.AppliedIndex))
+	g(descOutboxObserved, float64(stats.AppliedIndex))
 }
 
 // raftSink is a go-metrics sink that feeds hashicorp/raft's measurements

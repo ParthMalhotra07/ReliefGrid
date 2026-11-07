@@ -57,12 +57,18 @@ Histograms use these buckets (seconds): 0.001, 0.0025, 0.005, 0.01, 0.025,
 | `relief_outbox_oldest_age_seconds` | gauge | | s | Scrape time minus the oldest unpublished row's proposer timestamp; 0 when none are pending. |
 | `relief_outbox_observation_success` | gauge | | 0/1 | 1 if the observation above succeeded at this scrape. |
 | `relief_outbox_observation_timestamp_seconds` | gauge | | Unix s | When that observation was taken. |
-| `relief_outbox_observed_applied_index` | gauge | | index | FSM applied index the count was read at. |
+| `relief_outbox_observed_applied_index` | gauge | | index | The FSM's `meta.applied_index`, read by the same SQLite statement (one read snapshot) as the count and oldest row; the count and age above describe exactly this index. |
 
 Outbox semantics: if the stats query fails or times out (1 s),
-`relief_outbox_pending` and `relief_outbox_oldest_age_seconds` are **absent**
-from that scrape and `relief_outbox_observation_success` is 0. A failed
-observation is never a fresh zero. Every replica reports its own FSM; a
+`relief_outbox_pending`, `relief_outbox_oldest_age_seconds` and
+`relief_outbox_observed_applied_index` are **absent** from that scrape and
+`relief_outbox_observation_success` is 0. A failed observation is never a
+fresh zero. The pending count, oldest age and observed index come from one
+SQLite statement, so one read snapshot: an apply committing during the scrape
+is in all three or in none. `storage_raft_applied_index` is read separately
+and may differ by a few entries; use the observed index to pair a count with
+its log position. The read is a local stale read, never a Raft write. Every
+replica reports its own FSM; a
 follower can lag, so the shard's backlog is the leader's:
 
 ```promql

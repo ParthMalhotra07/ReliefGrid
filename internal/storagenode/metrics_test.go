@@ -159,6 +159,35 @@ func TestMetricsEndpoint(t *testing.T) {
 	}
 }
 
+// An apply that commits after Node.Read took its applied index but before
+// the stats query must not be exported under the older index (#132): one
+// scrape's relief_outbox_observed_applied_index is the index COUNT/MIN saw.
+func TestMetricsOutboxIndexPairedWithCount(t *testing.T) {
+	n := newFakeNode(t)
+	seedOutbox(t, n, "a", "b", "c")
+	n.inRead = func() {
+		n.inRead = nil
+		seedOutbox(t, n, "d") // index 4 commits inside the read, after index 3 was taken
+	}
+	s := newMetricsServer(t, n)
+	fams, err := s.metrics.reg.Gather() // one scrape: both values from one Collect
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]float64{}
+	for _, f := range fams {
+		for _, m := range f.GetMetric() {
+			if m.GetGauge() != nil {
+				got[f.GetName()] = m.GetGauge().GetValue()
+			}
+		}
+	}
+	if got["relief_outbox_pending"] != 4 || got["relief_outbox_observed_applied_index"] != 4 {
+		t.Fatalf("pending %v at observed index %v; want 4 at 4 (count and index from one snapshot)",
+			got["relief_outbox_pending"], got["relief_outbox_observed_applied_index"])
+	}
+}
+
 func TestMetricsOutboxEmptyAndLag(t *testing.T) {
 	n := newFakeNode(t)
 	n.status = raftstore.Status{State: "Follower", CommitIndex: 7, AppliedIndex: 9, LeaderCommitIndex: 7}
