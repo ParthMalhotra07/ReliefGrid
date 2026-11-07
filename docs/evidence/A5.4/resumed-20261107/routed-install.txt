@@ -1,0 +1,84 @@
+Loaded image: reliefgrid-offline/node:offline-ebeadd0f9e9f
+Loaded image: reliefgrid-offline/runner:offline-ebeadd0f9e9f
+Loaded image: reliefgrid/api:offline-ebeadd0f9e9f
+Loaded image: reliefgrid/matcher:offline-ebeadd0f9e9f
+Loaded image: reliefgrid/ui:offline-ebeadd0f9e9f
+Loaded image: reliefgrid/storagenode:offline-ebeadd0f9e9f
+Loaded image: reliefgrid/coordinator:offline-ebeadd0f9e9f
+Loaded image: reliefgrid/tools:offline-ebeadd0f9e9f
+Loaded image: reliefgrid-offline/rabbitmq:offline-ebeadd0f9e9f
+Loaded image: reliefgrid-offline/traefik:offline-ebeadd0f9e9f
+847ae4435126384d57cdd2b42249ffe769db8d49823dfb425c3a7c8ed496a540
+7faaf5a188be72df23034003c6952f58e0657c9816e8547cb6349111577ee10c
+node/reliefgrid-offline-routed-control-plane condition met
+node/reliefgrid-offline-routed-worker condition met
+node/reliefgrid-offline-routed-worker2 condition met
+node/reliefgrid-offline-routed-worker3 condition met
+node/reliefgrid-offline-routed-worker4 condition met
+Creating cluster "reliefgrid-offline-routed" ...
+ • Ensuring node image (reliefgrid-offline/node:offline-ebeadd0f9e9f) 🖼️  ...
+WARNING: Overriding docker network due to KIND_EXPERIMENTAL_DOCKER_NETWORK
+WARNING: Here be dragons! This is not supported currently.
+ ✓ Ensuring node image (reliefgrid-offline/node:offline-ebeadd0f9e9f) 🖼️
+ • Preparing nodes 📦 📦 📦 📦 📦   ...
+ ✓ Preparing nodes 📦 📦 📦 📦 📦
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Joining worker nodes 🚜  ...
+ ✓ Joining worker nodes 🚜
+ • Waiting ≤ 2m0s for control-plane = Ready ⏳  ...
+ ✓ Waiting ≤ 2m0s for control-plane = Ready ⏳
+ • Ready after 6s 💚
+ERROR: failed to create cluster: failed to get api server port: command "docker inspect --format '{{ with (index (index .NetworkSettings.Ports "6443/tcp") 0) }}{{ printf "%s	%s" .HostIp .HostPort }}{{ end }}' reliefgrid-offline-routed-control-plane" failed with error: exit status 1
+
+Command Output:
+template parsing error: template: :1:9: executing "" at <index (index .NetworkSettings.Ports "6443/tcp") 0>: error calling index: reflect: slice index out of range
+PASS: all five nodes Ready through the private API
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+NAME: storage
+LAST DEPLOYED: Sat Nov  7 13:55:51 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+Error: INSTALLATION FAILED: values don't meet the specifications of the schema(s) in the following chart(s):
+traefik:
+- at '/image/digest': '' does not match pattern '^sha256:[a-f0-9]{64}$'
+
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit.py", line 314, in <module>
+    main()
+    ~~~~^^
+  File "<checkout>/scripts/offline-kit.py", line 309, in main
+    elif args.action == 'install': install(output, args.cluster)
+                                   ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/scripts/offline-kit.py", line 279, in install
+    inside('helm','install',release,'/kit/charts/'+packages[0].name,'-n','reliefgrid',
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--create-namespace','-f','/kit/values/'+values+'.json',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        '--wait','--wait-for-jobs','--timeout','6m')
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<checkout>/scripts/offline-kit.py", line 263, in inside
+    return run('docker','run','--rm','--pull=never','--network',network,
+        '--mount','type=bind,src='+str(output)+',dst=/kit,readonly',
+        '--mount','type=bind,src='+str(kubeconfig)+',dst=/kubeconfig,readonly',
+        '-e','KUBECONFIG=/kubeconfig','--entrypoint','/usr/local/bin/'+tool,
+        manifest['roles']['runner'],*args,capture=capture,timeout=480)
+  File "<checkout>/scripts/offline-kit.py", line 22, in run
+    result = subprocess.run(args, cwd=cwd, timeout=timeout, check=True, text=True,
+                            stdout=subprocess.PIPE if capture else None, env=env)
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '('docker', 'run', '--rm', '--pull=never', '--network', 'reliefgrid-offline-routed-net', '--mount', 'type=bind,src=<local-artifacts>/reliefgrid-offline-kit-20261107-routed,dst=/kit,readonly', '--mount', 'type=bind,src=/tmp/reliefgrid-offline-install-nccr4g9b/internal-config,dst=/kubeconfig,readonly', '-e', 'KUBECONFIG=/kubeconfig', '--entrypoint', '/usr/local/bin/helm', 'reliefgrid-offline/runner:offline-ebeadd0f9e9f', 'install', 'reliefgrid', '/kit/charts/reliefgrid-0.1.0.tgz', '-n', 'reliefgrid', '--create-namespace', '-f', '/kit/values/app.json', '--wait', '--wait-for-jobs', '--timeout', '6m')' returned non-zero exit status 1.

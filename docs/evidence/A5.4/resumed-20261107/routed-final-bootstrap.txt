@@ -1,0 +1,12 @@
+time=2026-11-07T13:56:05.026Z level=INFO msg="shard-0: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-11-07T13:56:07.044Z level=INFO msg="shard-0: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-0-0/771ed645-66d2-4d8c-8585-0b66e177e8ba, 3 of 3 caught up, commit index 2, committed configuration 3 of 3 voters at 1"
+time=2026-11-07T13:56:07.053Z level=INFO msg="shard-1: waiting" phase=PENDING reason="1 of 3 peers reachable"
+time=2026-11-07T13:56:08.061Z level=INFO msg="shard-1: waiting" phase=PENDING reason="2 of 3 peers reachable"
+time=2026-11-07T13:56:09.075Z level=INFO msg="shard-1: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-1-0/8a1078dd-7d4f-4056-bc86-d7e84f7b2121 storage-shard-1-1/2fe6dbab-429f-4d65-a01b-55282d50fa2b storage-shard-1-2/ccbe71c2-b03d-4cad-97d1-5ee5f19953e2]"
+time=2026-11-07T13:56:09.082Z level=INFO msg="shard-1: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-1-0 voters=3
+time=2026-11-07T13:56:09.086Z level=INFO msg="shard-1: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-11-07T13:56:11.102Z level=INFO msg="shard-1: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-1-0/8a1078dd-7d4f-4056-bc86-d7e84f7b2121, 3 of 3 caught up, commit index 2, committed configuration 3 of 3 voters at 1"
+time=2026-11-07T13:56:11.117Z level=INFO msg="shard-2: recorded voters" phase=BOOTSTRAPPING peerIds="[storage-shard-2-0/f51a9d4d-ee7f-4292-a9ab-10a03480d1c3 storage-shard-2-1/d7418ee4-5611-4655-b695-54b9aefe6e2e storage-shard-2-2/17b2ca07-3b09-4706-ba5c-1e0e1d343cce]"
+time=2026-11-07T13:56:11.124Z level=INFO msg="shard-2: bootstrapped" phase=BOOTSTRAPPING pod=storage-shard-2-0 voters=3
+time=2026-11-07T13:56:11.128Z level=INFO msg="shard-2: waiting for the initialization fence" phase=BOOTSTRAPPING reason="no majority agrees on a caught-up leader"
+time=2026-11-07T13:56:13.144Z level=INFO msg="shard-2: bootstrapped and fenced" phase=BOOTSTRAPPED fence="leader storage-shard-2-0/f51a9d4d-ee7f-4292-a9ab-10a03480d1c3, 3 of 3 caught up, commit index 2, committed configuration 3 of 3 voters at 1"
