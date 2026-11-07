@@ -104,7 +104,7 @@ def check_cluster_name(name):
 
 
 def inspect(image):
-    return json.loads(run('docker', 'image', 'inspect', image, capture=True))[0]
+    return json.loads(run('docker', 'image', 'inspect', '--platform=linux/amd64', image, capture=True))[0]
 
 
 def pin(name):

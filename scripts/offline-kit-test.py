@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec=importlib.util.spec_from_file_location('offline_kit',Path(__file__).with_name('offline-kit.py'))
 module=importlib.util.module_from_spec(spec)
@@ -68,6 +69,13 @@ class OfflineKitTest(unittest.TestCase):
    write(True);validate(archive)
    write(False)
    with self.assertRaises(ValueError):validate(archive)
+
+
+
+ def test_image_identity_is_inspected_for_the_exported_platform(self):
+  with patch.object(module,'run',return_value='[{}]') as command:
+   module.inspect('example:tag')
+  self.assertIn('--platform=linux/amd64',command.call_args.args)
 
 
 
