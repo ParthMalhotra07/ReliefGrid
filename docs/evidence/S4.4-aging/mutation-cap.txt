@@ -1,0 +1,6 @@
+--- FAIL: TestAgeRequestThresholdsAndCap (0.00s)
+    --- FAIL: TestAgeRequestThresholdsAndCap/far_future (0.00s)
+        aging_test.go:103: age: outcome = INVALID (aging requires one matching effective-priority wake event), want OK
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	0.007s
+FAIL

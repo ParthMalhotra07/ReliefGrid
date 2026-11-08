@@ -1,0 +1,4 @@
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	2.336s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	1.106s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	1.062s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	1.035s
