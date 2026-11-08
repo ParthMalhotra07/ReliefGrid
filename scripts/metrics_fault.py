@@ -164,7 +164,7 @@ class Traffic:
                 time.sleep(.05)
             self.pending.pop(operation);persist();proof['resolvedIntents']+=1
         def owned_rows():
-            cursor='';rows=[]
+            cursor='';rows=[];expected={0,1,2}
             for _ in range(64):
                 query=dict(kind='kv',limit=1000,ringVersion=self.ring,consistency='strong')
                 if cursor:query['cursor']=cursor
@@ -173,10 +173,14 @@ class Traffic:
                 assert page.get('partial') is False and page.get('failedShards',[])==[], 'incomplete scratch recovery scan'
                 assert page.get('consistency') in ('strong','linearizable') and page.get('ringVersion')==self.ring, 'weak or wrong-ring recovery read'
                 positions=page.get('positions',[]);answered={position['shard'] for position in positions}
-                assert positions and len(positions)==len(answered) and answered <= {0,1,2}, 'invalid answered shards'
-                if not cursor: assert answered=={0,1,2}, 'initial recovery scan did not cover all shards'
+                # Compare with the set fixed BEFORE this request. The coordinator
+                # retains exactly hasMore shards after a complete page; exhausted
+                # shards are not requested again (contracts/internal.yaml, scan).
+                assert positions and len(positions)==len(answered) and answered==expected, 'incomplete or invalid answered shards'
                 rows.extend(row for row in page['records'] if row['key'].startswith(self.prefix+':') and not row.get('deleted'))
                 cursor=page.get('nextCursor','')
+                expected={position['shard'] for position in positions if position.get('hasMore',False)}
+                assert bool(cursor)==bool(expected), 'incomplete recovery continuation'
                 if not cursor:return rows
             raise AssertionError('scratch recovery scan did not finish')
         rows=owned_rows();assert len(rows)<=128
