@@ -1,7 +1,7 @@
 # Application priority aging (A4.4)
 
-Requires storage seam #150 on every replica before enabling a producer. The app
-chart defaults `app.agingInterval` to `0s` (disabled). After the storage rollout,
+Requires #150-capable code on the coordinator and all nine storage replicas before enabling a producer. The app
+chart defaults `app.agingInterval` to `0s` (disabled). After that complete rollout and policy agreement,
 set `app.agingInterval=1m` for a one-minute interval, or choose another positive
 duration of at least1ms. The matcher receives AGING_INTERVAL; zero disables it.
 This is explicit operator policy, not a hard-coded course-plan interval.

@@ -206,8 +206,12 @@ func TestAgingCancellationWinsAfterProposal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	done := make(chan error, 1)
-	go func() { _, err := m.Age(ctx, id("aging-request"), time.Minute); done <- err }()
+	type answer struct {
+		record store.Record
+		err    error
+	}
+	done := make(chan answer, 1)
+	go func() { record, err := m.Age(ctx, id("aging-request"), time.Minute); done <- answer{record, err} }()
 	var cmd store.AgeRequest
 	select {
 	case cmd = <-barrier.entered:
@@ -218,9 +222,12 @@ func TestAgingCancellationWinsAfterProposal(t *testing.T) {
 	must(t, result, err)
 	close(barrier.release)
 	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatal(err)
+	case got := <-done:
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		if got.record.Request == nil || got.record.Request.Status != store.RequestCancelled || got.record.Version != 3 {
+			t.Fatalf("Age must return authoritative CANCELLED/v3 after VERSION_CONFLICT, got %+v", got.record)
 		}
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
@@ -234,5 +241,44 @@ func TestAgingCancellationWinsAfterProposal(t *testing.T) {
 		if err != nil || len(rows) != 0 {
 			t.Fatal("rejected aging emitted wake", err)
 		}
+	}
+}
+
+type historicalAgeResult struct {
+	store.Store
+	t      *testing.T
+	replay store.Result
+}
+
+func (s *historicalAgeResult) AgeRequest(ctx context.Context, c store.AgeRequest) (store.Result, error) {
+	first, err := s.Store.AgeRequest(ctx, c)
+	must(s.t, first, err)
+	cancelled, err := s.TransitionRequest(ctx, store.TransitionRequest{Meta: store.Meta{OperationID: id("cancel-after-historical-age"), At: c.At + 1}, Key: c.Key, ExpectedVersion: first.Version, ExpectedStatus: store.RequestWaiting, To: store.RequestCancelled})
+	must(s.t, cancelled, err)
+	// A lost successful reply can be retried after cancellation has committed.
+	s.replay, err = s.Store.AgeRequest(ctx, c)
+	return s.replay, err
+}
+func TestAgingHistoricalOKReturnsCurrentCancelledVersion(t *testing.T) {
+	ctx, raw, _ := fixture(t)
+	key := agedWaiting(t, ctx, raw, now.Add(-time.Minute))
+	wrapped := &historicalAgeResult{Store: raw, t: t}
+	m, err := workflow.New(workflow.Config{Store: wrapped, ScanLimit: 2, Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := m.Age(ctx, id("aging-request"), time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wrapped.replay.Outcome != store.OutcomeOK || !wrapped.replay.Replayed || wrapped.replay.Version != 3 {
+		t.Fatalf("historical OK/v3 not exercised: %+v", wrapped.replay)
+	}
+	if got.Key != key || got.Request == nil || got.Request.Status != store.RequestCancelled || got.Version != 4 {
+		t.Fatalf("Age must return authoritative CANCELLED/v4 after historical OK/v3, got %+v", got)
+	}
+	current := read(t, ctx, raw, key)
+	if current.Version != got.Version || current.Request.Status != got.Request.Status {
+		t.Fatal("returned record differs from current committed state")
 	}
 }

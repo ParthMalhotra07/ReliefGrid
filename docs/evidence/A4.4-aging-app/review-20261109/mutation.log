@@ -1,0 +1,7 @@
+--- FAIL: TestAgingCancellationWinsAfterProposal (0.10s)
+    aging_test.go:230: Age must return authoritative CANCELLED/v3 after VERSION_CONFLICT, got {Key:req:121afa4c-24ec-505a-90ff-b1ba71af8769 Kind:request Version:2 Deleted:false Request:0xc000320460 Resource:<nil> Value:null UpdatedAt:1793534340001}
+--- FAIL: TestAgingHistoricalOKReturnsCurrentCancelledVersion (0.10s)
+    aging_test.go:278: Age must return authoritative CANCELLED/v4 after historical OK/v3, got {Key:req:121afa4c-24ec-505a-90ff-b1ba71af8769 Kind:request Version:2 Deleted:false Request:0xc00038a2a0 Resource:<nil> Value:null UpdatedAt:1793534340001}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	0.230s
+FAIL

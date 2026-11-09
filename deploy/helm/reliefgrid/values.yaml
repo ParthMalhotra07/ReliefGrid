@@ -35,7 +35,7 @@ storage:
   enabled: false
 
 app:
-  # Enable only after every storage replica supports AgeRequest.
+  # Enable only after the coordinator and all nine storage replicas support AgeRequest.
   agingInterval: "0s"
   enabled: false
   metrics:
