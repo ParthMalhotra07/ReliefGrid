@@ -1,9 +1,55 @@
-# A4.3 latest acceptance — PASS
+# A4.3 historical evidence — recorded images, with verification limits
 
-Latest retained round: 20261107T131600Z. 637 real request lifecycles, matcher Ready 1→8→1, API Ready 2→6→2, no bulk matcher downscale, zero application restarts during the round, 12 clean pod exits. Exit timestamps are compared with the first observed positive-grace deadline, retained per UID; the final kubelet grace-0 rewrite cannot extend it. A missing first positive-grace observation fails closed.
+Retained round:20261107T131600Z. 637 client workflows passed
+CANCELLED/no-assigned-resource checks; aggregate k6 results are retained, but
+per-request final responses are not. The measured observations show matcher Ready
+1→8→1, API Ready2→6→2, no bulk matcher downscale, zero observed application
+restarts during the round, and12 clean pod exits. Exits use the first observed
+positive-grace deadline; the final grace0 rewrite cannot extend it.
 
-The final audit pauses KEDA, uses the demos' pause-and-drain path and runs strict invcheck. Actual result: ok=true, verdict=clean, quiescent=true, no pending outbox. Workers, KEDA annotation and process environment are restored in finally, including on failure. The normal fixed API2/matcher2 profile was restored after the round.
+The retained strict audit reports ok=true, verdict=clean, quiescent=true and no
+pending outbox. Its KEDA pause/drain runs after measured load and termination
+validation. Regression coverage now runs the actual main orchestration with
+external I/O mocked: audit exactly once after load/scaling/termination checks,
+and never after a failed measured verdict. Early and duplicate-audit mutations
+are rejected. These unit fixtures are not another physical acceptance run.
 
-Red regressions caught late exit accepted under rewritten deadline, wrong deadline retained, missing grace accepted and duplicate k6 definitions. All 15 verifier regressions and five client tests pass. make check, generation and static chart verification passed before the live round. Current-main verification is repeated before push. Runtime uses branch-built api/matcher/tools plus the native broker fix from approved #133; storage PVCs and images were not replaced. Previous rounds and full verbose logs are archived locally; one full round is retained here.
+## Provenance scope
 
-PRE-PR REVIEW: READY for re-review. No contract/S-owned changes, no relaxed thresholds or skipped tests. The invariant audit occurs after measured scaling and cannot contribute to its scale/downscale evidence. This remains scaling/drain acceptance rather than a throughput benchmark or A4.2 verification.
+Acceptance is limited to image identities observed in the retained pod watch:
+[extracted identities](review-20261109/recorded-image-identity.json). Both API and
+matcher were tagged a43-review-nov7; older top-level runtime manifests describe
+other images and are not provenance for this latest round. source.json records
+a dirty revision. Existing build/restore logs were inspected, but no sufficient
+immutable mapping from the latest observed image identities to the exact source
+tree and broker/chart overlays was recovered. The latest deployed tools image ID
+is not established. These limitations do not establish a runtime mismatch.
+
+The original manifest is retained unchanged. Its four differences against reviewed
+head7264d3c are [recorded separately](review-20261109/historical-manifest-differences.json):
+
+- Makefile: independent ci-schedules target; tooling only.
+- tools.mk: identical k6 version/checksum moved to their canonical location;
+  equivalent tooling metadata.
+- scripts/verify-A4.3-test.py: deadline/pin/audit regressions; test/evidence only.
+- scripts/verify-A4.3.py: KEDA pause, drain, strict audit and restoration changes;
+  acceptance orchestration with runtime effects. Do not treat this difference
+  as proof that the measured run executed the current reviewed script.
+
+Current branch check/gen/static results validate the reviewed source separately;
+they do not retroactively supply a build-to-source map for the historical run.
+
+## Restoration scope
+
+The last measured state is API2/matcher1 under autoscaling. Audit cleanup restores
+saved workers and removes its pause annotation. A retained
+[Helm restore log](review-20261109/existing-restore-command.log) reports deployed
+revision22 after a command selecting the fixed profile with --wait;
+[command intent](review-20261109/existing-restore-command.txt) is retained too.
+Neither contains a final Deployment/HPA/ScaledObject replica snapshot. Final fixed
+API2/matcher2 restoration is therefore **unverified** by the retained artifacts.
+No present-cluster observation is substituted for that missing historical proof.
+
+This is historical scaling/drain evidence, with aggregate workflow checks. It
+does not certify throughput, per-request terminal responses or the present
+cluster. No new physical kind run was required for these review corrections.

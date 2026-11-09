@@ -153,5 +153,99 @@ class ScalingEvidenceTest(unittest.TestCase):
 
 
 
+
+class OrchestrationOrderTest(unittest.TestCase):
+    def exercise(self, failure=None):
+        """Run actual main; fake only external I/O, measured verdicts and time waits."""
+        import base64
+        trace=[]
+        state=SimpleNamespace(polls=0,resources=0)
+        class Process:
+            def __init__(self, command, **kwargs):
+                self.load='run' in command
+                if self.load:
+                    trace.append('load-start')
+                    for i in range(32):
+                        for prefix,value in [('A43_CREATED ',dict(requestId='R'+str(i),initialVersion='v1')),
+                                             ('A43_HANDOFF ',dict(requestId='R'+str(i),version='v2',status='MATCHED',reciprocalVerified=True))]:
+                            kwargs['stdout'].write(json.dumps(dict(msg=prefix+json.dumps(value)))+'\n')
+                    kwargs['stdout'].flush()
+                else:
+                    kwargs['stdout'].write('Forwarding from 127.0.0.1:12345 -> 80\n')
+                    kwargs['stdout'].flush()
+            def poll(self):
+                if not self.load:return None
+                state.polls+=1
+                return None if state.polls==1 else 0
+            def wait(self, **kwargs):
+                if self.load:trace.append('load-finished')
+                return 0
+            def terminate(self):pass
+        class Watch:
+            def __init__(self,*args):pass
+            def start(self):pass
+            def stop(self):trace.append('watch-stop')
+            def finish(self,uids):
+                trace.append('termination-checks')
+                delta=500 if failure=='termination' else 100
+                at=(module.dt.datetime.now(module.dt.timezone.utc)+module.dt.timedelta(seconds=delta)).isoformat()
+                return [dict(component=c,exits=[dict(finishedAt=at)]) for c in ('api','matcher')]
+        def command(args,**kwargs):
+            if args[0]=='git':return 'synthetic-test-head' if 'rev-parse' in args else ''
+            if args[0]=='make':return 'v2.3.0'
+            if 'secret' in args:return json.dumps(dict(data={'amqp-url':base64.b64encode(b'amqp://test:test@broker/').decode()}))
+            if 'scaledobject' in args:return json.dumps(dict(metadata=dict(uid='scaled')))
+            if 'hpa' in args:return json.dumps(dict(items=[dict(spec=dict(scaleTargetRef=dict(name='reliefgrid-'+c)),metadata=dict(ownerReferences=[dict(uid='scaled',controller=True)])) for c in ('api','matcher')]))
+            if 'deploy' in args:
+                up=state.polls==1
+                return json.dumps(dict(items=[dict(metadata=dict(name='reliefgrid-'+c),spec=dict(replicas=n),status=dict(readyReplicas=n)) for c,n in [('api',3 if up else 2),('matcher',3 if up else 1)]]))
+            if 'pods' in args:return json.dumps(dict(items=[dict(metadata=dict(uid=c),status=dict(containerStatuses=[dict(restartCount=0)])) for c in ('api','matcher')]))
+            raise AssertionError('unexpected external command '+repr(args))
+        class Response(io.StringIO):
+            def __enter__(self):return self
+            def __exit__(self,*args):self.close()
+        def urlopen(request,**kwargs):
+            path=request.full_url
+            if '/api/queues/' in path:
+                result=dict(messages_ready=5 if 'matching.requests' in path and state.polls==1 else 0,messages_unacknowledged=0)
+            elif '?' in path:result=dict(items=[],partial=False,failedShards=[],positions=[dict(shard=i,hasMore=False) for i in range(3)])
+            elif '/resources' in path and request.method=='POST':
+                state.resources+=1;result=dict(resourceId='Res'+str(state.resources))
+            elif '/resources/' in path:result=dict(status='OFFLINE',activeClaim=None)
+            elif request.method=='POST':result=dict(requestId='read-fixture')
+            else:result=dict(status='CANCELLED',assignedResourceId=None)
+            return Response(json.dumps(result))
+        def verdict(samples):
+            trace.append('scaling-verdict')
+            if failure=='scaling':raise AssertionError('invalid measured round')
+        def audit(*args):
+            trace.append('audit')
+            self.assertIn('load-finished',trace[:-1], 'audit ran before load completed')
+            self.assertIn('scaling-verdict',trace[:-1], 'audit ran before measured scaling verdict')
+            self.assertIn('termination-checks',trace[:-1], 'audit ran before termination checks')
+            return dict(ok=True,verdict='clean',report=dict(quiescent=True))
+        with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
+            stack.enter_context(patch.dict(os.environ,{'A43_EVIDENCE_DIR':str(Path(directory)/'run')}))
+            for name,value in [('subprocess.check_output',command),('subprocess.Popen',Process),('urllib.request.urlopen',urlopen),
+                               ('time.sleep',lambda _:None),('os.chdir',lambda _:None),('PodWatch',Watch),
+                               ('acceptance',verdict),('no_mid_load_downscale',lambda _:None),('post_round_audit',audit)]:
+                stack.enter_context(patch.object(module,name,value) if '.' not in name else patch(name,new=value))
+            stack.enter_context(contextlib.redirect_stdout(io.StringIO()))
+            if failure:
+                with self.assertRaises(AssertionError):module.main()
+                self.assertNotIn('audit',trace,'audit ran before a failed measured verdict')
+            else:
+                module.main()
+                self.assertEqual(trace.count('audit'),1)
+                for prerequisite in ('load-finished','scaling-verdict','termination-checks'):
+                    self.assertLess(trace.index(prerequisite),trace.index('audit'))
+        return trace
+    def test_audit_once_after_load_and_measured_termination_checks(self):
+        self.exercise()
+    def test_invalid_measured_round_cannot_start_audit(self):
+        self.exercise('scaling')
+    def test_invalid_measured_termination_cannot_start_audit(self):
+        self.exercise('termination')
+
 if __name__ == '__main__':
     unittest.main()
