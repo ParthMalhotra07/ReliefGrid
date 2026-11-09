@@ -383,6 +383,22 @@ type AdminRing struct {
 	TokensPerShard []int `json:"tokensPerShard"`
 }
 
+// AgeRequestBody defines model for AgeRequestBody.
+type AgeRequestBody struct {
+	AgingIntervalMS int64 `json:"agingIntervalMS"`
+
+	// At Proposer-chosen unix ms; identical on every retry
+	At              int64  `json:"at"`
+	ExpectedVersion uint64 `json:"expectedVersion"`
+
+	// OperationId Proposer-chosen; identical on every retry
+	OperationId string        `json:"operationId"`
+	Outbox      []OutboxEvent `json:"outbox"`
+
+	// RingVersion The caller's ringVersion; a mismatch is 409 RING_VERSION_MISMATCH
+	RingVersion uint64 `json:"ringVersion"`
+}
+
 // Attempt A request's recorded intent; immutable once recorded
 type Attempt = store.Attempt
 
@@ -1187,6 +1203,9 @@ type RegisterNodeJSONRequestBody = NodeRegistration
 
 // MarkOutboxPublishedJSONRequestBody defines body for MarkOutboxPublished for application/json ContentType.
 type MarkOutboxPublishedJSONRequestBody = MarkPublishedBody
+
+// AgeRequestJSONRequestBody defines body for AgeRequest for application/json ContentType.
+type AgeRequestJSONRequestBody = AgeRequestBody
 
 // RetryWorkflowJSONRequestBody defines body for RetryWorkflow for application/json ContentType.
 type RetryWorkflowJSONRequestBody = RetryWorkflowBody

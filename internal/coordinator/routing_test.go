@@ -57,6 +57,7 @@ func routedCalls(t *testing.T, h *harness, shard int) []routed {
 		{"pending outbox", "GET /internal/outbox", call{method: http.MethodGet, path: fmt.Sprintf("/internal/outbox?shard=%d&limit=10&wait=1", shard)}, shard, false},
 		{"mark published", "POST /internal/outbox/published", call{method: http.MethodPost, path: fmt.Sprintf("/internal/outbox/published?shard=%d", shard), body: body(`,"eventIds":["ev-1"]`)}, shard, true},
 		{"operation", "GET /internal/operations/{operationId}", call{method: http.MethodGet, path: "/internal/operations/op-1?key=" + q(kv)}, shard, false},
+		{"age request", "POST /internal/requests/{id}/age", call{method: http.MethodPost, path: "/internal/requests/" + esc(req) + "/age", body: body(`,"expectedVersion":1,"agingIntervalMS":1000,"outbox":[]`)}, shard, true},
 	}
 }
 

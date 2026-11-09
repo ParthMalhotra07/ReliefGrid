@@ -278,7 +278,7 @@ func TestMetricsLabelsBounded(t *testing.T) {
 	allowed := map[string][]string{
 		"shard":       {"1"},
 		"node":        {testPod},
-		"command":     {"CreateEntity", "CompareAndSet", "TransitionRequest", "RetryWorkflow", "TransitionResource", "TryClaim", "CloseAttempt", "MarkOutboxPublished"},
+		"command":     {"CreateEntity", "CompareAndSet", "TransitionRequest", "RetryWorkflow", "AgeRequest", "TransitionResource", "TryClaim", "CloseAttempt", "MarkOutboxPublished"},
 		"outcome":     {"ok", "error"},
 		"consistency": {"strong", "linearizable", "stale"},
 		"to":          {"leader", "candidate", "follower"},
@@ -300,8 +300,8 @@ func TestMetricsLabelsBounded(t *testing.T) {
 			}
 		}
 	}
-	if f := family(t, s, "storage_command_latency_seconds"); f == nil || len(f.GetMetric()) != 16 {
-		t.Errorf("storage_command_latency_seconds: want all 8 commands x 2 outcomes pre-declared, got %v", f)
+	if f := family(t, s, "storage_command_latency_seconds"); f == nil || len(f.GetMetric()) != 18 {
+		t.Errorf("storage_command_latency_seconds: want all 9 commands x 2 outcomes pre-declared, got %v", f)
 	}
 	if f := family(t, s, "storage_read_latency_seconds"); f == nil || len(f.GetMetric()) != 3 {
 		t.Errorf("storage_read_latency_seconds: want 3 consistencies pre-declared")
