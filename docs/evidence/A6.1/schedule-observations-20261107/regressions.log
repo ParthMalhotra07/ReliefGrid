@@ -1,0 +1,107 @@
+=== RUN   TestScheduleOutboxRejectsHollowEvidence
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/missing-row
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/duplicate-row
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/changed-payload
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-version
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-timestamp
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-operation
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/missing-command-event
+--- PASS: TestScheduleOutboxRejectsHollowEvidence (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/missing-row (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/duplicate-row (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/changed-payload (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-version (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-timestamp (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-operation (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/missing-command-event (0.00s)
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/absent
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-request
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-fingerprint
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-attempt
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-time
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-disposition
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-reason
+--- PASS: TestSCH04ClosureRejectsMissingOrForeignFence (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/absent (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-request (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-fingerprint (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-attempt (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-time (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-disposition (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-reason (0.00s)
+=== RUN   TestScheduleOutboxDetectsCommittedEventOmission
+    observations_test.go:195: real FSM final fixture passed; durable event omission was rejected
+--- PASS: TestScheduleOutboxDetectsCommittedEventOmission (0.06s)
+=== RUN   TestScheduleOutboxRejectsHollowEvidence
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/missing-row
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/duplicate-row
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/changed-payload
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-version
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-timestamp
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-operation
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/missing-command-event
+--- PASS: TestScheduleOutboxRejectsHollowEvidence (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/missing-row (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/duplicate-row (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/changed-payload (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-version (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-timestamp (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-operation (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/missing-command-event (0.00s)
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/absent
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-request
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-fingerprint
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-attempt
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-time
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-disposition
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-reason
+--- PASS: TestSCH04ClosureRejectsMissingOrForeignFence (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/absent (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-request (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-fingerprint (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-attempt (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-time (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-disposition (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-reason (0.00s)
+=== RUN   TestScheduleOutboxDetectsCommittedEventOmission
+    observations_test.go:195: real FSM final fixture passed; durable event omission was rejected
+--- PASS: TestScheduleOutboxDetectsCommittedEventOmission (0.06s)
+=== RUN   TestScheduleOutboxRejectsHollowEvidence
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/missing-row
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/duplicate-row
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/changed-payload
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-version
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-timestamp
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/wrong-operation
+=== RUN   TestScheduleOutboxRejectsHollowEvidence/missing-command-event
+--- PASS: TestScheduleOutboxRejectsHollowEvidence (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/missing-row (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/duplicate-row (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/changed-payload (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-version (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-timestamp (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/wrong-operation (0.00s)
+    --- PASS: TestScheduleOutboxRejectsHollowEvidence/missing-command-event (0.00s)
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/absent
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-request
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-fingerprint
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/foreign-attempt
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-time
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-disposition
+=== RUN   TestSCH04ClosureRejectsMissingOrForeignFence/wrong-reason
+--- PASS: TestSCH04ClosureRejectsMissingOrForeignFence (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/absent (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-request (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-fingerprint (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-attempt (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-time (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-disposition (0.00s)
+    --- PASS: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-reason (0.00s)
+=== RUN   TestScheduleOutboxDetectsCommittedEventOmission
+    observations_test.go:195: real FSM final fixture passed; durable event omission was rejected
+--- PASS: TestScheduleOutboxDetectsCommittedEventOmission (0.06s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	1.250s

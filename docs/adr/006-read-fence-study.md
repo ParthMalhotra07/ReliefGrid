@@ -5,6 +5,8 @@ this study in #152; S reviewed commit `1ea60a9` and confirmed joint selection
 and the raw-evidence medians/ratios. This decision selects the single M6 study;
 it does not declare the enhanced gate complete or change authentication scope.
 The read-fence implementation itself was already merged in PR #71.
+Hrishabh (S) built the fence implementation and benchmark as S4.1; this
+A-side PR packages that existing study, decision record and replay as M6.
 
 ## Context and decision
 
@@ -18,6 +20,8 @@ that the optimization or a new consensus algorithm was invented here.
 
 Compare a committed log barrier (`ReadStrong`) with the quorum/term/FSM-gated
 linearizable read (`ReadLinearizable`) on the same three-node loopback cluster.
+All three replicas run inside one Go test process and communicate over
+`127.0.0.1`; they are not three separate processes or hosts.
 Both must retain the strong-read contract. A faster stale read is not an
 acceptable alternative. The fence is guarded by a current-term committed
 entry, a captured read index, fresh quorum acceptance, same-term checks and an

@@ -12,3 +12,7 @@ neither source pin nor safety runtime establishes the benchmark runtime.
 Original raw records are unchanged. Current check/generation/summary replay
 outputs accompany this clarification. Earlier red/proposed evidence remains
 historical. Independent exact-head review is required before push.
+
+Owner review also requested explicit single-process loopback topology and
+attribution: S built the S4.1 implementation/benchmark; this PR packages M6.
+These statements are now in ADR006. No measurements were changed.

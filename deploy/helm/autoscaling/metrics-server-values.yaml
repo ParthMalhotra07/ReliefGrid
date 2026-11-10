@@ -1,0 +1,9 @@
+# The upstream chart3.14.0 defaults to0.9.0; explicitly pin the0.9.1 security rebuild.
+image:
+  tag: v0.9.1@sha256:4dbfba731a021437b4cab5ba2092569edbd898030c27d10c6ec85e03b63789f6
+args: [--kubelet-insecure-tls] # local kind kubelet certificates only
+nodeSelector: {role: infra}
+tolerations: [{key: role, operator: Equal, value: infra, effect: NoSchedule}]
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits: {cpu: "1", memory: 256Mi}

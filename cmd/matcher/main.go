@@ -46,6 +46,14 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress, metricsAdd
 	if coordinatorURL == "" || amqpURL == "" {
 		return fmt.Errorf("COORDINATOR_URL and AMQP_URL are required")
 	}
+	aging := time.Duration(0)
+	if value := os.Getenv("AGING_INTERVAL"); value != "" {
+		var parseErr error
+		aging, parseErr = time.ParseDuration(value)
+		if parseErr != nil || aging < 0 || (aging > 0 && aging < time.Millisecond) {
+			return fmt.Errorf("invalid AGING_INTERVAL: expected zero or duration at least 1ms")
+		}
+	}
 	s, err := coordclient.New(ctx, coordinatorURL)
 	if err != nil {
 		return fmt.Errorf("matcher coordinator: %w", err)
@@ -75,7 +83,7 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress, metricsAdd
 	}
 	transportRetry := mq.TransportRetry{PublisherFactory: func(ctx context.Context) (mq.RetryPublisher, error) { return mq.NewPublisher(ctx, amqpURL) }}
 	c := mq.Consumer{Store: backend, Handle: func(ctx context.Context, rec store.Record) error { return m.Handle(ctx, rec.Request.ID) }, Retry: transportRetry.Retry}
-	recovery, err := reconcile.New(reconcile.Config{Store: backend, Matcher: m})
+	recovery, err := reconcile.New(reconcile.Config{Store: backend, Matcher: m, AgingInterval: aging})
 	if err != nil {
 		return err
 	}
