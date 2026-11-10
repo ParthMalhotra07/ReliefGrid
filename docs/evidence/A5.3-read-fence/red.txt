@@ -1,0 +1,1 @@
+M6 STUDY VERIFY FAIL: missing M6 proposal: docs/adr/006-read-fence-study.md
