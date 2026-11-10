@@ -36,6 +36,8 @@ storage:
 
 app:
   enabled: false
+  metrics:
+    enabled: true
   coordinatorURL: http://storage-coordinator:8080
   callerNamespace: local-dispatcher
   # S4.4: off by default. `make tracing-up` installs deploy/helm/tracing and

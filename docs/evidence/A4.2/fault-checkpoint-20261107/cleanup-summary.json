@@ -1,0 +1,6 @@
+{
+  "result": "CLEAN",
+  "resolvedOriginalOperations": 26,
+  "casDeletedRemainingKeys": 4,
+  "completeStrongScanFoundLiveOwnedKeys": 0
+}

@@ -20,6 +20,7 @@ const (
 	OpCompareAndSet       Op = "CompareAndSet"
 	OpTransitionRequest   Op = "TransitionRequest"
 	OpRetryWorkflow       Op = "RetryWorkflow"
+	OpAgeRequest          Op = "AgeRequest"
 	OpTransitionResource  Op = "TransitionResource"
 	OpTryClaim            Op = "TryClaim"
 	OpCloseAttempt        Op = "CloseAttempt"
@@ -62,6 +63,8 @@ func OpOf(body any) (Op, error) {
 		return OpCompareAndSet, nil
 	case store.TransitionRequest, *store.TransitionRequest:
 		return OpTransitionRequest, nil
+	case store.AgeRequest, *store.AgeRequest:
+		return OpAgeRequest, nil
 	case store.RetryWorkflow, *store.RetryWorkflow:
 		return OpRetryWorkflow, nil
 	case store.TransitionResource, *store.TransitionResource:
@@ -97,6 +100,9 @@ func decode(entry []byte) (command, error) {
 		c.body, meta = v, &v.Meta
 	case OpTransitionRequest:
 		v := &store.TransitionRequest{}
+		c.body, meta = v, &v.Meta
+	case OpAgeRequest:
+		v := &store.AgeRequest{}
 		c.body, meta = v, &v.Meta
 	case OpRetryWorkflow:
 		v := &store.RetryWorkflow{}
@@ -148,6 +154,8 @@ func outboxOf(body any) *[]store.OutboxEvent {
 	case *store.CreateEntity:
 		return &c.Outbox
 	case *store.TransitionRequest:
+		return &c.Outbox
+	case *store.AgeRequest:
 		return &c.Outbox
 	case *store.RetryWorkflow:
 		return &c.Outbox

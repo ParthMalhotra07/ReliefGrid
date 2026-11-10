@@ -1087,7 +1087,7 @@ func TestScanIsBoundedAndRingFenced(t *testing.T) {
 func TestVersionConflictStatusByRoute(t *testing.T) {
 	doc := loadSpec(t)
 	generic := []string{"CreateEntity", "CompareAndSet"}
-	domain := []string{"TransitionRequest", "RetryWorkflow", "TransitionResource"}
+	domain := []string{"TransitionRequest", "RetryWorkflow", "AgeRequest", "TransitionResource"}
 	found := map[string]bool{}
 	for _, r := range routes(doc) {
 		methods := storeMethods(r.op)

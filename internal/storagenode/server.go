@@ -80,6 +80,7 @@ func (s *server) dataRoutes() http.Handler {
 	mux.HandleFunc("GET /internal/scan", s.scan)
 	mux.HandleFunc("POST /internal/requests/{id}/transition", s.transitionRequest)
 	mux.HandleFunc("POST /internal/requests/{id}/retry", s.retryWorkflow)
+	mux.HandleFunc("POST /internal/requests/{id}/age", s.ageRequest)
 	mux.HandleFunc("POST /internal/resources/{id}/transition", s.transitionResource)
 	mux.HandleFunc("POST /internal/resources/{id}/claim", s.tryClaim)
 	mux.HandleFunc("POST /internal/resources/{id}/close-attempt", s.closeAttempt)

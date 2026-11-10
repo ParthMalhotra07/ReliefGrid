@@ -1,0 +1,389 @@
+[
+  {
+    "podName": "storage-shard-0-0",
+    "incarnation": "49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+    "groupId": "shard-0",
+    "shard": 0,
+    "serverId": "storage-shard-0-0/49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+    "address": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+    "state": "Leader",
+    "term": 16,
+    "leaderId": "storage-shard-0-0/49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+    "leaderAddr": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 700922,
+    "lastLogIndex": 700922,
+    "raftAppliedIndex": 700922,
+    "appliedIndex": 700876,
+    "restoredIndex": 576990,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 700922,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-0-0/49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+          "address": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-0-1/fbe8e6cf-d891-403a-a534-fed68c4f0816",
+          "address": "storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-0-2/ab758629-45ce-4f12-9b0c-7d6d3acc0057",
+          "address": "storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-0-1",
+    "incarnation": "fbe8e6cf-d891-403a-a534-fed68c4f0816",
+    "groupId": "shard-0",
+    "shard": 0,
+    "serverId": "storage-shard-0-1/fbe8e6cf-d891-403a-a534-fed68c4f0816",
+    "address": "storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+    "state": "Follower",
+    "term": 16,
+    "leaderId": "storage-shard-0-0/49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+    "leaderAddr": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 700922,
+    "lastLogIndex": 700922,
+    "raftAppliedIndex": 700922,
+    "appliedIndex": 700876,
+    "restoredIndex": 700876,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 700922,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-0-0/49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+          "address": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-0-1/fbe8e6cf-d891-403a-a534-fed68c4f0816",
+          "address": "storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-0-2/ab758629-45ce-4f12-9b0c-7d6d3acc0057",
+          "address": "storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-0-2",
+    "incarnation": "ab758629-45ce-4f12-9b0c-7d6d3acc0057",
+    "groupId": "shard-0",
+    "shard": 0,
+    "serverId": "storage-shard-0-2/ab758629-45ce-4f12-9b0c-7d6d3acc0057",
+    "address": "storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+    "state": "Follower",
+    "term": 16,
+    "leaderId": "storage-shard-0-0/49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+    "leaderAddr": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 700922,
+    "lastLogIndex": 700922,
+    "raftAppliedIndex": 700922,
+    "appliedIndex": 700876,
+    "restoredIndex": 576990,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 700922,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-0-0/49dbdf4b-c578-4bb0-9cbe-0771e1c3c95e",
+          "address": "storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-0-1/fbe8e6cf-d891-403a-a534-fed68c4f0816",
+          "address": "storage-shard-0-1.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-0-2/ab758629-45ce-4f12-9b0c-7d6d3acc0057",
+          "address": "storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-1-0",
+    "incarnation": "31317759-c116-450a-8b16-0e737a61ceff",
+    "groupId": "shard-1",
+    "shard": 1,
+    "serverId": "storage-shard-1-0/31317759-c116-450a-8b16-0e737a61ceff",
+    "address": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+    "state": "Leader",
+    "term": 11,
+    "leaderId": "storage-shard-1-0/31317759-c116-450a-8b16-0e737a61ceff",
+    "leaderAddr": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 546417,
+    "lastLogIndex": 546417,
+    "raftAppliedIndex": 546417,
+    "appliedIndex": 546366,
+    "restoredIndex": 465308,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 546417,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-1-0/31317759-c116-450a-8b16-0e737a61ceff",
+          "address": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-1-1/68294b1c-4022-419d-bbdd-a3f608cbc80f",
+          "address": "storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-1-2/4181e129-32e8-4fc2-a6c9-0bca9d6da0ef",
+          "address": "storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-1-1",
+    "incarnation": "68294b1c-4022-419d-bbdd-a3f608cbc80f",
+    "groupId": "shard-1",
+    "shard": 1,
+    "serverId": "storage-shard-1-1/68294b1c-4022-419d-bbdd-a3f608cbc80f",
+    "address": "storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+    "state": "Follower",
+    "term": 11,
+    "leaderId": "storage-shard-1-0/31317759-c116-450a-8b16-0e737a61ceff",
+    "leaderAddr": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 546417,
+    "lastLogIndex": 546417,
+    "raftAppliedIndex": 546417,
+    "appliedIndex": 546366,
+    "restoredIndex": 465308,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 546417,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-1-0/31317759-c116-450a-8b16-0e737a61ceff",
+          "address": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-1-1/68294b1c-4022-419d-bbdd-a3f608cbc80f",
+          "address": "storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-1-2/4181e129-32e8-4fc2-a6c9-0bca9d6da0ef",
+          "address": "storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-1-2",
+    "incarnation": "4181e129-32e8-4fc2-a6c9-0bca9d6da0ef",
+    "groupId": "shard-1",
+    "shard": 1,
+    "serverId": "storage-shard-1-2/4181e129-32e8-4fc2-a6c9-0bca9d6da0ef",
+    "address": "storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+    "state": "Follower",
+    "term": 11,
+    "leaderId": "storage-shard-1-0/31317759-c116-450a-8b16-0e737a61ceff",
+    "leaderAddr": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 546419,
+    "lastLogIndex": 546419,
+    "raftAppliedIndex": 546419,
+    "appliedIndex": 546366,
+    "restoredIndex": 465308,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 546419,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-1-0/31317759-c116-450a-8b16-0e737a61ceff",
+          "address": "storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-1-1/68294b1c-4022-419d-bbdd-a3f608cbc80f",
+          "address": "storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-1-2/4181e129-32e8-4fc2-a6c9-0bca9d6da0ef",
+          "address": "storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-2-0",
+    "incarnation": "8b2a409b-5942-4f02-97d6-6155be809b4b",
+    "groupId": "shard-2",
+    "shard": 2,
+    "serverId": "storage-shard-2-0/8b2a409b-5942-4f02-97d6-6155be809b4b",
+    "address": "storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+    "state": "Follower",
+    "term": 8,
+    "leaderId": "storage-shard-2-1/182387e2-4753-4025-a7bc-b89a64516a69",
+    "leaderAddr": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 661441,
+    "lastLogIndex": 661441,
+    "raftAppliedIndex": 661441,
+    "appliedIndex": 661389,
+    "restoredIndex": 570476,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 661441,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-2-0/8b2a409b-5942-4f02-97d6-6155be809b4b",
+          "address": "storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-2-1/182387e2-4753-4025-a7bc-b89a64516a69",
+          "address": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-2-2/8690ad7c-8efe-4e14-b8ed-d0c181bb226a",
+          "address": "storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-2-1",
+    "incarnation": "182387e2-4753-4025-a7bc-b89a64516a69",
+    "groupId": "shard-2",
+    "shard": 2,
+    "serverId": "storage-shard-2-1/182387e2-4753-4025-a7bc-b89a64516a69",
+    "address": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+    "state": "Leader",
+    "term": 8,
+    "leaderId": "storage-shard-2-1/182387e2-4753-4025-a7bc-b89a64516a69",
+    "leaderAddr": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 661441,
+    "lastLogIndex": 661441,
+    "raftAppliedIndex": 661441,
+    "appliedIndex": 661389,
+    "restoredIndex": 570476,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 661441,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-2-0/8b2a409b-5942-4f02-97d6-6155be809b4b",
+          "address": "storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-2-1/182387e2-4753-4025-a7bc-b89a64516a69",
+          "address": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-2-2/8690ad7c-8efe-4e14-b8ed-d0c181bb226a",
+          "address": "storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  },
+  {
+    "podName": "storage-shard-2-2",
+    "incarnation": "8690ad7c-8efe-4e14-b8ed-d0c181bb226a",
+    "groupId": "shard-2",
+    "shard": 2,
+    "serverId": "storage-shard-2-2/8690ad7c-8efe-4e14-b8ed-d0c181bb226a",
+    "address": "storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+    "state": "Follower",
+    "term": 8,
+    "leaderId": "storage-shard-2-1/182387e2-4753-4025-a7bc-b89a64516a69",
+    "leaderAddr": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+    "commitIndex": 661441,
+    "lastLogIndex": 661441,
+    "raftAppliedIndex": 661441,
+    "appliedIndex": 661389,
+    "restoredIndex": 570476,
+    "hasState": true,
+    "caughtUp": true,
+    "ringVersion": 1,
+    "leaderCommitIndex": 661441,
+    "configuration": {
+      "index": 1,
+      "committed": true,
+      "servers": [
+        {
+          "id": "storage-shard-2-0/8b2a409b-5942-4f02-97d6-6155be809b4b",
+          "address": "storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-2-1/182387e2-4753-4025-a7bc-b89a64516a69",
+          "address": "storage-shard-2-1.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        },
+        {
+          "id": "storage-shard-2-2/8690ad7c-8efe-4e14-b8ed-d0c181bb226a",
+          "address": "storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:7000",
+          "suffrage": "Voter"
+        }
+      ]
+    },
+    "admitted": true
+  }
+]

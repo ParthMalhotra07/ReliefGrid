@@ -1,0 +1,41 @@
+..F..FFF
+======================================================================
+FAIL: test_omitted_empty_failed_shards_is_valid (__main__.RecoveryTest.test_omitted_empty_failed_shards_is_valid)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/metrics-recovery-test.py", line 68, in test_omitted_empty_failed_shards_is_valid
+    self.assertFalse(state['live']);self.assertFalse(traffic.pending)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup (__main__.RecoveryTest.test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup) (flags={'weak': True})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/metrics-recovery-test.py", line 64, in test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup
+    self.assertTrue(state['live']);self.assertEqual(state['deletes'],[])
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup (__main__.RecoveryTest.test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup) (flags={'wrong_ring': True})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/metrics-recovery-test.py", line 64, in test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup
+    self.assertTrue(state['live']);self.assertEqual(state['deletes'],[])
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+======================================================================
+FAIL: test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup (__main__.RecoveryTest.test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup) (flags={'incomplete': True})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/metrics-recovery-test.py", line 64, in test_weak_wrong_ring_and_missing_shard_cannot_authorize_cleanup
+    self.assertTrue(state['live']);self.assertEqual(state['deletes'],[])
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: False is not true
+
+----------------------------------------------------------------------
+Ran 6 tests in 4.612s
+
+FAILED (failures=4)
