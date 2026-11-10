@@ -15,6 +15,17 @@ intent until closure and the required disposition are durable. A historical
 deduplicated SUCCESS never proves current ownership. Unknown outcome keeps the
 intent and same operationId; it is not a rejection.
 
+## Supporting storage guarantee
+
+Resource-side TryClaim checks permanent closure, recognizes the same bound claim,
+closes an ineligible/conflicting attempt or commits an eligible claim. CloseAttempt
+can fence a claim that never arrived and releases only its exact active binding.
+These are serial committed SQLite transactions; rejection-and-closure may change
+fence state. The resource FSM cannot inspect another shard's current request,
+so reciprocal cross-shard ownership still depends on the workflow decision above.
+See [claim](../../internal/fsm/apply.go#L544) and
+[closure](../../internal/fsm/apply.go#L601). No cross-shard transaction is implied.
+
 ## Alternatives and cost
 
 An optimistic claim followed by best-effort undo leaves a delayed claim able to

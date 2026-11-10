@@ -2,8 +2,9 @@
 
 ReliefGrid matches emergency requests to geographically suitable resources using
 Raft-backed sharded storage and asynchronous workflows. This report describes the
-implemented core, refreshed against main acc020a. It distinguishes measured evidence from planned
-enhancements; owner review and the instructor's required final report length are
+implemented core, refreshed against main
+`42741b1306ba97013637c826ccb78aced5957b02`. It distinguishes measured evidence
+from planned enhancements; owner review and the instructor's required final report length are
 still pending.
 
 ## Reading order
@@ -21,9 +22,13 @@ still pending.
 
 Parth owns the application, matching workflows, messaging, UI, app chart and
 dashboards. Hrishabh owns storage, coordinator, Raft integration, chaos, tracing
-and CI. This core covers A's report chapters while explaining the actual service
-boundaries. Storage/performance chapters should be reviewed and supplemented by
-Hrishabh with his final measurements; no pending benchmark is invented here.
+and CI. Hrishabh's supplied storage/reliability contribution is integrated across
+architecture,
+consistency/schema, workflow storage boundaries, evidence and deployment chapters.
+Source references were refreshed from his e50685d contribution to integrated
+main 42741b1, while historical evidence keeps its original qualifications. Both
+owners still review the integrated report; #126 measurements and final enhanced
+gate results remain PENDING, with no benchmark invented here.
 
 The problem statement requires **2–3 microservices**, one coordinator, three
 shards, RabbitMQ, Docker and Kubernetes; it does not require 23 microservices.

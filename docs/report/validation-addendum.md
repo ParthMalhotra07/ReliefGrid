@@ -1,8 +1,9 @@
 # Additional engineering validation
 
 These results extend the report core. They do not relabel the historical 18/18
-course gate or certify an unexecuted enhanced gate. The implementation PRs still
-require their owner reviews and merges.
+course gate or certify an unexecuted enhanced gate. Individual implementation
+PRs retain their own review/merge state; #134/#136 are now merged in source baseline 42741b1. Final integrated enhanced-gate
+results remain PENDING.
 
 | Check | Observed result | Immutable evidence |
 |---|---|---|
@@ -37,6 +38,24 @@ deployment of the reviewed source or the present cluster.
 
 These are functional and recovery observations, not throughput or saturation
 benchmarks. The storage/load chapter still needs Hrishabh's final repeated k6
-measurements. The offline kit is not certified until all nine demos pass with
-external access blocked. Three joint presenter rehearsals and the final recording
-and submission receipt remain external deliverables.
+measurements. The [retained offline reports](https://github.com/ParthMalhotra07/ReliefGrid/tree/b4ae2487df19c18d0cc44d2f6e1dd5225fba4701/docs/evidence/A5.4/accepted-20261107)
+support nine passes for the recorded artifact. #139 still needs its reviewed
+host-preparation and timeout-cleanup follow-up; those historical reports are
+not acceptance of a new integrated kit or arbitrary offline host. Three joint
+presenter rehearsals and the final recording and submission receipt remain external deliverables.
+
+## Physical evidence is bounded by its recorded source
+
+The storage/reliability evidence and failed chaos-coverage observations are
+catalogued in [requirements and results](requirements-and-results.md). Physical
+crictl schedule kills support named boundaries on the recorded seams image;
+same-index digests support sampled convergence; the aging-seam evidence explicitly
+does not include a physical cluster run. None is a fresh integrated gate on
+42741b1 or a blanket proof of every failure timing. Reported empty violation
+lists require complete, clean and quiescent inputs to be meaningful.
+
+#126 load measurements and final integrated gate evidence remain PENDING.
+Application aging stays disabled until rollout verification and policy agreement;
+auth/gate scope is not silently changed by this report integration. The final
+enhanced gate must retain explicit fixed API2/matcher2 restoration evidence,
+rather than inferring it from Helm completion or the earlier autoscaling samples.

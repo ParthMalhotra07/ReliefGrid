@@ -51,6 +51,18 @@ become OFFLINE. Terminal requests hold no live claim. See
 [cleanup implementation](../../internal/workflow/cleanup.go) and
 [API cleanup tests](../../internal/api/cleanup_test.go).
 
+## Storage boundary supporting the workflow
+
+TryClaim and CloseAttempt make resource-local decisions in the committed FSM
+transaction. A permanent closure rejects a delayed claim; the same bound claim
+is recognized, and closing an attempt releases only its exact active binding.
+Rejection-and-closure can intentionally add fence state. The resource shard
+cannot read another shard's current request, so these storage guarantees support
+rather than replace the intent/confirmation/closure narrative above. See
+[TryClaim](../../internal/fsm/apply.go#L544),
+[CloseAttempt](../../internal/fsm/apply.go#L601) and
+[architecture consistency limits](architecture.md).
+
 ## Outbox, broker and consumer boundaries
 
 The transactional outbox prevents a committed domain change from losing its work
