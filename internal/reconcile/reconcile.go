@@ -15,6 +15,7 @@ import (
 var ErrIncompleteScan = errors.New("reconcile: incomplete scan")
 
 type Config struct {
+	AgingInterval                                      time.Duration // zero disables aging until the storage rollout is complete
 	Store                                              store.Store
 	Matcher                                            *workflow.Matcher
 	Now                                                func() time.Time
@@ -63,6 +64,9 @@ func New(cfg Config) (*Engine, error) {
 	}
 	if cfg.WorkTimeout == 0 {
 		cfg.WorkTimeout = 15 * time.Second
+	}
+	if cfg.AgingInterval < 0 || (cfg.AgingInterval > 0 && cfg.AgingInterval < time.Millisecond) {
+		return nil, fmt.Errorf("reconcile: aging interval must be zero or at least one millisecond")
 	}
 	if cfg.PageSize < 1 || cfg.PageSize > store.MaxScanLimit || cfg.BatchSize < 1 || cfg.BatchSize > 100 || cfg.PollInterval <= 0 || cfg.StaleAfter <= 0 || cfg.CallTimeout <= 0 || cfg.WorkTimeout <= 0 {
 		return nil, fmt.Errorf("reconcile: invalid batch size or timeout")
@@ -169,6 +173,18 @@ func (e *Engine) Step(ctx context.Context) (Report, error) {
 		report.Visited++
 		if rec.Deleted || rec.Request == nil {
 			continue
+		}
+		if e.cfg.AgingInterval > 0 && (rec.Request.Status == store.RequestPending || rec.Request.Status == store.RequestWaiting) {
+			current, err := e.cfg.Matcher.Age(ctx, rec.Request.ID, e.cfg.AgingInterval)
+			if err != nil {
+				report.Failed++
+				failures = errors.Join(failures, fmt.Errorf("age %s: %w", rec.Key, err))
+				continue
+			}
+			rec = current
+			if rec.Deleted || rec.Request == nil {
+				continue
+			}
 		}
 		// MATCHING age comes from immutable intent time, even during backoff.
 		if rec.Request.Status != store.RequestMatching && rec.Request.NextAttemptAt > e.cfg.Now().UnixMilli() {

@@ -12,6 +12,8 @@ import urllib.parse
 import urllib.request
 import uuid
 
+from app_evidence import evidence_dir
+
 
 def main():
     base = os.environ.get('E2E_BASE_URL', 'http://127.0.0.1:8080').rstrip('/')
@@ -21,7 +23,8 @@ def main():
     run_id = os.environ.get('E2E_RUN_ID', datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex[:8])
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,79}', run_id):
         raise ValueError('invalid E2E_RUN_ID')
-    out = pathlib.Path(os.environ.get('A15_EVIDENCE_DIR', 'docs/evidence/A1.5')) / ('e2e-' + run_id)
+    out = evidence_dir() / ('e2e-' + run_id)
+    print('application smoke evidence:', out, flush=True)
     out.mkdir(parents=True, exist_ok=True)
     scenario_path = out / 'scenario.json'
     if scenario_path.exists():

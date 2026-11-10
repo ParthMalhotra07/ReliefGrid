@@ -68,7 +68,7 @@ func executeLogBarrier(x *execution) {
 		}
 	}
 	x.claim(a)
-	x.move(store.RequestMatched, nil)
+	x.confirm()
 	x.t.Logf("log barrier: first=%d second=%d commit=%d applied=%d", p.Indexes[first.OperationID], p.Indexes[second.OperationID], p.CommitIndex, p.AppliedIndex)
 }
 
@@ -173,7 +173,7 @@ func executeSnapshotBoundary(x *execution, code string) {
 	}
 	x.t.Logf("SCH%s partial bytes=%d/%d restored=%d replayed=%d", code, p.Bytes, p.Size, info.RestoredIndex, info.AppliedIndex)
 	if code == "12" {
-		x.move(store.RequestMatched, nil)
+		x.confirm()
 	}
 }
 

@@ -14,6 +14,17 @@ Docker must be running and reachable from that shell. The default kind profile
 uses one control plane, three data workers and one infra worker; see the
 [cluster configuration](deploy/kind/cluster.yaml).
 
+Also install Bash, make, Python 3, **jq, curl, GNU timeout, and a C compiler**
+(for the Go race tests) before running the commands below. `make doctor` does
+not check every auxiliary prerequisite; in particular the reset uses jq when
+confirming that all nine storage nodes are UP.
+
+An uncached machine needs network access to download the pinned Go/tooling and
+Go modules, pull container/base/kind images, and fetch the pinned Traefik chart
+through [app-chart-deps.sh](scripts/app-chart-deps.sh). The standard setup below
+is online preparation, not an offline installation. Prepare and verify the
+offline kit separately before attempting a network-isolated demonstration.
+
 ```sh
 git clone https://github.com/ParthMalhotra07/ReliefGrid.git
 cd ReliefGrid
@@ -22,8 +33,9 @@ make check
 make demo-reset
 ```
 
-`demo-reset` asks for the cluster name. It recreates the local `reliefgrid` cluster
-and replaces its demonstration dataset, builds/loads images, bootstraps the three
+`demo-reset` asks for the cluster name. It **deletes and recreates the entire
+selected kind cluster and everything running on it** (default `reliefgrid`),
+builds/loads images, bootstraps the three
 storage groups and installs the application. Storage has a single Helm owner:
 the app is installed over the standalone storage release with `storage.enabled=false`.
 
@@ -74,9 +86,13 @@ target the local demonstration environment.
 
 ## Report and presentation
 
-The classroom deployment target is kind. Cloud deployment is parked. A live
-demonstration is required; the recording is a backup and should show deployment
-from the first command.
+The classroom deployment target is local kind. Cloud deployment is parked.
+Submission must include the **public GitHub repository URL**; verify signed-out
+access to [this repository](https://github.com/ParthMalhotra07/ReliefGrid). A live
+demonstration is **mandatory**. The recording is a backup and must show deployment
+from scratch, including every deployment step; verify that the recording plays
+back successfully. Report length and format remain **pending professor
+confirmation**.
 
 The [report core](https://github.com/ParthMalhotra07/ReliefGrid/pull/137) and
 [three-round rehearsal runbook](https://github.com/ParthMalhotra07/ReliefGrid/pull/144)
