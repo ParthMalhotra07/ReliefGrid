@@ -1,0 +1,29 @@
+{
+  "symlink": {
+    "javascript_name": "app-6PQBRLMY.js",
+    "javascript_sha256": "932c22cb5ca778357c177411394726e96276ddb8cce2dfb6025c77baeb1ed917",
+    "dependency_input_examples": [
+      "../../reliefgrid-a41/ui/node_modules/react/cjs/react.production.js",
+      "../../reliefgrid-a41/ui/node_modules/react/index.js",
+      "../../reliefgrid-a41/ui/node_modules/scheduler/cjs/scheduler.production.js"
+    ]
+  },
+  "local": {
+    "javascript_name": "app-5XZLAUGD.js",
+    "javascript_sha256": "932c22cb5ca778357c177411394726e96276ddb8cce2dfb6025c77baeb1ed917",
+    "dependency_input_examples": [
+      "node_modules/react/cjs/react.production.js",
+      "node_modules/react/index.js",
+      "node_modules/scheduler/cjs/scheduler.production.js"
+    ]
+  },
+  "same_symlink_checkout_preserveSymlinks_probe": {
+    "javascript_name": "app-5XZLAUGD.js",
+    "javascript_sha256": "932c22cb5ca778357c177411394726e96276ddb8cce2dfb6025c77baeb1ed917",
+    "dependency_input_examples": [
+      "node_modules/react/cjs/react.production.js",
+      "node_modules/react/index.js",
+      "node_modules/scheduler/cjs/scheduler.production.js"
+    ]
+  }
+}

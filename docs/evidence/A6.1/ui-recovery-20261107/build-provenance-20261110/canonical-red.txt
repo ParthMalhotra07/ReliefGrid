@@ -1,0 +1,5 @@
+ ui/static/app-6PQBRLMY.js | 61 -----------------------------------------------
+ ui/static/index.html      |  2 +-
+ ui/static/manifest.json   | 10 ++++----
+ ui/static/sw.js           |  2 +-
+ 4 files changed, 7 insertions(+), 68 deletions(-)
