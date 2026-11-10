@@ -1,0 +1,5 @@
+{
+  "scripts/metrics_fault.py": "cc05de5ffb619d86a0b08a100651f9355d294645d1d6138f25ac8950b3e42bf9",
+  "scripts/verify-A4.2-live.py": "c05e2d3ce5e28e4b978b60384a4eecac1f4f9d7d73003ed14816fe3272b1a847",
+  "scripts/metrics-forward-test.py": "4facf47f16d30d948759a01c71899f703243de930164d9d35fbcafbeb42fdd7a"
+}

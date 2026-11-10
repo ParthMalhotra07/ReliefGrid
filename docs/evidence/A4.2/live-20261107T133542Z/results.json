@@ -1,0 +1,34 @@
+{
+  "mode": "full",
+  "run": "20261107T133542Z",
+  "checks": [
+    "four production application exporters discovered individually",
+    "all seven canonical broker queues; disposable projection queues excluded",
+    "all three shards observed by complete authoritative workflow walks",
+    "all three provisioned dashboards and every PromQL query evaluated",
+    "real REST/outbox/broker/consumer match recorded business-latency observation",
+    "durable cancellation cleanup observed without exposing entity IDs as metric labels",
+    "unfinished workflow age grows across complete authoritative observations",
+    "real leader loss, DOWN member, raw index-gap movement, growing workflow age and authoritative catchup observed",
+    "three live Grafana screenshots captured"
+  ],
+  "result": "PASS",
+  "baseCommit": "abb38c6ddc7ee62981a63afcdfa12405a0233b67",
+  "syntheticRequestId": "eb4399c1-af17-5963-95f3-d2a1e6b14085",
+  "syntheticResourceId": "fea8d82c-e7e9-5baf-b829-1d1f3db3462f",
+  "workflowAgeSamplesSeconds": [
+    1.979,
+    4.749
+  ],
+  "storageHandoffMissing": [],
+  "faultProof": {
+    "oldLeader": "storage-shard-0-1",
+    "newLeaders": [
+      "storage-shard-0-0"
+    ],
+    "peakLag": 65.0,
+    "workflowAgeChange": 47.227,
+    "samples": 41,
+    "scratchWrites": 6484
+  }
+}

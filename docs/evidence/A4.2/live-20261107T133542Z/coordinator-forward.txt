@@ -1,0 +1,6 @@
+Forwarding from 127.0.0.1:42057 -> 8080
+Handling connection for 42057
+[repeated connection logs archived locally]
+Handling connection for 42057
+Handling connection for 42057
+Handling connection for 42057

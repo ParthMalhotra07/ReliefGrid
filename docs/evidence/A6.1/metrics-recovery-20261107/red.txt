@@ -1,0 +1,23 @@
+.F.F
+======================================================================
+FAIL: test_lost_cleanup_response_retries_identical_operation (__main__.RecoveryTest.test_lost_cleanup_response_retries_identical_operation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/metrics-recovery-test.py", line 45, in test_lost_cleanup_response_retries_identical_operation
+    self.assertFalse(state['live']);self.assertFalse(traffic.pending)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: True is not false
+
+======================================================================
+FAIL: test_unknown_committed_write_is_replayed_then_cleaned_without_passing_failed_run (__main__.RecoveryTest.test_unknown_committed_write_is_replayed_then_cleaned_without_passing_failed_run)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/metrics-recovery-test.py", line 38, in test_unknown_committed_write_is_replayed_then_cleaned_without_passing_failed_run
+    self.assertFalse(state['live'],'unknown committed scratch write remained live')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: True is not false : unknown committed scratch write remained live
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.513s
+
+FAILED (failures=2)

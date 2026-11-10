@@ -33,20 +33,13 @@ spec:
         - name: rabbitmq
           image: {{ .Values.rabbitmq.image | quote }}
           imagePullPolicy: IfNotPresent
-          lifecycle:
-            postStart:
-              exec:
-                command:
-                  - /bin/sh
-                  - -ec
-                  - |
-                    rabbitmqctl wait "$RABBITMQ_PID_FILE" --timeout 120
-                    rabbitmqctl import_definitions /etc/reliefgrid/definitions.json --timeout 30
           ports:
             - name: amqp
               containerPort: 5672
             - name: management
               containerPort: 15672
+            - name: metrics
+              containerPort: 15692
             - name: epmd
               containerPort: 4369
             - name: clustering
@@ -119,8 +112,19 @@ spec:
             - name: definitions
               mountPath: /etc/reliefgrid
               readOnly: true
+            - name: boot-config
+              mountPath: /etc/rabbitmq/conf.d/20-reliefgrid.conf
+              subPath: rabbitmq.conf
+              readOnly: true
       volumes:
         - name: definitions
+          secret:
+            secretName: {{ include "reliefgrid.fullname" . }}-rabbitmq
+            defaultMode: 0440
+            items:
+              - key: definitions.json
+                path: definitions.json
+        - name: boot-config
           configMap:
             name: {{ include "reliefgrid.fullname" . }}-rabbitmq-definitions
   volumeClaimTemplates:

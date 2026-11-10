@@ -96,6 +96,10 @@ func (w *faulty) TransitionRequest(ctx context.Context, cmd store.TransitionRequ
 	return mutate(ctx, w, "TransitionRequest", cmd.Key, cmd.Meta, cmd, w.s.TransitionRequest)
 }
 
+func (w *faulty) AgeRequest(ctx context.Context, cmd store.AgeRequest) (store.Result, error) {
+	return mutate(ctx, w, "AgeRequest", cmd.Key, cmd.Meta, cmd, w.s.AgeRequest)
+}
+
 func (w *faulty) RetryWorkflow(ctx context.Context, cmd store.RetryWorkflow) (store.Result, error) {
 	return mutate(ctx, w, "RetryWorkflow", cmd.Key, cmd.Meta, cmd, w.s.RetryWorkflow)
 }

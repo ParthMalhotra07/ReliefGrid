@@ -380,6 +380,10 @@ func outboxOf(cmd any) []store.OutboxEvent {
 		return c.Outbox
 	case *store.TransitionRequest:
 		return c.Outbox
+	case store.AgeRequest:
+		return c.Outbox
+	case *store.AgeRequest:
+		return c.Outbox
 	case store.RetryWorkflow:
 		return c.Outbox
 	case *store.RetryWorkflow:

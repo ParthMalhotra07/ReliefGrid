@@ -1,0 +1,10 @@
+{
+  "oldLeader": "storage-shard-0-1",
+  "newLeaders": [
+    "storage-shard-0-0"
+  ],
+  "peakLag": 65.0,
+  "workflowAgeChange": 47.227,
+  "samples": 41,
+  "scratchWrites": 6484
+}
