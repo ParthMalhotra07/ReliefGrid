@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify retained S4.1 study data and its proposed M6 decision record.
+"""Verify retained S4.1 study data and its accepted M6 decision record.
 
 This replays historical evidence; it does not run a new benchmark or certify
 the present cluster. Emit JSON so the report can reproduce its calculations.
@@ -44,9 +44,9 @@ def verify():
     if 'routes and config: PASS' not in safety:
         raise ValueError('missing historical route/config check')
     if not ADR.is_file():
-        raise ValueError('missing M6 proposal: docs/adr/006-read-fence-study.md')
+        raise ValueError('missing M6 decision record: docs/adr/006-read-fence-study.md')
     summary = {
-        'scope': 'historical three-node loopback microbenchmark; proposed M6 selection',
+        'scope': 'historical three-node loopback microbenchmark; jointly selected M6 study',
         'benchmark_commit': '5ad15ac',
         'benchmark_path': str(BENCH.relative_to(ROOT)),
         'historical_safety_path': str(SAFETY.relative_to(ROOT)),

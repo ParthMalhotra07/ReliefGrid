@@ -1,16 +1,17 @@
 # ADR 006: use the barrier-versus-fence study as the M6 experiment
 
-Status: Proposed for joint agreement by A and S. This record does not declare
-the enhanced gate complete, change its authentication scope, or select a second
-major experiment. The read-fence implementation itself is already merged in
-PR #71; selecting its bounded comparative study as M6 still requires agreement.
+Status: Accepted by A (Parth) and S (Hrishabh), 9 November 2026. A proposed
+this study in #152; S reviewed commit `1ea60a9` and confirmed joint selection
+and the raw-evidence medians/ratios. This decision selects the single M6 study;
+it does not declare the enhanced gate complete or change authentication scope.
+The read-fence implementation itself was already merged in PR #71.
 
-## Context and proposed decision
+## Context and decision
 
-Part 1 amendment M6 permits at most one major experiment. S has proposed using
-the existing S4.1 strong-read comparison instead of adding another protocol
-extension. A proposes accepting that study as the one experiment, with the
-existing implementation, negative tests and reproducible demonstration below.
+Part 1 amendment M6 permits at most one major experiment. A and S agree to use
+the existing S4.1 strong-read comparison as the one experiment, with the
+existing implementation, negative tests and reproducible demonstration below,
+instead of adding another protocol extension.
 Other major extensions remain future work unless this decision is replaced
 jointly. The experiment studies an existing optimization; it does not claim
 that the optimization or a new consensus algorithm was invented here.
@@ -33,6 +34,10 @@ Implementation references: [read fence](../../internal/raftstore/fence.go),
 The [original benchmark](../evidence/S4.1/bench-20261031T083641Z.txt) records
 commit `5ad15ac`, a clean code tree, Linux/amd64, Go benchmark CPU suffix 8 and
 an Intel Core Ultra 7 258V. The host was shared with other work (load about 2).
+The source pins Go 1.27.2, and the separate safety-run record explicitly
+reports `go1.27.2`. The raw benchmark output omits the runtime version; its
+runtime version is therefore unrecorded, not independently established by the
+source pin or the separate safety run.
 The command used `-benchtime 2000x -count 5`: five samples for each mode under
 serial and parallel readers, 2,000 iterations in every sample. The benchmark
 records elapsed ns/op and Raft log entries appended/read. It initializes a
@@ -91,7 +96,8 @@ cloud, nine-replica system, cross-machine speedup or present-cluster guarantee
 is established. This study does not replace #126 load measurements, strict
 invariant checks, enhanced-gate evidence or live presenter rehearsals.
 
-M6 selection becomes agreed only when both owners accept this record. If that
-agreement is not reached, report this as an S4.1 engineering study and leave
-M6 unselected; do not advertise a completed additional extension. Gate scope
-for application aging and post-gate authentication is a separate decision.
+Both owners selected this bounded study as M6. The selection does not turn it
+into a new protocol extension or remove its historical-evidence limitations.
+Other major experiments remain future work. Gate scope for application aging
+and post-gate authentication is a separate decision; selecting M6 does not
+establish rollout, gate, rehearsal or submission completion.

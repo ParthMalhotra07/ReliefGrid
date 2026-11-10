@@ -1,5 +1,5 @@
 {
-  "scope": "historical three-node loopback microbenchmark; proposed M6 selection",
+  "scope": "historical three-node loopback microbenchmark; jointly selected M6 study",
   "benchmark_commit": "5ad15ac",
   "benchmark_path": "docs/evidence/S4.1/bench-20261031T083641Z.txt",
   "historical_safety_path": "docs/evidence/S4.1/fence-seeds-20261031T082917Z.txt",
