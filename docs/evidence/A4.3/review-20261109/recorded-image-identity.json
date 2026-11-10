@@ -1,0 +1,19 @@
+{
+  "source": "../20261107T131600Z/pod-watch-last.json",
+  "observed": [
+    {
+      "component": "api",
+      "image": "docker.io/reliefgrid/api:a43-review-nov7",
+      "imageID": "docker.io/library/import-2026-11-06@sha256:9784ef751612d5b14920191f8b3f583f2e2ee3b8389872c21ebb927c9663d657"
+    },
+    {
+      "component": "matcher",
+      "image": "docker.io/reliefgrid/matcher:a43-review-nov7",
+      "imageID": "docker.io/library/import-2026-11-06@sha256:3e97eaed2a3cf0410966860e035fcf48a6b934a0852830445593df0fd3860108"
+    }
+  ],
+  "build_to_source_mapping": "not established",
+  "latest_tools_image_id": null,
+  "final_fixed_replica_snapshot": "not retained; unverified",
+  "present_cluster_verification": false
+}

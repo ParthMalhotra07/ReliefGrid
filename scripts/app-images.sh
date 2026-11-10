@@ -5,8 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 tag="${APP_IMAGE_TAG:-a15-$(date -u +%Y%m%d%H%M%S)}"
 [[ "$tag" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]
-evidence="${A15_EVIDENCE_DIR:-docs/evidence/A1.5}"
-mkdir -p "$evidence"
+evidence="$(python3 scripts/app_evidence.py)"
+printf 'application image evidence: %s\n' "$evidence"
 record="$(mktemp)"
 trap 'rm -f "$record"' EXIT
 for component in api matcher ui; do

@@ -3,7 +3,7 @@
 ReliefGrid matches emergency requests to geographically suitable resources using
 Raft-backed sharded storage and asynchronous workflows. This report describes the
 implemented core, refreshed against main
-`42741b1306ba97013637c826ccb78aced5957b02`. It distinguishes measured evidence
+`ce643ee190935a737ccbc347ea29a386d8fa9dd6`. It distinguishes measured evidence
 from planned enhancements; owner review and the instructor's required final report length are
 still pending.
 
@@ -26,7 +26,7 @@ and CI. Hrishabh's supplied storage/reliability contribution is integrated acros
 architecture,
 consistency/schema, workflow storage boundaries, evidence and deployment chapters.
 Source references were refreshed from his e50685d contribution to integrated
-main 42741b1, while historical evidence keeps its original qualifications. Both
+main ce643ee, while historical evidence keeps its original qualifications. Both
 owners still review the integrated report; #126 measurements and final enhanced
 gate results remain PENDING, with no benchmark invented here.
 

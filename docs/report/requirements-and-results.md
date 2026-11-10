@@ -24,7 +24,7 @@ on Hrishabh's machine, not guaranteed setup times on every laptop.
 
 These are retained observations with their original source/tree/image
 qualifications. No historical run is promoted to acceptance of integrated main
-`42741b1` or pending PR combinations.
+`ce643ee` or pending PR combinations.
 
 | Evidence | What it supports | Boundary |
 |---|---|---|
@@ -82,7 +82,7 @@ retains its own [evidence lifecycle](validation-addendum.md).
 
 ## Performance methodology and pending measurements
 
-#126 remains draft at `a5785cee7f797bdc68b511a91df383a889477b41`, with no final
+#126 remains draft at `e7501aeaa07a8a8007a03c258fb5e9f080531715`, with no final
 load evidence. A dirty-tree one-minute smoke is not a final benchmark. The
 integrated baseline has ledger support; proposed seeded datasets, k6 scenarios,
 report generator and run/check scripts remain pending that PR. Older #129/#130
@@ -144,3 +144,13 @@ or current application throughput. No microbenchmark value fills the pending tab
   [#152](https://github.com/ParthMalhotra07/ReliefGrid/pull/152), outside this source
   baseline. This is a bounded historical study, not a new protocol extension or
   a present-system performance guarantee; other major extensions remain future work.
+  Hrishabh built the fence implementation and benchmark as S4.1; #152 packages
+  that existing study as M6. All three replicas run in one Go test process over
+  127.0.0.1, not three separate processes or hosts. Go1.27.2 was pinned in source
+  and recorded in the separate safety run; the benchmark raw output omits its
+  runtime version, so the benchmark runtime remains unrecorded.
+- Application aging #151 is merged in this baseline, but remains disabled by
+  default. The [application aging policy](../operations/application-aging.md)
+  requires coordinator plus all nine storage replicas to support the seam and
+  rollout verification before enabling it. No enabled-cluster aging acceptance
+  or completed enhanced gate is inferred from that merge.

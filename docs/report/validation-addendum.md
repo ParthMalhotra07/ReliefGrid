@@ -2,7 +2,7 @@
 
 These results extend the report core. They do not relabel the historical 18/18
 course gate or certify an unexecuted enhanced gate. Individual implementation
-PRs retain their own review/merge state; #134/#136 are now merged in source baseline 42741b1. Final integrated enhanced-gate
+PRs retain their own review/merge state; #134/#136 are now merged in source baseline ce643ee. Final integrated enhanced-gate
 results remain PENDING.
 
 | Check | Observed result | Immutable evidence |
@@ -51,7 +51,7 @@ catalogued in [requirements and results](requirements-and-results.md). Physical
 crictl schedule kills support named boundaries on the recorded seams image;
 same-index digests support sampled convergence; the aging-seam evidence explicitly
 does not include a physical cluster run. None is a fresh integrated gate on
-42741b1 or a blanket proof of every failure timing. Reported empty violation
+ce643ee or a blanket proof of every failure timing. Reported empty violation
 lists require complete, clean and quiescent inputs to be meaningful.
 
 #126 load measurements and final integrated gate evidence remain PENDING.

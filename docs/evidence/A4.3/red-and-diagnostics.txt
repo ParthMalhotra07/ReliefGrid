@@ -1,0 +1,25 @@
+RED before implementation: missing API HPA
+=== RUN   TestAutoscalingHasOneControllerPerWorkload
+    app_autoscaling_test.go:12: missing HorizontalPodAutoscaler reliefgrid-api
+--- FAIL: TestAutoscalingHasOneControllerPerWorkload (1.87s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	1.872s
+FAIL
+
+LOAD HARNESS CORRECTIONS (criteria retained):
+1. k6 no-usage-report belongs after run, not before the subcommand.
+2. Unpaced 20k fixture hit intentional broker max-length=10000/reject-publish; 8169 rejected publishes.
+   Changed offered-load pacing, retained all-routed / zero-error / exact-20000 assertions.
+3. Constant-arrival-rate boundary emitted 20001, all routed; exact-count assertion rejected it.
+   Shared iterations now give exactly20000; pacing is a load interval, not a correctness sleep.
+
+REQUIRED CHECK FAILURE retained in issue122:
+--- FAIL: TestCrashDuringRestoreRebuildsCleanly (1.89s)
+crash_test.go:260: Apply(store.CompareAndSet): raftstore: not the leader (leader "" at "")
+make check ran concurrently with local kind/k6 acceptance; raftstore sources unchanged.
+Clean-main focused diagnostic after load stopped:
+Preparing worktree (detached HEAD dd1ea8e)
+HEAD is now at dd1ea8e feat(coordinator): ring simulation reports measured key movement [S4.5b] (contract change) (#100)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	8.696s
+
+No snapshot assertion, timeout, storage code or invariant was changed.

@@ -35,7 +35,7 @@ flowchart LR
 
 ## Source baseline
 
-The integrated source baseline is main `42741b1306ba97013637c826ccb78aced5957b02`,
+The integrated source baseline is main `ce643ee190935a737ccbc347ea29a386d8fa9dd6`,
 including merged public contract/API refinements #134/#136 and recovery #146.
 Hrishabh supplied the storage/reliability contribution against `e50685d`; the
 storage, internal contract, ring and admission source files cited below are
