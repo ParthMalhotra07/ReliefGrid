@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import tarfile
 import tempfile
+import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 # Internal bridge filtering must include routed pod addresses, not just nodes.
@@ -210,15 +211,35 @@ def prepare(output):
     print('OFFLINE KIT PREPARED: ' + str(output), flush=True)
 
 
-def verify_node_isolation(cluster):
+def verify_node_isolation(cluster, evidence=None):
     nodes = run('kind', 'get', 'nodes', '--name', cluster, capture=True).splitlines()
+    if len(nodes) != 5 or len(set(nodes)) != 5:
+        raise ValueError('isolation requires five distinct kind nodes')
     script = """set -eu
 command -v curl >/dev/null
 if curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi
 echo 'PASS: external HTTPS blocked'
 """
+    probes = []
     for node in nodes:
-        run('docker', 'exec', node, 'bash', '-ec', script)
+        command = ['docker', 'exec', node, 'bash', '-ec', script]
+        print('Node isolation probe: ' + json.dumps(command), flush=True)
+        try:
+            output = run(*command, capture=True)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
+            output = getattr(error, 'stdout', '') or ''
+            if isinstance(output, bytes):
+                output = output.decode('utf-8', errors='replace')
+            probes.append({'node': node, 'command': command, 'result': 'FAIL',
+                           'stdout': output, 'errorType': type(error).__name__})
+            if evidence is not None:
+                evidence.write_text(json.dumps(probes, indent=2) + '\n')
+            raise
+        probes.append({'node': node, 'command': command, 'result': 'PASS',
+                       'stdout': output})
+        if evidence is not None:
+            evidence.write_text(json.dumps(probes, indent=2) + '\n')
+        print(node + ': ' + output, flush=True)
 
 
 def install(output, cluster):
@@ -276,7 +297,7 @@ def install(output, cluster):
             raise ValueError('isolated Kubernetes bootstrap is not fully Ready')
         print('PASS: all five nodes Ready through the private API',flush=True)
         run('kind','load','image-archive','--name',cluster,str(output/'runtime-images.tar'),timeout=900)
-        verify_node_isolation(cluster)
+        verify_node_isolation(cluster, output / 'node-isolation.json')
         for release, chart, values in [('storage','storage','storage'),('reliefgrid','reliefgrid','app')]:
             packages = list((output/'charts').glob(chart+'-*.tgz'))
             if len(packages)!=1:
@@ -295,12 +316,40 @@ def acceptance(output, cluster):
     config = run('kind', 'get', 'kubeconfig', '--name', cluster, '--internal', capture=True)
     with tempfile.TemporaryDirectory(prefix='reliefgrid-offline-kube-') as temp:
         kubeconfig = Path(temp) / 'config'; kubeconfig.write_text(config); kubeconfig.chmod(0o600)
-        run('docker', 'run', '--rm', '--pull=never', '--network=' + cluster + '-net',
+        # Create separately so a timed-out attached Docker client cannot hide
+        # the daemon-side runner identity. Cleanup uses only the ID returned by
+        # our successful create, never a pre-existing container with a name.
+        name = cluster + '-runner-' + uuid.uuid4().hex
+        identifier = run('docker', 'create', '--name', name,
+            '--label', 'reliefgrid.io/offline-cluster=' + cluster,
+            '--pull=never', '--network=' + cluster + '-net',
             '--mount', 'type=bind,src=' + str(output) + ',dst=/kit,readonly',
             '--mount', 'type=bind,src=' + str(evidence) + ',dst=/evidence',
             '--mount', 'type=bind,src=' + str(kubeconfig) + ',dst=/kubeconfig,readonly',
             '--mount', 'type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock',
-            manifest['roles']['runner'], cluster, timeout=2400)
+            manifest['roles']['runner'], cluster, capture=True)
+        if not re.fullmatch('[0-9a-f]{64}', identifier):
+            raise RuntimeError('Docker did not return a full runner container ID')
+        lifecycle = {'containerName': name, 'containerId': identifier,
+                     'exitConfirmed': False}
+        record = evidence / ('runner-host-' + identifier[:12] + '.json')
+        record.write_text(json.dumps(lifecycle, indent=2) + '\n')
+        try:
+            run('docker', 'start', '--attach', identifier, timeout=2400)
+        finally:
+            # Stopping an already-exited runner is harmless. Every command has
+            # a host deadline; daemon errors or unconfirmed exit fail closed.
+            run('docker', 'stop', '--time', '10', identifier, timeout=30)
+            status = run('docker', 'wait', identifier, capture=True, timeout=15)
+            running = run('docker', 'inspect', '--format', '{{.State.Running}}',
+                          identifier, capture=True, timeout=15)
+            if running != 'false' or not re.fullmatch('[0-9]+', status):
+                raise RuntimeError('offline runner exit not confirmed: ' + identifier)
+            lifecycle.update(exitConfirmed=True, exitCode=int(status))
+            record.write_text(json.dumps(lifecycle, indent=2) + '\n')
+            run('docker', 'rm', identifier, timeout=15)
+        if int(status) != 0:
+            raise RuntimeError('offline runner exited with status ' + status)
 
 
 def main():

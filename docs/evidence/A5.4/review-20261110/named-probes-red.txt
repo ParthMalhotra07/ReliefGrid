@@ -1,0 +1,41 @@
+EEFF
+======================================================================
+ERROR: test_each_named_probe_command_and_result_is_retained (__main__.OfflineNodeProbeTest.test_each_named_probe_command_and_result_is_retained)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 136, in test_each_named_probe_command_and_result_is_retained
+    module.verify_node_isolation('reliefgrid-offline-probe',output)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: verify_node_isolation() takes 1 positional argument but 2 were given
+
+======================================================================
+ERROR: test_failed_named_probe_is_retained_and_propagated (__main__.OfflineNodeProbeTest.test_failed_named_probe_is_retained_and_propagated)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 158, in test_failed_named_probe_is_retained_and_propagated
+    module.verify_node_isolation('reliefgrid-offline-probe',output)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: verify_node_isolation() takes 1 positional argument but 2 were given
+
+======================================================================
+FAIL: test_missing_or_duplicate_nodes_cannot_pass_isolation (__main__.OfflineNodeProbeTest.test_missing_or_duplicate_nodes_cannot_pass_isolation) (nodes='')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 147, in test_missing_or_duplicate_nodes_cannot_pass_isolation
+    with self.assertRaises(ValueError):module.verify_node_isolation('reliefgrid-offline-probe')
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_missing_or_duplicate_nodes_cannot_pass_isolation (__main__.OfflineNodeProbeTest.test_missing_or_duplicate_nodes_cannot_pass_isolation) (nodes='node\nnode\nnode\nnode\nnode')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 147, in test_missing_or_duplicate_nodes_cannot_pass_isolation
+    with self.assertRaises(ValueError):module.verify_node_isolation('reliefgrid-offline-probe')
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.002s
+
+FAILED (failures=2, errors=2)

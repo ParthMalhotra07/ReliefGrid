@@ -123,5 +123,125 @@ s.serve_forever()
    subprocess.run(['bash','-euc',script,'test',str(helper)],env=env,check=True,timeout=10)
 
 
+class OfflineNodeProbeTest(unittest.TestCase):
+ def test_each_named_probe_command_and_result_is_retained(self):
+  nodes=['reliefgrid-offline-probe-control-plane']+['reliefgrid-offline-probe-worker'+str(i) for i in range(1,5)]
+  def command(*args,**kwargs):
+   if args[:3]==('kind','get','nodes'):return '\n'.join(nodes)
+   self.assertEqual(args[:2],('docker','exec'))
+   self.assertIn(args[2],nodes)
+   return 'PASS: external HTTPS blocked'
+  with tempfile.TemporaryDirectory() as tmp,patch.object(module,'run',side_effect=command):
+   output=Path(tmp)/'node-isolation.json'
+   module.verify_node_isolation('reliefgrid-offline-probe',output)
+   probes=json.loads(output.read_text())
+  self.assertEqual([p['node'] for p in probes],nodes)
+  for probe in probes:
+   self.assertEqual(probe['result'],'PASS')
+   self.assertEqual(probe['command'][:3],['docker','exec',probe['node']])
+   self.assertIn('curl --noproxy',probe['command'][-1])
+   self.assertEqual(probe['stdout'],'PASS: external HTTPS blocked')
+ def test_missing_or_duplicate_nodes_cannot_pass_isolation(self):
+  for nodes in ('','node\nnode\nnode\nnode\nnode'):
+   with self.subTest(nodes=nodes),patch.object(module,'run',return_value=nodes):
+    with self.assertRaises(ValueError):module.verify_node_isolation('reliefgrid-offline-probe')
+ def test_failed_named_probe_is_retained_and_propagated(self):
+  nodes=['control','worker1','worker2','worker3','worker4']
+  failure=subprocess.CalledProcessError(1,['docker','exec'],output='unexpected external access')
+  def command(*args,**kwargs):
+   if args[:3]==('kind','get','nodes'):return '\n'.join(nodes)
+   if args[2]=='worker2':raise failure
+   return 'PASS: external HTTPS blocked'
+  with tempfile.TemporaryDirectory() as tmp,patch.object(module,'run',side_effect=command):
+   output=Path(tmp)/'node-isolation.json'
+   with self.assertRaises(subprocess.CalledProcessError) as error:
+    module.verify_node_isolation('reliefgrid-offline-probe',output)
+   self.assertIs(error.exception,failure)
+   probes=json.loads(output.read_text())
+  self.assertEqual([p['result'] for p in probes],['PASS','PASS','FAIL'])
+  self.assertEqual(probes[-1]['node'],'worker2')
+  self.assertEqual(probes[-1]['stdout'],'unexpected external access')
+
+
+class OfflineRunnerLifecycleTest(unittest.TestCase):
+ def exercise(self, failure=None, cleanup_failure=None, running='false', create_failure=None, wait_status=None):
+  calls=[]
+  identifier='a'*64
+  def command(*args, **kwargs):
+   calls.append((args,kwargs))
+   if args[:3]==('kind','get','kubeconfig'):return 'private config'
+   if args[:2]==('docker','create'):
+    if create_failure:raise create_failure
+    return identifier
+   if args[:2] in (('docker','run'),('docker','start')):
+    if failure:raise failure
+    return None
+   if args[:2]==('docker','stop'):
+    if cleanup_failure:raise cleanup_failure
+    return identifier
+   if args[:2]==('docker','wait'):return wait_status if wait_status is not None else ('137' if failure else '0')
+   if args[:2]==('docker','inspect'):return running
+   if args[:2]==('docker','rm'):return identifier
+   raise AssertionError('unexpected command: '+repr(args))
+  with tempfile.TemporaryDirectory() as tmp:
+   with patch.object(module,'verify_files',return_value={'roles':{'runner':'test:runner'}}),patch.object(module,'run',side_effect=command):
+    try:
+     module.acceptance(Path(tmp),'reliefgrid-offline-timeout-test')
+    except BaseException as error:
+     return calls,error,list((Path(tmp)/'evidence').glob('*'))
+  return calls,None,[]
+ def assert_cleaned(self,calls):
+  commands=[args for args,_ in calls]
+  identifier='a'*64
+  create=next((args for args in commands if args[:2]==('docker','create')),None)
+  self.assertIsNotNone(create,'host must know the runner identity before attaching')
+  name=create[create.index('--name')+1]
+  self.assertRegex(name,r'^reliefgrid-offline-timeout-test-runner-[0-9a-f]{32}$')
+  self.assertIn('reliefgrid.io/offline-cluster=reliefgrid-offline-timeout-test',create)
+  start=next(i for i,args in enumerate(commands) if args[:2]==('docker','start'))
+  stop=next(i for i,args in enumerate(commands) if args[:2]==('docker','stop'))
+  wait=next(i for i,args in enumerate(commands) if args[:2]==('docker','wait'))
+  inspect=next(i for i,args in enumerate(commands) if args[:2]==('docker','inspect'))
+  remove=next(i for i,args in enumerate(commands) if args[:2]==('docker','rm'))
+  self.assertLess(start,stop);self.assertLess(stop,wait);self.assertLess(wait,inspect);self.assertLess(inspect,remove)
+  for index in (start,stop,wait,inspect,remove):self.assertEqual(commands[index][-1],identifier)
+ def test_host_timeout_stops_and_confirms_owned_runner_exit(self):
+  timeout=subprocess.TimeoutExpired(['docker','start'],2400)
+  calls,error,_=self.exercise(failure=timeout)
+  self.assertIs(error,timeout)
+  self.assert_cleaned(calls)
+ def test_normal_runner_exit_also_confirms_cleanup(self):
+  calls,error,_=self.exercise()
+  self.assertIsNone(error)
+  self.assert_cleaned(calls)
+ def test_failed_runner_exit_is_not_reported_as_acceptance(self):
+  failure=subprocess.CalledProcessError(7,['docker','start'])
+  calls,error,_=self.exercise(failure=failure)
+  self.assertIs(error,failure)
+  self.assert_cleaned(calls)
+ def test_stop_failure_does_not_claim_cleanup_or_remove_a_running_container(self):
+  failure=subprocess.CalledProcessError(1,['docker','stop'])
+  calls,error,_=self.exercise(failure=subprocess.TimeoutExpired(['docker','start'],2400),cleanup_failure=failure)
+  self.assertIs(error,failure)
+  self.assertFalse(any(args[:2]==('docker','rm') for args,_ in calls))
+ def test_still_running_container_fails_closed_without_removal(self):
+  calls,error,_=self.exercise(running='true')
+  self.assertIsInstance(error,RuntimeError)
+  self.assertFalse(any(args[:2]==('docker','rm') for args,_ in calls))
+ def test_nonzero_container_exit_is_rejected_even_if_attach_client_succeeds(self):
+  calls,error,_=self.exercise(wait_status='7')
+  self.assertIsInstance(error,RuntimeError)
+  self.assert_cleaned(calls)
+ def test_unparseable_exit_status_does_not_claim_cleanup(self):
+  calls,error,_=self.exercise(wait_status='unknown')
+  self.assertIsInstance(error,RuntimeError)
+  self.assertFalse(any(args[:2]==('docker','rm') for args,_ in calls))
+ def test_create_failure_never_stops_a_preexisting_name(self):
+  failure=subprocess.CalledProcessError(1,['docker','create'])
+  calls,error,_=self.exercise(create_failure=failure)
+  self.assertIs(error,failure)
+  self.assertFalse(any(args[:2]==('docker','stop') for args,_ in calls))
+
+
 
 if __name__=='__main__':unittest.main()
