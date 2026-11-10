@@ -12,39 +12,40 @@ info:
     an Idempotency-Key is supplied; other identifiers are UUIDs.
 
     '
-  version: 0.1.0
+  version: 0.2.0
 servers:
-  - url: /api/v1
-    description: API v1
+- url: /api/v1
+  description: API v1
 tags:
-  - name: requests
-    description: Emergency request lifecycle
-  - name: resources
-    description: Resource registration and availability
-  - name: events
-    description: Server-Sent Event streams
+- name: requests
+  description: Emergency request lifecycle
+- name: resources
+  description: Resource registration and availability
+- name: events
+  description: Server-Sent Event streams
 paths:
   /requests:
     get:
       operationId: listRequests
       summary: List emergency requests
       tags:
-        - requests
+      - requests
       parameters:
-        - name: status
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/RequestStatus'
-        - name: type
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/RequestType'
-        - $ref: '#/components/parameters/Limit'
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/RequestStatus'
+      - name: type
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/RequestType'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
       responses:
         '200':
-          description: Bounded authoritative request listing
+          description: Bounded authoritative page with optional opaque nextCursor; absent when exhausted
           content:
             application/json:
               schema:
@@ -56,14 +57,13 @@ paths:
     post:
       operationId: createRequest
       summary: Submit a new emergency request
-      description: Idempotency-Key is optional. With a key, the same canonical payload returns the first
-        committed 201 body and Location, even after later status changes. A changed payload returns 409
-        CONFLICT_IDEMPOTENCY_KEY. Keys are scoped to caller and operation. Without a key, retries may
-        create duplicates.
+      description: Idempotency-Key is optional. With a key, the same canonical payload returns the first committed
+        201 body and Location, even after later status changes. A changed payload returns 409 CONFLICT_IDEMPOTENCY_KEY.
+        Keys are scoped to caller and operation. Without a key, retries may create duplicates.
       tags:
-        - requests
+      - requests
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -86,6 +86,8 @@ paths:
               schema:
                 type: string
               description: URL of the created resource
+            ETag:
+              $ref: '#/components/headers/ETag'
           content:
             application/json:
               schema:
@@ -98,12 +100,12 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /requests/{requestId}:
     parameters:
-      - $ref: '#/components/parameters/RequestId'
+    - $ref: '#/components/parameters/RequestId'
     get:
       operationId: getRequest
       summary: Get an emergency request by ID
       tags:
-        - requests
+      - requests
       responses:
         '200':
           description: Request found
@@ -111,13 +113,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RequestResponse'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
         '404':
           $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
   /requests/{requestId}/status:
     parameters:
-      - $ref: '#/components/parameters/RequestId'
+    - $ref: '#/components/parameters/RequestId'
     put:
       operationId: updateRequestStatus
       summary: Update an emergency request status
@@ -131,7 +136,7 @@ paths:
 
         '
       tags:
-        - requests
+      - requests
       requestBody:
         required: true
         content:
@@ -145,6 +150,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RequestResponse'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -153,39 +161,44 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+      parameters:
+      - $ref: '#/components/parameters/IfMatch'
   /resources:
     get:
       operationId: listResources
       summary: List compatible emergency resources
       tags:
-        - resources
+      - resources
       parameters:
-        - name: type
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/ResourceType'
-        - name: near
-          in: query
-          required: false
-          description: WGS-84 point as `latitude,longitude`; both values are range-validated.
-          schema:
-            type: string
-            pattern: ^-?(90(?:\.0+)?|[0-8]?\d(?:\.\d+)?),-?(180(?:\.0+)?|1[0-7]\d(?:\.\d+)?|\d?\d(?:\.\d+)?)$
-            example: 28.6139,77.2090
-        - name: radiusKm
-          in: query
-          required: false
-          schema:
-            type: number
-            exclusiveMinimum: true
-            minimum: 0
-            maximum: 50
-            default: 50
-        - $ref: '#/components/parameters/Limit'
+      - name: type
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ResourceType'
+      - name: near
+        in: query
+        required: false
+        description: WGS-84 point as `latitude,longitude`; both values are range-validated.
+        schema:
+          type: string
+          pattern: ^-?(90(?:\.0+)?|[0-8]?\d(?:\.\d+)?),-?(180(?:\.0+)?|1[0-7]\d(?:\.\d+)?|\d?\d(?:\.\d+)?)$
+          example: 28.6139,77.2090
+      - name: radiusKm
+        in: query
+        required: false
+        schema:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+          maximum: 50
+          default: 50
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
       responses:
         '200':
-          description: Bounded resource listing with explicit scan completeness
+          description: Bounded authoritative page with optional opaque nextCursor; absent when exhausted
           content:
             application/json:
               schema:
@@ -197,14 +210,13 @@ paths:
     post:
       operationId: registerResource
       summary: Register a new emergency resource
-      description: Idempotency-Key is optional. With a key, the same canonical payload returns the first
-        committed 201 body and Location, even after later status changes. A changed payload returns 409
-        CONFLICT_IDEMPOTENCY_KEY. Keys are scoped to caller and operation. Without a key, retries may
-        create duplicates.
+      description: Idempotency-Key is optional. With a key, the same canonical payload returns the first committed
+        201 body and Location, even after later status changes. A changed payload returns 409 CONFLICT_IDEMPOTENCY_KEY.
+        Keys are scoped to caller and operation. Without a key, retries may create duplicates.
       tags:
-        - resources
+      - resources
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -228,6 +240,8 @@ paths:
               schema:
                 type: string
               description: URL of the created resource
+            ETag:
+              $ref: '#/components/headers/ETag'
           content:
             application/json:
               schema:
@@ -240,7 +254,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
   /resources/{resourceId}/status:
     parameters:
-      - $ref: '#/components/parameters/ResourceId'
+    - $ref: '#/components/parameters/ResourceId'
     put:
       operationId: updateResourceStatus
       summary: Update a resource's availability window or status
@@ -250,7 +264,7 @@ paths:
 
         '
       tags:
-        - resources
+      - resources
       requestBody:
         required: true
         content:
@@ -266,6 +280,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ResourceResponse'
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -274,14 +291,18 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+      parameters:
+      - $ref: '#/components/parameters/IfMatch'
   /match/{requestId}:
     parameters:
-      - $ref: '#/components/parameters/RequestId'
+    - $ref: '#/components/parameters/RequestId'
     post:
       operationId: matchRequest
       summary: Run or resume matching for a request
       tags:
-        - requests
+      - requests
       responses:
         '200':
           description: Completed match outcome or existing assignment
@@ -310,19 +331,19 @@ paths:
     get:
       operationId: streamEvents
       summary: Stream projected state changes as Server-Sent Events
-      description: "Long-lived best-effort projection stream. Event IDs allow client-side\ndeduplication.\
-        \ On reconnect or missed history, clients refresh current\nauthoritative records before resuming\
-        \ live updates.\n The server sends periodic heartbeat comments. Protected deployments return 401/403\
-        \ for access failures."
+      description: "Long-lived best-effort projection stream. Event IDs allow client-side\ndeduplication. On\
+        \ reconnect or missed history, clients refresh current\nauthoritative records before resuming live\
+        \ updates.\n The server sends periodic heartbeat comments. Protected deployments return 401/403 for\
+        \ access failures."
       tags:
-        - events
+      - events
       parameters:
-        - name: Last-Event-ID
-          in: header
-          required: false
-          schema:
-            type: string
-            format: uuid
+      - name: Last-Event-ID
+        in: header
+        required: false
+        schema:
+          type: string
+          format: uuid
       responses:
         '200':
           description: SSE stream established
@@ -342,9 +363,9 @@ components:
       name: Idempotency-Key
       in: header
       required: false
-      description: Optional caller key, scoped to caller and operation. Same key and canonical payload
-        replays the original 201 and Location; changed payload returns 409. No-key retries may create
-        duplicates. Retained for the dataset lifetime.
+      description: Optional caller key, scoped to caller and operation. Same key and canonical payload replays
+        the original 201 and Location; changed payload returns 409. No-key retries may create duplicates. Retained
+        for the dataset lifetime.
       schema:
         type: string
         format: uuid
@@ -378,6 +399,31 @@ components:
         minimum: 1
         maximum: 100
         default: 50
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: Optional HTTP strong entity-tag precondition. Accept one or more quoted strong tags, or
+        *. Weak tags never match. A stale supplied precondition, including a committed CAS rejection after
+        the initial read, returns 412 PRECONDITION_FAILED. Without this header existing unconditional semantics
+        and 409 VERSION_CONFLICT remain. Invalid syntax is 400; missing entities retain 404. Unknown mutation
+        outcomes remain 503, never 412.
+      schema:
+        type: string
+        maxLength: 4096
+        example: '"v7"'
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: 'Opaque continuation returned as nextCursor by the preceding page. Keep the endpoint, filters
+        and limit unchanged. Invalid or mismatched tokens return 400 INVALID. A ring-version change returns
+        503 RING_VERSION_MISMATCH: restart the walk without a cursor. A page is authoritative per answering
+        shard, not a global snapshot; concurrent mutations can change membership between pages.'
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 16384
   responses:
     BadRequest:
       description: '400 INVALID: malformed input, enum, bounds or UTC window. retryable=false, outcomeUnknown=false.'
@@ -392,19 +438,17 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
     Conflict:
-      description: 409 DOMAIN_CONFLICT, OPERATION_ID_REUSED, CONFLICT_IDEMPOTENCY_KEY or VERSION_CONFLICT.
-        Public PUT version conflicts are 409 until If-Match/412 is introduced. A deterministic-ID EXISTS
-        replays the original 201 + Location only when the canonical payload hash matches; otherwise it
-        is CONFLICT_IDEMPOTENCY_KEY. No claim is granted by a historical result.
+      description: 409 DOMAIN_CONFLICT, OPERATION_ID_REUSED, CONFLICT_IDEMPOTENCY_KEY or an unconditional VERSION_CONFLICT.
+        Supplied If-Match precondition failures use 412. Historical operation results never prove current ownership.
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
     ServiceUnavailable:
       description: 503 OUTCOME_UNKNOWN may have committed (retryable=true, outcomeUnknown=true). 503 NO_LEADER,
-        NOT_LEADER, RING_VERSION_MISMATCH or STORAGE_UNAVAILABLE is retryable=true, outcomeUnknown=false
-        when nothing was proposed. An incomplete authoritative list is unavailable, never an empty successful
-        result. Retry-After applies to retryable unavailability.
+        NOT_LEADER, RING_VERSION_MISMATCH or STORAGE_UNAVAILABLE is retryable=true, outcomeUnknown=false when
+        nothing was proposed. An incomplete authoritative list is unavailable, never an empty successful result.
+        Retry-After applies to retryable unavailability.
       headers:
         Retry-After:
           description: Suggested retry delay in seconds
@@ -427,23 +471,31 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+    PreconditionFailed:
+      description: '412 PRECONDITION_FAILED: the supplied If-Match did not match or its committed version check
+        lost a race. retryable=false, outcomeUnknown=false. Reread the entity before a new conditional update.
+        No successful mutation is implied.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
   schemas:
     RequestStatus:
       type: string
-      description: Request lifecycle. CANCELLING and FULFILLING retain cleanup information until attempt
-        closure commits. RETRYING fences confirmation; a new attempt is not started until the previous
-        attempt is durably closed. CANCELLED/FULFILLED are terminal; WAITING has no live attempt.
+      description: Request lifecycle. CANCELLING and FULFILLING retain cleanup information until attempt closure
+        commits. RETRYING fences confirmation; a new attempt is not started until the previous attempt is durably
+        closed. CANCELLED/FULFILLED are terminal; WAITING has no live attempt.
       enum:
-        - PENDING
-        - WAITING
-        - MATCHING
-        - MATCHED
-        - IN_PROGRESS
-        - RETRYING
-        - CANCELLING
-        - FULFILLING
-        - CANCELLED
-        - FULFILLED
+      - PENDING
+      - WAITING
+      - MATCHING
+      - MATCHED
+      - IN_PROGRESS
+      - RETRYING
+      - CANCELLING
+      - FULFILLING
+      - CANCELLED
+      - FULFILLED
       example: PENDING
     ResourceStatus:
       type: string
@@ -459,10 +511,10 @@ components:
 
         '
       enum:
-        - AVAILABLE
-        - ASSIGNED
-        - OFFLINE
-        - CONSUMED
+      - AVAILABLE
+      - ASSIGNED
+      - OFFLINE
+      - CONSUMED
       example: AVAILABLE
     ResourceType:
       type: string
@@ -472,11 +524,11 @@ components:
 
         '
       enum:
-        - WATER
-        - FOOD
-        - MEDICINE
-        - TRANSPORTATION
-        - SHELTER
+      - WATER
+      - FOOD
+      - MEDICINE
+      - TRANSPORTATION
+      - SHELTER
       example: MEDICINE
     RequestType:
       $ref: '#/components/schemas/ResourceType'
@@ -484,8 +536,8 @@ components:
       type: object
       description: WGS-84 geographic coordinates.
       required:
-        - lat
-        - lng
+      - lat
+      - lng
       properties:
         lat:
           type: number
@@ -506,35 +558,36 @@ components:
         lng: 77.209
     ErrorEnvelope:
       type: object
-      description: 'Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection
-        and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true
-        and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER
-        is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.'
+      description: 'Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and
+        unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After;
+        preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true,
+        outcomeUnknown=false: nothing was proposed.'
       required:
-        - code
-        - message
-        - retryable
-        - outcomeUnknown
-        - correlationId
+      - code
+      - message
+      - retryable
+      - outcomeUnknown
+      - correlationId
       properties:
         code:
           type: string
           description: Machine-readable error code.
           example: CONFLICT_IDEMPOTENCY_KEY
           enum:
-            - INVALID
-            - NOT_FOUND
-            - DOMAIN_CONFLICT
-            - OPERATION_ID_REUSED
-            - CONFLICT_IDEMPOTENCY_KEY
-            - VERSION_CONFLICT
-            - OUTCOME_UNKNOWN
-            - NOT_LEADER
-            - NO_LEADER
-            - RING_VERSION_MISMATCH
-            - STORAGE_UNAVAILABLE
-            - UNAUTHORIZED
-            - FORBIDDEN
+          - INVALID
+          - NOT_FOUND
+          - DOMAIN_CONFLICT
+          - OPERATION_ID_REUSED
+          - CONFLICT_IDEMPOTENCY_KEY
+          - VERSION_CONFLICT
+          - OUTCOME_UNKNOWN
+          - NOT_LEADER
+          - NO_LEADER
+          - RING_VERSION_MISMATCH
+          - STORAGE_UNAVAILABLE
+          - UNAUTHORIZED
+          - FORBIDDEN
+          - PRECONDITION_FAILED
         message:
           type: string
           description: Human-readable description of the error.
@@ -570,14 +623,14 @@ components:
         outcomeUnknown: false
         correlationId: f47ac10b-58cc-4372-a567-0e02b2c3d479
         details:
-          - field: location.lat
-            message: must be between -90 and 90
+        - field: location.lat
+          message: must be between -90 and 90
     ErrorDetail:
       type: object
       description: Field-level validation error.
       required:
-        - field
-        - message
+      - field
+      - message
       properties:
         field:
           type: string
@@ -593,12 +646,12 @@ components:
     CreateRequestBody:
       type: object
       additionalProperties: false
-      description: Request data follows the stored request model. Requests have no availability window
-        or automatic expiry cancellation.
+      description: Request data follows the stored request model. Requests have no availability window or automatic
+        expiry cancellation.
       required:
-        - requestType
-        - location
-        - details
+      - requestType
+      - location
+      - details
       properties:
         requestType:
           $ref: '#/components/schemas/RequestType'
@@ -631,20 +684,20 @@ components:
       type: object
       additionalProperties: false
       required:
-        - requestId
-        - requestType
-        - status
-        - location
-        - version
-        - createdAt
-        - updatedAt
-        - details
-        - peopleAffected
-        - urgency
-        - assignedResourceId
-        - retryCount
-        - nextAttemptAt
-        - lastError
+      - requestId
+      - requestType
+      - status
+      - location
+      - version
+      - createdAt
+      - updatedAt
+      - details
+      - peopleAffected
+      - urgency
+      - assignedResourceId
+      - retryCount
+      - nextAttemptAt
+      - lastError
       properties:
         requestId:
           type: string
@@ -722,17 +775,17 @@ components:
         lastError: ''
         createdAt: '2026-10-21T13:55:00Z'
         updatedAt: '2026-10-21T13:55:00Z'
-      description: Request data follows the stored request model. Requests have no availability window
-        or automatic expiry cancellation.
+      description: Request data follows the stored request model. Requests have no availability window or automatic
+        expiry cancellation.
     RequestListResponse:
       type: object
       additionalProperties: false
       required:
-        - items
-        - partial
-        - positions
-        - failedShards
-        - consistency
+      - items
+      - partial
+      - positions
+      - failedShards
+      - consistency
       properties:
         items:
           type: array
@@ -754,24 +807,29 @@ components:
         consistency:
           type: string
           enum:
-            - strong
-            - linearizable
-            - stale
-          description: Weakest read mode used. Public authoritative lists use strong reads for the core
-            release.
+          - strong
+          - linearizable
+          - stale
+          description: Weakest read mode used. Public authoritative lists use strong reads for the core release.
+        nextCursor:
+          type: string
+          minLength: 1
+          maxLength: 16384
+          description: Opaque continuation for exactly the same query. Omitted when exhausted. On an unchanged
+            dataset, a complete walk returns every matching item once. Pages are not a global snapshot.
     UpdateRequestStatusBody:
       type: object
       additionalProperties: false
       required:
-        - status
+      - status
       properties:
         status:
           type: string
           description: Publicly requestable transition target; intermediate workflow states are server-managed.
           enum:
-            - IN_PROGRESS
-            - CANCELLED
-            - FULFILLED
+          - IN_PROGRESS
+          - CANCELLED
+          - FULFILLED
       example:
         status: CANCELLED
     RegisterResourceBody:
@@ -779,12 +837,12 @@ components:
       additionalProperties: false
       description: windowStart and windowEnd must be UTC timestamps with windowStart < windowEnd.
       required:
-        - resourceType
-        - name
-        - location
-        - windowStart
-        - windowEnd
-        - reusable
+      - resourceType
+      - name
+      - location
+      - windowStart
+      - windowEnd
+      - reusable
       properties:
         resourceType:
           $ref: '#/components/schemas/ResourceType'
@@ -810,8 +868,7 @@ components:
           pattern: (?:Z|\+00:00)$
         reusable:
           type: boolean
-          description: Whether fulfillment can return the resource to AVAILABLE; an expired window yields
-            OFFLINE.
+          description: Whether fulfillment can return the resource to AVAILABLE; an expired window yields OFFLINE.
       example:
         resourceType: MEDICINE
         name: Medical supply unit 7
@@ -825,19 +882,19 @@ components:
       type: object
       additionalProperties: false
       required:
-        - resourceId
-        - resourceType
-        - name
-        - status
-        - location
-        - windowStart
-        - windowEnd
-        - version
-        - createdAt
-        - updatedAt
-        - reusable
-        - activeClaim
-        - locationRevision
+      - resourceId
+      - resourceType
+      - name
+      - status
+      - location
+      - windowStart
+      - windowEnd
+      - version
+      - createdAt
+      - updatedAt
+      - reusable
+      - activeClaim
+      - locationRevision
       properties:
         resourceId:
           type: string
@@ -877,8 +934,7 @@ components:
           pattern: (?:Z|\+00:00)$
         reusable:
           type: boolean
-          description: Whether fulfillment can return the resource to AVAILABLE; an expired window yields
-            OFFLINE.
+          description: Whether fulfillment can return the resource to AVAILABLE; an expired window yields OFFLINE.
         activeClaim:
           type: object
           nullable: true
@@ -886,8 +942,8 @@ components:
           additionalProperties: false
           description: Read-only claim identity, or null when unclaimed; clients cannot mutate it.
           required:
-            - requestId
-            - attemptId
+          - requestId
+          - attemptId
           properties:
             requestId:
               type: string
@@ -921,11 +977,11 @@ components:
       type: object
       additionalProperties: false
       required:
-        - items
-        - partial
-        - positions
-        - failedShards
-        - consistency
+      - items
+      - partial
+      - positions
+      - failedShards
+      - consistency
       properties:
         items:
           type: array
@@ -948,11 +1004,16 @@ components:
         consistency:
           type: string
           enum:
-            - strong
-            - linearizable
-            - stale
-          description: Weakest read mode used. Public authoritative lists use strong reads for the core
-            release.
+          - strong
+          - linearizable
+          - stale
+          description: Weakest read mode used. Public authoritative lists use strong reads for the core release.
+        nextCursor:
+          type: string
+          minLength: 1
+          maxLength: 16384
+          description: Opaque continuation for exactly the same query. Omitted when exhausted. On an unchanged
+            dataset, a complete walk returns every matching item once. Pages are not a global snapshot.
     UpdateResourceStatusBody:
       type: object
       additionalProperties: false
@@ -970,8 +1031,8 @@ components:
         status:
           type: string
           enum:
-            - AVAILABLE
-            - OFFLINE
+          - AVAILABLE
+          - OFFLINE
         windowStart:
           type: string
           format: date-time
@@ -990,15 +1051,15 @@ components:
       type: object
       additionalProperties: false
       required:
-        - outcome
-        - request
+      - outcome
+      - request
       properties:
         outcome:
           type: string
           enum:
-            - MATCHED
-            - NO_CANDIDATE
-            - IN_PROGRESS
+          - MATCHED
+          - NO_CANDIDATE
+          - IN_PROGRESS
         request:
           $ref: '#/components/schemas/RequestResponse'
       example:
@@ -1023,11 +1084,11 @@ components:
     Urgency:
       type: string
       enum:
-        - NORMAL
-        - HIGH
-        - CRITICAL
-      description: 'Application urgency: NORMAL=1, HIGH=2, CRITICAL=3 in stored requests and explicit
-        AMQP priorities.'
+      - NORMAL
+      - HIGH
+      - CRITICAL
+      description: 'Application urgency: NORMAL=1, HIGH=2, CRITICAL=3 in stored requests and explicit AMQP
+        priorities.'
       default: NORMAL
       example: NORMAL
     Version:
@@ -1040,8 +1101,8 @@ components:
       type: object
       additionalProperties: false
       required:
-        - shard
-        - appliedIndex
+      - shard
+      - appliedIndex
       properties:
         shard:
           type: integer
@@ -1053,3 +1114,11 @@ components:
         hasMore:
           type: boolean
           description: True means the bounded shard page may be truncated.
+  headers:
+    ETag:
+      description: Strong entity tag for the returned entity version, quoted as an opaque HTTP entity tag.
+        Preserve quotes when sending If-Match. A keyed create replay carries the tag of its original response,
+        which may now be stale.
+      schema:
+        type: string
+        example: '"v7"'

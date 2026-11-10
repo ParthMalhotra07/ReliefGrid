@@ -132,6 +132,8 @@ func (t *txn) dispatch(body any) (store.Result, error) {
 		return t.compareAndSet(c)
 	case *store.TransitionRequest:
 		return t.transitionRequest(c)
+	case *store.AgeRequest:
+		return t.ageRequest(c)
 	case *store.RetryWorkflow:
 		return t.retryWorkflow(c)
 	case *store.TransitionResource:

@@ -20,6 +20,7 @@ const (
 	NOTLEADER              ErrorEnvelopeCode = "NOT_LEADER"
 	OPERATIONIDREUSED      ErrorEnvelopeCode = "OPERATION_ID_REUSED"
 	OUTCOMEUNKNOWN         ErrorEnvelopeCode = "OUTCOME_UNKNOWN"
+	PRECONDITIONFAILED     ErrorEnvelopeCode = "PRECONDITION_FAILED"
 	RINGVERSIONMISMATCH    ErrorEnvelopeCode = "RING_VERSION_MISMATCH"
 	STORAGEUNAVAILABLE     ErrorEnvelopeCode = "STORAGE_UNAVAILABLE"
 	UNAUTHORIZED           ErrorEnvelopeCode = "UNAUTHORIZED"
@@ -46,6 +47,8 @@ func (e ErrorEnvelopeCode) Valid() bool {
 	case OPERATIONIDREUSED:
 		return true
 	case OUTCOMEUNKNOWN:
+		return true
+	case PRECONDITIONFAILED:
 		return true
 	case RINGVERSIONMISMATCH:
 		return true
@@ -433,6 +436,9 @@ type RequestListResponse struct {
 	FailedShards []int                          `json:"failedShards"`
 	Items        []RequestResponse              `json:"items"`
 
+	// NextCursor Opaque continuation for exactly the same query. Omitted when exhausted. On an unchanged dataset, a complete walk returns every matching item once. Pages are not a global snapshot.
+	NextCursor *string `json:"nextCursor,omitempty"`
+
 	// Partial Always false on a successful authoritative list; failed shard scans return 503.
 	Partial bool `json:"partial"`
 
@@ -523,6 +529,9 @@ type ResourceListResponse struct {
 	Consistency  ResourceListResponseConsistency `json:"consistency"`
 	FailedShards []int                           `json:"failedShards"`
 	Items        []ResourceResponse              `json:"items"`
+
+	// NextCursor Opaque continuation for exactly the same query. Omitted when exhausted. On an unchanged dataset, a complete walk returns every matching item once. Pages are not a global snapshot.
+	NextCursor *string `json:"nextCursor,omitempty"`
 
 	// Partial True only for explicitly diagnostic partial data; authoritative list failures return 503.
 	Partial bool `json:"partial"`
@@ -662,8 +671,14 @@ type Urgency string
 // Example: v1
 type Version = string
 
+// Cursor defines model for Cursor.
+type Cursor = string
+
 // IdempotencyKey Example: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 type IdempotencyKey = openapi_types.UUID
+
+// IfMatch Example: "v7"
+type IfMatch = string
 
 // Limit defines model for Limit.
 type Limit = int
@@ -694,6 +709,11 @@ type Forbidden = ErrorEnvelope
 // Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
 type NotFound = ErrorEnvelope
 
+// PreconditionFailed Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
+//
+// Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
+type PreconditionFailed = ErrorEnvelope
+
 // ServiceUnavailable Common error body; see contracts/README.md for Store-to-HTTP mapping. Known rejection and unknown outcome are distinct. OUTCOME_UNKNOWN is 503 with retryable=true, outcomeUnknown=true and Retry-After; preserve the intent and retry the same operationId or keyed create. NO_LEADER is 503 with retryable=true, outcomeUnknown=false: nothing was proposed.
 //
 // Example: {"code":"INVALID","correlationId":"f47ac10b-58cc-4372-a567-0e02b2c3d479","details":[{"field":"location.lat","message":"must be between -90 and 90"}],"message":"Request body failed validation.","outcomeUnknown":false,"retryable":false}
@@ -714,12 +734,21 @@ type ListRequestsParams struct {
 	Status *RequestStatus `form:"status,omitempty" json:"status,omitempty"`
 	Type   *RequestType   `form:"type,omitempty" json:"type,omitempty"`
 	Limit  *Limit         `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque continuation returned as nextCursor by the preceding page. Keep the endpoint, filters and limit unchanged. Invalid or mismatched tokens return 400 INVALID. A ring-version change returns 503 RING_VERSION_MISMATCH: restart the walk without a cursor. A page is authoritative per answering shard, not a global snapshot; concurrent mutations can change membership between pages.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
 // CreateRequestParams defines parameters for CreateRequest.
 type CreateRequestParams struct {
 	// IdempotencyKey Optional caller key, scoped to caller and operation. Same key and canonical payload replays the original 201 and Location; changed payload returns 409. No-key retries may create duplicates. Retained for the dataset lifetime.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// UpdateRequestStatusParams defines parameters for UpdateRequestStatus.
+type UpdateRequestStatusParams struct {
+	// IfMatch Optional HTTP strong entity-tag precondition. Accept one or more quoted strong tags, or *. Weak tags never match. A stale supplied precondition, including a committed CAS rejection after the initial read, returns 412 PRECONDITION_FAILED. Without this header existing unconditional semantics and 409 VERSION_CONFLICT remain. Invalid syntax is 400; missing entities retain 404. Unknown mutation outcomes remain 503, never 412.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // ListResourcesParams defines parameters for ListResources.
@@ -730,12 +759,21 @@ type ListResourcesParams struct {
 	Near     *string  `form:"near,omitempty" json:"near,omitempty"`
 	RadiusKm *float32 `form:"radiusKm,omitempty" json:"radiusKm,omitempty"`
 	Limit    *Limit   `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Cursor Opaque continuation returned as nextCursor by the preceding page. Keep the endpoint, filters and limit unchanged. Invalid or mismatched tokens return 400 INVALID. A ring-version change returns 503 RING_VERSION_MISMATCH: restart the walk without a cursor. A page is authoritative per answering shard, not a global snapshot; concurrent mutations can change membership between pages.
+	Cursor *Cursor `form:"cursor,omitempty" json:"cursor,omitempty"`
 }
 
 // RegisterResourceParams defines parameters for RegisterResource.
 type RegisterResourceParams struct {
 	// IdempotencyKey Optional caller key, scoped to caller and operation. Same key and canonical payload replays the original 201 and Location; changed payload returns 409. No-key retries may create duplicates. Retained for the dataset lifetime.
 	IdempotencyKey *IdempotencyKey `json:"Idempotency-Key,omitempty"`
+}
+
+// UpdateResourceStatusParams defines parameters for UpdateResourceStatus.
+type UpdateResourceStatusParams struct {
+	// IfMatch Optional HTTP strong entity-tag precondition. Accept one or more quoted strong tags, or *. Weak tags never match. A stale supplied precondition, including a committed CAS rejection after the initial read, returns 412 PRECONDITION_FAILED. Without this header existing unconditional semantics and 409 VERSION_CONFLICT remain. Invalid syntax is 400; missing entities retain 404. Unknown mutation outcomes remain 503, never 412.
+	IfMatch *IfMatch `json:"If-Match,omitempty"`
 }
 
 // CreateRequestJSONRequestBody defines body for CreateRequest for application/json ContentType.

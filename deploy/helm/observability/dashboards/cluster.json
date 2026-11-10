@@ -1,0 +1,605 @@
+{
+  "uid": "reliefgrid-cluster",
+  "title": "ReliefGrid / Cluster observations",
+  "tags": [
+    "ReliefGrid",
+    "A4.2"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "orange",
+        "name": "Fault evidence",
+        "type": "dashboard",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [
+            "A4.2-fault"
+          ],
+          "type": "dashboard"
+        }
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "ReliefGrid dashboards",
+      "tags": [
+        "ReliefGrid"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true
+    }
+  ],
+  "panels": [
+    {
+      "title": "Application scrape targets reachable",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Current discovered exporters reachable, not Kubernetes readiness. Missing discovery targets are not counted.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(up{job=\"reliefgrid-app\",component=~\"api|matcher\"})",
+          "legendFormat": "{{service}} / {{instance}}",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Complete authoritative workflow observations",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "0 = unknown/stale. A successful pod scrape alone does not prove shard availability or business recovery.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(relief_metrics_observation_success)",
+          "legendFormat": "{{service}} / {{instance}}",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Unconfirmed",
+                  "color": "orange"
+                },
+                "1": {
+                  "text": "Complete",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Shard read observations",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Confirmed shard reads in latest walk; separate from pod health. Consult observation success/timestamp.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min by(shard) (relief_shard_read_available)",
+          "legendFormat": "shard {{shard}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Workflow observation age",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Time since last complete walk. Zero timestamp means never observed; stale values must not look live.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - relief_metrics_last_success_timestamp_seconds > 0",
+          "legendFormat": "{{service}} / {{instance}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Broker metrics reachable",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Exporter availability only, not routed confirms or durable business completion.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"reliefgrid-broker\"}",
+          "legendFormat": "{{service}} / {{instance}}",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Unconfirmed",
+                  "color": "orange"
+                },
+                "1": {
+                  "text": "Reachable",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Queue ready and unacknowledged work",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Only the seven canonical root-vhost workflow queues; projection queues are excluded.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(queue) (rabbitmq_detailed_queue_messages)",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Storage/coordinator handoff",
+      "type": "text",
+      "options": {
+        "mode": "markdown",
+        "content": "Storage/coordinator query contract: private named metrics port9090, metrics-scraper NetworkPolicy and client_golang1.24.1. Exporters come from S PR126. Missing values remain No observation; these panels never authorize a workflow action."
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Observed Raft-to-FSM index gap",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Leader commit index minus last FSM command index. Includes Raft barriers/no-ops; a positive gap alone does not mean unapplied business data. Recovery verification separately checks authoritative caughtUp on all nine storage members. Unreachable observations are absent.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard,node) (storage_replication_lag_entries and on(instance,job) (up == 1))",
+          "legendFormat": "shard {{shard}} / {{node}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Coordinator member heartbeat state",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Confirmed shard reads in latest walk; separate from pod health. Consult observation success/timestamp.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(shard,node,state) (coordinator_node_state and on(instance,job) (up == 1))",
+          "legendFormat": "{{shard}} / {{node}} / {{state}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 9,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      }
+    },
+    {
+      "title": "Coordinator forwarding outcomes",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Confirmed shard reads in latest walk; separate from pod health. Consult observation success/timestamp.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(shard,outcome) (rate(coordinator_forward_total[5m]))",
+          "legendFormat": "{{shard}} / {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 10,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      }
+    }
+  ]
+}

@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/mq"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
@@ -33,7 +34,7 @@ func main() {
 		address = ":8081"
 	}
 	err := withTracing(ctx, "matcher", func() error {
-		return run(ctx, os.Getenv("COORDINATOR_URL"), os.Getenv("AMQP_URL"), address)
+		return run(ctx, os.Getenv("COORDINATOR_URL"), os.Getenv("AMQP_URL"), address, os.Getenv("METRICS_ADDR"))
 	})
 	if err != nil && ctx.Err() == nil {
 		slog.Error("matcher stopped", "error", err)
@@ -41,7 +42,7 @@ func main() {
 	}
 }
 
-func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) error {
+func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress, metricsAddress string) (runErr error) {
 	if coordinatorURL == "" || amqpURL == "" {
 		return fmt.Errorf("COORDINATOR_URL and AMQP_URL are required")
 	}
@@ -49,17 +50,32 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress string) err
 	if err != nil {
 		return fmt.Errorf("matcher coordinator: %w", err)
 	}
-	m, err := workflow.New(workflow.Config{Store: s, ScanLimit: 100})
+	var backend store.Store = s
+	var observer workflow.Observer
+	if metricsAddress != "" {
+		metrics, err := appmetrics.New(s, "matcher", nil)
+		if err != nil {
+			return err
+		}
+		stop, err := metrics.Start(ctx, metricsAddress)
+		if err != nil {
+			return err
+		}
+		defer func() { runErr = errors.Join(runErr, stop()) }()
+		backend = metrics.Store()
+		observer = metrics
+	}
+	m, err := workflow.New(workflow.Config{Store: backend, ScanLimit: 100, Observer: observer})
 	if err != nil {
 		return err
 	}
-	r, err := outbox.New(outbox.Config{Store: s, PublisherFactory: func(ctx context.Context) (outbox.Publisher, error) { return mq.NewPublisher(ctx, amqpURL) }})
+	r, err := outbox.New(outbox.Config{Store: backend, PublisherFactory: func(ctx context.Context) (outbox.Publisher, error) { return mq.NewPublisher(ctx, amqpURL) }})
 	if err != nil {
 		return err
 	}
 	transportRetry := mq.TransportRetry{PublisherFactory: func(ctx context.Context) (mq.RetryPublisher, error) { return mq.NewPublisher(ctx, amqpURL) }}
-	c := mq.Consumer{Store: s, Handle: func(ctx context.Context, rec store.Record) error { return m.Handle(ctx, rec.Request.ID) }, Retry: transportRetry.Retry}
-	recovery, err := reconcile.New(reconcile.Config{Store: s, Matcher: m})
+	c := mq.Consumer{Store: backend, Handle: func(ctx context.Context, rec store.Record) error { return m.Handle(ctx, rec.Request.ID) }, Retry: transportRetry.Retry}
+	recovery, err := reconcile.New(reconcile.Config{Store: backend, Matcher: m})
 	if err != nil {
 		return err
 	}
