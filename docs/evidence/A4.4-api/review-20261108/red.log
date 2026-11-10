@@ -1,0 +1,28 @@
+--- FAIL: TestAPIConditionalUpdatesUseCommittedVersion (0.02s)
+    refinements_test.go:48: 412 missing current ETag
+--- FAIL: TestAPIConditionalCASRaceAndUnknownOutcomeStayDistinct (0.01s)
+    --- FAIL: TestAPIConditionalCASRaceAndUnknownOutcomeStayDistinct/race (0.01s)
+        refinements_test.go:84: committed conflict missing current ETag
+--- FAIL: TestAPICursorRingAndFailedShardAfterContinuation (0.02s)
+    --- FAIL: TestAPICursorRingAndFailedShardAfterContinuation/limit1 (0.00s)
+        refinements_test.go:227: first-page continuation lost ring binding
+        refinements_test.go:229: HTTP 200: {"items":[],"positions":[{"appliedIndex":0,"hasMore":false,"shard":0},{"appliedIndex":0,"hasMore":false,"shard":1},{"appliedIndex":0,"hasMore":false,"shard":2}],"partial":false,"failedShards":[],"consistency":"strong"}
+            ; want 503
+    --- FAIL: TestAPICursorRingAndFailedShardAfterContinuation/limit2 (0.00s)
+panic: interface conversion: interface {} is nil, not string [recovered, repanicked]
+
+goroutine 403 [running]:
+testing.tRunner.func1.2({0x17cceb8, 0xfbf50376180})
+	/home/parthmalhotra/.local/go/src/testing/testing.go:2125 +0x232
+testing.tRunner.func1()
+	/home/parthmalhotra/.local/go/src/testing/testing.go:2128 +0x329
+panic({0x17cceb8?, 0xfbf50376180?})
+	/home/parthmalhotra/.local/go/src/runtime/panic.go:859 +0x125
+github.com/ParthMalhotra07/ReliefGrid/internal/api_test.TestAPICursorRingAndFailedShardAfterContinuation.func2(0xfbf50791688)
+	/home/parthmalhotra/reliefgrid-a44/internal/api/refinements_test.go:224 +0x8fe
+testing.tRunner(0xfbf50791688, 0xfbf503d4e60)
+	/home/parthmalhotra/.local/go/src/testing/testing.go:2195 +0xea
+created by testing.(*T).Run in goroutine 225
+	/home/parthmalhotra/.local/go/src/testing/testing.go:2260 +0x4d4
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.072s
+FAIL

@@ -1,0 +1,6 @@
+=== RUN   TestMatchLatencyIncludesCommittedResponseDelay
+    metrics_test.go:219: creation-to-committed-response latency=30, want32 including two-second commit/response delay
+--- FAIL: TestMatchLatencyIncludesCommittedResponseDelay (0.00s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics	0.012s
+FAIL

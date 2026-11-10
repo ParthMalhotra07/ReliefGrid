@@ -40,3 +40,8 @@ CHAOS_DAEMON_IMAGE_DIGEST := sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174a
 
 # Dispatch build/runtime tooling (A4.1); npm dependencies have exact lockfile pins.
 NODE_VERSION := 24.16.0
+# A4.2: private local monitoring images, pinned to the verified Linux/amd64 manifests.
+PROMETHEUS_VERSION := v3.16.0
+PROMETHEUS_IMAGE_DIGEST := sha256:89c1a644817e9ad70fa2af76c84898e327c1de7063735f962e8313b1e28672c3
+GRAFANA_VERSION := 13.3.0
+GRAFANA_IMAGE_DIGEST := sha256:6e5d306338670f381a942f1c50d3c266bf71531e5ddd9ee4fc1a133dac5ce63d

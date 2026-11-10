@@ -1,0 +1,9 @@
+PASS: four production application exporters discovered individually
+PASS: all seven canonical broker queues; disposable projection queues excluded
+PASS: all three shards observed by complete authoritative workflow walks
+PASS: all three provisioned dashboards and every PromQL query evaluated
+PASS: real REST/outbox/broker/consumer match recorded business-latency observation
+PASS: durable cancellation cleanup observed without exposing entity IDs as metric labels
+PASS: unfinished workflow age grows across complete authoritative observations
+PASS: three live Grafana screenshots captured
+A4.2 APPLICATION ACCEPTANCE: PASS; full storage/leader-kill gate remains #113

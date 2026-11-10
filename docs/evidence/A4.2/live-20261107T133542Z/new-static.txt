@@ -1,0 +1,30 @@
+bash scripts/verify-A4.2-static.sh
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics	2.096s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	31.378s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	1.073s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	5.020s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	8.293s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	1.995s
+==> Linting deploy/helm/observability
+[INFO] Chart.yaml: icon is recommended
+
+1 chart(s) linted, 0 chart(s) failed
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	0.312s
+Checking /etc/prometheus/prometheus.yml
+ SUCCESS: /etc/prometheus/prometheus.yml is valid prometheus config file syntax
+
+A4.2 STATIC: ALL PASS
+Processing test file: /test/cases.yaml
+  SUCCESS
+
+A4.2 storage PromQL leader/failure/freshness tests: PASS
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.007s
+
+OK
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.063s
+
+OK

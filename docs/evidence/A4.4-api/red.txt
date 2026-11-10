@@ -1,0 +1,14 @@
+--- FAIL: TestAPIConditionalUpdatesUseCommittedVersion (0.02s)
+    refinements_test.go:33: creation ETag=""
+--- FAIL: TestAPIConditionalCASRaceAndUnknownOutcomeStayDistinct (0.01s)
+    --- FAIL: TestAPIConditionalCASRaceAndUnknownOutcomeStayDistinct/race (0.01s)
+        refinements_test.go:79: HTTP 409: {"code":"VERSION_CONFLICT","correlationId":"62461307-f76c-40fb-a1b9-d58b5089abbc","message":"entity changed; reread before retrying","outcomeUnknown":false,"retryable":false}
+            ; want 412
+--- FAIL: TestAPIResourceConditionalTagSyntax (0.00s)
+    refinements_test.go:99: HTTP 200: {"createdAt":"2026-10-30T10:00:00Z","location":{"lat":0,"lng":0.01},"name":"Synthetic water unit","resourceId":"136a223d-90ad-454c-917a-3992174bd5e9","resourceType":"WATER","reusable":true,"status":"OFFLINE","updatedAt":"2026-10-30T10:00:00Z","version":"v2","windowEnd":"2026-10-30T11:00:00Z","windowStart":"2026-10-30T09:00:00Z","activeClaim":null,"locationRevision":0}
+        ; want 412
+--- FAIL: TestAPICursorWalkNeverDropsMergedShardRows (0.01s)
+    refinements_test.go:142: cursor walk visited2/29
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.061s
+FAIL

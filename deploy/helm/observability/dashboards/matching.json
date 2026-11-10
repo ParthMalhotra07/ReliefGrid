@@ -1,0 +1,487 @@
+{
+  "uid": "reliefgrid-matching",
+  "title": "ReliefGrid / Matching and recovery",
+  "tags": [
+    "ReliefGrid",
+    "A4.2"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "orange",
+        "name": "Fault evidence",
+        "type": "dashboard",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [
+            "A4.2-fault"
+          ],
+          "type": "dashboard"
+        }
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "ReliefGrid dashboards",
+      "tags": [
+        "ReliefGrid"
+      ],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true
+    }
+  ],
+  "panels": [
+    {
+      "title": "Workflow invocation outcomes / second",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Process observations, including repeated invocations; not a durable unique-request ledger.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(outcome) (rate(relief_match_outcomes_total[5m]))",
+          "legendFormat": "{{outcome}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Created-to-MATCHED p95",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Non-replayed successful committed-response samples. Includes pre-match waiting; separate from HTTP execution time.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by(le,urgency) (rate(relief_match_latency_seconds_bucket[5m])))",
+          "legendFormat": "{{urgency}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Oldest unfinished request age",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Age since request creation, not reset by retries. Last complete bounded walk only; stale or invalid sources are filtered out.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(state,urgency) (relief_workflow_age_seconds and on(instance,job) (relief_metrics_observation_success == 1) and on(instance,job) (time() - relief_metrics_last_success_timestamp_seconds < 20))",
+          "legendFormat": "{{state}} / {{urgency}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Unfinished requests in complete walk",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Global scan gauges are replicated observations: MAX, never SUM across API/matcher pods.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(state,urgency) (relief_workflow_pending and on(instance,job) (relief_metrics_observation_success == 1) and on(instance,job) (time() - relief_metrics_last_success_timestamp_seconds < 20))",
+          "legendFormat": "{{state}} / {{urgency}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Committed version conflicts / second",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Non-replayed committed VERSION_CONFLICT results only. Unknown outcomes are not rejections.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(command) (rate(relief_cas_conflicts_total[5m]))",
+          "legendFormat": "{{command}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Ready queue backlog",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "The matching, wakeup, retry, and dead-letter canonical queues only.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(queue) (rabbitmq_detailed_queue_messages_ready)",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "In-flight queue deliveries",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Manual-ack broker observation, not evidence of durable completion.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(queue) (rabbitmq_detailed_queue_messages_unacked)",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "title": "Workflow queues with consumers",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "reliefgrid"
+      },
+      "description": "Consumer presence is separate from worker processing progress and replica readiness.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(queue) (rabbitmq_detailed_queue_consumers)",
+          "legendFormat": "{{queue}}",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No observation",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      }
+    }
+  ]
+}

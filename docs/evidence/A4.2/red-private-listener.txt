@@ -1,0 +1,7 @@
+=== RUN   TestProcessMetricsUseSeparateListenerAndStopWithAPI
+2026/11/05 07:01:13 INFO API listening addr=127.0.0.1:34363
+    metrics_test.go:84: private metrics listener is unavailable: Get "http://127.0.0.1:46863/metrics": dial tcp 127.0.0.1:46863: connect: connection refused
+--- FAIL: TestProcessMetricsUseSeparateListenerAndStopWithAPI (5.01s)
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/api	5.013s
+FAIL

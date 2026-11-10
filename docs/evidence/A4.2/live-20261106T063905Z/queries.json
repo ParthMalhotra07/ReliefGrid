@@ -1,0 +1,112 @@
+[
+  {
+    "dashboard": "reliefgrid-cluster",
+    "panel": "Application scrape targets reachable",
+    "series": 1
+  },
+  {
+    "dashboard": "reliefgrid-cluster",
+    "panel": "Complete authoritative workflow observations",
+    "series": 1
+  },
+  {
+    "dashboard": "reliefgrid-cluster",
+    "panel": "Shard read observations",
+    "series": 3
+  },
+  {
+    "dashboard": "reliefgrid-cluster",
+    "panel": "Workflow observation age",
+    "series": 4
+  },
+  {
+    "dashboard": "reliefgrid-cluster",
+    "panel": "Broker metrics reachable",
+    "series": 1
+  },
+  {
+    "dashboard": "reliefgrid-cluster",
+    "panel": "Queue ready and unacknowledged work",
+    "series": 7
+  },
+  {
+    "dashboard": "reliefgrid-cluster",
+    "panel": "Replication convergence (S handoff)",
+    "series": 0
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "Workflow invocation outcomes / second",
+    "series": 10
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "Created-to-MATCHED p95",
+    "series": 4
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "Oldest unfinished request age",
+    "series": 24
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "Unfinished requests in complete walk",
+    "series": 24
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "Committed version conflicts / second",
+    "series": 8
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "Ready queue backlog",
+    "series": 7
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "In-flight queue deliveries",
+    "series": 7
+  },
+  {
+    "dashboard": "reliefgrid-matching",
+    "panel": "Workflow queues with consumers",
+    "series": 7
+  },
+  {
+    "dashboard": "reliefgrid-storage",
+    "panel": "Command p95 (S handoff)",
+    "series": 0
+  },
+  {
+    "dashboard": "reliefgrid-storage",
+    "panel": "Follower lag (S handoff)",
+    "series": 0
+  },
+  {
+    "dashboard": "reliefgrid-storage",
+    "panel": "Exact unpublished outbox total (S handoff)",
+    "series": 0
+  },
+  {
+    "dashboard": "reliefgrid-storage",
+    "panel": "Exact oldest pending age (S handoff)",
+    "series": 0
+  },
+  {
+    "dashboard": "reliefgrid-storage",
+    "panel": "Observed first-batch pending (lower bound)",
+    "series": 3
+  },
+  {
+    "dashboard": "reliefgrid-storage",
+    "panel": "Oldest in observed first batch",
+    "series": 3
+  },
+  {
+    "dashboard": "reliefgrid-storage",
+    "panel": "Application mutation responses / second",
+    "series": 9
+  }
+]

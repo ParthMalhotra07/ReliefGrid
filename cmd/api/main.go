@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/api"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/mq"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
@@ -32,10 +33,12 @@ const apiReadinessPropagation = 5 * time.Second
 const apiShutdownDrain = 20 * time.Second
 
 type config struct {
-	addr        string
-	coordinator string
-	api         api.Config
-	amqp        string
+	metricsReady   chan<- string // optional in-process lifecycle observation, never an HTTP route
+	metricsAddress string
+	addr           string
+	coordinator    string
+	api            api.Config
+	amqp           string
 }
 
 func loadConfig(getenv func(string) string) (config, error) {
@@ -48,6 +51,12 @@ func loadConfig(getenv func(string) string) (config, error) {
 	cfg := config{addr: get("HTTP_ADDR", ":8080"), coordinator: get("COORDINATOR_URL", "http://storage-coordinator:8080")}
 	if _, _, err := net.SplitHostPort(cfg.addr); err != nil {
 		return config{}, fmt.Errorf("HTTP_ADDR: %w", err)
+	}
+	cfg.metricsAddress = getenv("METRICS_ADDR")
+	if cfg.metricsAddress != "" {
+		if _, _, err := net.SplitHostPort(cfg.metricsAddress); err != nil {
+			return config{}, fmt.Errorf("METRICS_ADDR: %w", err)
+		}
 	}
 	u, err := url.Parse(cfg.coordinator)
 	if err != nil {
@@ -87,7 +96,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 
 // The optional backend is a test seam for the real SQLite memstore. The binary
 // always passes nil, connects through coordclient and exposes no fake-store flag.
-func run(ctx context.Context, cfg config, backend store.Store, ready chan<- string) error {
+func run(ctx context.Context, cfg config, backend store.Store, ready chan<- string) (runErr error) {
 	if backend == nil {
 		startup, cancel := context.WithTimeout(ctx, cfg.api.Budget)
 		client, err := coordclient.New(startup, cfg.coordinator, coordclient.WithTimeout(cfg.api.CallTimeout))
@@ -96,6 +105,26 @@ func run(ctx context.Context, cfg config, backend store.Store, ready chan<- stri
 			return fmt.Errorf("connect coordinator: %w", err)
 		}
 		backend = client
+	}
+	if cfg.metricsAddress != "" {
+		metrics, err := appmetrics.New(backend, "api", nil)
+		if err != nil {
+			return err
+		}
+		stop, err := metrics.Start(ctx, cfg.metricsAddress)
+		if err != nil {
+			return err
+		}
+		defer func() { runErr = errors.Join(runErr, stop()) }()
+		if cfg.metricsReady != nil {
+			select {
+			case cfg.metricsReady <- metrics.Address():
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		backend = metrics.Store()
+		cfg.api.Observer = metrics
 	}
 	cfg.api.Store = backend
 	cfg.api.Events = api.NewEventHub()

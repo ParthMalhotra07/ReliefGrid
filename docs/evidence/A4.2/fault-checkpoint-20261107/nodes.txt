@@ -1,0 +1,6 @@
+NAME                       STATUS   ROLES           AGE    VERSION
+reliefgrid-control-plane   Ready    control-plane   2d5h   v1.37.0
+reliefgrid-worker          Ready    <none>          2d5h   v1.37.0
+reliefgrid-worker2         Ready    <none>          2d5h   v1.37.0
+reliefgrid-worker3         Ready    <none>          2d5h   v1.37.0
+reliefgrid-worker4         Ready    <none>          2d5h   v1.37.0
