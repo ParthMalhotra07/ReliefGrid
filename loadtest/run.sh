@@ -83,6 +83,50 @@ SAMPLE_SECONDS="${SAMPLE_SECONDS:-5}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-20}"
 SPILL_DIR="${SPILL_DIR:-$HOME/.cache/reliefgrid/S5.2}"
 TOOLS_IMAGE="${TOOLS_IMAGE:-reliefgrid/tools:dev}"
+# RUN_DIR is an explicit, unique output path; never infer it from timestamps in logs.
+RUN_ID="S5.2-$SCENARIO-$(date -u +%Y%m%dT%H%M%SZ)"
+DIR="${RUN_DIR:-$ROOT/docs/evidence/S5.2/$RUN_ID}"
+[[ "$DIR" = /* ]] || DIR="$ROOT/$DIR"
+# Reject every retained sidecar, including dangling symlinks, before mutation.
+for sidecar in "$DIR.runner.log" "$DIR.runner-status.json" "$DIR.report-check.log"; do
+  if [ -e "$sidecar" ] || [ -L "$sidecar" ]; then
+    echo "run: output sidecar already exists: $sidecar" >&2
+    exit 2
+  fi
+done
+mkdir -p "$(dirname "$DIR")"
+mkdir "$DIR" || { echo "run: output directory already exists: $DIR" >&2; exit 2; }
+# mkdir is the per-run ownership gate; O_EXCL/noclobber reservations additionally
+# cover another invocation reserving an adjacent path after the checks above.
+# Keep the descriptors: later writes never reopen a retained sidecar by name.
+set -C
+if ! exec {run_log_fd}>"$DIR.runner.log"; then exit 2; fi
+if ! exec {status_fd}>"$DIR.runner-status.json"; then exit 2; fi
+if ! exec {report_fd}>"$DIR.report-check.log"; then exit 2; fi
+set +C
+mkdir -p "$DIR/raw/metrics-start" "$DIR/raw/metrics-end"
+printf 'RUN_DIR=%s\n' "$DIR"
+exec 3>&1 4>&2
+exec > >(tee -a /dev/fd/"$run_log_fd" >&3) 2>&1
+log_pid=$!
+k6_exit=null
+report_exit=null
+safety_failure=false
+finish() {
+	local runner_exit=$?
+	trap - EXIT
+	set +e
+	if declare -F restore >/dev/null; then restore; fi
+	if [ "$safety_failure" = true ]; then runner_exit=4; fi
+	exec >&3 2>&4
+	local tee_exit=0
+	wait "$log_pid" || tee_exit=$?
+	if [ "$tee_exit" != 0 ] && [ "$runner_exit" = 0 ]; then runner_exit=5; fi
+	printf '{"runnerExit":%s,"k6Exit":%s,"reportExit":%s,"teeExit":%s,"safetyFailure":%s}\n' \
+	 "$runner_exit" "$k6_exit" "$report_exit" "$tee_exit" "$safety_failure" >&"$status_fd"
+	exit "$runner_exit"
+}
+trap finish EXIT
 pin() { sed -n "s/^$1 *:= *//p" tools.mk; }
 K6_VERSION="${K6_VERSION:-$(pin K6_VERSION)}"
 [ -n "$K6_VERSION" ] || { echo "run: K6_VERSION is not pinned in tools.mk (#125); set K6_VERSION" >&2; exit 2; }
@@ -107,6 +151,7 @@ def s(x): return {c for p in x.split(",") for lo, _, hi in [p.partition("-")] fo
 sys.exit(1 if s(sys.argv[1]) & s(sys.argv[2]) else 0)' "$KIND_CPUS" "$K6_CPUS" || die "K6_CPUS $K6_CPUS overlaps KIND_CPUS $KIND_CPUS"
 mapfile -t NODES < <(kind get nodes --name "$CLUSTER")
 [ "${#NODES[@]}" -gt 0 ] || die "no kind nodes for $CLUSTER"
+CPU_ONLINE="$(cat /sys/devices/system/cpu/online)"
 declare -A CPUSET_BEFORE
 for n in "${NODES[@]}"; do
 	CPUSET_BEFORE[$n]="$(docker inspect -f '{{.HostConfig.CpusetCpus}}' "$n")"
@@ -119,19 +164,23 @@ restore() {
 	set +e
 	trap - ERR
 	local n
-	if [ -n "$sampler_pid" ]; then kill "$sampler_pid" 2>/dev/null; fi
+	if [ -n "$sampler_pid" ]; then kill "$sampler_pid" 2>/dev/null; wait "$sampler_pid" 2>/dev/null; fi
 	if [ -n "${pf:-}" ]; then kill "$pf" 2>/dev/null; fi
 	for n in "${NODES[@]}"; do
 		# An empty cpuset means every CPU; docker update needs it spelled out.
-		docker update --cpuset-cpus "${CPUSET_BEFORE[$n]:-0-$(($(nproc) - 1))}" "$n" >/dev/null 2>&1 ||
-			log "WARNING: could not restore the cpuset of $n"
+		docker update --cpuset-cpus "${CPUSET_BEFORE[$n]:-${CPU_ONLINE:-0-$(($(nproc) - 1))}}" "$n" >/dev/null 2>&1 ||
+			{ safety_failure=true; log "WARNING: could not restore the cpuset of $n"; }
+		[ "$(docker inspect -f '{{.HostConfig.CpusetCpus}}' "$n")" = "${CPUSET_BEFORE[$n]:-${CPU_ONLINE:-0-$(($(nproc) - 1))}}" ] || safety_failure=true
 	done
 	if [ "$POWER_BEFORE" != unknown ] && [ "$(powerprofilesctl get 2>/dev/null)" != "$POWER_BEFORE" ]; then
-		powerprofilesctl set "$POWER_BEFORE" || log "WARNING: could not restore the power profile $POWER_BEFORE"
+		powerprofilesctl set "$POWER_BEFORE" || { safety_failure=true; log "WARNING: could not restore the power profile $POWER_BEFORE"; }
+	fi
+	if [ "$POWER_BEFORE" != unknown ]; then
+		[ "$(powerprofilesctl get 2>/dev/null)" = "$POWER_BEFORE" ] || safety_failure=true
 	fi
 	log "restored: node cpusets, power profile $(powerprofilesctl get 2>/dev/null || echo unknown)"
 }
-trap restore EXIT
+
 trap 'exit 130' INT
 trap 'exit 143' TERM HUP
 for n in "${NODES[@]}"; do
@@ -144,9 +193,6 @@ if [ "$POWER_BEFORE" != unknown ]; then
 fi
 log "isolation: kind nodes on CPUs $KIND_CPUS, k6 on $K6_CPUS, power profile $(powerprofilesctl get 2>/dev/null || echo unknown)"
 
-RUN_ID="S5.2-$SCENARIO-$(date -u +%Y%m%dT%H%M%SZ)"
-DIR="docs/evidence/S5.2/$RUN_ID"
-mkdir -p "$DIR/raw/metrics-start" "$DIR/raw/metrics-end"
 log "run $RUN_ID in $DIR"
 
 # --- facts: host, versions, configuration ----------------------------------------------------
@@ -210,6 +256,7 @@ scrape() { # scrape <dir>
 		for _ in $(seq 50); do curl -sf -o "$1/$pod.prom" "http://127.0.0.1:$port/metrics" && break; sleep 0.1; done
 		kill "$pf" 2>/dev/null || true
 		wait "$pf" 2>/dev/null || true
+		pf=""
 		[ -s "$1/$pod.prom" ] || die "could not scrape $pod"
 	done
 }
@@ -242,7 +289,7 @@ sampler_pid=$!
 log "k6 $SCENARIO on CPU $K6_CPUS: ${DURATION_S}s, $OPS ops in the dataset"
 set +e
 taskset -c "$K6_CPUS" "$K6" run --quiet --no-color --out json="$DIR/raw/k6-points.jsonl.gz" \
-	-e API_URL="$API_URL" -e DATASET="$ROOT/$DIR/dataset.json" -e SUMMARY="$ROOT/$DIR/k6-summary.json" "${K6_ENV[@]}" \
+	-e API_URL="$API_URL" -e DATASET="$DIR/dataset.json" -e SUMMARY="$DIR/k6-summary.json" "${K6_ENV[@]}" \
 	"$SCRIPT" 2>"$DIR/raw/k6.log"
 k6_exit=$?
 set -e
@@ -261,6 +308,8 @@ print(json.dumps([{"targetRps": s["targetRps"], "from": (t0 + timedelta(seconds=
                    "to": (t0 + timedelta(seconds=s["toS"])).isoformat()} for s in json.loads(sys.argv[2])]))' "$started" "$STEPS_PLAN")"
 sample_once >> "$DIR/raw/cgroup.jsonl"
 kill "$sampler_pid" 2>/dev/null || true
+wait "$sampler_pid" 2>/dev/null || true
+sampler_pid=""
 scrape "$DIR/raw/metrics-end"
 host_json="$(jq --argjson mhz "$(mhz)" '. + {cpuMHzEnd: $mhz}' <<<"$host_json")"
 
@@ -303,6 +352,12 @@ jq -n --arg run "$RUN_ID" --arg scenario "$SCENARIO" --arg started "$started" --
 	  load: {executor: $executor, durationSeconds: $duration, maxVUs: $maxvus},
 	  steps: $steps, invcheck: {exitCode: $inv}}' > "$DIR/facts.json"
 go run ./loadtest/cmd/loadreport build -dir "$DIR" -spill "$SPILL_DIR" >&2
+jq -e '.invariants.ledger == "PASS" and .invariants.invcheck == "PASS"' "$DIR/summary.json" >/dev/null || safety_failure=true
 leaked="$(repo_port_forwards "$ROOT")"
 [ -z "$leaked" ] || die "port-forwards outlived the run: $leaked"
-python3 -I scripts/load-report-check.py "$DIR"
+set +e
+python3 -I scripts/load-report-check.py "$DIR" >&"$report_fd" 2>&1
+report_exit=$?
+cat "$DIR.report-check.log"
+set -e
+exit "$report_exit"

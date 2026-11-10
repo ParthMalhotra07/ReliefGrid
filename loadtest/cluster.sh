@@ -7,20 +7,23 @@
 #   then checks every pod in the namespace is Guaranteed and Ready.
 # It creates the cluster if needed and refuses one that already runs storage:
 # start from `make cluster-down` (a load result needs a known starting state).
-# app-deploy writes docs/evidence/A1.5; this script restores it on exit.
+# app-deploy writes to A15_EVIDENCE_DIR; existing A1.5 evidence is untouched.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 CLUSTER="${CLUSTER:-reliefgrid}"
+[ "$CLUSTER" = reliefgrid ] || {
+ echo "cluster: this branch's cluster-up only supports CLUSTER=reliefgrid" >&2
+ exit 2
+}
 CTX="kind-$CLUSTER"
 NS="${NAMESPACE:-reliefgrid}"
 RELEASE="${APP_RELEASE:-reliefgrid}"
 log() { printf '%s cluster: %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
-restore_a15() {
-	git checkout -q -- docs/evidence/A1.5 2>/dev/null || true
-	git clean -fdq -- docs/evidence/A1.5 2>/dev/null || true
-}
-trap restore_a15 EXIT
+# Preserve existing A1.5 evidence, including untracked and ignored files.
+# Keep deployment diagnostics in a separate directory even on failure.
+export A15_EVIDENCE_DIR="${A15_EVIDENCE_DIR:-$(mktemp -d -t reliefgrid-load-a15.XXXXXXXX)}"
+log "A1.5 deployment diagnostics: $A15_EVIDENCE_DIR"
 
 if kind get clusters 2>/dev/null | grep -qx "$CLUSTER" &&
 	kubectl --context "$CTX" -n "$NS" get sts -l app.kubernetes.io/name=storage -o name 2>/dev/null | grep -q .; then
