@@ -508,6 +508,14 @@ func (c *Client) TransitionRequest(ctx context.Context, cmd store.TransitionRequ
 	return c.mutate(ctx, mutation{op: "TransitionRequest", method: http.MethodPost, path: "/internal/requests/" + url.PathEscape(id) + "/transition", body: cmd, drop: []string{"key"}})
 }
 
+func (c *Client) AgeRequest(ctx context.Context, cmd store.AgeRequest) (store.Result, error) {
+	id, err := entityID(cmd.Key, store.RequestKeyPrefix)
+	if err != nil {
+		return store.Result{}, err
+	}
+	return c.mutate(ctx, mutation{op: "AgeRequest", method: http.MethodPost, path: "/internal/requests/" + url.PathEscape(id) + "/age", body: cmd, drop: []string{"key"}})
+}
+
 func (c *Client) RetryWorkflow(ctx context.Context, cmd store.RetryWorkflow) (store.Result, error) {
 	id, err := entityID(cmd.Key, store.RequestKeyPrefix)
 	if err != nil {

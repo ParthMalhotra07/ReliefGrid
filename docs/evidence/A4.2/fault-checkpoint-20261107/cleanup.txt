@@ -1,0 +1,3 @@
+Replayed original pending intents: 26
+CAS-deleted remaining owned scratch keys: 4
+Complete strong scan confirms no live keys for this exact test prefix: PASS

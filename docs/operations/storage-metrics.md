@@ -33,7 +33,7 @@ Histograms use these buckets (seconds): 0.001, 0.0025, 0.005, 0.01, 0.025,
 
 | Family | Type | Extra labels | Unit | Meaning |
 |---|---|---|---|---|
-| `storage_command_latency_seconds` | histogram | `command` = `CreateEntity` `CompareAndSet` `TransitionRequest` `RetryWorkflow` `TransitionResource` `TryClaim` `CloseAttempt` `MarkOutboxPublished`; `outcome` = `ok` `error` | s | One mutation on the replica that received it: propose, majority commit and FSM apply (plan §25 "majority/apply cost"). `error` is any non-result (not leader, timeout, unknown outcome); a domain rejection is a result, so `ok`. |
+| `storage_command_latency_seconds` | histogram | `command` = `CreateEntity` `CompareAndSet` `TransitionRequest` `RetryWorkflow` `AgeRequest` `TransitionResource` `TryClaim` `CloseAttempt` `MarkOutboxPublished`; `outcome` = `ok` `error` | s | One mutation on the replica that received it: propose, majority commit and FSM apply (plan §25 "majority/apply cost"). `error` is any non-result (not leader, timeout, unknown outcome); a domain rejection is a result, so `ok`. |
 | `storage_read_latency_seconds` | histogram | `consistency` = `strong` `linearizable` `stale` | s | One read served by this replica, including its fence. |
 | `storage_raft_commit_seconds` | histogram | | s | Leader only: log append to commit (hashicorp/raft `raft.commitTime`). |
 | `storage_raft_fsm_apply_seconds` | histogram | | s | FSM apply of one entry (`raft.fsm.apply`). |
@@ -97,7 +97,7 @@ Plus `go_*` and `process_*`.
 
 ## Cardinality
 
-Storage: about 550 series per replica. `storage_command_latency_seconds`
-dominates (8 commands x 2 outcomes x 16 series per histogram = 256), so about
+Storage: about 582 series per replica. `storage_command_latency_seconds`
+dominates (9 commands x 2 outcomes x 16 series per histogram = 288), so about
 5000 for nine replicas in total. Coordinator: about 250 for three shards of
 three. Each target stays well under a `sample_limit` of 5000.

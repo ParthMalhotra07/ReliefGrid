@@ -32,6 +32,7 @@ type Scanner interface {
 // must return globally unique UUIDs in production; calls are serialized. Call
 // and work timeouts bound even a caller that supplies no deadline.
 type Config struct {
+	Observer         Observer
 	Store            store.Store
 	CandidateScanner Scanner
 	Now              func() time.Time
@@ -123,7 +124,10 @@ func (m *Matcher) id() string {
 
 // Match performs bounded matching or cancellation/completion work for one
 // request. Consumers own acknowledgement; callers must not ack an error here.
-func (m *Matcher) Match(ctx context.Context, requestID string) (Result, error) {
+func (m *Matcher) Match(ctx context.Context, requestID string) (out Result, matchErr error) {
+	if m.cfg.Observer != nil {
+		defer func() { m.cfg.Observer.Attempt(out.Outcome, matchErr) }()
+	}
 	ctx, cancel := context.WithTimeout(ctx, m.cfg.WorkTimeout)
 	defer cancel()
 	rec, err := m.read(ctx, store.RequestKey(requestID))
@@ -290,6 +294,9 @@ func (m *Matcher) applyTransition(ctx context.Context, rec store.Record, cmd sto
 	})
 	if err != nil {
 		return store.Record{}, err
+	}
+	if m.cfg.Observer != nil && rec.Request != nil {
+		m.cfg.Observer.Transition(*rec.Request, cmd, r)
 	}
 	if r.Outcome != store.OutcomeOK && r.Outcome != store.OutcomeVersionConflict {
 		return store.Record{}, fmt.Errorf("workflow transition rejected with %s: %s", r.Outcome, r.Reason)
