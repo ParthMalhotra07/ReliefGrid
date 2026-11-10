@@ -30,6 +30,58 @@ func (a dnsAddr) String() string { return string(a) }
 type dnsStreamLayer struct {
 	net.Listener
 	advertise dnsAddr
+	mu        sync.Mutex
+	closed    bool
+	accepted  map[*acceptedConn]struct{}
+}
+
+// acceptedConn unregisters when handleConn finishes, so idle live connections
+// are tracked without retaining connections from completed handlers.
+type acceptedConn struct {
+	net.Conn
+	stream *dnsStreamLayer
+}
+
+func (c *acceptedConn) Close() error {
+	c.stream.mu.Lock()
+	delete(c.stream.accepted, c)
+	c.stream.mu.Unlock()
+	return c.Conn.Close()
+}
+
+func (s *dnsStreamLayer) Accept() (net.Conn, error) {
+	conn, err := s.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	c := &acceptedConn{Conn: conn, stream: s}
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		_ = conn.Close()
+		return nil, net.ErrClosed
+	}
+	if s.accepted == nil {
+		s.accepted = make(map[*acceptedConn]struct{})
+	}
+	s.accepted[c] = struct{}{}
+	s.mu.Unlock()
+	return c, nil
+}
+
+func (s *dnsStreamLayer) Close() error {
+	s.mu.Lock()
+	s.closed = true
+	connections := s.accepted
+	s.accepted = nil
+	s.mu.Unlock()
+	// No listener or connection I/O under mu. An Accept that completed on
+	// the listener but has not registered yet observes closed and rejects it.
+	err := s.Listener.Close()
+	for c := range connections {
+		_ = c.Close()
+	}
+	return err
 }
 
 func (s *dnsStreamLayer) Addr() net.Addr { return s.advertise }
@@ -202,7 +254,12 @@ func (t *fenceTransport) Close() error {
 	t.hbClosed = true
 	t.hbMu.Unlock()
 	t.closeOnce.Do(func() { close(t.done) })
-	return t.NetworkTransport.Close()
+	// Close first marks Raft shutdown and stops accepts; returning RPCs can
+	// no longer refill the pool. CloseStreams then drains pooled outbound
+	// sockets (Close alone does not) and cancels the old stream context.
+	err := t.NetworkTransport.Close()
+	t.CloseStreams()
+	return err
 }
 
 // errDropped is what a test's dropSend makes an outgoing RPC fail with.

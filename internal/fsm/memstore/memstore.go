@@ -241,6 +241,10 @@ func (s *Store) TransitionRequest(ctx context.Context, cmd store.TransitionReque
 	return s.applyKey(ctx, cmd.Key, cmd)
 }
 
+func (s *Store) AgeRequest(ctx context.Context, cmd store.AgeRequest) (store.Result, error) {
+	return s.applyKey(ctx, cmd.Key, cmd)
+}
+
 func (s *Store) RetryWorkflow(ctx context.Context, cmd store.RetryWorkflow) (store.Result, error) {
 	return s.applyKey(ctx, cmd.Key, cmd)
 }

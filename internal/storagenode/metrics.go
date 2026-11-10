@@ -29,7 +29,7 @@ var (
 	// snapshotBuckets add room for a large image.
 	snapshotBuckets = append(append([]float64(nil), latencyBuckets...), 30, 60)
 
-	commandOps = []fsm.Op{fsm.OpCreateEntity, fsm.OpCompareAndSet, fsm.OpTransitionRequest, fsm.OpRetryWorkflow,
+	commandOps = []fsm.Op{fsm.OpCreateEntity, fsm.OpCompareAndSet, fsm.OpTransitionRequest, fsm.OpRetryWorkflow, fsm.OpAgeRequest,
 		fsm.OpTransitionResource, fsm.OpTryClaim, fsm.OpCloseAttempt, fsm.OpMarkOutboxPublished}
 	readConsistencies = map[raftstore.ReadMode]string{
 		raftstore.ReadStrong: "strong", raftstore.ReadLinearizable: "linearizable", raftstore.ReadStale: "stale"}

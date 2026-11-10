@@ -112,6 +112,16 @@ func (s *server) transitionRequest(w http.ResponseWriter, r *http.Request) {
 	}, false)
 }
 
+func (s *server) ageRequest(w http.ResponseWriter, r *http.Request) {
+	key := store.RequestKey(r.PathValue("id"))
+	var b internalapi.AgeRequestBody
+	if !s.decode(w, r, &b) || !s.checkRing(w, b.RingVersion) || !s.ownsKey(w, key) {
+		return
+	}
+	s.apply(w, r, store.AgeRequest{Meta: store.Meta{OperationID: b.OperationId, At: b.At}, Key: key,
+		ExpectedVersion: b.ExpectedVersion, AgingIntervalMS: b.AgingIntervalMS, Outbox: b.Outbox}, false)
+}
+
 func (s *server) retryWorkflow(w http.ResponseWriter, r *http.Request) {
 	key := store.RequestKey(r.PathValue("id"))
 	var b internalapi.RetryWorkflowBody

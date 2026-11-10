@@ -2,6 +2,7 @@ package coordinator_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -57,6 +58,7 @@ func routedCalls(t *testing.T, h *harness, shard int) []routed {
 		{"pending outbox", "GET /internal/outbox", call{method: http.MethodGet, path: fmt.Sprintf("/internal/outbox?shard=%d&limit=10&wait=1", shard)}, shard, false},
 		{"mark published", "POST /internal/outbox/published", call{method: http.MethodPost, path: fmt.Sprintf("/internal/outbox/published?shard=%d", shard), body: body(`,"eventIds":["ev-1"]`)}, shard, true},
 		{"operation", "GET /internal/operations/{operationId}", call{method: http.MethodGet, path: "/internal/operations/op-1?key=" + q(kv)}, shard, false},
+		{"age request", "POST /internal/requests/{id}/age", call{method: http.MethodPost, path: "/internal/requests/" + esc(req) + "/age", body: body(`,"expectedVersion":1,"agingIntervalMS":1000,"outbox":[]`)}, shard, true},
 	}
 }
 
@@ -298,25 +300,22 @@ func TestUnknownOutcomeIsStickyAcrossRetries(t *testing.T) {
 	}
 }
 
-// When nothing was proposed (NOT_LEADER, NO_LEADER, refused connections)
+// When nothing was proposed (NOT_LEADER, NO_LEADER)
 // the budget ends in 503 NO_LEADER: retryable, outcomeUnknown=false, with
 // Retry-After, and within the budget.
 //
-// The NO_LEADER and NOT_LEADER nodes each answer exactly once and then stop
-// listening, so every later attempt is a refused dial, never sent. Left
-// answering, they could still be mid-answer when the budget ends, and an
-// attempt cut off after it was sent correctly makes a mutation's outcome
-// unknown (TestHungNodeIsBoundedByTheBudget). Under parallel -race load that
-// happened in about 1 run in 100, whatever the budget.
+// Keep every node listening and explicitly refusing throughout the test:
+// closing a listener frees its port for an unrelated server (issue #119).
+// A sent attempt cut off before its answer is still correctly unknown;
+// TestHungNodeIsBoundedByTheBudget covers that separate case.
 func TestNeverProposedExhaustionIsNoLeader(t *testing.T) {
 	const budget = time.Second // headroom for slow runners
 	h := newHarness(t, func(c *coordinator.Config) { c.Budget = budget })
 	h.ready()
 	shard := h.nodes[2]
-	var noLeader, notLead atomic.Int32
-	shard[0].setHandler(answerOnce(shard[0], &noLeader, failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false)))
-	shard[1].setHandler(answerOnce(shard[1], &notLead, notLeader(shard[0], 1)))
-	shard[2].srv.Close() // refused: never sent
+	shard[0].setHandler(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false))
+	shard[1].setHandler(notLeader(shard[0], 1))
+	shard[2].setHandler(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false))
 
 	start := time.Now()
 	rec := h.do(routedCalls(t, h, 2)[0].call)
@@ -325,23 +324,47 @@ func TestNeverProposedExhaustionIsNoLeader(t *testing.T) {
 	if e.OutcomeUnknown || !e.Retryable || rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("error = %+v (Retry-After %q)", e, rec.Header().Get("Retry-After"))
 	}
-	if noLeader.Load() != 1 || notLead.Load() != 1 {
-		t.Fatalf("NO_LEADER answered %d times, NOT_LEADER %d; want each once", noLeader.Load(), notLead.Load())
+	// Check before the direct probes so only routed attempts count here.
+	for _, n := range shard {
+		if len(n.requests()) == 0 {
+			t.Fatalf("%s received no routed attempts; want every refusal path exercised", n.pod)
+		}
 	}
 	if elapsed > budget+500*time.Millisecond {
 		t.Fatalf("answered after %s; budget %s", elapsed, budget)
 	}
-}
 
-// answerOnce answers with h, counting in n, and stops n's listener before
-// the answer is written: every later dial to n is refused (never sent).
-// Connection: close keeps the client from reusing this connection.
-func answerOnce(node *fakeNode, n *atomic.Int32, h func(http.ResponseWriter, *http.Request, []byte)) func(http.ResponseWriter, *http.Request, []byte) {
-	return func(w http.ResponseWriter, r *http.Request, body []byte) {
-		n.Add(1)
-		_ = node.srv.Listener.Close()
-		w.Header().Set("Connection", "close")
-		h(w, r, body)
+	// Issue #119: a closed listener releases its port to unrelated servers.
+	// Require explicit, identified refusals on repeated calls, rather than
+	// relying on a transport error to mean that nothing was proposed.
+	client := &http.Client{Timeout: budget}
+	for i, n := range shard {
+		t.Run(n.pod+"/keeps refusing", func(t *testing.T) {
+			want := internalapi.NOLEADER
+			if i == 1 {
+				want = internalapi.NOTLEADER
+			}
+			for attempt := range 2 {
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, n.srv.URL+"/internal/data/probe", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				resp, err := client.Do(req)
+				if err != nil {
+					t.Fatalf("refusal probe %d: %v; want an explicit %s answer with node identity", attempt+1, err, want)
+				}
+				var e internalapi.Error
+				err = json.NewDecoder(resp.Body).Decode(&e)
+				_ = resp.Body.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if resp.StatusCode != http.StatusServiceUnavailable || e.Code != want || e.OutcomeUnknown || !e.Retryable ||
+					resp.Header.Get(internalapi.HeaderServerID) != n.serverID() || resp.Header.Get(internalapi.HeaderShard) != "2" {
+					t.Fatalf("refusal probe %d: status=%d error=%+v headers=%v; want identified %s from %s", attempt+1, resp.StatusCode, e, resp.Header, want, n.serverID())
+				}
+			}
+		})
 	}
 }
 

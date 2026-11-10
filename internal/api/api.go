@@ -24,6 +24,7 @@ import (
 // the operator, never taken from an untrusted request header. Multi-user public
 // deployment needs authenticated principal-to-namespace routing first.
 type Config struct {
+	Observer          workflow.Observer
 	Store             store.Store
 	Now               func() time.Time
 	CallerNamespace   string
@@ -67,7 +68,7 @@ func New(cfg Config) (*Server, error) {
 		cfg.StreamContext = context.Background()
 	}
 	m, err := workflow.New(workflow.Config{
-		Store: cfg.Store, Now: cfg.Now, ScanLimit: store.MaxScanLimit,
+		Store: cfg.Store, Now: cfg.Now, ScanLimit: store.MaxScanLimit, Observer: cfg.Observer,
 		CallTimeout: cfg.CallTimeout, WorkTimeout: cfg.Budget,
 	})
 	if err != nil {

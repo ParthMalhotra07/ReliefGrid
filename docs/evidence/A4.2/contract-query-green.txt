@@ -1,0 +1,4 @@
+Processing test file: /test/cases.yaml
+  SUCCESS
+
+A4.2 storage PromQL leader/failure/freshness tests: PASS

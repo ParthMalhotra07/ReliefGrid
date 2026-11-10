@@ -31,3 +31,5 @@ ui/dist/
 
 ui/test-results/
 ui/playwright-report/
+# Local Python verification bytecode
+__pycache__/
