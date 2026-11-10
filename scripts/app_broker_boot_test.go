@@ -56,7 +56,7 @@ func TestAppBrokerNativeBootImport(t *testing.T) {
 			if monitorUser == credentials.user || monitorPassword == credentials.password || len(monitorPassword) < 32 {
 				t.Fatal("monitor identity must be independent")
 			}
-			wantUsers := []any{map[string]any{"name": credentials.user, "password": credentials.password, "tags": "administrator"}, map[string]any{"name": monitorUser, "password": monitorPassword, "tags": "monitoring"}}
+			wantUsers := []any{map[string]any{"name": credentials.user, "password": credentials.password, "tags": "administrator"}, map[string]any{"name": monitorUser, "password": monitorPassword, "tags": "management"}}
 			wantPermissions := []any{map[string]any{"user": credentials.user, "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}, map[string]any{"user": monitorUser, "vhost": "/", "configure": "^$", "write": "^$", "read": "^$"}}
 			if !reflect.DeepEqual(got["users"], wantUsers) || !reflect.DeepEqual(got["permissions"], wantPermissions) {
 				t.Fatal("boot import must provision configured user and permissions")

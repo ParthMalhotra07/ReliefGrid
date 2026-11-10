@@ -24,6 +24,9 @@ import (
 
 func brokerForExecution(x *execution) (*amqp.Connection, string) {
 	x.t.Helper()
+	if x.brokerConnection != nil {
+		return x.brokerConnection, x.brokerAddress
+	}
 	raw := os.Getenv("MQ_AMQP_URL")
 	management := os.Getenv("MQ_MANAGEMENT_URL")
 	if raw == "" || management == "" {
@@ -70,6 +73,7 @@ func brokerForExecution(x *execution) (*amqp.Connection, string) {
 	if err := mq.Declare(x.ctx, conn); err != nil {
 		x.t.Fatal(err)
 	}
+	x.brokerConnection, x.brokerAddress = conn, u.String()
 	return conn, u.String()
 }
 

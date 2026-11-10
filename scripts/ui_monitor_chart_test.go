@@ -58,5 +58,5 @@ func TestAppUIBrokerMonitorIdentity(t *testing.T) {
 		t.Fatal("UI management credential missing")
 	}
 	sts := appDocument(t, docs, "StatefulSet", "reliefgrid-rabbitmq")
-	appEqual(t, appField(t, sts, "spec", "template", "metadata", "annotations", "reliefgrid.io/broker-accounts"), "ui-monitor-v1", "migration rollout")
+	appEqual(t, appField(t, sts, "spec", "template", "metadata", "annotations", "reliefgrid.io/broker-accounts"), "ui-monitor-v2", "migration rollout")
 }

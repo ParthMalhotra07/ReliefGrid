@@ -26,7 +26,7 @@ func monitorOpen(t *testing.T, key string) *amqp.Channel {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	t.Cleanup(cancel)
-	conn, err := amqp.DialConfig(address, amqp.Config{Heartbeat: 5 * time.Second, Dial: func(network, address string) (net.Conn, error) {
+	conn, err := amqp.DialConfig(address, amqp.Config{Heartbeat: 5 * time.Second, Properties: amqp.Table{"connection_name": t.Name()}, Dial: func(network, address string) (net.Conn, error) {
 		transport, err := (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, network, address)
 		if err != nil {
 			return nil, err
@@ -78,7 +78,7 @@ func TestUIBrokerMonitorLive(t *testing.T) {
 	password, _ := origin.User.Password()
 	origin.User = nil
 	client := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-	call := func(method, path, body string) (int, []byte) {
+	callAs := func(t *testing.T, username, secret, method, path, body string) (int, []byte) {
 		t.Helper()
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
@@ -86,7 +86,7 @@ func TestUIBrokerMonitorLive(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		req.SetBasicAuth(user, password)
+		req.SetBasicAuth(username, secret)
 		req.Header.Set("Content-Type", "application/json")
 		response, err := client.Do(req)
 		if err != nil {
@@ -99,6 +99,102 @@ func TestUIBrokerMonitorLive(t *testing.T) {
 		}
 		return response.StatusCode, data
 	}
+	call := func(method, path, body string) (int, []byte) {
+		return callAs(t, user, password, method, path, body)
+	}
+	appOrigin, err := url.Parse(os.Getenv("MONITOR_APP_AMQP"))
+	if err != nil || appOrigin.User == nil {
+		t.Fatal("application AMQP identity required for privacy controls")
+	}
+	appUser := appOrigin.User.Username()
+	appPassword, ok := appOrigin.User.Password()
+	if !ok || appUser == user {
+		t.Fatal("privacy controls require distinct application administrator identity")
+	}
+	t.Run("node-details-denied", func(t *testing.T) {
+		status, data := callAs(t, appUser, appPassword, "GET", "/api/nodes", "")
+		if status != 200 {
+			t.Fatalf("administrator node control returned %d", status)
+		}
+		var nodes []struct {
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(data, &nodes); err != nil || len(nodes) == 0 {
+			t.Fatal("administrator did not observe an existing broker node")
+		}
+		status, _ = callAs(t, user, password, "GET", "/api/nodes", "")
+		if status != 401 && status != 403 {
+			t.Errorf("monitor node listing was not denied: %d", status)
+		}
+		path := "/api/nodes/" + url.PathEscape(nodes[0].Name)
+		status, _ = callAs(t, appUser, appPassword, "GET", path, "")
+		if status != 200 {
+			t.Fatalf("administrator existing node detail control returned %d", status)
+		}
+		status, _ = callAs(t, user, password, "GET", path, "")
+		if status != 401 && status != 403 && status != 404 {
+			t.Errorf("monitor existing node detail was not denied: %d", status)
+		}
+	})
+	t.Run("other-user-connections-denied", func(t *testing.T) {
+		// This connection stays open until the subtest ends. A successful
+		// administrator control proves a later 404 is authorization, not absence.
+		monitorOpen(t, "MONITOR_APP_AMQP")
+		type connection struct {
+			Name             string `json:"name"`
+			User             string `json:"user"`
+			ClientProperties struct {
+				ConnectionName string `json:"connection_name"`
+			} `json:"client_properties"`
+		}
+		name := ""
+		deadline := time.Now().Add(5 * time.Second)
+		for name == "" {
+			status, data := callAs(t, appUser, appPassword, "GET", "/api/connections", "")
+			if status != 200 {
+				t.Fatalf("administrator connection control returned %d", status)
+			}
+			var connections []connection
+			if err := json.Unmarshal(data, &connections); err != nil {
+				t.Fatal("invalid administrator connection response")
+			}
+			for _, candidate := range connections {
+				if candidate.User == appUser && candidate.ClientProperties.ConnectionName == t.Name() {
+					name = candidate.Name
+				}
+			}
+			if name == "" {
+				if !time.Now().Before(deadline) {
+					t.Fatal("administrator did not observe the live other-user connection")
+				}
+				time.Sleep(50 * time.Millisecond)
+			}
+		}
+		path := "/api/connections/" + url.PathEscape(name)
+		status, _ := callAs(t, appUser, appPassword, "GET", path, "")
+		if status != 200 {
+			t.Fatalf("administrator existing connection detail control returned %d", status)
+		}
+		status, data := callAs(t, user, password, "GET", "/api/connections", "")
+		if status == 200 {
+			var connections []connection
+			if err := json.Unmarshal(data, &connections); err != nil {
+				t.Fatal("invalid monitor connection response")
+			}
+			for _, candidate := range connections {
+				if candidate.Name == name || candidate.User != user {
+					t.Error("monitor connection listing exposed another user's connection")
+				}
+			}
+		} else if status != 401 && status != 403 {
+			t.Errorf("monitor connection listing returned unexpected status: %d", status)
+		}
+		status, _ = callAs(t, user, password, "GET", path, "")
+		if status != 401 && status != 403 && status != 404 {
+			t.Errorf("monitor existing other-user connection detail was not denied: %d", status)
+		}
+		t.Log("administrator confirmed live other-user connection before monitor privacy checks")
+	})
 	for _, queue := range []string{"matching.requests", "matching.dead"} {
 		started := time.Now()
 		deadline := started.Add(15 * time.Second)

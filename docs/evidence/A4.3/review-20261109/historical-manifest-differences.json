@@ -1,0 +1,26 @@
+{
+  "compared_head": "7264d3cbfdddf43b184cdbec3eac0ff4485348dd",
+  "differences": [
+    {
+      "path": "Makefile",
+      "recorded": "a040f4e3c8817ea503558d9157981e04683b04d735de2896bef6aa17cf6ab1ae",
+      "reviewed": "b1f4b30bb74225ac1cdf699d6842c85b68904d9202ae24e8d379899e44357980"
+    },
+    {
+      "path": "scripts/verify-A4.3-test.py",
+      "recorded": "e10596d48e9ba30032047a1f5259afa13cfcab2e879aaf924ffd4ab412d904b5",
+      "reviewed": "891328f88615a69f16822c5cbb1f747dffc593d1ca261bd5f3895eafccc257af"
+    },
+    {
+      "path": "scripts/verify-A4.3.py",
+      "recorded": "08c5345b9f3cf64835d00df77d8cd3d95b29da4c3415e7e0798730ca455bfd18",
+      "reviewed": "d2639393ccdd34390c2e09aea05a2d9f1040c63cbc32fcf53fc3b64c2746833c"
+    },
+    {
+      "path": "tools.mk",
+      "recorded": "353c9baa1f6787276c3a58e4dc00322620f365ce98ff5a486fb4cc54bd6f66b1",
+      "reviewed": "61a464298a1d22bd99e2cb4b5dfb064da5d9d5de38627d16d4f111c3e8753542"
+    }
+  ],
+  "warning": "Historical comparison only. New tests and main rebase are not an immutable mapping to old images."
+}
