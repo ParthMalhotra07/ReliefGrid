@@ -12,8 +12,9 @@ context="kind-$cluster"
 with_storage="${APP_WITH_STORAGE:-false}"
 case "$with_storage" in true|false) ;; *) echo 'APP_WITH_STORAGE must be true or false' >&2; exit 1 ;; esac
 export APP_IMAGE_TAG="${APP_IMAGE_TAG:-a15-$(date -u +%Y%m%d%H%M%S)}"
-export A15_EVIDENCE_DIR="${A15_EVIDENCE_DIR:-docs/evidence/A1.5}"
-mkdir -p "$A15_EVIDENCE_DIR"
+A15_EVIDENCE_DIR="$(python3 scripts/app_evidence.py)"
+export A15_EVIDENCE_DIR
+printf 'application deployment evidence: %s\n' "$A15_EVIDENCE_DIR"
 kn() { kubectl --request-timeout=10s --context "$context" -n "$namespace" "$@"; }
 kubectl --request-timeout=10s --context "$context" get nodes -o json > "$A15_EVIDENCE_DIR/nodes.json"
 python3 - "$A15_EVIDENCE_DIR/nodes.json" <<'PY'
