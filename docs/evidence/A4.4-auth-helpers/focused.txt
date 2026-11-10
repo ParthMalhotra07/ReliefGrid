@@ -1,0 +1,122 @@
+=== RUN   TestConfigValidationAndRedaction
+--- PASS: TestConfigValidationAndRedaction (0.00s)
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/comma_joined
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/missing
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/empty
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/wrong
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/duplicate
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/mixed
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/space
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/case_duplicate
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/bearer_only
+--- PASS: TestReceiverOverlapStrictHeadersAndFailClosed (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/comma_joined (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/missing (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/empty (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/wrong (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/duplicate (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/mixed (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/space (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/case_duplicate (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/bearer_only (0.00s)
+=== RUN   TestClientRequiresBoundedCallsAndPreservesIdleCleanup
+--- PASS: TestClientRequiresBoundedCallsAndPreservesIdleCleanup (0.00s)
+=== RUN   TestClientReplacesCredentialWithoutMutatingSharedInputs
+--- PASS: TestClientReplacesCredentialWithoutMutatingSharedInputs (0.00s)
+=== RUN   TestDefaultClientAndErrorRedaction
+--- PASS: TestDefaultClientAndErrorRedaction (0.00s)
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/301
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/302
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/303
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/307
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/308
+--- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient (0.01s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/301 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/302 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/303 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/307 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/308 (0.00s)
+=== RUN   TestConfigValidationAndRedaction
+--- PASS: TestConfigValidationAndRedaction (0.00s)
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/missing
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/empty
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/wrong
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/duplicate
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/mixed
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/bearer_only
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/comma_joined
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/space
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/case_duplicate
+--- PASS: TestReceiverOverlapStrictHeadersAndFailClosed (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/missing (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/empty (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/wrong (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/duplicate (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/mixed (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/bearer_only (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/comma_joined (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/space (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/case_duplicate (0.00s)
+=== RUN   TestClientRequiresBoundedCallsAndPreservesIdleCleanup
+--- PASS: TestClientRequiresBoundedCallsAndPreservesIdleCleanup (0.00s)
+=== RUN   TestClientReplacesCredentialWithoutMutatingSharedInputs
+--- PASS: TestClientReplacesCredentialWithoutMutatingSharedInputs (0.00s)
+=== RUN   TestDefaultClientAndErrorRedaction
+--- PASS: TestDefaultClientAndErrorRedaction (0.00s)
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/301
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/302
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/303
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/307
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/308
+--- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient (0.01s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/301 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/302 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/303 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/307 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/308 (0.00s)
+=== RUN   TestConfigValidationAndRedaction
+--- PASS: TestConfigValidationAndRedaction (0.00s)
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/missing
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/wrong
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/duplicate
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/mixed
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/comma_joined
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/empty
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/space
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/case_duplicate
+=== RUN   TestReceiverOverlapStrictHeadersAndFailClosed/bearer_only
+--- PASS: TestReceiverOverlapStrictHeadersAndFailClosed (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/missing (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/wrong (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/duplicate (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/mixed (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/comma_joined (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/empty (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/space (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/case_duplicate (0.00s)
+    --- PASS: TestReceiverOverlapStrictHeadersAndFailClosed/bearer_only (0.00s)
+=== RUN   TestClientRequiresBoundedCallsAndPreservesIdleCleanup
+--- PASS: TestClientRequiresBoundedCallsAndPreservesIdleCleanup (0.00s)
+=== RUN   TestClientReplacesCredentialWithoutMutatingSharedInputs
+--- PASS: TestClientReplacesCredentialWithoutMutatingSharedInputs (0.00s)
+=== RUN   TestDefaultClientAndErrorRedaction
+--- PASS: TestDefaultClientAndErrorRedaction (0.00s)
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/301
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/302
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/303
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/307
+=== RUN   TestClientNeverFollowsRedirectsIncludingInjectedClient/308
+--- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient (0.01s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/301 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/302 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/303 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/307 (0.00s)
+    --- PASS: TestClientNeverFollowsRedirectsIncludingInjectedClient/308 (0.00s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/auth	1.043s
