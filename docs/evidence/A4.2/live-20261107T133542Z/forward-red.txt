@@ -1,0 +1,38 @@
+E
+======================================================================
+ERROR: test_noisy_forward_remains_live_and_preserves_log (__main__.ForwardTest.test_noisy_forward_remains_live_and_preserves_log)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/metrics-forward-test.py", line 19, in test_noisy_forward_remains_live_and_preserves_log
+    with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(origin,timeout=2) as response:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 487, in open
+    response = self._open(req, data)
+  File "/usr/lib/python3.14/urllib/request.py", line 504, in _open
+    result = self._call_chain(self.handle_open, protocol, protocol +
+                              '_open', req)
+  File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/usr/lib/python3.14/urllib/request.py", line 1350, in http_open
+    return self.do_open(http.client.HTTPConnection, req)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 1325, in do_open
+    r = h.getresponse()
+  File "/usr/lib/python3.14/http/client.py", line 1459, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/http/client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/socket.py", line 725, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+TimeoutError: timed out
+
+----------------------------------------------------------------------
+Ran 1 test in 2.106s
+
+FAILED (errors=1)

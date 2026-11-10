@@ -1,0 +1,17 @@
+--- FAIL: TestPublicRefinementsContract (0.02s)
+    refinements_contract_test.go:19: /requests/{requestId}/status: missing If-Match
+    refinements_contract_test.go:22: /requests/{requestId}/status: missing 412
+    refinements_contract_test.go:25: /requests/{requestId}/status: missing ETag
+    refinements_contract_test.go:19: /resources/{resourceId}/status: missing If-Match
+    refinements_contract_test.go:22: /resources/{resourceId}/status: missing 412
+    refinements_contract_test.go:25: /resources/{resourceId}/status: missing ETag
+    refinements_contract_test.go:37: /requests: missing cursor
+    refinements_contract_test.go:40: /requests: create lacks ETag
+    refinements_contract_test.go:37: /resources: missing cursor
+    refinements_contract_test.go:40: /resources: create lacks ETag
+    refinements_contract_test.go:45: RequestListResponse: missing continuation
+    refinements_contract_test.go:45: ResourceListResponse: missing continuation
+    refinements_contract_test.go:49: request read lacks ETag
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/contracts	0.034s
+FAIL

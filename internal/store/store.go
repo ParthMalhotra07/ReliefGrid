@@ -29,6 +29,7 @@ type Store interface {
 	CompareAndSet(ctx context.Context, cmd CompareAndSet) (Result, error)
 	TransitionRequest(ctx context.Context, cmd TransitionRequest) (Result, error)
 	RetryWorkflow(ctx context.Context, cmd RetryWorkflow) (Result, error)
+	AgeRequest(ctx context.Context, cmd AgeRequest) (Result, error)
 	TransitionResource(ctx context.Context, cmd TransitionResource) (Result, error)
 	TryClaim(ctx context.Context, cmd TryClaim) (Result, error)
 	CloseAttempt(ctx context.Context, cmd CloseAttempt) (Result, error)
@@ -151,6 +152,7 @@ type Request struct {
 	Geohash            string          `json:"geohash"`
 	PeopleAffected     int             `json:"peopleAffected"`
 	Urgency            int             `json:"urgency"`
+	EffectiveUrgency   int             `json:"effectiveUrgency,omitempty"` // zero means original Urgency
 	Details            json.RawMessage `json:"details,omitempty"`
 	Status             RequestStatus   `json:"status"`
 	WorkflowGeneration uint64          `json:"workflowGeneration"`
@@ -272,6 +274,22 @@ type RetryWorkflow struct {
 	NextAttemptAt   int64         `json:"nextAttemptAt"`
 	LastError       string        `json:"lastError,omitempty"`
 	Outbox          []OutboxEvent `json:"outbox,omitempty"`
+}
+
+// AgingWakeExchange and AgingWakeRoutingKey define the proposed immediate wake
+// route. Pending topology agreement with A on #135; change routing here only.
+const AgingWakeExchange, AgingWakeRoutingKey = "relief.requests", "request.retry"
+
+// AgeRequest raises effective priority from CreatedAt in whole integer intervals.
+// PENDING/WAITING without intent or assignment only. A strict increase wakes at At
+// and atomically writes exactly one work event; an achieved target is a no-op OK.
+// All retries retain the original Meta, interval and outbox bytes.
+type AgeRequest struct {
+	Meta
+	Key             string        `json:"key"`
+	ExpectedVersion uint64        `json:"expectedVersion"`
+	AgingIntervalMS int64         `json:"agingIntervalMS"`
+	Outbox          []OutboxEvent `json:"outbox"`
 }
 
 // TransitionResource is the public resource update (v3.1 §19). Status, if

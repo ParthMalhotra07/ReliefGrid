@@ -1,0 +1,6 @@
+apiVersion: v2
+name: reliefgrid-observability
+description: Private local Prometheus and provisioned dispatch dashboards
+type: application
+version: 0.1.0
+appVersion: "A4.2"

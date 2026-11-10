@@ -309,3 +309,22 @@ ui-build: ## Rebuild the pinned offline React/Leaflet assets (Node version in to
 
 verify-A4.1: ## Real-browser offline/reconnect UI checks and isolated live-broker projection safety
 	bash scripts/verify-A4.1.sh
+.PHONY: metrics-up metrics-ui metrics-down verify-A4.2-static
+metrics-up: ## Install private Prometheus/Grafana after the A4.2 app deployment
+	bash scripts/metrics-up.sh
+
+metrics-ui: ## Grafana on loopback http://127.0.0.1:3000 (private Service)
+	kubectl --context kind-$(CLUSTER) -n $(STORAGE_NS) port-forward --address=127.0.0.1 svc/observability-grafana 3000:3000
+
+metrics-down: ## Remove only ephemeral monitoring workloads/data
+	helm --kube-context kind-$(CLUSTER) uninstall observability -n $(STORAGE_NS) --ignore-not-found --wait
+
+verify-A4.2-static: ## Metrics race tests, chart isolation and Prometheus configuration validation
+	bash scripts/verify-A4.2-static.sh
+
+.PHONY: verify-A4.2-app verify-A4.2
+verify-A4.2-app: verify-A4.2-static ## Live application metrics/dashboard acceptance (not the full storage gate)
+	python3 scripts/verify-A4.2-live.py --mode app
+
+verify-A4.2: verify-A4.2-static ## Full-goal acceptance: fails INCOMPLETE while the S-owned storage/fault handoff is missing
+	python3 scripts/verify-A4.2-live.py --mode full
