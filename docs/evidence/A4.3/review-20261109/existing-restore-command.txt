@@ -1,0 +1,6 @@
+restore_profile() {
+ status=$?
+ trap - EXIT
+ helm --kube-context kind-reliefgrid upgrade reliefgrid "$chart" -n reliefgrid --reset-then-reuse-values --set app.autoscaling.enabled=false --wait --timeout 5m > <local-log>/nov7-a43-review-restore.log 2>&1 || status=1
+ exit "$status"
+}

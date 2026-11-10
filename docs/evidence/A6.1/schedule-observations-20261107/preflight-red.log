@@ -1,0 +1,5 @@
+--- FAIL: TestSchedulesNonRelaySubsetChecksPendingWorkBeforeStarting (0.05s)
+    schedules_harness_test.go:30: failed test command was reported as success
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.053s
+FAIL

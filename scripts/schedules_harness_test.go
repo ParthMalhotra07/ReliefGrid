@@ -26,6 +26,10 @@ func TestSchedulesFailureRestoresShardAndAdmission(t *testing.T) {
 	}
 }
 
+func TestSchedulesNonRelaySubsetChecksPendingWorkBeforeStarting(t *testing.T) {
+	testScheduleRollback(t, "foreign", "0", "4", "0")
+}
+
 func testScheduleRollback(t *testing.T, goExit, failRestore, selection, failImage string) {
 	t.Helper()
 	root := t.TempDir()
@@ -68,9 +72,9 @@ case "$*" in *"image.tag=dev"*) if [ "$SCHEDULE_FAIL_IMAGE" = 1 ];then exit 8;fi
 `,
 		"make":    "#!/usr/bin/env bash\nexit 0\n",
 		"curl":    "#!/usr/bin/env bash\nprintf '{\"events\":[]}'\n",
-		"jq":      "#!/usr/bin/env bash\nexit 0\n",
+		"jq":      "#!/usr/bin/env bash\nif [ \"$SCHEDULE_GO_EXIT\" = foreign ]; then exit 1; fi\nexit 0\n",
 		"python3": "#!/usr/bin/env bash\nprintf '12345'\n",
-		"go":      "#!/usr/bin/env bash\nexit \"$SCHEDULE_GO_EXIT\"\n",
+		"go":      "#!/usr/bin/env bash\necho go-started >> \"$SCHEDULE_TEST_LOG\"\nif [ \"$SCHEDULE_GO_EXIT\" = foreign ]; then exit 0; fi\nexit \"$SCHEDULE_GO_EXIT\"\n",
 	}
 	for name, body := range stubs {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0755); err != nil {
@@ -92,6 +96,9 @@ case "$*" in *"image.tag=dev"*) if [ "$SCHEDULE_FAIL_IMAGE" = 1 ];then exit 8;fi
 	calls, err := os.ReadFile(log)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if goExit == "foreign" && strings.Contains(string(calls), "go-started") {
+		t.Fatal("non-relay subset began without a clean pending-outbox preflight")
 	}
 	expected := []string{"scale statefulset/storage-shard-1 --replicas=3", "rollout status statefulset/storage-shard-1 --timeout=90s", "scale deployment reliefgrid-matcher --replicas=2"}
 	if selection == "12" {

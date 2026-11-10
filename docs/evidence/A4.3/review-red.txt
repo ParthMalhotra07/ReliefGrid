@@ -1,0 +1,23 @@
+...EE..
+======================================================================
+ERROR: test_mid_load_scale_down_is_not_accepted (__main__.ScalingEvidenceTest.test_mid_load_scale_down_is_not_accepted)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/scripts/verify-A4.3-test.py", line 47, in test_mid_load_scale_down_is_not_accepted
+    module.no_mid_load_downscale(samples)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'acceptance' has no attribute 'no_mid_load_downscale'
+
+======================================================================
+ERROR: test_missing_or_killed_termination_is_not_clean (__main__.ScalingEvidenceTest.test_missing_or_killed_termination_is_not_clean)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/scripts/verify-A4.3-test.py", line 53, in test_missing_or_killed_termination_is_not_clean
+    module.clean_termination(pod)
+    ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'acceptance' has no attribute 'clean_termination'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.001s
+
+FAILED (errors=2)

@@ -60,3 +60,9 @@ func (s *ObservedStore) MarkOutboxPublished(ctx context.Context, cmd store.MarkO
 	s.metrics.observe("outbox_mark", result, err)
 	return result, err
 }
+
+func (s *ObservedStore) AgeRequest(ctx context.Context, cmd store.AgeRequest) (store.Result, error) {
+	result, err := s.Store.AgeRequest(ctx, cmd)
+	s.metrics.observe("age", result, err)
+	return result, err
+}

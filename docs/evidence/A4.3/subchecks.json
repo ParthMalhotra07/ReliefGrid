@@ -1,0 +1,8 @@
+{
+  "overall": "NOT_READY",
+  "scalingTrace": "PASS",
+  "brokerContinuity": "PASS",
+  "load": "FAIL:2 non-200 cancellation responses",
+  "podExitCompleteness": "NOT_VERIFIED",
+  "followup": 127
+}

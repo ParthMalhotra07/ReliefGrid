@@ -1,0 +1,7 @@
+[
+  {
+    "requestId": "b8021a15-b28d-5fdb-bd30-449f34573573",
+    "status": 409,
+    "body": "{\"code\":\"VERSION_CONFLICT\",\"correlationId\":\"9c25c058-dad6-48e8-90a3-20218a33f59e\",\"message\":\"entity changed; reread before retrying\",\"outcomeUnknown\":false,\"retryable\":false}\n"
+  }
+]

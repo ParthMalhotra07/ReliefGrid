@@ -81,6 +81,13 @@ func TestAppDeployStorageOwnershipModes(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, "scripts/app-deploy.sh"), src, 0644); err != nil {
 				t.Fatal(err)
 			}
+			helper, err := os.ReadFile("app_evidence.py")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, "scripts/app_evidence.py"), helper, 0644); err != nil {
+				t.Fatal(err)
+			}
 			for _, name := range []string{"app-chart-deps.sh", "placement-check.sh"} {
 				if err := os.WriteFile(filepath.Join(root, "scripts", name), []byte("#!/usr/bin/env bash\necho dependency-or-placement >> \"$APP_REVIEW_CALLS\"\n"), 0755); err != nil {
 					t.Fatal(err)
@@ -120,7 +127,7 @@ esac
 			if mode == "embedded" {
 				withStorage = "true"
 			}
-			cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "APP_REVIEW_CALLS="+calls, "APP_REVIEW_MODE="+mode, "APP_WITH_STORAGE="+withStorage, "APP_IMAGE_TAG=owner-test")
+			cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "APP_REVIEW_CALLS="+calls, "APP_REVIEW_MODE="+mode, "APP_WITH_STORAGE="+withStorage, "APP_IMAGE_TAG=owner-test", "XDG_CACHE_HOME="+t.TempDir())
 			out, err := cmd.CombinedOutput()
 			wantSuccess := mode == "standalone" || mode == "embedded"
 			if (err == nil) != wantSuccess {

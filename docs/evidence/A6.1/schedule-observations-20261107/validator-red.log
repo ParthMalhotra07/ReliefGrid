@@ -1,0 +1,33 @@
+--- FAIL: TestScheduleOutboxRejectsHollowEvidence (0.00s)
+    --- FAIL: TestScheduleOutboxRejectsHollowEvidence/missing-row (0.00s)
+        observations_test.go:43: hollow outbox evidence was accepted
+    --- FAIL: TestScheduleOutboxRejectsHollowEvidence/duplicate-row (0.00s)
+        observations_test.go:43: hollow outbox evidence was accepted
+    --- FAIL: TestScheduleOutboxRejectsHollowEvidence/changed-payload (0.00s)
+        observations_test.go:43: hollow outbox evidence was accepted
+    --- FAIL: TestScheduleOutboxRejectsHollowEvidence/wrong-version (0.00s)
+        observations_test.go:43: hollow outbox evidence was accepted
+    --- FAIL: TestScheduleOutboxRejectsHollowEvidence/wrong-timestamp (0.00s)
+        observations_test.go:43: hollow outbox evidence was accepted
+    --- FAIL: TestScheduleOutboxRejectsHollowEvidence/wrong-operation (0.00s)
+        observations_test.go:43: hollow outbox evidence was accepted
+    --- FAIL: TestScheduleOutboxRejectsHollowEvidence/missing-command-event (0.00s)
+        observations_test.go:43: hollow outbox evidence was accepted
+--- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence (0.00s)
+    --- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence/absent (0.00s)
+        observations_test.go:64: missing or foreign closure was accepted
+    --- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-request (0.00s)
+        observations_test.go:64: missing or foreign closure was accepted
+    --- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-fingerprint (0.00s)
+        observations_test.go:64: missing or foreign closure was accepted
+    --- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence/foreign-attempt (0.00s)
+        observations_test.go:64: missing or foreign closure was accepted
+    --- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-time (0.00s)
+        observations_test.go:64: missing or foreign closure was accepted
+    --- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-disposition (0.00s)
+        observations_test.go:64: missing or foreign closure was accepted
+    --- FAIL: TestSCH04ClosureRejectsMissingOrForeignFence/wrong-reason (0.00s)
+        observations_test.go:64: missing or foreign closure was accepted
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	0.009s
+FAIL

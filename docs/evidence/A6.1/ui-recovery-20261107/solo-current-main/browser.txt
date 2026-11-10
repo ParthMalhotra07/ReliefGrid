@@ -1,0 +1,21 @@
+
+> reliefgrid-dispatch@0.1.0 test:browser
+> playwright test
+
+
+Running 12 tests using 1 worker
+
+  ✓   1 e2e/dispatch.spec.js:6:1 › dispatch shows authoritative state, assignments, filters and telemetry (481ms)
+  ✓   2 e2e/dispatch.spec.js:47:1 › events trigger authoritative refresh and reconnect recovers a missed update (433ms)
+  ✓   3 e2e/dispatch.spec.js:69:1 › saved list survives disconnected navigation and reconnect refreshes it (346ms)
+  ✓   4 e2e/dispatch.spec.js:101:1 › failed authoritative scan preserves the saved view and marks it stale (265ms)
+  ✓   5 e2e/dispatch.spec.js:116:1 › mobile layout retains the list, map and telemetry without horizontal overflow (379ms)
+  ✓   6 e2e/dispatch.spec.js:139:1 › an offline shell without a saved snapshot reports unknown data (351ms)
+  ✓   7 e2e/dispatch.spec.js:166:1 › duplicate events do not refetch and hints never replace authoritative state (335ms)
+  ✓   8 e2e/dispatch.spec.js:229:1 › cancel uses only the public status endpoint and waits for committed cleanup (391ms)
+  ✓   9 e2e/dispatch.spec.js:265:1 › an unknown write outcome remains visible after a successful reread (399ms)
+  ✓  10 e2e/dispatch.spec.js:291:1 › first read failure reports unavailable lists instead of endless loading (241ms)
+  ✓  11 e2e/dispatch.spec.js:308:1 › resources identify latest and saved observations through refresh recovery (315ms)
+  ✓  12 e2e/dispatch.spec.js:323:1 › same-render action reentry admits only one pending write (324ms)
+
+  12 passed (5.6s)
