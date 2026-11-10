@@ -40,7 +40,7 @@ gotest() {
 	echo "$out"
 	if [ "$rc" -eq 0 ] && ! grep -q 'no tests to run\|no test files' <<<"$out"; then pass "$label"; else fail "$label"; fi
 }
-gotest "report checker tests (scripts/load_report_test.go)" -run 'TestLoadReport' ./scripts/
+gotest "report checker tests (scripts/load_report_test.go)" -run 'TestLoadReport|TestLoadSmoke|TestLoadRun|TestLoadCluster|TestLoadSupervisor|TestLoadPilot' ./scripts/
 gotest "storage metrics endpoint tests" -run 'TestMetrics' ./internal/storagenode/
 gotest "coordinator metrics tests" -run 'TestMetrics' ./internal/coordinator/
 gotest "dataset generator tests (loadtest/dataset)" ./loadtest/dataset/

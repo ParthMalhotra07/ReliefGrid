@@ -292,3 +292,21 @@ esac
 		})
 	}
 }
+
+func TestLoadSupervisorOffline(t *testing.T) {
+	cmd := exec.CommandContext(t.Context(), "python3", "-I", "load-supervision-test.py")
+	cmd.Env = append(os.Environ(), "RG_TEST_SYSTEMD=0")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+}
+
+func TestLoadPilotEntrypointOffline(t *testing.T) {
+	cmd := exec.CommandContext(t.Context(), "python3", "-I", "load-pilot-entry-test.py")
+	cmd.Env = append(os.Environ(), "RG_TEST_SYSTEMD=0")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+}
