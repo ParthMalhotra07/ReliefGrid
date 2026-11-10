@@ -1,0 +1,3 @@
+go:         go1.27.2
+code tree:  1c952bcec9b0 (git ls-tree -r HEAD -- go.mod go.sum cmd internal deploy/helm/storage scripts/verify-S4.1.sh | git hash-object --stdin)
+code dirty: no
