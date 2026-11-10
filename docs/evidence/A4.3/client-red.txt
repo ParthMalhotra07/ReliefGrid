@@ -1,0 +1,6 @@
+Red-first Node client regression:
+known rejected CAS rereads before retrying cancellation: 409 !== 200
+permanent conflict remains failure after exactly three attempts: 1 !== 3
+failed authoritative reread stops the retry: actual409, expected503
+tests5; pass2; fail3
+Full development output retained locally; no machine paths included here.

@@ -1,0 +1,46 @@
+...F.FF..F....
+======================================================================
+FAIL: test_early_clean_exit_uses_first_observed_deadline (__main__.ScalingEvidenceTest.test_early_clean_exit_uses_first_observed_deadline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/verify-A4.3-test.py", line 111, in test_early_clean_exit_uses_first_observed_deadline
+    self.assertEqual(proof['deadline'],'2026-11-06T08:00:30Z')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '2026-11-06T08:00:40Z' != '2026-11-06T08:00:30Z'
+- 2026-11-06T08:00:40Z
+?                  ^
++ 2026-11-06T08:00:30Z
+?                  ^
+
+
+======================================================================
+FAIL: test_final_zero_grace_rewrite_cannot_hide_late_clean_exit (__main__.ScalingEvidenceTest.test_final_zero_grace_rewrite_cannot_hide_late_clean_exit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/verify-A4.3-test.py", line 106, in test_final_zero_grace_rewrite_cannot_hide_late_clean_exit
+    with self.assertRaises(AssertionError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: AssertionError not raised
+
+======================================================================
+FAIL: test_k6_pin_has_one_owner (__main__.ScalingEvidenceTest.test_k6_pin_has_one_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/verify-A4.3-test.py", line 121, in test_k6_pin_has_one_owner
+    self.assertEqual(len(re.findall(r'^'+name+r'\s*:?=',text,re.M)),1,name+' is duplicated')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1 : K6_VERSION is duplicated
+
+======================================================================
+FAIL: test_missing_positive_grace_observation_cannot_pass (__main__.ScalingEvidenceTest.test_missing_positive_grace_observation_cannot_pass)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/verify-A4.3-test.py", line 114, in test_missing_positive_grace_observation_cannot_pass
+    with self.assertRaises(AssertionError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+AssertionError: AssertionError not raised
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.030s
+
+FAILED (failures=4)

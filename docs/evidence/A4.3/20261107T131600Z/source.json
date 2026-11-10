@@ -1,0 +1,10 @@
+{
+  "head": "153bc38a58ac661621cb7109a3813fabfb5d02a5",
+  "changes": " M scripts/autoscaling_evidence.py\n M scripts/verify-A4.3-test.py\n M scripts/verify-A4.3.py\n M tools.mk\n?? docs/evidence/A4.3/20261107T131600Z/\n",
+  "runtimeImages": [
+    "reliefgrid/api:a43-review-nov7",
+    "reliefgrid/matcher:a43-review-nov7",
+    "reliefgrid/tools:a43-review-nov7"
+  ],
+  "brokerOverlay": "PR133 0a500d3"
+}

@@ -1,0 +1,5 @@
+=== RUN   TestAgingImmediateWakeUsesExistingBrokerBinding
+    aging_integration_test.go:31: immediate routed wake in 77.213582ms, AMQP priority2, two confirmed durable handoffs
+--- PASS: TestAgingImmediateWakeUsesExistingBrokerBinding (0.68s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	1.745s

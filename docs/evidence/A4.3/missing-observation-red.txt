@@ -1,0 +1,50 @@
+...EEEEE.
+======================================================================
+ERROR: test_missing_queue_observations_never_mean_empty (__main__.ScalingEvidenceTest.test_missing_queue_observations_never_mean_empty) (queue={})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/scripts/verify-A4.3-test.py", line 40, in test_missing_queue_observations_never_mean_empty
+    module.queue_counts(queue)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'acceptance' has no attribute 'queue_counts'
+
+======================================================================
+ERROR: test_missing_queue_observations_never_mean_empty (__main__.ScalingEvidenceTest.test_missing_queue_observations_never_mean_empty) (queue={'messages_ready': 0})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/scripts/verify-A4.3-test.py", line 40, in test_missing_queue_observations_never_mean_empty
+    module.queue_counts(queue)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'acceptance' has no attribute 'queue_counts'
+
+======================================================================
+ERROR: test_missing_queue_observations_never_mean_empty (__main__.ScalingEvidenceTest.test_missing_queue_observations_never_mean_empty) (queue={'messages_ready': 0, 'messages_unacknowledged': None})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/scripts/verify-A4.3-test.py", line 40, in test_missing_queue_observations_never_mean_empty
+    module.queue_counts(queue)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'acceptance' has no attribute 'queue_counts'
+
+======================================================================
+ERROR: test_missing_queue_observations_never_mean_empty (__main__.ScalingEvidenceTest.test_missing_queue_observations_never_mean_empty) (queue={'messages_ready': -1, 'messages_unacknowledged': 0})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/scripts/verify-A4.3-test.py", line 40, in test_missing_queue_observations_never_mean_empty
+    module.queue_counts(queue)
+    ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'acceptance' has no attribute 'queue_counts'
+
+======================================================================
+ERROR: test_missing_queue_observations_never_mean_empty (__main__.ScalingEvidenceTest.test_missing_queue_observations_never_mean_empty)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<worktree>/scripts/verify-A4.3-test.py", line 41, in test_missing_queue_observations_never_mean_empty
+    self.assertEqual(module.queue_counts({'messages_ready': 2, 'messages_unacknowledged': 3}), (2, 3))
+                     ^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'acceptance' has no attribute 'queue_counts'
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.002s
+
+FAILED (errors=5)
