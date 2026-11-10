@@ -128,6 +128,7 @@ func (s *Server) create(w http.ResponseWriter, r *http.Request, operation string
 	if err := committed(result); err != nil {
 		return err
 	}
+	w.Header().Set("ETag", entityTag(1))
 	w.Header().Set("Location", intent.Location)
 	writeJSON(w, 201, intent.Response)
 	return nil
