@@ -6,7 +6,8 @@
 The directory holds summary.json (the report, schema below), the files it
 lists under "raw" with committed=true, and SHA256SUMS covering every file in
 the directory but itself. Prints one PASS or FAIL line per check and exits 1
-on any FAIL, 2 on bad usage.
+on any FAIL, 2 on bad usage, 3 for an inconclusive saturation bracket
+when every other validation passed.
 
 What summary.json must state is what the plan asks a performance figure to
 state: hardware, versions, dataset, concurrency, duration, error rate, the
@@ -31,6 +32,7 @@ SHA64 = re.compile(r"^[0-9a-f]{64}$")
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 fails = 0
+inconclusive = False
 
 
 def ok(msg):
@@ -64,6 +66,8 @@ def need(doc, path, kind):
         "pos": num(v) and v > 0,
         "nonneg": num(v) and v >= 0,
         "int": isinstance(v, int) and not isinstance(v, bool),
+        "nonnegint": isinstance(v, int) and not isinstance(v, bool) and v >= 0,
+        "posint": isinstance(v, int) and not isinstance(v, bool) and v > 0,
         "bool": isinstance(v, bool),
     }[kind]
     if not good:
@@ -152,7 +156,7 @@ def check_files(d, doc):
 
 def check_percentiles(doc, path):
     if not all(need(doc, f"{path}.{k}", kind) for k, kind in
-               (("count", "int"), ("p50Ms", "nonneg"), ("p95Ms", "nonneg"), ("p99Ms", "nonneg"))):
+               (("count", "posint"), ("p50Ms", "nonneg"), ("p95Ms", "nonneg"), ("p99Ms", "nonneg"))):
         return False
     c = get(doc, path)
     if not c["p50Ms"] <= c["p95Ms"] <= c["p99Ms"]:
@@ -177,6 +181,7 @@ def broken_by(s):
 
 
 def check_saturation(doc):
+    global inconclusive
     steps = doc.get("steps")
     if not isinstance(steps, list) or len(steps) < 2:
         bad("steps: a saturation run needs at least two steps")
@@ -192,10 +197,12 @@ def check_saturation(doc):
         return
     first_broken = next((i for i, s in enumerate(steps) if broken_by(s)), None)
     if first_broken is None:
-        bad(f"saturation: no step breaks a threshold up to {targets[-1]} req/s; raise the top step")
+        inconclusive = True
+        print(f"INCONCLUSIVE  saturation: no step breaks a threshold up to {targets[-1]} req/s; raise the top step")
         return
     if first_broken == 0:
-        bad(f"saturation: the first step ({targets[0]} req/s) already breaks {broken_by(steps[0])}; start lower")
+        inconclusive = True
+        print(f"INCONCLUSIVE  saturation: the first step ({targets[0]} req/s) already breaks {broken_by(steps[0])}; start lower")
         return
     sat = doc.get("saturation")
     want_rps, want_at = targets[first_broken - 1], targets[first_broken]
@@ -274,14 +281,14 @@ def main(argv):
 
     # What came back.
     need(doc, "results.throughputRps", "pos")
-    need(doc, "results.requests", "pos")
+    need(doc, "results.requests", "posint")
     good = all([check_percentiles(doc, f"results.classes.{c}") for c in CLASSES])
     errs = get(doc, "results.errors")
     if not isinstance(errs, dict):
         bad("results.errors: missing")
     else:
-        if need(doc, "results.errors.total", "int") and need(doc, "results.errors.rate", "nonneg") \
-                and num(get(doc, "results.requests")):
+        if need(doc, "results.errors.total", "nonnegint") and need(doc, "results.errors.rate", "nonneg") \
+                and num(get(doc, "results.requests")) and get(doc, "results.requests") > 0:
             want = errs["total"] / doc["results"]["requests"]
             if abs(errs["rate"] - want) > 1e-4:
                 bad(f"results.errors.rate: {errs['rate']} but total/requests is {want:.6f}")
@@ -291,16 +298,27 @@ def main(argv):
                 bad(f"results.errors.{k}: missing or not counts")
             elif isinstance(errs.get("total"), int) and k == "byStatus" and sum(v.values()) != errs["total"]:
                 bad(f"results.errors.byStatus: sums to {sum(v.values())}, total is {errs['total']}")
-    need(doc, "results.droppedIterations", "int")
-    if good:
+    need(doc, "results.droppedIterations", "nonnegint")
+    if good and num(get(doc, "results.throughputRps")):
         c = doc["results"]["classes"]
         per = "; ".join(f"{k} p50/p95/p99 {c[k]['p50Ms']}/{c[k]['p95Ms']}/{c[k]['p99Ms']} ms" for k in CLASSES)
         ok(f"results: {doc['results']['throughputRps']} req/s; {per}; errors {get(doc, 'results.errors.rate')}")
 
+    if doc.get("scenario") == "smoke":
+        for c in CLASSES:
+            value = get(doc, f"results.classes.{c}.p99Ms")
+            if num(value) and value > THRESHOLDS[f"{c}P99Ms"]:
+                bad(f"smoke: {c} p99 exceeds threshold")
+        rate = get(doc, "results.errors.rate")
+        if num(rate) and rate > THRESHOLDS["errorRate"]:
+            bad("smoke: error rate exceeds threshold")
+        if get(doc, "results.droppedIterations") != 0:
+            bad("smoke: dropped iterations must be zero")
+
     if get(doc, "match.label") != "matched only":
         bad(f"match.label: want 'matched only', got {get(doc, 'match.label')!r}")
-    need(doc, "match.matched", "int")
-    need(doc, "match.waiting", "int")
+    need(doc, "match.matched", "nonnegint")
+    need(doc, "match.waiting", "nonnegint")
     for k in ("p50Ms", "p95Ms", "p99Ms"):
         need(doc, f"match.{k}", "nonneg")
 
@@ -332,8 +350,8 @@ def main(argv):
             check_saturation(doc)
 
     check_files(d, doc)
-    print(f"{'FAIL' if fails else 'PASS'}  report {doc.get('runId')}" + (f" ({fails} failures)" if fails else ""))
-    return 1 if fails else 0
+    print(f"{'FAIL' if fails else ('INCONCLUSIVE' if inconclusive else 'PASS')}  report {doc.get('runId')}" + (f" ({fails} failures)" if fails else ""))
+    return 1 if fails else (3 if inconclusive else 0)
 
 
 if __name__ == "__main__":

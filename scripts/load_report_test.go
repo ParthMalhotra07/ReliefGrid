@@ -202,6 +202,10 @@ func TestLoadReportCheckRejects(t *testing.T) {
 			}
 		}, "no step breaks a threshold"},
 		{"first step already saturated", step(0, "errorRate", 0.5), "already breaks"},
+		{"inconclusive cannot hide safety failure", func(t *testing.T, m map[string]any) {
+			step(0, "errorRate", 0.5)(t, m)
+			set("invariants.invcheck", "FAIL")(t, m)
+		}, "invariants.invcheck"},
 		{"steps not increasing", step(2, "targetRps", 15), "strictly increase"},
 		{"raw file without checksum", set("raw", []any{map[string]any{"path": "raw/k6-points.jsonl.gz", "committed": false}}), "raw"},
 		{"committed raw file missing", set("raw", []any{map[string]any{"path": "raw/missing.json", "committed": true}}), "raw"},
@@ -210,7 +214,11 @@ func TestLoadReportCheckRejects(t *testing.T) {
 			m := loadReport(t)
 			c.mutate(t, m)
 			code, out := runLoadCheck(t, writeReport(t, m), "--require-saturation")
-			if code != 1 || !strings.Contains(out, "FAIL") || !strings.Contains(out, c.want) {
+			wantCode, label := 1, "FAIL"
+			if c.name == "no step breaks a threshold" || c.name == "first step already saturated" {
+				wantCode, label = 3, "INCONCLUSIVE"
+			}
+			if code != wantCode || !strings.Contains(out, label) || !strings.Contains(out, c.want) {
 				t.Fatalf("want exit 1 with a FAIL naming %q, got exit %d:\n%s", c.want, code, out)
 			}
 		})
@@ -257,4 +265,37 @@ func TestLoadReportCheckFiles(t *testing.T) {
 			t.Fatalf("--require-saturation accepted a smoke report (exit %d):\n%s", code, out)
 		}
 	})
+}
+
+func TestLoadSmokeRejectsInvalidMetrics(t *testing.T) {
+	for _, path := range []string{"results.classes.write.count", "results.classes.read.p99Ms", "results.errors.total", "results.requests", "results.droppedIterations"} {
+		for _, value := range []any{nil, "0", false, -1.0} {
+			t.Run(fmt.Sprint(path, value), func(t *testing.T) {
+				m := loadReport(t)
+				m["scenario"] = "smoke"
+				p, k := at(t, m, path)
+				p[k] = value
+				code, out := runLoadCheck(t, writeReport(t, m))
+				if code != 1 || strings.Contains(out, "Traceback") {
+					t.Fatalf("exit %d: %s", code, out)
+				}
+			})
+		}
+	}
+	for _, path := range []string{"results.classes.write.count", "results.requests", "results.classes.read.p99Ms", "results.droppedIterations"} {
+		t.Run(path, func(t *testing.T) {
+			m := loadReport(t)
+			m["scenario"] = "smoke"
+			p, k := at(t, m, path)
+			if strings.HasSuffix(path, "count") || path == "results.requests" {
+				p[k] = 0
+			} else {
+				p[k] = 10000
+			}
+			code, out := runLoadCheck(t, writeReport(t, m))
+			if code != 1 || strings.Contains(out, "Traceback") {
+				t.Fatalf("exit %d: %s", code, out)
+			}
+		})
+	}
 }
