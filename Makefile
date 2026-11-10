@@ -107,6 +107,7 @@ test: ## go test -race ./... (and the chaos build)
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.2; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A2.4; fi
 	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A3.2; fi
+	@if [ "$${GITHUB_ACTIONS:-}" = true ]; then $(MAKE) verify-A4.4-aging; fi
 
 verify-A2.2: ## Verify state-aware retries and confirmed delayed transport handoffs
 	bash scripts/verify-A2.2.sh
@@ -329,6 +330,9 @@ verify-A4.2-app: verify-A4.2-static ## Live application metrics/dashboard accept
 verify-A4.2: verify-A4.2-static ## Full-goal acceptance: fails INCOMPLETE while the S-owned storage/fault handoff is missing
 	python3 scripts/verify-A4.2-live.py --mode full
 
+.PHONY: verify-A4.4-aging
+verify-A4.4-aging: ## Real FSM aging/retry controls and immediate priority wake on the pinned broker
+	bash scripts/verify-A4.4-aging.sh
 
 .PHONY: autoscaling-install autoscaling-up autoscaling-down verify-A4.3-static verify-A4.3
 autoscaling-install: ## Install pinned metrics-server and KEDA on kind only

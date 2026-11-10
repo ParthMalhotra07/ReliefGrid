@@ -116,7 +116,7 @@ func events(ctx context.Context, rec store.Record, cmd store.TransitionRequest, 
 			WorkflowGeneration uint64 `json:"workflowGeneration"`
 			NextAttemptAt      int64  `json:"nextAttemptAt"`
 			Urgency            int    `json:"urgency"`
-		}{rec.Request.ID, rec.Request.WorkflowGeneration, cmd.NextAttemptAt, rec.Request.Urgency}
+		}{rec.Request.ID, rec.Request.WorkflowGeneration, cmd.NextAttemptAt, max(rec.Request.Urgency, rec.Request.EffectiveUrgency)}
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
