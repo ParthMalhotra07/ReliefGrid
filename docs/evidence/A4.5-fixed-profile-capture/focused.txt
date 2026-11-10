@@ -11,7 +11,7 @@ test_tools_snapshot_requires_completed_owned_job_and_digest (__main__.Validation
 test_unrelated_autoscaler_is_allowed (__main__.ValidationTests.test_unrelated_autoscaler_is_allowed) ... ok
 
 ----------------------------------------------------------------------
-Ran 11 tests in 0.009s
+Ran 11 tests in 0.008s
 
 OK
 fixed-profile observation: PASS

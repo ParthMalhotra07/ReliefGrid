@@ -28,3 +28,9 @@ build/source binding remains explicitly NOT_ESTABLISHED; historical #123 final
 restoration is still unverified. The future integrated gate must execute the
 collector against retained tools Job artifacts and provide separate workload,
 strict audit, source/build and gate evidence.
+
+The review follow-up retains the sanitized Job identity/succeeded/failed/active
+counts and full selected tools-pod status, including its exit code. Previously
+that exit was validated but not serialized; red-tools-retention.txt records the
+new permanent retention assertion failing before the correction. The saved JSON
+can now be independently checked for that observed completion state.

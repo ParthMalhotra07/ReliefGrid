@@ -196,6 +196,8 @@ def stable(first, second, release):
 def tools_observation(job, pods):
     require(job.get('metadata', {}).get('uid') and job.get('status', {}).get('succeeded') == 1,
             'tools Job did not complete successfully')
+    require(not job['metadata'].get('deletionTimestamp') and job['status'].get('failed', 0) == 0
+            and job['status'].get('active', 0) == 0, 'tools Job has failed/active attempts or is deleting')
     require(len(pods) == 1, 'tools Job needs exactly one retained pod; retries require separate evidence review')
     pod = pod_record(pods[0])
     require(owner_matches(pod, 'Job', job['metadata']['uid']) and not pod['metadata'].get('deletionTimestamp'),
@@ -207,7 +209,9 @@ def tools_observation(job, pods):
             'tools container names do not match observed statuses')
     require(all(image_identity(c.get('imageID')) and c['state'].get('terminated', {}).get('exitCode') == 0 for c in statuses),
             'tools container did not exit cleanly with an observed image ID')
-    return dict(pod=pod['metadata'], containers=[dict(**image, imageID=status['imageID'])
+    return dict(job=dict(metadata={key: job['metadata'][key] for key in ('name', 'uid') if key in job['metadata']},
+                         status={key: job['status'].get(key, 0) for key in ('succeeded', 'failed', 'active')}),
+                pod=pod, containers=[dict(**image, imageID=status['imageID'])
                 for image in pod['spec']['containers'] for status in statuses if image['name'] == status['name']])
 
 
@@ -239,7 +243,7 @@ def main():
     output = Path(args.output)
     new_output(output)
     result = dict(ok=False, scope='fixed-profile observation only; not a gate or build-source certification',
-                  source=source, context=args.context, namespace=args.namespace, release=args.release)
+                  source=source, context=args.context, namespace=args.namespace, release=args.release, toolsJob=args.tools_job)
     try:
         result['startedAt'] = dt.datetime.now(dt.timezone.utc).isoformat()
         first = collect(args.context, args.namespace, args.release)

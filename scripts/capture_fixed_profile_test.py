@@ -134,6 +134,12 @@ class ValidationTests(unittest.TestCase):
         status.update(state=dict(terminated=dict(exitCode=0)))
         result = capture.tools_observation(job, [pod])
         self.assertTrue(result['containers'][0]['imageID'])
+        self.assertEqual(result['job']['metadata']['uid'], 'job-uid')
+        self.assertEqual(result['job']['status']['succeeded'], 1)
+        self.assertEqual(result['pod']['status']['containerStatuses'][0]['state']['terminated']['exitCode'], 0)
+        for status in (dict(succeeded=0), dict(succeeded=1, failed=1), dict(succeeded=1, active=1)):
+            with self.assertRaises(capture.InvalidObservation):
+                capture.tools_observation(dict(metadata=dict(uid='job-uid'), status=status), [pod])
         for change in (lambda p: p['metadata']['ownerReferences'][0].update(uid='wrong'),
                        lambda p: p['status']['containerStatuses'][0].update(imageID=''),
                        lambda p: p['status']['containerStatuses'][0]['state']['terminated'].update(exitCode=1)):
@@ -161,6 +167,8 @@ class ValidationTests(unittest.TestCase):
         pod['metadata']['ownerReferences'] = [dict(kind='Job', uid='job-uid', controller=True)]
         pod['status']['phase'] = 'Succeeded'
         pod['status']['containerStatuses'][0]['state'] = dict(terminated=dict(exitCode=0))
+        pod['spec']['containers'][0]['env'] = [dict(name='TOKEN', value='PRIVATE-MARKER')]
+        pod['metadata']['annotations'] = {'secret': 'PRIVATE-MARKER'}
         source = dict(collectorCommit='a' * 40, collectorTree='b' * 40, collectorDirty=False,
                       runtimeBuildBinding='NOT_ESTABLISHED')
         for changed in (False, True):
@@ -176,9 +184,11 @@ class ValidationTests(unittest.TestCase):
                     self.assertEqual(capture.main(), int(changed))
                     self.assertEqual(collect.call_count, 2)
                 saved = json.loads((output / 'fixed-profile.json').read_text())
+                self.assertNotIn('PRIVATE-MARKER', json.dumps(saved))
                 self.assertIs(saved['ok'], not changed)
                 self.assertEqual(saved['source']['runtimeBuildBinding'], 'NOT_ESTABLISHED')
                 self.assertEqual(len(saved['tools']['containers']), 1)
+                self.assertEqual(saved['tools']['pod']['status']['containerStatuses'][0]['state']['terminated']['exitCode'], 0)
 
 
 if __name__ == '__main__':
