@@ -1,0 +1,50 @@
+test_deploy_failure_retains_run_evidence (__main__.EvidenceIsolation.test_deploy_failure_retains_run_evidence) ... FAIL
+test_explicit_directory_is_propagated (__main__.EvidenceIsolation.test_explicit_directory_is_propagated) ... ok
+test_images_default_is_unique_and_preserves_saved_evidence (__main__.EvidenceIsolation.test_images_default_is_unique_and_preserves_saved_evidence) ... FAIL
+test_smoke_failure_does_not_touch_saved_evidence (__main__.EvidenceIsolation.test_smoke_failure_does_not_touch_saved_evidence) ... FAIL
+
+======================================================================
+FAIL: test_deploy_failure_retains_run_evidence (__main__.EvidenceIsolation.test_deploy_failure_retains_run_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/scripts/app_evidence_test.py", line 73, in test_deploy_failure_retains_run_evidence
+    self.unchanged()
+    ~~~~~~~~~~~~~~^^
+  File "<repo>/scripts/app_evidence_test.py", line 56, in unchanged
+    self.assertEqual((self.saved / name).read_bytes(), original,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     'default run overwrote saved A1.5 evidence: ' + name)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'{"items": []}\n' != b'original accepted evidence\n' : default run overwrote saved A1.5 evidence: nodes.json
+
+======================================================================
+FAIL: test_images_default_is_unique_and_preserves_saved_evidence (__main__.EvidenceIsolation.test_images_default_is_unique_and_preserves_saved_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/scripts/app_evidence_test.py", line 64, in test_images_default_is_unique_and_preserves_saved_evidence
+    self.unchanged()
+    ~~~~~~~~~~~~~~^^
+  File "<repo>/scripts/app_evidence_test.py", line 56, in unchanged
+    self.assertEqual((self.saved / name).read_bytes(), original,
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                     'default run overwrote saved A1.5 evidence: ' + name)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: b'{\n  "image": "reliefgrid/api:isolation-f[141 chars]n}\n' != b'original accepted evidence\n' : default run overwrote saved A1.5 evidence: image-api.json
+
+======================================================================
+FAIL: test_smoke_failure_does_not_touch_saved_evidence (__main__.EvidenceIsolation.test_smoke_failure_does_not_touch_saved_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/scripts/app_evidence_test.py", line 94, in test_smoke_failure_does_not_touch_saved_evidence
+    self.unchanged()
+    ~~~~~~~~~~~~~~^^
+  File "<repo>/scripts/app_evidence_test.py", line 58, in unchanged
+    self.assertEqual(set(path.name for path in self.saved.iterdir()), set(self.sentinels))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Items in the first set but not the second:
+'e2e-isolation'
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.079s
+
+FAILED (failures=3)

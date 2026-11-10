@@ -20,3 +20,5 @@ PYTHONDONTWRITEBYTECODE=1 python3 scripts/verify-storage-promql.py
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/metrics-fault-test.py
 
 PYTHONDONTWRITEBYTECODE=1 python3 scripts/metrics-forward-test.py
+
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/metrics-recovery-test.py

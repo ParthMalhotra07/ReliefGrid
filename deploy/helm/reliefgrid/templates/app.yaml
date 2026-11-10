@@ -12,7 +12,9 @@ metadata:
     {{- include "reliefgrid.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $name }}
 spec:
+  {{- if or (not $.Values.app.autoscaling.enabled) (eq $name "ui") }}
   replicas: {{ $app.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       app.kubernetes.io/instance: {{ $.Release.Name }}

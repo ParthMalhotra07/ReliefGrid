@@ -25,8 +25,8 @@ operationId and returned again, with `replayed: true`, when the same command is 
 internal API a committed rejection carries the store `Result` in the error body's `result` field.
 
 - **Internal HTTP** follows v3.1 §40 and the store.go comments.
-- **Public HTTP** is what the API returns. Public `VERSION_CONFLICT` is 409 until If-Match/412
-  lands in week three.
+- **Public HTTP** is what the API returns. Public unconditional `VERSION_CONFLICT` remains 409. A failed supplied
+  `If-Match` returns 412 `PRECONDITION_FAILED`; unknown outcomes remain 503.
 
 Every error body has `code`, `message`, `retryable` and `outcomeUnknown`.
 Public errors additionally require `correlationId` and may carry validation `details`.
@@ -44,7 +44,7 @@ Public errors additionally require `correlationId` and may carry validation `det
 | `DOMAIN_CONFLICT` | `DOMAIN_CONFLICT` | 409 | 409 | Forbidden by a domain rule: illegal transition, protected key, immutable-input mismatch, update of an assigned resource. |
 | `OPERATION_ID_REUSED` | `OPERATION_ID_REUSED` | 409 | 409 | Same operationId, different payload. Never stored. |
 | idempotency mismatch | `CONFLICT_IDEMPOTENCY_KEY` | — | 409 | Public only: same Idempotency-Key, different payload hash. |
-| `VERSION_CONFLICT` | `VERSION_CONFLICT` | 412 on the generic data routes (`PUT`/`DELETE /internal/data`); 409 on the domain transition routes | 409 | Expected version, status or attempt did not match. §40: 412 for a failed generic CAS, 409 for a domain or attempt conflict. The FSM reports all three mismatches as this one outcome, so the status follows the route. Public becomes 412 with If-Match in week three. |
+| `VERSION_CONFLICT` | `VERSION_CONFLICT` | 412 on the generic data routes (`PUT`/`DELETE /internal/data`); 409 on the domain transition routes | 409 | Expected version, status or attempt did not match. §40: 412 for a failed generic CAS, 409 for a domain or attempt conflict. The FSM reports all three mismatches as this one outcome, so the status follows the route. When If-Match is supplied, a failed version precondition is 412 PRECONDITION_FAILED; unconditional conflicts remain 409. |
 | `EXISTS` | `EXISTS` | 412 | replay the original 201 + Location if the payload hash matches, else 409 | Create on an existing key (internal: `If-None-Match: *` failed). |
 | `ErrRingVersionMismatch` | `RING_VERSION_MISMATCH` | 409 | 503 | Never proposed; the body gives the server's ringVersion. The coordinator refreshes and retries; the public API sees 503 only when that fails. retryable=true, outcomeUnknown=false. A scan cursor made under another ring version gets this too; refreshing cannot fix it, so the walk restarts with an empty cursor. |
 | `ErrUnknownOutcome` | `OUTCOME_UNKNOWN` | 503 | 503 | May have committed. retryable=true, outcomeUnknown=true, with Retry-After. Retry the same operationId or read the operation; never treat it as a rejection. |
@@ -53,3 +53,21 @@ Public errors additionally require `correlationId` and may carry validation `det
 | missing or bad operator token | `UNAUTHORIZED` | 401 | — | Internal `/admin` only. retryable=false, outcomeUnknown=false. |
 | token lacks the operator role | `FORBIDDEN` | 403 | — | Internal `/admin` only. retryable=false, outcomeUnknown=false. |
 | local storage failure | `STORAGE_UNAVAILABLE` | 503 | 503 | The node's local storage failed (for example a SQLite read error); nothing was committed by this request. retryable=true, outcomeUnknown=false. |
+
+## A4.4 public refinement proposal
+
+Both owners must approve this contract PR before the implementation merges.
+Conditional updates are opt-in, preserving all seven PS client operations and
+existing clients. GET request, create and successful status-update responses expose
+a quoted strong ETag. Explicit If-Match failures, including an intervening committed
+CAS rejection, return 412; a transport timeout is still an unknown 503.
+
+Request/resource lists accept an opaque cursor and may return nextCursor. Tokens
+bind endpoint, filters and limit, and retain the opaque storage continuation. They are continuations, not access
+credentials or global snapshots. Under a static dataset a complete walk visits
+each matching item once, including filtered spatial pages. Malformed/mismatched
+tokens fail rather than restarting silently; a reported storage ring change requires restarting.
+The deployed M1 ring is fixed; these cursors do not claim migration snapshot semantics.
+
+Internal authentication is coordinated separately with S in issue #29; this PR
+does not modify the internal contract or authorize S-owned handler changes.
