@@ -1,0 +1,39 @@
+{
+  "result": "PASS",
+  "main": "0fa3a63cbddb283a8ddb5f73b100a3afa967202f",
+  "m8_seeds": 50,
+  "m8_cases": 850,
+  "kind_seeds": 5,
+  "kind_cases": 90,
+  "kind_run": "a61-outbox-20261107T162246Z",
+  "kind_schedule_tags": [
+    "SCH01_BothCASQueuedBeforeEitherApplies",
+    "SCH02_DroppedResponseAfterCommit",
+    "SCH03_CrashBeforeMatchingStep",
+    "SCH04_CrashAfterMatchingStep",
+    "SCH05_CancelBeforeTryClaim",
+    "SCH06_CancelAfterTryClaim",
+    "SCH07_StaleTryClaimAfterCloseAttempt",
+    "SCH08_ConfirmationRacingWithRetarget",
+    "SCH09_StaleOperationResultReplayAfterClose",
+    "SCH10_DuplicateTerminalEvents",
+    "SCH11_RepeatedCancelFulfillCalls",
+    "SCH12_RestartDuringSnapshotCreation",
+    "SCH13a_RestartDuringSnapshotTransfer",
+    "SCH13b_RestartDuringSnapshotStage",
+    "SCH14_CoordinatorRestartWithShardUnavailable",
+    "SCH15_BrokerOutageDuringRetryScheduling",
+    "SCH16_PoisonMessages",
+    "SCH17_PartialCandidateScan"
+  ],
+  "kind_full_50_repeated": false,
+  "source_sha256": {
+    "tests/workflow/execution_test.go": "c4a986d207d0b042e9d18ac2396b7653b40ecbf2167c09d1b90a7b6b81163841",
+    "tests/workflow/m8_seams_execution_test.go": "7f5ba529280e68f5f4cfb1349f70d04a1c1b0e372bb965d6f87b2468ce4f4210",
+    "tests/workflow/cluster_seams_execution_test.go": "c6bcfe5dd2ccb12d688169e3249ff924aa823ba5d16b73a7e9cbe7a0f23104a9",
+    "tests/workflow/broker_execution_test.go": "063775243632cc4dde5d99c7a19f358c3e9ea16ee3fec9f59ae2f449d211f455",
+    "tests/workflow/observations_test.go": "a33ac4e18d36bb5ebbcd69431548ec8e99dc765f7b994748371e0fc3e995ed7e",
+    "tests/workflow/outbox_observer_test.go": "87b337e0afbc6af8c841e9934ff012ca72b3f02e33dd6c1932c07cd48e441609",
+    "scripts/test-schedules.sh": "67d3cc369e1a3a8841af55eaaf50a9ec6eae381c5a8fec38ac6f5e5702b39cf2"
+  }
+}

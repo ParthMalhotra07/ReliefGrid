@@ -85,14 +85,12 @@ if [ "$backend" != m8 ];then
  ready=false
  for _ in $(seq 50);do if curl --fail --silent --max-time 1 "$COORDINATOR_URL/internal/ring" >/dev/null;then ready=true;break;fi;sleep .1;done
  if [ "$ready" != true ];then echo 'Coordinator loopback forward did not become ready' >&2;tail -10 "$out/forward.log" >&2;exit 1;fi
- # SCH15's relay can publish any pending row on its shard. Other drivers do
- # not relay foreign events and may safely use existing isolated test fixtures.
- if [ -z "${SCHEDULE_IDS:-}" ] || [[ ",${SCHEDULE_IDS:-}," == *,15,* ]];then
-  for shard in 0 1 2;do
-   curl --fail --silent --max-time 5 "$COORDINATOR_URL/internal/outbox?shard=$shard&limit=1&consistency=strong" |
-    jq -e '(.events|type)=="array" and (.events|length)==0' >/dev/null || { echo 'Cluster must have no foreign pending outbox work before relay schedules' >&2;exit 1; }
-  done
- fi
+ # Every audited fixture now confirms and drains its own outbox after assertions.
+ # Refuse foreign work before any cluster case, including non-relay subsets.
+ for shard in 0 1 2;do
+  curl --fail --silent --max-time 5 "$COORDINATOR_URL/internal/outbox?shard=$shard&limit=1&consistency=strong" |
+   jq -e '(.events|type)=="array" and (.events|length)==0' >/dev/null || { echo 'Cluster must have no foreign pending outbox work before schedule audits' >&2;exit 1; }
+ done
  if [ "$hold" = 1 ];then
   kubectl --context kind-reliefgrid -n reliefgrid scale statefulset/storage-shard-1 --replicas=0 >/dev/null
   kubectl --context kind-reliefgrid -n reliefgrid wait --for=delete pod/storage-shard-1-0 pod/storage-shard-1-1 pod/storage-shard-1-2 --timeout=30s

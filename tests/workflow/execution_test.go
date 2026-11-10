@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -21,22 +22,27 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 	engine "github.com/ParthMalhotra07/ReliefGrid/internal/workflow"
 	"github.com/google/uuid"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 // This harness proposes real Store commands and invokes the production cleanup
 // and matching helpers. It does not implement an alternative state machine.
 type execution struct {
-	t            *testing.T
-	ctx          context.Context
-	s            store.Store
-	prefix       string
-	at           time.Time
-	sequence     atomic.Uint64
-	entities     map[string]string
-	attempts     map[string]store.Attempt
-	lastClaim    store.TryClaim
-	requestShard int
-	seed         uint64
+	observedMu       sync.Mutex
+	observed         []capturedHandoff
+	brokerConnection *amqp.Connection
+	brokerAddress    string
+	t                *testing.T
+	ctx              context.Context
+	s                store.Store
+	prefix           string
+	at               time.Time
+	sequence         atomic.Uint64
+	entities         map[string]string
+	attempts         map[string]store.Attempt
+	lastClaim        store.TryClaim
+	requestShard     int
+	seed             uint64
 }
 
 func (x *execution) id(name string) string {
@@ -102,7 +108,7 @@ func (x *execution) claim(a store.Attempt) store.TryClaim {
 }
 func (x *execution) matcher(s store.Store) *engine.Matcher {
 	x.t.Helper()
-	m, err := engine.New(engine.Config{Store: s, Now: func() time.Time { return x.at.Add(time.Duration(x.sequence.Load()+100) * time.Millisecond) }, Seed: x.seed, ScanLimit: 2})
+	m, err := engine.New(engine.Config{Store: observingStore{Store: s, x: x}, Now: func() time.Time { return x.at.Add(time.Duration(x.sequence.Load()+100) * time.Millisecond) }, Seed: x.seed, ScanLimit: 2})
 	if err != nil {
 		x.t.Fatal(err)
 	}
@@ -128,7 +134,7 @@ func (x *execution) late(a store.Attempt) {
 func (x *execution) match(a store.Attempt) {
 	x.move(store.RequestMatching, &a)
 	x.claim(a)
-	x.move(store.RequestMatched, nil)
+	x.confirm()
 }
 
 func newExecution(t *testing.T, f ScheduleFixture, seed int, run string) *execution {
@@ -318,8 +324,15 @@ func executeWorkflowSchedule(x *execution, number int) {
 		x.match(b)
 	case 4:
 		x.move(store.RequestMatching, &a)
+		closedAt := x.read("R").UpdatedAt
 		x.closeRetry()
+		closure := x.assertClosedA(closedAt)
+		x.late(a)
 		x.match(b)
+		if after := x.assertClosedA(closedAt); after != closure {
+			x.t.Fatal("retarget changed permanent attemptA closure")
+		}
+		x.late(a)
 	case 5:
 		x.move(store.RequestMatching, &a)
 		x.move(store.RequestCancelling, nil)
@@ -562,6 +575,7 @@ func TestSeededWorkflowSchedules(t *testing.T) {
 					executeWorkflowSchedule(x, n)
 				}
 				assertFixtureFinal(x, f)
+				assertScheduleOutbox(x, f)
 			})
 		}
 	}
