@@ -38,6 +38,12 @@ app:
   enabled: false
   metrics:
     enabled: true
+
+  # Explicit opt-in; the course demos (especially manual demo9) stay manual.
+  autoscaling:
+    enabled: false
+    api: {minReplicas: 2, maxReplicas: 6, cpuUtilization: 60}
+    matcher: {minReplicas: 1, maxReplicas: 8, queuePerReplica: "4"}
   coordinatorURL: http://storage-coordinator:8080
   callerNamespace: local-dispatcher
   # S4.4: off by default. `make tracing-up` installs deploy/helm/tracing and

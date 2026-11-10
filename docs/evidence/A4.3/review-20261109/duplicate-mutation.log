@@ -1,0 +1,17 @@
+F.................
+======================================================================
+FAIL: test_audit_once_after_load_and_measured_termination_checks (__main__.OrchestrationOrderTest.test_audit_once_after_load_and_measured_termination_checks)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/scripts/verify-A4.3-test.py", line 244, in test_audit_once_after_load_and_measured_termination_checks
+    self.exercise()
+    ~~~~~~~~~~~~~^^
+  File "<repo>/scripts/verify-A4.3-test.py", line 239, in exercise
+    self.assertEqual(trace.count('audit'),1)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 2 != 1
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.063s
+
+FAILED (failures=1)
