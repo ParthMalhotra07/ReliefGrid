@@ -16,12 +16,12 @@ test_two_passes_reject_pod_replacement_but_allow_advancing_indexes (__main__.Rol
 FAIL: test_missing_duplicate_old_or_unready_replica_never_passes (__main__.RolloutTests.test_missing_duplicate_old_or_unready_replica_never_passes) (index=2)
 ----------------------------------------------------------------------
 Traceback (most recent call last):
-  File "/tmp/reliefgrid-delivery-negative-hedid0uz/aging_rollout_test.py", line 85, in test_missing_duplicate_old_or_unready_replica_never_passes
+  File "/tmp/reliefgrid-delivery-negative-jxxft2kf/aging_rollout_test.py", line 85, in test_missing_duplicate_old_or_unready_replica_never_passes
     with self.assertRaises(aging.RolloutError): aging.validate(approval, records, snapshot)
          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
 AssertionError: RolloutError not raised
 
 ----------------------------------------------------------------------
-Ran 8 tests in 0.008s
+Ran 8 tests in 0.009s
 
 FAILED (failures=1)

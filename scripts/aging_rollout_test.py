@@ -100,6 +100,8 @@ class RolloutTests(unittest.TestCase):
             if mode == 'hash': approval['canonicalBuildRecordSHA256'][0] = '0' * 64
             if mode == 'source': records[0]['source'] = dict(records[0]['source'], dirty=True)
             if mode == 'labels': records[0]['images'][0]['labels']['org.opencontainers.image.revision'] = '0' * 40
+            if mode in ('source', 'labels'):
+                approval['canonicalBuildRecordSHA256'] = [aging.record_hash(record) for record in records]
             with self.subTest(mode=mode), self.assertRaises(aging.RolloutError): aging.validate(approval, records, snapshot)
 
     def test_two_passes_reject_pod_replacement_but_allow_advancing_indexes(self):

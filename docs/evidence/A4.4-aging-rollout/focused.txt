@@ -8,7 +8,7 @@ test_sanitized_artifacts_can_be_rejudged_and_have_no_unrelated_secrets (__main__
 test_two_passes_reject_pod_replacement_but_allow_advancing_indexes (__main__.RolloutTests.test_two_passes_reject_pod_replacement_but_allow_advancing_indexes) ... ok
 
 ----------------------------------------------------------------------
-Ran 8 tests in 0.020s
+Ran 8 tests in 0.011s
 
 OK
 AGING ROLLOUT: PASS (no enablement)

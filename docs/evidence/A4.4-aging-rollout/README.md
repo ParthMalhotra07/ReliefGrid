@@ -8,8 +8,10 @@ admission/catch-up/leader terms, disabled producers and repeatable sanitized
 artifacts. Applied-index movement is allowed without comparing it with Raft
 indexes. Collect command tests permit only GETs and /storagectl status execs.
 
-Removing immutable-image matching or the admission requirement makes the
-permanent regressions fail in disposable source copies. Actual mutation output
+Removing immutable-image matching, admission or source-label checking makes the
+permanent regressions fail in disposable source copies. The source/label-negative
+rows recompute the approved record hashes so integrity rejection cannot mask the
+actual dirty-source/label assertions. Actual mutation output
 is retained, with only trailing whitespace normalized. Go embeds Python inputs
 so Python-only changes invalidate cached Go test results.
 

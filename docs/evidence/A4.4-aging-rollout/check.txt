@@ -20,7 +20,7 @@ ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	(cached)
-ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	17.456s
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/merkle	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	(cached)
@@ -42,7 +42,7 @@ ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testnet	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testseam	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	(cached)
-ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	55.503s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	89.462s
 ?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
 ?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
 ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	(cached)
