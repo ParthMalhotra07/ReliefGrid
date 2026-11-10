@@ -1,0 +1,5 @@
+SEEDS=5 bash scripts/test-schedules.sh
+pod/reliefgrid-matcher-6f9c654554-kckn5 condition met
+pod/reliefgrid-matcher-6f9c654554-q7fqg condition met
+cluster: PASS (run a61-outbox-20261107T162246Z, SEEDS=5, selection=all)
+A2.3 selected backend/seeds PASS: backend=cluster seeds=5; full acceptance still required
