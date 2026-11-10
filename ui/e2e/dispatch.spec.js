@@ -287,3 +287,71 @@ test("an unknown write outcome remains visible after a successful reread", async
     "WAITING",
   );
 });
+
+test("first read failure reports unavailable lists instead of endless loading", async ({
+  page,
+  request,
+}) => {
+  await request.post("/__test/state", { data: { fail: true } });
+  await page.goto("/");
+  await expect(page.getByRole("alert")).toContainText(
+    "Could not confirm current state",
+  );
+  await expect(page.getByRole("region", { name: "Requests" })).toContainText(
+    "Request data unavailable",
+  );
+  await expect(page.getByRole("region", { name: "Resources" })).toContainText(
+    "Resource data unavailable",
+  );
+});
+
+test("resources identify latest and saved observations through refresh recovery", async ({
+  page,
+  request,
+}) => {
+  await page.goto("/");
+  const resources = page.getByRole("region", { name: "Resources" });
+  await expect(resources).toContainText("LATEST READ");
+  await request.post("/__test/state", { data: { fail: true, eventId } });
+  await expect(resources).toContainText("SAVED VIEW");
+  await request.post("/__test/state", {
+    data: { fail: false, eventId: "55555555-5555-4555-8555-555555555555" },
+  });
+  await expect(resources).toContainText("LATEST READ");
+});
+
+test("same-render action reentry admits only one pending write", async ({
+  page,
+  request,
+}) => {
+  await request.post("/__test/state", { data: { status: "WAITING" } });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: /Water needed at the school/ })
+    .click();
+  const writes = await page
+    .getByRole("button", { name: "Cancel request", exact: true })
+    .evaluate((button) => {
+      let submitted = 0;
+      const original = window.fetch;
+      window.confirm = () => true;
+      window.fetch = (...args) => {
+        if (args[1]?.method === "PUT") {
+          submitted++;
+          return new Promise(() => {});
+        }
+        return original(...args);
+      };
+      // Reenter the same rendered handler in one task, before React can commit
+      // busy/disabled state. The pinned React version attaches its props here.
+      const propsKey = Object.keys(button).find((key) =>
+        key.startsWith("__reactProps$"),
+      );
+      if (!propsKey) throw new Error("Rendered action handler unavailable");
+      const handler = button[propsKey].onClick;
+      handler();
+      handler();
+      return submitted;
+    });
+  expect(writes).toBe(1);
+});
