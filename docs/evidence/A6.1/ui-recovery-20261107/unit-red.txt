@@ -1,0 +1,46 @@
+✖ an overlapping refresh waits for the requested fresh reread (2.263374ms)
+✖ overlapping callers coalesce into one reread and recover after failure (0.65168ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 0
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 68.046342
+
+✖ failing tests:
+
+test at src/refresh.test.js:6:1
+✖ an overlapping refresh waits for the requested fresh reread (2.263374ms)
+  AssertionError [ERR_ASSERTION]: post-write refresh resolved before a fresh read
+
+  true !== false
+
+      at TestContext.<anonymous> (file://<checkout>/ui/src/refresh.test.js:16:10)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at src/refresh.test.js:26:1
+✖ overlapping callers coalesce into one reread and recover after failure (0.65168ms)
+  AssertionError [ERR_ASSERTION]: the queued reread was lost after failure
+
+  1 !== 2
+
+      at TestContext.<anonymous> (file://<checkout>/ui/src/refresh.test.js:36:10)
+      at async Test.run (node:internal/test_runner/test:1313:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
