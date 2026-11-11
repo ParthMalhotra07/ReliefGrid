@@ -191,5 +191,117 @@ class ValidationTests(unittest.TestCase):
                 self.assertEqual(saved['tools']['pod']['status']['containerStatuses'][0]['state']['terminated']['exitCode'], 0)
 
 
+    def test_profile_rejection_guards_identify_the_actual_failure(self):
+        def obsolete_rs(data):
+            rs = copy.deepcopy(data['replicasets'][0])
+            rs['metadata'].update(name='api-obsolete', uid='obsolete-rs')
+            rs['metadata']['annotations']['deployment.kubernetes.io/revision'] = '2'
+            rs['spec']['replicas'] = rs['status']['replicas'] = 1
+            data['replicasets'].append(rs)
+        cases = [
+            ('deleting deployment', lambda d: d['deployments'][0]['metadata'].update(deletionTimestamp='now'), 'controller identity missing or deleting'),
+            ('missing controller uid', lambda d: d['deployments'][0]['metadata'].pop('uid'), 'controller identity missing or deleting'),
+            ('bad generation', lambda d: d['deployments'][0]['metadata'].update(generation='2'), 'controller generation is not observed'),
+            ('disabled app', lambda d: d['values']['app'].update(enabled=False), 'fixed app profile is not configured'),
+            ('extra deployment', lambda d: d['deployments'].append(dict(metadata=dict(name='extra'), spec={}, status={})), 'expected exactly two selected Deployments'),
+            ('ambiguous deployment', lambda d: d['deployments'][1]['metadata']['labels'].update({'app.kubernetes.io/component': 'api'}), 'missing or ambiguous app Deployment'),
+            ('inactive current rs', lambda d: (d['replicasets'][0]['spec'].update(replicas=0), d['replicasets'][0]['status'].update(replicas=0)), 'expected one active ReplicaSet'),
+            ('scaled obsolete rs', obsolete_rs, 'expected one active ReplicaSet'),
+            ('rs images', lambda d: d['replicasets'][0]['spec']['template']['spec'].update(containers=[dict(name='api', image='obsolete')]), 'ReplicaSet images differ'),
+            ('missing app pod', lambda d: d['pods'].pop(0), 'expected exactly two app pods'),
+            ('missing pod uid', lambda d: d['pods'][0]['metadata'].pop('uid'), 'pod missing, duplicated or terminating'),
+            ('duplicate pod uid', lambda d: d['pods'][0]['metadata'].update(uid='reliefgrid-api-1'), 'pod missing, duplicated or terminating'),
+            ('wrong pod release', lambda d: d['pods'][0]['metadata'].update(labels={'app.kubernetes.io/component': 'api', 'app.kubernetes.io/instance': 'other'}), 'pod is not owned by current app ReplicaSet'),
+            ('pod phase', lambda d: d['pods'][0]['status'].update(phase='Pending'), 'pod is not running and Ready'),
+            ('containers ready', lambda d: d['pods'][0]['status']['conditions'][1].update(status='False'), 'pod is not running and Ready'),
+            ('missing statuses', lambda d: d['pods'][0]['status'].update(containerStatuses=[]), 'container status is incomplete'),
+            ('status names', lambda d: d['pods'][0]['status']['containerStatuses'][0].update(name='wrong'), 'container status is incomplete'),
+            ('not running', lambda d: d['pods'][0]['status']['containerStatuses'][0].update(state=dict(waiting={})), 'container is unready or lacks observed image identity'),
+            ('extra selected pod', lambda d: d['pods'].append(dict(metadata=dict(uid='other', labels={'app.kubernetes.io/component': 'relay'}), spec={}, status={})), 'unexpected selected app pods'),
+        ]
+        for name, change, message in cases:
+            with self.subTest(name=name):
+                data = fixture()
+                change(data)
+                with self.assertRaisesRegex(capture.InvalidObservation, message):
+                    capture.validate(data, 'reliefgrid')
+
+    def test_controller_rejection_guards_apply_to_replica_sets_too(self):
+        for field, value, message in [('observedGeneration', 1, 'generation is not observed'),
+                                      ('replicas', 1, 'two available replicas'),
+                                      ('readyReplicas', 1, 'two available replicas'),
+                                      ('availableReplicas', 1, 'two available replicas'),
+                                      ('unavailableReplicas', 1, 'unavailable replicas')]:
+            data = fixture()
+            data['replicasets'][0]['status'][field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(capture.InvalidObservation, message):
+                capture.validate(data, 'reliefgrid')
+        data = fixture()
+        data['replicasets'][0]['metadata']['deletionTimestamp'] = 'now'
+        with self.assertRaisesRegex(capture.InvalidObservation, 'controller identity missing or deleting'):
+            capture.validate(data, 'reliefgrid')
+        for group in ('deployments', 'replicasets'):
+            data = fixture()
+            data[group][0]['spec']['replicas'] = 3
+            with self.subTest(group=group), self.assertRaisesRegex(capture.InvalidObservation, 'two available replicas'):
+                capture.validate(data, 'reliefgrid')
+
+    def test_invalid_names_fail_before_source_read_or_capture_creation(self):
+        for flag in ('namespace', 'release', 'tools-job'):
+            with tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / 'capture'
+                values = dict(namespace='reliefgrid', release='reliefgrid', **{'tools-job': 'audit'})
+                values[flag] = 'INVALID'
+                argv = ['capture', '--context=kind-reliefgrid', '--output=' + str(output)] + ['--' + key + '=' + value for key, value in values.items()]
+                with patch.object(capture.sys, 'argv', argv), patch.object(capture, 'source_observation', side_effect=AssertionError('source must not be read')) as source:
+                    with self.assertRaisesRegex(capture.InvalidObservation, 'invalid Kubernetes name'):
+                        capture.main()
+                    source.assert_not_called()
+                self.assertFalse(output.exists())
+
+    def test_tools_rejection_guards_identify_the_actual_failure(self):
+        job = dict(metadata=dict(uid='job-uid'), status=dict(succeeded=1))
+        pod = copy.deepcopy(fixture()['pods'][0])
+        pod['metadata']['ownerReferences'] = [dict(kind='Job', uid='job-uid', controller=True)]
+        pod['status']['phase'] = 'Succeeded'
+        pod['status']['containerStatuses'][0]['state'] = dict(terminated=dict(exitCode=0))
+        cases = [
+            ('missing job uid', lambda j, p: j['metadata'].pop('uid'), 'tools Job did not complete'),
+            ('deleting job', lambda j, p: j['metadata'].update(deletionTimestamp='now'), 'failed/active attempts or is deleting'),
+            ('no pods', lambda j, p: p.clear(), 'exactly one retained pod'),
+            ('multiple pods', lambda j, p: p.append(copy.deepcopy(p[0])), 'exactly one retained pod'),
+            ('deleting pod', lambda j, p: p[0]['metadata'].update(deletionTimestamp='now'), 'not owned by retained Job'),
+            ('pod phase', lambda j, p: p[0]['status'].update(phase='Running'), 'tools container observation is incomplete'),
+            ('no statuses', lambda j, p: p[0]['status'].update(containerStatuses=[]), 'tools container observation is incomplete'),
+            ('extra status', lambda j, p: p[0]['status']['containerStatuses'].append(copy.deepcopy(p[0]['status']['containerStatuses'][0])), 'tools container observation is incomplete'),
+            ('wrong status name', lambda j, p: p[0]['status']['containerStatuses'][0].update(name='wrong'), 'tools container names do not match'),
+        ]
+        for name, change, message in cases:
+            j, pods = copy.deepcopy(job), [copy.deepcopy(pod)]
+            change(j, pods)
+            with self.subTest(name=name), self.assertRaisesRegex(capture.InvalidObservation, message):
+                capture.tools_observation(j, pods)
+
+    def test_malformed_shapes_persist_sanitized_fail_artifacts(self):
+        for field in ('app', 'storage', 'pod-status', 'tools-status'):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / 'capture'
+                args = ['capture', '--context=kind-reliefgrid', '--namespace=reliefgrid',
+                        '--release=reliefgrid', '--tools-job=audit', '--output=' + str(output)]
+                malformed = fixture()
+                if field in ('app', 'storage'): malformed['values'][field] = None
+                if field == 'pod-status': malformed['pods'][0]['status'] = None
+                source = dict(collectorCommit='a' * 40, collectorTree='b' * 40, collectorDirty=False)
+                job = dict(metadata=dict(uid='job-uid'), status=None)
+                def read_profile(*_):
+                    return capture.sanitize(malformed)
+                with patch.object(capture.sys, 'argv', args), patch.object(capture, 'source_observation', return_value=source), \
+                     patch.object(capture, 'collect', side_effect=read_profile), patch.object(capture, 'command_json', side_effect=[job, dict(items=[])]):
+                    self.assertEqual(capture.main(), 1)
+                result = json.loads((output / 'fixed-profile.json').read_bytes())
+                self.assertIs(result['ok'], False)
+                self.assertEqual(result['error'], 'malformed observation')
+
+
 if __name__ == '__main__':
     unittest.main()

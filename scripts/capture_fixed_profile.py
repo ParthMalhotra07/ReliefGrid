@@ -257,7 +257,7 @@ def main():
         result['fixedProfile'] = stable(first, second, args.release)
         require(source == source_observation(args.source), 'collector source changed during capture')
         result['ok'] = True
-    except (InvalidObservation, KeyError, TypeError, ValueError) as error:
+    except (InvalidObservation, KeyError, TypeError, ValueError, AttributeError) as error:
         # Only messages generated here may reach persisted evidence.
         result['error'] = str(error) if isinstance(error, InvalidObservation) else 'malformed observation'
     result['finishedAt'] = dt.datetime.now(dt.timezone.utc).isoformat()
