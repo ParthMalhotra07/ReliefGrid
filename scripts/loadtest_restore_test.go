@@ -326,6 +326,28 @@ func runFuncs(t *testing.T, funcs []string, script string, env ...string) (strin
 	return string(out), err
 }
 
+// stop_forwards runs under errexit in the main flow after the audit: waiting
+// on a port-forward it has just sent SIGTERM returns 143, and that status
+// must not end the run (it once killed the S5.2 smoke before its report).
+func TestLoadRunStopForwardsUnderErrexit(t *testing.T) {
+	out, err := runFuncs(t, []string{"stop_forwards"}, `
+BG_PFS=()
+sleep 60 >/dev/null 2>&1 &
+BG_PFS+=("$!")
+sleep 60 >/dev/null 2>&1 &
+BG_PFS+=("$!")
+kill "${BG_PFS[1]}"; sleep 0.2
+stop_forwards
+echo "after: ${#BG_PFS[@]} left"
+`)
+	if err != nil {
+		t.Fatalf("stop_forwards ended an errexit shell: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "after: 0 left") {
+		t.Fatalf("want the shell to continue with no forwards left:\n%s", out)
+	}
+}
+
 // The audit stops retry admission (the matcher) as demo 5 does; restore()
 // must put the matcher back on every exit, and a matcher it cannot put back
 // is a safety failure, like a cpuset or power profile left changed.

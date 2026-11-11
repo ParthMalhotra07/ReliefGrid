@@ -191,10 +191,12 @@ bg_forward() {
 	return 1
 }
 stop_forwards() {
+	# Called under errexit after the audit: wait reports 143 for a forward
+	# it has just terminated, and a forward that already died fails kill.
 	local p
 	for p in ${BG_PFS[@]+"${BG_PFS[@]}"}; do
-		kill "$p" 2>/dev/null
-		wait "$p" 2>/dev/null
+		kill "$p" 2>/dev/null || true
+		wait "$p" 2>/dev/null || true
 	done
 	BG_PFS=()
 	return 0
