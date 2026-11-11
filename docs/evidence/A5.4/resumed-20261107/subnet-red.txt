@@ -1,0 +1,14 @@
+..F.....
+======================================================================
+FAIL: test_internal_bridge_contains_routed_pods_but_not_external_destinations (__main__.OfflineKitTest.test_internal_bridge_contains_routed_pods_but_not_external_destinations)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 87, in test_internal_bridge_contains_routed_pods_but_not_external_destinations
+    self.assertTrue(pods.subnet_of(network),'Docker internal filtering drops routed pod traffic outside its subnet')
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: False is not true : Docker internal filtering drops routed pod traffic outside its subnet
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.024s
+
+FAILED (failures=1)

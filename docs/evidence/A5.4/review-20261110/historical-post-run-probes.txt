@@ -1,0 +1,6 @@
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+Preserved 9 real PASS reports; all five post-run egress probes blocked; immutable artifact integrity PASS.
