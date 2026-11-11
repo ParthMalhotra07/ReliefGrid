@@ -97,8 +97,14 @@ Report figures:
   component saturated first.
 
 Repeated runs of one scenario and seed are reported as median plus min/max
-(`loadreport aggregate`). Matching is asynchronous, so matched and waiting
-counts vary between runs even though each run offers the same work.
+(`loadreport aggregate`). Counts are deterministic for a given seed and rate
+profile, while latencies vary: an arrival-rate executor with no dropped
+iterations runs the same prefix of the dataset, so every run creates the same
+requests and registers the same resources, as long as no create or
+registration fails. Requests outnumber resources, so in Phase 1 every
+registered resource matched one request: matched equals registrations and
+waiting is the rest. Matches and reads issued before a VU has a request are
+skipped, so total requests and skipped ops vary slightly.
 
 k6 is pinned in `tools.mk` (`K6_VERSION`). Run it with `taskset` on cores the
 cluster is not using, and record them (`host.k6Cpus` in the report).
