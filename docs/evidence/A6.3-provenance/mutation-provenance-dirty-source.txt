@@ -1,0 +1,44 @@
+Negative control: provenance-dirty-source
+Disposable source copy only.
+Exit: 1
+test_binding_needs_exact_baseline_and_every_runtime_digest (__main__.ProvenanceTests.test_binding_needs_exact_baseline_and_every_runtime_digest) ... ok
+test_build_uses_iid_not_a_racy_tag_inspection (__main__.ProvenanceTests.test_build_uses_iid_not_a_racy_tag_inspection) ... ok
+test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) ...
+  test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) (mode='tracked') ... FAIL
+  test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) (mode='untracked') ... FAIL
+  test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) (mode='during') ... FAIL
+test_does_not_overwrite_or_put_evidence_inside_source (__main__.ProvenanceTests.test_does_not_overwrite_or_put_evidence_inside_source) ... ok
+test_invalid_image_failure_or_missing_component_leaves_no_success_manifest (__main__.ProvenanceTests.test_invalid_image_failure_or_missing_component_leaves_no_success_manifest) ... ok
+test_snapshot_build_binds_source_context_and_immutable_image (__main__.ProvenanceTests.test_snapshot_build_binds_source_context_and_immutable_image) ... ok
+
+======================================================================
+FAIL: test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) (mode='tracked')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/reliefgrid-delivery-negative-no25jlxl/build_provenance_test.py", line 72, in test_dirty_untracked_or_mid_build_source_changes_never_pass
+    with self.assertRaises(build.ProvenanceError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ProvenanceError not raised
+
+======================================================================
+FAIL: test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) (mode='untracked')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/reliefgrid-delivery-negative-no25jlxl/build_provenance_test.py", line 72, in test_dirty_untracked_or_mid_build_source_changes_never_pass
+    with self.assertRaises(build.ProvenanceError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ProvenanceError not raised
+
+======================================================================
+FAIL: test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) (mode='during')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/reliefgrid-delivery-negative-no25jlxl/build_provenance_test.py", line 72, in test_dirty_untracked_or_mid_build_source_changes_never_pass
+    with self.assertRaises(build.ProvenanceError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ProvenanceError not raised
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.203s
+
+FAILED (failures=3)
