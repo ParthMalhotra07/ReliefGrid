@@ -1,0 +1,13 @@
+--- FAIL: TestUIBrokerMonitorLive (0.90s)
+    --- FAIL: TestUIBrokerMonitorLive/node-details-denied (0.01s)
+        ui_monitor_live_test.go:127: monitor node listing was not denied: 200
+        ui_monitor_live_test.go:136: monitor existing node detail was not denied: 200
+    --- FAIL: TestUIBrokerMonitorLive/other-user-connections-denied (0.84s)
+        ui_monitor_live_test.go:186: monitor connection listing exposed another user's connection
+        ui_monitor_live_test.go:194: monitor existing other-user connection detail was not denied: 200
+        ui_monitor_live_test.go:196: administrator confirmed live other-user connection before monitor privacy checks
+    ui_monitor_live_test.go:217: observed actual queue counters after 2ms
+    ui_monitor_live_test.go:217: observed actual queue counters after 2ms
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.909s
+FAIL
