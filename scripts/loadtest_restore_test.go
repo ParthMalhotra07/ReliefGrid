@@ -311,6 +311,177 @@ func TestLoadPilotEntrypointOffline(t *testing.T) {
 	}
 }
 
+// runFuncs evaluates the named functions of loadtest/run.sh, then script,
+// under set -euo pipefail, and returns the combined output.
+func runFuncs(t *testing.T, funcs []string, script string, env ...string) (string, error) {
+	t.Helper()
+	var pick strings.Builder
+	for _, f := range funcs {
+		fmt.Fprintf(&pick, "/^%s() {/,/^}/p;", f)
+	}
+	full := "set -euo pipefail\neval \"$(sed -n '" + pick.String() + "' ../loadtest/run.sh)\"\n" + script
+	cmd := exec.CommandContext(t.Context(), "bash", "-c", full)
+	cmd.Env = append(os.Environ(), env...)
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// The audit stops retry admission (the matcher) as demo 5 does; restore()
+// must put the matcher back on every exit, and a matcher it cannot put back
+// is a safety failure, like a cpuset or power profile left changed.
+func TestLoadRunRestoreResumesMatcher(t *testing.T) {
+	for _, c := range []struct {
+		name, replicas, scaleOK string
+		wantSafety              string
+		want, notWant           []string
+	}{
+		{"resumed", "2", "1", "false", []string{"kn scale deploy/r-matcher --replicas=2", "forward gone"}, nil},
+		{"cannot resume", "2", "0", "true", []string{"kn scale deploy/r-matcher --replicas=2", "could not restore the matcher"}, nil},
+		{"never read", "", "1", "false", []string{"forward gone"}, []string{"kn "}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			out, err := runFuncs(t, []string{"restore", "resume_matcher", "stop_forwards"}, `
+log() { echo "log: $*"; }
+exec 3>&1
+docker() { if [ "$1" = inspect ]; then echo 0-5; fi; }
+powerprofilesctl() { echo balanced; }
+REPLICAS=0
+kn() {
+	echo "kn $*" >&3
+	case "$*" in
+	"get deploy/r-matcher -o jsonpath={.spec.replicas}") echo "$REPLICAS" ;;
+	"scale deploy/r-matcher --replicas=2") [ "$SCALE_OK" = 1 ] || return 1; REPLICAS=2 ;;
+	"rollout status deploy/r-matcher --timeout=180s") [ "$REPLICAS" = 2 ] ;;
+	"get deploy/r-matcher -o jsonpath={.status.readyReplicas}") echo "$REPLICAS" ;;
+	*) return 1 ;;
+	esac
+}
+MATCHER=deploy/r-matcher MATCHER_REPLICAS="$WANT"
+NODES=(n1); declare -A CPUSET_BEFORE=([n1]=0-5); POWER_BEFORE=balanced; sampler_pid=""
+sleep 30 >/dev/null 2>&1 & BG_PFS=("$!")
+trap 'echo "ERR trap fired"' ERR
+safety_failure=false
+restore
+kill -0 "${BG_PFS[0]:-$!}" 2>/dev/null && echo "forward alive" || echo "forward gone"
+echo "safety_failure=$safety_failure"
+`, "WANT="+c.replicas, "SCALE_OK="+c.scaleOK)
+			if err != nil {
+				t.Fatalf("restore() ended the shell: %v\n%s", err, out)
+			}
+			for _, w := range append(c.want, "safety_failure="+c.wantSafety) {
+				if !strings.Contains(out, w) {
+					t.Errorf("missing %q in:\n%s", w, out)
+				}
+			}
+			for _, w := range append(c.notWant, "ERR trap fired") {
+				if strings.Contains(out, w) {
+					t.Errorf("unexpected %q in:\n%s", w, out)
+				}
+			}
+		})
+	}
+}
+
+func TestLoadRunPauseMatcher(t *testing.T) {
+	for _, c := range []struct {
+		name, pods string
+		ok         bool
+	}{{"stopped", "", true}, {"pods outlive the scale", "pod/r-matcher-x", false}} {
+		t.Run(c.name, func(t *testing.T) {
+			out, err := runFuncs(t, []string{"pause_matcher"}, `
+exec 3>&2 # pause_matcher discards kubectl's output; record calls on fd 3
+kn() {
+	echo "kn $*" >&3
+	case "$*" in
+	"get pods -l "*" -o name") printf '%s' "$PODS" ;;
+	esac
+}
+MATCHER=deploy/r-matcher MATCHER_SELECTOR=app.kubernetes.io/instance=r,app.kubernetes.io/component=matcher
+pause_matcher && echo paused || echo "not paused"
+`, "PODS="+c.pods)
+			if err != nil {
+				t.Fatalf("%v\n%s", err, out)
+			}
+			if !strings.Contains(out, "kn scale deploy/r-matcher --replicas=0") ||
+				!strings.Contains(out, "kn wait --for=delete pod -l app.kubernetes.io/instance=r,app.kubernetes.io/component=matcher") {
+				t.Errorf("did not scale to zero and wait:\n%s", out)
+			}
+			if got := strings.Contains(out, "\npaused"); got != c.ok {
+				t.Errorf("paused=%v, want %v:\n%s", got, c.ok, out)
+			}
+		})
+	}
+}
+
+// The drain reuses the demo's relay-only drainer with the broker's
+// credentials in its environment only: never on a command line, and
+// redacted (raw and URL-encoded) from the evidence it leaves.
+func TestLoadRunDrainHandoffs(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		exit int
+	}{{"drained", 0}, {"failed", 1}} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			bin := filepath.Join(dir, "drain-outbox")
+			if err := os.WriteFile(bin, []byte(`#!/bin/sh
+printf '%s\n%s\n' "$COORDINATOR_URL" "$AMQP_URL" > "$SEEN"
+echo "dial $AMQP_URL: refused (p@ss:w/rd)" >&2
+echo '{"Read":3,"Published":3,"Marked":3}'
+exit $DRAIN_EXIT
+`), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(dir, "run", "raw"), 0o750); err != nil {
+				t.Fatal(err)
+			}
+			out, err := runFuncs(t, []string{"drain_handoffs"}, `
+kn() {
+	echo "$*" >> "$ARGV"
+	case "$*" in
+	"get secret r-rabbitmq -o jsonpath={.data.username}") printf rg-user | base64 ;;
+	"get secret r-rabbitmq -o jsonpath={.data.password}") printf 'p@ss:w/rd' | base64 ;;
+	*) return 1 ;;
+	esac
+}
+RELEASE=r DIR="$RUN" DRAIN_BIN="$BIN"
+drain_handoffs http://127.0.0.1:5801 127.0.0.1:5999 && echo "drain ok" || echo "drain failed"
+`, "RUN="+filepath.Join(dir, "run"), "BIN="+bin, "SEEN="+filepath.Join(dir, "seen"), "ARGV="+filepath.Join(dir, "argv"),
+				fmt.Sprintf("DRAIN_EXIT=%d", c.exit))
+			if err != nil {
+				t.Fatalf("%v\n%s", err, out)
+			}
+			if want := map[bool]string{true: "drain ok", false: "drain failed"}[c.exit == 0]; !strings.Contains(out, want) {
+				t.Fatalf("want %q:\n%s", want, out)
+			}
+			seen, _ := os.ReadFile(filepath.Join(dir, "seen"))
+			if string(seen) != "http://127.0.0.1:5801\namqp://rg-user:p%40ss%3Aw%2Frd@127.0.0.1:5999/\n" {
+				t.Errorf("drainer environment:\n%s", seen)
+			}
+			logb, err := os.ReadFile(filepath.Join(dir, "run", "raw", "handoff-drain.log"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			argv, _ := os.ReadFile(filepath.Join(dir, "argv"))
+			for name, b := range map[string][]byte{"log": logb, "kubectl argv": argv, "output": []byte(out)} {
+				if strings.Contains(string(b), "p@ss:w/rd") || strings.Contains(string(b), "p%40ss%3Aw%2Frd") {
+					t.Errorf("password in %s:\n%s", name, b)
+				}
+			}
+			if !strings.Contains(string(logb), "[redacted]") {
+				t.Errorf("log not redacted:\n%s", logb)
+			}
+			got, err := os.ReadFile(filepath.Join(dir, "run", "raw", "handoff-drain.json"))
+			if c.exit == 0 && (err != nil || strings.TrimSpace(string(got)) != `{"read":3,"published":3,"marked":3}`) {
+				t.Errorf("drain report %q (%v)", got, err)
+			}
+			if leftovers, _ := filepath.Glob(filepath.Join(dir, "run", "raw", "handoff-drain.*.tmp")); len(leftovers) > 0 {
+				t.Errorf("unredacted temporary files left: %v", leftovers)
+			}
+		})
+	}
+}
+
 // Fix for the pilot: every stage had the supervisor's 1800 s default, which a
 // 1800 s soak can never meet. A run stage gets its k6 duration plus 900 s.
 func TestLoadStageTimeout(t *testing.T) {
@@ -370,5 +541,12 @@ if supervise step /bin/true; then echo "no deadline accepted"; else echo "no dea
 	}
 	if _, err := os.Stat(filepath.Join(out, "step.supervisor")); err == nil {
 		t.Fatal("a stage without a deadline was launched")
+	}
+}
+
+func TestLoadBackgroundSampler(t *testing.T) {
+	out, err := exec.CommandContext(t.Context(), "python3", "-I", "load-background-test.py").CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
 	}
 }
