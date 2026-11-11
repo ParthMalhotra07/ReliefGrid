@@ -1,0 +1,16 @@
+Disposable package; normal go test without -count=1.
+Before Python-only mutation:
+ok  	capturecache	0.109s
+
+After Python-only mutation (no Go edits):
+--- FAIL: TestFixedProfileCaptureRegressions (0.13s)
+    capture_fixed_profile_test.go:29: fixed-profile evidence: exit status 1
+        Traceback (most recent call last):
+          File "/tmp/TestFixedProfileCaptureRegressions2634938839/001/capture_fixed_profile_test.py", line 10, in <module>
+            import capture_fixed_profile as capture
+          File "/tmp/TestFixedProfileCaptureRegressions2634938839/001/capture_fixed_profile.py", line 276, in <module>
+            raise RuntimeError("Python-only cache invalidation probe")
+        RuntimeError: Python-only cache invalidation probe
+FAIL
+FAIL	capturecache	0.137s
+FAIL
