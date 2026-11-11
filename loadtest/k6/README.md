@@ -48,8 +48,26 @@ profile whether the run passes, fails or is interrupted.
 dataset; scrapes every storage node's and the coordinator's `/metrics` before
 and after (`kubectl port-forward`); samples every pod's cgroup on its kind
 node every 5 s; runs k6 under `taskset`; lets matching settle; reads back every
-request the run created; runs `invcheck check` as a Job; then builds and checks
+request the run created; audits without admission; then builds and checks
 `docs/evidence/S5.2/<runId>/summary.json` (`go run ./loadtest/cmd/loadreport`).
+
+The audit is demo 5's `audit_without_admission`. A WAITING request (the
+dataset has fewer resources than requests) goes round the retry tiers for as
+long as the matcher runs, each round a `RetryWorkflow` and an outbox mark, so
+`invcheck` could never see the applied indexes still. `run.sh` scales the
+matcher (which also runs the reconciler and the outbox relay) to 0, publishes
+the handoffs already committed with `scripts/demos/drain-outbox`, runs
+`invcheck check` as a Job, and scales the matcher back. Hints left in RabbitMQ
+stay there. The report's `audit` states the replicas before and after and what
+was drained; a matcher that cannot be put back is a safety failure (exit 4).
+
+`loadtest/background.py` samples the load k6 cannot see every 5 s, from before
+k6 until the audit's pause (`raw/background.jsonl`): the broker's confirm
+counters (publishes nacked by a full queue under `reject-publish`), every
+queue's depth, and WAITING from the API's workflow walk. The report's
+`background` gives, for the run, for after it (k6 stopped, retries still
+running) and for each step: unconfirmed publishes, peak depth per queue and
+WAITING, plus the sample taken at the pause.
 Raw files over 5 MiB move to `SPILL_DIR` (default `~/.cache/reliefgrid/S5.2`)
 and are recorded by size and sha256. `raw/requests.csv.gz`, one line per
 request, is always committed.

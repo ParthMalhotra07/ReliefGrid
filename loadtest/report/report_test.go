@@ -79,6 +79,7 @@ func runDir(t *testing.T, reqs []req, created []string, statuses []report.Status
 		}
 	}
 	write(t, filepath.Join(dir, "raw", "cgroup.jsonl"), cg.String())
+	write(t, filepath.Join(dir, "raw", "background.jsonl"), backgroundLines())
 	for s := range 3 {
 		pod := fmt.Sprintf("storage-shard-%d-0", s)
 		write(t, filepath.Join(dir, "raw", "metrics-start", pod+".prom"), prom(s, pod, [3]int{0, 0, 0}, 1, 0, 1000))
@@ -103,12 +104,37 @@ func runDir(t *testing.T, reqs []req, created []string, statuses []report.Status
 			{"targetRps": 30, "from": t0.Add(20 * time.Second), "to": t0.Add(30 * time.Second)},
 		},
 		"invcheck": map[string]any{"exitCode": 0},
+		"audit": map[string]any{"mode": "without-admission", "matcherReplicas": 2, "matcherReplicasAfter": 2,
+			"drain": map[string]any{"read": 3, "published": 3, "marked": 3}},
 	}
 	writeJSON(t, filepath.Join(dir, "facts.json"), facts)
 	writeJSON(t, filepath.Join(dir, "dataset-info.json"), map[string]any{"seed": 52, "ops": 1000, "requests": 150, "resources": 100,
 		"sha256": strings.Repeat("c", 64), "payloadSha256": strings.Repeat("d", 64),
 		"mix": map[string]float64{"create_request": 0.15, "register_resource": 0.10, "match": 0.10, "read_request": 0.55, "list_requests": 0.05, "list_resources": 0.05}})
 	return dir
+}
+
+// backgroundLines are loadtest/background.py samples for runDir's 30 s run:
+// one before k6, one per step (the second with a full matching.requests and
+// 10 unconfirmed publishes), a gap, the end, and the retry load that goes on
+// after k6 stops (settle) up to the pause before the audit.
+func backgroundLines() string {
+	at := func(s float64) int64 { return t0.Add(time.Duration(s * float64(time.Second))).UnixMilli() }
+	var b strings.Builder
+	line := func(s float64, phase string, rc, c int64, ready, retry int64, waiting int, valid bool) {
+		fmt.Fprintf(&b, `{"tMs":%d,"phase":%q,"brokerReceivedConfirm":%d,"brokerConfirmed":%d,`+
+			`"queues":{"matching.requests":{"ready":%d,"unacked":4},"retry.120s":{"ready":%d,"unacked":0}},`+
+			`"waiting":%d,"waitingValid":%t,"waitingObservedAtMs":%d}`+"\n", at(s), phase, rc, c, ready, retry, waiting, valid, at(s)-1000)
+	}
+	line(-2, "start", 1000, 1000, 0, 0, 0, true)
+	line(5, "run", 1100, 1100, 10, 0, 1, true)
+	line(15, "run", 1300, 1290, 9996, 50, 5, true)
+	fmt.Fprintf(&b, `{"tMs":%d,"phase":"run","error":"api: timed out"}`+"\n", at(24))
+	line(28, "run", 1450, 1435, 400, 80, 99, false) // stale walk: not a count
+	line(31, "end", 1500, 1480, 300, 90, 7, true)
+	line(40, "settle", 1600, 1580, 200, 95, 7, true)
+	line(50, "pause", 1650, 1630, 120, 95, 7, true)
+	return b.String()
 }
 
 func prom(shard int, pod string, commitCum [3]int, term int, snaps int, logBytes int) string {
@@ -392,5 +418,74 @@ func TestBuildNamesPodsAtTheirLimit(t *testing.T) {
 	}
 	if code, out := checker(t, dir, "--require-saturation"); code != 0 {
 		t.Fatalf("checker (exit %d):\n%s", code, out)
+	}
+}
+
+// The background load k6 cannot see: unconfirmed publishes (nacks), queue
+// depth and WAITING per window, over the run and after it up to the audit's
+// pause, plus how the audit stopped admission.
+func TestBuildBackgroundAndAudit(t *testing.T) {
+	reqs := append(steady(0, 20, map[string]float64{"write": 50, "read": 10, "list": 40}),
+		steady(20, 30, map[string]float64{"write": 90, "read": 30, "list": 700})...) // listings break at 30
+	dir := runDir(t, reqs, nil, nil, -1)
+	sum, err := report.Build(dir, report.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := json.Marshal(sum)
+	var s struct {
+		Background struct {
+			Run, AfterRun report.Background
+			AtPause       *report.BackgroundSample
+		}
+		Steps []struct{ Background report.Background }
+		Audit map[string]any
+	}
+	if err := json.Unmarshal(b, &s); err != nil {
+		t.Fatal(err)
+	}
+	ip := func(n int) *int { return &n }
+	eq := func(name string, got report.Background, samples, gaps int, unconfirmed int64, peak map[string]int64, first, last *int) {
+		t.Helper()
+		if got.Samples != samples || got.Gaps != gaps || got.PublishesNotConfirmed != unconfirmed || fmt.Sprint(got.QueuePeak) != fmt.Sprint(peak) ||
+			fmt.Sprint(deref(got.WaitingFirst)) != fmt.Sprint(deref(first)) || fmt.Sprint(deref(got.WaitingLast)) != fmt.Sprint(deref(last)) {
+			t.Errorf("%s: %+v (waiting %v..%v)", name, got, deref(got.WaitingFirst), deref(got.WaitingLast))
+		}
+	}
+	// start, three run samples, a gap and end; 20 unconfirmed from start to end.
+	eq("run", s.Background.Run, 6, 1, 20, map[string]int64{"matching.requests": 10000, "retry.120s": 90}, ip(0), ip(7))
+	// settle and pause, measured from the end sample: retry load, no nacks.
+	eq("afterRun", s.Background.AfterRun, 2, 0, 0, map[string]int64{"matching.requests": 204, "retry.120s": 95}, ip(7), ip(7))
+	if p := s.Background.AtPause; p == nil || p.Phase != "pause" || p.Waiting != 7 || !p.WaitingValid || p.Queues["matching.requests"].Ready != 120 {
+		t.Errorf("atPause %+v", p)
+	}
+	if len(s.Steps) != 3 {
+		t.Fatalf("steps %+v", s.Steps)
+	}
+	eq("step 10", s.Steps[0].Background, 1, 0, 0, map[string]int64{"matching.requests": 14, "retry.120s": 0}, ip(1), ip(1))
+	// From the 5 s sample to the 15 s one: the full queue's 10 nacks.
+	eq("step 20", s.Steps[1].Background, 1, 0, 10, map[string]int64{"matching.requests": 10000, "retry.120s": 50}, ip(5), ip(5))
+	// A gap, then a sample whose walk failed: depths count, WAITING does not.
+	eq("step 30", s.Steps[2].Background, 2, 1, 5, map[string]int64{"matching.requests": 404, "retry.120s": 80}, nil, nil)
+	if s.Audit["mode"] != "without-admission" || s.Audit["matcherReplicas"] != 2.0 || s.Audit["matcherReplicasAfter"] != 2.0 {
+		t.Errorf("audit %v", s.Audit)
+	}
+	if code, out := checker(t, dir); code != 0 {
+		t.Fatalf("checker rejected the report (exit %d):\n%s", code, out)
+	}
+}
+
+func deref(p *int) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
+func TestBuildRejectsBackgroundOutsideTheRun(t *testing.T) {
+	dir := runDir(t, steady(0, 30, map[string]float64{"write": 50, "read": 10, "list": 40}), nil, nil, -1)
+	write(t, filepath.Join(dir, "raw", "background.jsonl"), fmt.Sprintf(`{"tMs":%d,"phase":"run","error":"x"}`+"\n", t0.Unix()))
+	if _, err := report.Build(dir, report.Options{}); err == nil || !strings.Contains(err.Error(), "background") {
+		t.Fatalf("Build accepted a background sample stamped in seconds: %v", err)
 	}
 }

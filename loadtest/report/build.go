@@ -52,6 +52,8 @@ type Facts struct {
 	Invcheck struct {
 		ExitCode int `json:"exitCode"`
 	} `json:"invcheck"`
+	// Audit: how admission was stopped for invcheck (loadtest/run.sh).
+	Audit map[string]any `json:"audit"`
 }
 
 // DatasetInfo is what loadtest/cmd/gendata printed (dataset-info.json).
@@ -77,6 +79,8 @@ type Step struct {
 	// PodsAtLimit: pods at their CPU limit during the step's hold, busiest
 	// first (which component saturates).
 	PodsAtLimit []PodAtLimit `json:"podsAtLimit"`
+	// Background: retry load and broker backpressure during the hold.
+	Background Background `json:"background"`
 }
 
 // RawFile is one raw data file and whether it is committed beside the report.
@@ -98,7 +102,7 @@ type Options struct {
 
 // Build writes dir/summary.json and dir/SHA256SUMS from the run's files:
 // facts.json, dataset-info.json, raw/k6-points.jsonl.gz, raw/statuses.jsonl,
-// raw/cgroup.jsonl and raw/metrics-start/, raw/metrics-end/.
+// raw/cgroup.jsonl, raw/background.jsonl and raw/metrics-start/, raw/metrics-end/.
 func Build(dir string, opt Options) (map[string]any, error) {
 	if opt.MaxCommitBytes <= 0 {
 		opt.MaxCommitBytes = 5 << 20
@@ -128,6 +132,15 @@ func Build(dir string, opt Options) (map[string]any, error) {
 	for _, s := range samples {
 		if at := time.UnixMilli(s.TMs); at.Before(facts.StartedAt.Add(-time.Hour)) || at.After(facts.EndedAt.Add(time.Hour)) {
 			return nil, fmt.Errorf("report: cgroup sample of %s at tMs %d is not within the run (%v..%v): wrong unit?", s.Pod, s.TMs, facts.StartedAt, facts.EndedAt)
+		}
+	}
+	background, err := ReadBackground(filepath.Join(dir, "raw", "background.jsonl"))
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range background {
+		if at := time.UnixMilli(s.TMs); at.Before(facts.StartedAt.Add(-time.Hour)) || at.After(facts.EndedAt.Add(time.Hour)) {
+			return nil, fmt.Errorf("report: background sample at tMs %d is not within the run (%v..%v): wrong unit?", s.TMs, facts.StartedAt, facts.EndedAt)
 		}
 	}
 	start, err := ReadScrapes(filepath.Join(dir, "raw", "metrics-start"))
@@ -198,9 +211,11 @@ func Build(dir string, opt Options) (map[string]any, error) {
 		"raft":       map[string]any{"shards": raft},
 		"pods":       PodUse(samples),
 		"invariants": map[string]any{"ledger": ledger, "invcheck": invcheck, "acknowledgedCreates": len(pts.Created), "unreadable": len(lost)},
+		"background": backgroundFigures(background),
+		"audit":      facts.Audit,
 	}
 	if len(facts.Steps) > 0 {
-		steps, sat := stepFigures(pts, facts, samples, podLimits(facts))
+		steps, sat := stepFigures(pts, facts, samples, background, podLimits(facts))
 		summary["steps"] = steps
 		if sat != nil {
 			summary["saturation"] = sat
@@ -235,7 +250,7 @@ func podLimits(f Facts) map[string]float64 {
 	return out
 }
 
-func stepFigures(pts Points, f Facts, samples []CgroupSample, limits map[string]float64) ([]Step, map[string]any) {
+func stepFigures(pts Points, f Facts, samples []CgroupSample, background []BackgroundSample, limits map[string]float64) ([]Step, map[string]any) {
 	var steps []Step
 	for _, s := range f.Steps {
 		w := Window{From: s.From, To: s.To}
@@ -246,7 +261,8 @@ func stepFigures(pts Points, f Facts, samples []CgroupSample, limits map[string]
 		}
 		steps = append(steps, Step{TargetRps: s.TargetRps, AchievedRps: round2(float64(st.Requests) / w.Seconds()),
 			WriteP99Ms: st.Classes["write"].P99Ms, ReadP99Ms: st.Classes["read"].P99Ms, ListP99Ms: st.Classes["list"].P99Ms,
-			ErrorRate: rate, DroppedIterations: st.Dropped, PodsAtLimit: PodsAtLimit(samples, w, limits)})
+			ErrorRate: rate, DroppedIterations: st.Dropped, PodsAtLimit: PodsAtLimit(samples, w, limits),
+			Background: stepBackground(background, w)})
 	}
 	var firstAtLimit map[string]any
 	for _, s := range steps {
