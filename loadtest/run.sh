@@ -15,11 +15,16 @@
 # 2. Generates the seeded dataset (loadtest/cmd/gendata).
 # 3. Scrapes /metrics of every storage node and the coordinator (through
 #    kubectl port-forward), and samples every pod's cgroup on its kind node
-#    every SAMPLE_SECONDS while k6 runs.
+#    every SAMPLE_SECONDS while k6 runs, and the background load k6 cannot
+#    see (loadtest/background.py: broker nacks and queue depths, WAITING)
+#    from before k6 until the audit's pause.
 # 4. Runs the scenario with k6 pinned to K6_CPUS (taskset).
 # 5. Scrapes again, lets matching settle (SETTLE_SECONDS), reads back every
-#    request the run created (loadreport statuses), and runs invcheck check
-#    as a Job until the outbox has drained.
+#    request the run created (loadreport statuses), then audits without
+#    admission as demo 5 does: scales the matcher to 0, publishes the
+#    handoffs already committed (scripts/demos/drain-outbox), runs invcheck
+#    check as a Job, and scales the matcher back. WAITING requests retry for
+#    as long as the matcher runs, so invcheck could never be quiescent.
 # 6. Builds docs/evidence/S5.2/<runId>/summary.json and SHA256SUMS
 #    (loadreport build; raw files over 5 MiB go to SPILL_DIR) and checks it
 #    with scripts/load-report-check.py.
@@ -29,8 +34,10 @@
 # are recorded in the report. One EXIT trap restores the nodes' cpusets and
 # the previous power profile, whether the run passes, fails or is
 # interrupted. Deploy with loadtest/cluster.sh (Guaranteed pods).
-# Kind only: it refuses any other context. It changes nothing on the cluster
-# but one invcheck Job, deleted afterwards.
+# Kind only: it refuses any other context. On the cluster it creates one
+# invcheck Job (deleted afterwards) and pauses the matcher for the audit;
+# restore() puts the matcher back on any exit, and a matcher it cannot put
+# back is a safety failure (exit 4), like a cpuset or power profile.
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -144,6 +151,12 @@ got="$("$K6" version | awk '{print $2; exit}')"
 [ "$got" = "$K6_VERSION" ] || die "k6 is $got, the pin is $K6_VERSION"
 command -v taskset >/dev/null || die "taskset is not installed"
 curl -sf -o /dev/null "$API_URL/api/v1/requests?limit=1" || die "the API does not answer at $API_URL"
+# Retry admission (the matcher, which also runs the reconciler and the outbox
+# relay) is stopped for the audit and put back; restore() needs the count.
+MATCHER="deploy/$RELEASE-matcher"
+MATCHER_SELECTOR="app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=matcher"
+MATCHER_REPLICAS="$(kn get "$MATCHER" -o jsonpath='{.spec.replicas}')" || die "no $MATCHER"
+[[ "$MATCHER_REPLICAS" =~ ^[1-9][0-9]*$ ]] || die "$MATCHER has $MATCHER_REPLICAS replicas; the run needs it running"
 
 # --- isolation, restored on any exit ---------------------------------------------------------
 python3 -c 'import sys
@@ -158,6 +171,81 @@ for n in "${NODES[@]}"; do
 done
 POWER_BEFORE="$(powerprofilesctl get 2>/dev/null || echo unknown)"
 sampler_pid=""
+bg_sampler_pid=""
+BG_PFS=()
+DRAIN_DIR=""
+
+# --- helpers: forwards, admission pause, handoff drain ---------------------------------------
+free_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
+# bg_forward <target> <remote port>: a port-forward kept for a phase of the
+# run; FWD_PORT is its local port. kubectl itself in the background (#50),
+# stopped by stop_forwards (and restore()).
+bg_forward() {
+	FWD_PORT="$(free_port)"
+	kubectl --context "$CTX" -n "$NS" port-forward "$1" "$FWD_PORT:$2" >/dev/null 2>&1 &
+	BG_PFS+=("$!")
+	for _ in $(seq 100); do
+		(: <"/dev/tcp/127.0.0.1/$FWD_PORT") 2>/dev/null && return 0
+		sleep 0.1
+	done
+	return 1
+}
+stop_forwards() {
+	local p
+	for p in ${BG_PFS[@]+"${BG_PFS[@]}"}; do
+		kill "$p" 2>/dev/null
+		wait "$p" 2>/dev/null
+	done
+	BG_PFS=()
+	return 0
+}
+# pause_matcher: stop retry admission for the audit (demo 5's
+# audit_without_admission, C13). Unconsumed hints stay durable in RabbitMQ;
+# nothing is acked to quiet the workload.
+pause_matcher() {
+	kn scale "$MATCHER" --replicas=0 >/dev/null || return 1
+	kn wait --for=delete pod -l "$MATCHER_SELECTOR" --timeout=90s >/dev/null 2>&1 || true
+	[ -z "$(kn get pods -l "$MATCHER_SELECTOR" -o name)" ]
+}
+# resume_matcher: MATCHER_REPLICAS back and Ready; a no-op before preflight
+# has read the count.
+resume_matcher() {
+	local want="${MATCHER_REPLICAS:-}"
+	[ -n "$want" ] || return 0
+	if [ "$(kn get "$MATCHER" -o jsonpath='{.spec.replicas}')" != "$want" ]; then
+		kn scale "$MATCHER" --replicas="$want" >/dev/null || return 1
+	fi
+	kn rollout status "$MATCHER" --timeout=180s >/dev/null || return 1
+	[ "$(kn get "$MATCHER" -o jsonpath='{.status.readyReplicas}')" = "$want" ]
+}
+# drain_handoffs <coordinator url> <amqp host:port>: publish the handoffs
+# committed before the pause with the production routed-confirm relay
+# (scripts/demos/drain-outbox), which consumes nothing and changes no
+# workflow state. The broker credentials go in its environment only and are
+# redacted from raw/handoff-drain.log; the report is raw/handoff-drain.json.
+drain_handoffs() {
+	local user pass amqp rc
+	user="$(kn get secret "$RELEASE-rabbitmq" -o jsonpath='{.data.username}' | base64 -d)" || return 1
+	pass="$(kn get secret "$RELEASE-rabbitmq" -o jsonpath='{.data.password}' | base64 -d)" || return 1
+	amqp="$(RG_USER="$user" RG_PASS="$pass" RG_HOST="$2" python3 -c 'import os, urllib.parse as u
+q = lambda k: u.quote(os.environ[k], safe="")
+print("amqp://" + q("RG_USER") + ":" + q("RG_PASS") + "@" + os.environ["RG_HOST"] + "/")')" || return 1
+	rc=0
+	COORDINATOR_URL="$1" AMQP_URL="$amqp" timeout 45 "$DRAIN_BIN" \
+		>"$DIR/raw/handoff-drain.out.tmp" 2>"$DIR/raw/handoff-drain.err.tmp" || rc=$?
+	RG_PASS="$pass" python3 -c 'import os, sys, urllib.parse as u
+p = os.environ["RG_PASS"]
+text = open(sys.argv[1]).read() + open(sys.argv[2]).read()
+for secret in sorted({p, u.quote(p, safe=""), u.quote(p)}, key=len, reverse=True):
+    text = text.replace(secret, "[redacted]")
+open(sys.argv[3], "w").write(text)' "$DIR/raw/handoff-drain.err.tmp" /dev/null "$DIR/raw/handoff-drain.log" || rc=1
+	if [ "$rc" = 0 ]; then
+		jq -c '{read: .Read, published: .Published, marked: .Marked}' "$DIR/raw/handoff-drain.out.tmp" >"$DIR/raw/handoff-drain.json" || rc=1
+	fi
+	rm -f "$DIR/raw/handoff-drain.out.tmp" "$DIR/raw/handoff-drain.err.tmp"
+	return "$rc"
+}
+
 restore() {
 	# Runs on every exit. No command here may end it early: errexit and the
 	# ERR trap are off, and each step reports its own failure.
@@ -165,7 +253,14 @@ restore() {
 	trap - ERR
 	local n
 	if [ -n "$sampler_pid" ]; then kill "$sampler_pid" 2>/dev/null; wait "$sampler_pid" 2>/dev/null; fi
+	if [ -n "${bg_sampler_pid:-}" ]; then kill "$bg_sampler_pid" 2>/dev/null; wait "$bg_sampler_pid" 2>/dev/null; fi
 	if [ -n "${pf:-}" ]; then kill "$pf" 2>/dev/null; fi
+	stop_forwards
+	if [ -n "${DRAIN_DIR:-}" ]; then rm -rf "$DRAIN_DIR"; fi
+	if ! resume_matcher; then
+		safety_failure=true
+		log "WARNING: could not restore the matcher to ${MATCHER_REPLICAS:-?} Ready replicas"
+	fi
 	for n in "${NODES[@]}"; do
 		# An empty cpuset means every CPU; docker update needs it spelled out.
 		docker update --cpuset-cpus "${CPUSET_BEFORE[$n]:-${CPU_ONLINE:-0-$(($(nproc) - 1))}}" "$n" >/dev/null 2>&1 ||
@@ -281,9 +376,35 @@ sample_once() {
 }
 sampler() { while :; do sample_once >> "$DIR/raw/cgroup.jsonl" || true; sleep "$SAMPLE_SECONDS"; done; }
 
+# Background load k6 cannot see (loadtest/background.py): the broker's
+# confirm counters (nacks) and queue depths, and WAITING from the API's
+# workflow walk, every SAMPLE_SECONDS from before k6 until the audit's pause.
+bg_forward "svc/$RELEASE-rabbitmq" 15692 || die "no forward to the broker's metrics"
+BROKER_METRICS="http://127.0.0.1:$FWD_PORT"
+bg_forward "svc/$RELEASE-api" 9090 || die "no forward to the API's metrics"
+API_METRICS="http://127.0.0.1:$FWD_PORT"
+sample_background() {
+	python3 -I loadtest/background.py --broker "$BROKER_METRICS" --api "$API_METRICS" --phase "$1" >>"$DIR/raw/background.jsonl"
+}
+bg_sampler() { while :; do sample_background "$1" || true; sleep "$SAMPLE_SECONDS"; done; }
+stop_bg_sampler() {
+	if [ -n "$bg_sampler_pid" ]; then
+		kill "$bg_sampler_pid" 2>/dev/null || true
+		wait "$bg_sampler_pid" 2>/dev/null || true
+		bg_sampler_pid=""
+	fi
+}
+sample_background start || die "cannot read the broker's or the API's metrics: $(tail -1 "$DIR/raw/background.jsonl")"
+# The audit's handoff drainer, built before the load rather than after it.
+DRAIN_DIR="$(mktemp -d -t reliefgrid-drain.XXXXXXXX)"
+DRAIN_BIN="$DRAIN_DIR/drain-outbox"
+go build -o "$DRAIN_BIN" ./scripts/demos/drain-outbox || die "could not build scripts/demos/drain-outbox"
+
 scrape "$DIR/raw/metrics-start"
 sampler &
 sampler_pid=$!
+bg_sampler run &
+bg_sampler_pid=$!
 
 # --- k6 ---------------------------------------------------------------------------------------
 log "k6 $SCENARIO on CPU $K6_CPUS: ${DURATION_S}s, $OPS ops in the dataset"
@@ -310,6 +431,11 @@ sample_once >> "$DIR/raw/cgroup.jsonl"
 kill "$sampler_pid" 2>/dev/null || true
 wait "$sampler_pid" 2>/dev/null || true
 sampler_pid=""
+stop_bg_sampler
+sample_background end || true
+# k6 has stopped; the retry load has not. Keep sampling it up to the pause.
+bg_sampler settle &
+bg_sampler_pid=$!
 scrape "$DIR/raw/metrics-end"
 host_json="$(jq --argjson mhz "$(mhz)" '. + {cpuMHzEnd: $mhz}' <<<"$host_json")"
 
@@ -317,6 +443,21 @@ host_json="$(jq --argjson mhz "$(mhz)" '. + {cpuMHzEnd: $mhz}' <<<"$host_json")"
 log "settling ${SETTLE_SECONDS}s"
 sleep "$SETTLE_SECONDS"
 go run ./loadtest/cmd/loadreport statuses -dir "$DIR" -api "$API_URL" | tee "$DIR/raw/statuses-summary.json" >&2
+
+# Audit without admission (demo 5's audit_without_admission). While the
+# matcher runs, every WAITING request goes round the retry tiers (each round
+# a RetryWorkflow and an outbox mark), so invcheck never sees the applied
+# indexes still. Stop admission, publish the handoffs already committed,
+# check, then put the matcher back (restore() does too, on any exit).
+stop_bg_sampler
+log "audit: stopping retry admission ($MATCHER, $MATCHER_REPLICAS replicas)"
+pause_matcher || die "could not stop $MATCHER"
+bg_forward svc/storage-coordinator 8080 || die "no forward to the coordinator"
+coord_url="http://127.0.0.1:$FWD_PORT"
+bg_forward "svc/$RELEASE-rabbitmq" 5672 || die "no forward to the broker's AMQP port"
+drain_handoffs "$coord_url" "127.0.0.1:$FWD_PORT" || die "handoff drain failed: $(tail -3 "$DIR/raw/handoff-drain.log" 2>/dev/null)"
+log "audit: drained $(cat "$DIR/raw/handoff-drain.json")"
+sample_background pause || true
 
 job="s52-invcheck-$(date +%s)"
 inv_exit=97
@@ -334,23 +475,34 @@ for attempt in 1 2 3 4 5 6; do
 	kn logs "job/$job-$attempt" > "$DIR/raw/invcheck.json" 2>/dev/null || true
 	inv_exit="$(kn get pods -l "job-name=$job-$attempt" -o jsonpath='{.items[0].status.containerStatuses[0].state.terminated.exitCode}')"
 	kn delete job "$job-$attempt" --wait=false >/dev/null 2>&1 || true
-	# 3: not quiescent (the outbox has not drained yet): wait and check again
+	# 3: not quiescent (a command applied during the walk): wait and check again
 	[ "$inv_exit" = 3 ] || break
 	log "invcheck: not quiescent yet (attempt $attempt)"
 	sleep 10
 done
 log "invcheck exit $inv_exit"
+log "audit: restoring $MATCHER"
+if resume_matcher; then
+	matcher_after="$MATCHER_REPLICAS"
+else
+	safety_failure=true
+	matcher_after="$(kn get "$MATCHER" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
+	log "WARNING: $MATCHER has ${matcher_after:-0} of $MATCHER_REPLICAS replicas Ready"
+fi
+stop_forwards
+audit_json="$(jq -c --argjson before "$MATCHER_REPLICAS" --argjson after "${matcher_after:-0}" \
+	'{mode: "without-admission", matcherReplicas: $before, matcherReplicasAfter: $after, drain: .}' "$DIR/raw/handoff-drain.json")"
 
 # --- report -----------------------------------------------------------------------------------
 jq -n --arg run "$RUN_ID" --arg scenario "$SCENARIO" --arg started "$started" --arg ended "$ended" \
 	--argjson warmup "$WARMUP_SECONDS" --argjson git "$git_json" --argjson host "$host_json" \
 	--argjson versions "$versions_json" --argjson config "$config_json" \
 	--arg executor "$EXECUTOR" --argjson duration "$DURATION_S" --argjson maxvus "$MAX_VUS" --argjson steps "$steps_json" \
-	--argjson inv "${inv_exit:-97}" \
+	--argjson inv "${inv_exit:-97}" --argjson audit "$audit_json" \
 	'{goal: "S5.2", runId: $run, scenario: $scenario, startedAt: $started, endedAt: $ended, warmupSeconds: $warmup,
 	  git: $git, host: $host, versions: $versions, config: $config,
 	  load: {executor: $executor, durationSeconds: $duration, maxVUs: $maxvus},
-	  steps: $steps, invcheck: {exitCode: $inv}}' > "$DIR/facts.json"
+	  steps: $steps, invcheck: {exitCode: $inv}, audit: $audit}' > "$DIR/facts.json"
 go run ./loadtest/cmd/loadreport build -dir "$DIR" -spill "$SPILL_DIR" >&2
 jq -e '.invariants.ledger == "PASS" and .invariants.invcheck == "PASS"' "$DIR/summary.json" >/dev/null || safety_failure=true
 leaked="$(repo_port_forwards "$ROOT")"
