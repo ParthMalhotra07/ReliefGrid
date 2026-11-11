@@ -72,3 +72,17 @@ tracing:
   # keep this fraction of new traces (1.0 for the demos, 0.1 under load).
   sampler: parentbased_traceidratio
   samplerArg: "1.0"
+
+# Sole Secret owner: this storage release. App workloads only consume mounts.
+# Generated current keys persist via lookup; GitOps must set explicit values.
+# Rotation: token=new, previousToken=old, senderToken=old; restart receivers;
+# then senderToken=new and restart senders; finally remove previousToken and
+# restart receivers. See docs/operations/internal-auth.md.
+internalAuth:
+  token: ""
+  previousToken: ""
+  senderToken: ""
+nodeAuth:
+  token: ""
+  previousToken: ""
+  senderToken: ""
