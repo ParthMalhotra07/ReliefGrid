@@ -54,3 +54,16 @@ telemetry scope and protected-SSE setup.
 Protocol references: [RabbitMQ publisher routing](https://www.rabbitmq.com/docs/publishers),
 [publisher confirms](https://www.rabbitmq.com/docs/confirms),
 [exclusive/temporary queues](https://www.rabbitmq.com/docs/queues).
+
+## Rebuilding checked-in browser assets
+
+Use `make ui-build`, which performs a clean pinned local dependency install
+before building. Reusing a `node_modules` symlink from another checkout can
+change esbuild's resolved input paths and therefore its generated asset names,
+even when the emitted JavaScript bytes are identical. Keep the generated index,
+service worker and manifest together; do not rename a bundle manually.
+
+The [#140 build comparison](../evidence/A6.1/ui-recovery-20261107/build-provenance-20261110/README.md)
+records the original shared-dependency layout, canonical clean builds and browser
+verification. Check all generated files with `git diff -- ui/static` after a
+canonical rebuild; a repeated build of the same source/install must be unchanged.

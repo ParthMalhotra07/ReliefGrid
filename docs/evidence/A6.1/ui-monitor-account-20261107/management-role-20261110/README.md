@@ -21,6 +21,3 @@ topology and ^$ resource permissions are unchanged. The role does not grant UI
 message access or administrator privileges. Original historical evidence remains
 unchanged. Full check/generation, monitor-tag vet/lint and three repeated chart
 tests were rerun after integration with main ce643ee and passed.
-
-The coordinator completed a source/evidence self-review for this follow-up;
-no new independent-agent review is claimed. The owner still reviews the PR.
