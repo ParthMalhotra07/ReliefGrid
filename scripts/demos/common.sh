@@ -33,7 +33,7 @@ versions() {
 	echo "helm: $(helm version --short 2>/dev/null || echo unavailable)"
 	echo "kind: $(kind version 2>/dev/null || echo unavailable)"
 	echo "docker: $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo unavailable)"
-	for img in reliefgrid/storagenode:dev reliefgrid/coordinator:dev; do
+	for img in "${STORAGE_IMAGE:-reliefgrid/storagenode:dev}" "${COORDINATOR_IMAGE:-reliefgrid/coordinator:dev}"; do
 		echo "image $img: $(docker image inspect --format '{{.Id}}' "$img" 2>/dev/null || echo unavailable)"
 	done
 }

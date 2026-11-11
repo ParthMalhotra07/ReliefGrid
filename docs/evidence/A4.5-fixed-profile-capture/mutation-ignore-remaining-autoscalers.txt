@@ -1,0 +1,41 @@
+Mutation: ignore-remaining-autoscalers
+Command: python3 capture_fixed_profile_test.py -v
+Exit: 1
+fixed-profile observation: PASS
+fixed-profile observation: FAIL
+test_capture_reads_twice_and_never_mutates_cluster (__main__.ValidationTests.test_capture_reads_twice_and_never_mutates_cluster) ... ok
+test_cli_persists_only_sanitized_observation_and_fails_on_source_change (__main__.ValidationTests.test_cli_persists_only_sanitized_observation_and_fails_on_source_change) ... ok
+test_command_errors_and_timeout_do_not_expose_stderr (__main__.ValidationTests.test_command_errors_and_timeout_do_not_expose_stderr) ... ok
+test_command_failure_cannot_be_an_empty_controller_list (__main__.ValidationTests.test_command_failure_cannot_be_an_empty_controller_list) ... ok
+test_complete_fixed_observation (__main__.ValidationTests.test_complete_fixed_observation) ... ok
+test_fail_closed_on_values_controllers_ownership_images_and_readiness (__main__.ValidationTests.test_fail_closed_on_values_controllers_ownership_images_and_readiness) ...
+  test_fail_closed_on_values_controllers_ownership_images_and_readiness (__main__.ValidationTests.test_fail_closed_on_values_controllers_ownership_images_and_readiness) (index=3) ... FAIL
+  test_fail_closed_on_values_controllers_ownership_images_and_readiness (__main__.ValidationTests.test_fail_closed_on_values_controllers_ownership_images_and_readiness) (index=4) ... FAIL
+test_output_refuses_existing_artifact_directory (__main__.ValidationTests.test_output_refuses_existing_artifact_directory) ... ok
+test_projection_omits_credentials_and_arbitrary_annotations (__main__.ValidationTests.test_projection_omits_credentials_and_arbitrary_annotations) ... ok
+test_rejects_incomplete_or_moving_controller_state (__main__.ValidationTests.test_rejects_incomplete_or_moving_controller_state) ... ok
+test_tools_snapshot_requires_completed_owned_job_and_digest (__main__.ValidationTests.test_tools_snapshot_requires_completed_owned_job_and_digest) ... ok
+test_unrelated_autoscaler_is_allowed (__main__.ValidationTests.test_unrelated_autoscaler_is_allowed) ... ok
+
+======================================================================
+FAIL: test_fail_closed_on_values_controllers_ownership_images_and_readiness (__main__.ValidationTests.test_fail_closed_on_values_controllers_ownership_images_and_readiness) (index=3)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/reliefgrid-mutation-ittyc_zy/capture_fixed_profile_test.py", line 82, in test_fail_closed_on_values_controllers_ownership_images_and_readiness
+    with self.assertRaises(capture.InvalidObservation):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidObservation not raised
+
+======================================================================
+FAIL: test_fail_closed_on_values_controllers_ownership_images_and_readiness (__main__.ValidationTests.test_fail_closed_on_values_controllers_ownership_images_and_readiness) (index=4)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/reliefgrid-mutation-ittyc_zy/capture_fixed_profile_test.py", line 82, in test_fail_closed_on_values_controllers_ownership_images_and_readiness
+    with self.assertRaises(capture.InvalidObservation):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: InvalidObservation not raised
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.010s
+
+FAILED (failures=2)

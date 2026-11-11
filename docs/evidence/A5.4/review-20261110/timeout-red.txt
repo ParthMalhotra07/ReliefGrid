@@ -1,0 +1,68 @@
+FFFFFF
+======================================================================
+FAIL: test_create_failure_never_stops_a_preexisting_name (__main__.OfflineRunnerLifecycleTest.test_create_failure_never_stops_a_preexisting_name)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 194, in test_create_failure_never_stops_a_preexisting_name
+    self.assertIs(error,failure)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: None is not CalledProcessError(1, ['docker', 'create'])
+
+======================================================================
+FAIL: test_failed_runner_exit_is_not_reported_as_acceptance (__main__.OfflineRunnerLifecycleTest.test_failed_runner_exit_is_not_reported_as_acceptance)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 181, in test_failed_runner_exit_is_not_reported_as_acceptance
+    self.assert_cleaned(calls)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "<checkout>/scripts/offline-kit-test.py", line 157, in assert_cleaned
+    self.assertIsNotNone(create,'host must know the runner identity before attaching')
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: unexpectedly None : host must know the runner identity before attaching
+
+======================================================================
+FAIL: test_host_timeout_stops_and_confirms_owned_runner_exit (__main__.OfflineRunnerLifecycleTest.test_host_timeout_stops_and_confirms_owned_runner_exit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 172, in test_host_timeout_stops_and_confirms_owned_runner_exit
+    self.assert_cleaned(calls)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "<checkout>/scripts/offline-kit-test.py", line 157, in assert_cleaned
+    self.assertIsNotNone(create,'host must know the runner identity before attaching')
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: unexpectedly None : host must know the runner identity before attaching
+
+======================================================================
+FAIL: test_normal_runner_exit_also_confirms_cleanup (__main__.OfflineRunnerLifecycleTest.test_normal_runner_exit_also_confirms_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 176, in test_normal_runner_exit_also_confirms_cleanup
+    self.assert_cleaned(calls)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "<checkout>/scripts/offline-kit-test.py", line 157, in assert_cleaned
+    self.assertIsNotNone(create,'host must know the runner identity before attaching')
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: unexpectedly None : host must know the runner identity before attaching
+
+======================================================================
+FAIL: test_still_running_container_fails_closed_without_removal (__main__.OfflineRunnerLifecycleTest.test_still_running_container_fails_closed_without_removal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 189, in test_still_running_container_fails_closed_without_removal
+    self.assertIsInstance(error,RuntimeError)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: None is not an instance of <class 'RuntimeError'>
+
+======================================================================
+FAIL: test_stop_failure_does_not_claim_cleanup_or_remove_a_running_container (__main__.OfflineRunnerLifecycleTest.test_stop_failure_does_not_claim_cleanup_or_remove_a_running_container)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 185, in test_stop_failure_does_not_claim_cleanup_or_remove_a_running_container
+    self.assertIs(error,failure)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: TimeoutExpired(['docker', 'start'], 2400) is not CalledProcessError(1, ['docker', 'stop'])
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.005s
+
+FAILED (failures=6)

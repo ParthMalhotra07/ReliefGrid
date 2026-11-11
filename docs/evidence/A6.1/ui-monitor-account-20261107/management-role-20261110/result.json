@@ -1,0 +1,30 @@
+{
+  "result": "PASS",
+  "image": "rabbitmq:4.3.7-management@sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e",
+  "stages": [
+    {
+      "stage": "monitoring privacy red",
+      "identity": {
+        "role": "monitoring",
+        "permissions": {
+          "configure": "^$",
+          "write": "^$",
+          "read": "^$"
+        }
+      }
+    },
+    {
+      "stage": "management permission matrix after same-volume import",
+      "identity": {
+        "role": "management",
+        "permissions": {
+          "configure": "^$",
+          "write": "^$",
+          "read": "^$"
+        }
+      }
+    }
+  ],
+  "image_id": "sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e",
+  "cleanup": "owned containers stopped/removed and volume removed"
+}

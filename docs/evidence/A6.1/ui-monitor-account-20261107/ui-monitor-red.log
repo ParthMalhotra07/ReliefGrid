@@ -1,0 +1,5 @@
+--- FAIL: TestUIBrokerMonitorIdentity (1.96s)
+    ui_monitor_chart_test.go:27: missing independent UI credential: ui-monitor-username
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	1.966s
+FAIL

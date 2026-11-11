@@ -1,0 +1,18 @@
+.F.......
+======================================================================
+FAIL: test_generated_offline_values_render_the_exact_local_traefik_tag (__main__.OfflineKitTest.test_generated_offline_values_render_the_exact_local_traefik_tag)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 100, in test_generated_offline_values_render_the_exact_local_traefik_tag
+    self.assertEqual(result.returncode,0,result.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : Error: values don't meet the specifications of the schema(s) in the following chart(s):
+traefik:
+- at '/image/digest': '' does not match pattern '^sha256:[a-f0-9]{64}$'
+
+
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.357s
+
+FAILED (failures=1)
