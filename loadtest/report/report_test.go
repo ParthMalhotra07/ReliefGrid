@@ -105,7 +105,10 @@ func runDir(t *testing.T, reqs []req, created []string, statuses []report.Status
 		},
 		"invcheck": map[string]any{"exitCode": 0},
 		"audit": map[string]any{"mode": "without-admission", "matcherReplicas": 2, "matcherReplicasAfter": 2,
-			"drain": map[string]any{"read": 3, "published": 3, "marked": 3}},
+			"headroom": map[string]any{"pct": 80, "boundSeconds": 600, "waitedSeconds": 30, "ok": true,
+				"limits":        map[string]any{"matching.wakeups": 10000},
+				"depthsAtPause": map[string]any{"matching.wakeups": map[string]any{"ready": 7000, "unacked": 16}}},
+			"drain": map[string]any{"read": 3, "published": 3, "marked": 3, "retries": 1}},
 	}
 	writeJSON(t, filepath.Join(dir, "facts.json"), facts)
 	writeJSON(t, filepath.Join(dir, "dataset-info.json"), map[string]any{"seed": 52, "ops": 1000, "requests": 150, "resources": 100,

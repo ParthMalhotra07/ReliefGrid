@@ -31,11 +31,12 @@ trap 'interrupt_pilot 1' HUP
 
 # stage_timeout <k6 duration seconds>: a run stage's supervisor deadline, the
 # load plus 900 s for everything around it (dataset, scrapes, settle,
-# read-back, pause and drain, invcheck, report). The supervisor's 1800 s
-# default once stopped a 960 s step mid-invcheck; a 1800 s soak never fits.
+# read-back, pause and drain, invcheck, report) plus run.sh's 600 s bound on
+# waiting for queue headroom before the pause (HEADROOM_WAIT_S). The
+# supervisor's 1800 s default once stopped a 960 s step mid-invcheck.
 stage_timeout() {
   [[ "$1" =~ ^[1-9][0-9]*$ ]] || { echo "stage_timeout: want a duration in seconds, got '$1'" >&2; return 2; }
-  echo "$(($1 + 900))"
+  echo "$(($1 + 900 + 600))"
 }
 
 # supervise <stage> <timeout seconds> <command...>

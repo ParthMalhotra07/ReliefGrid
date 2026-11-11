@@ -54,12 +54,19 @@ request the run created; audits without admission; then builds and checks
 The audit is demo 5's `audit_without_admission`. A WAITING request (the
 dataset has fewer resources than requests) goes round the retry tiers for as
 long as the matcher runs, each round a `RetryWorkflow` and an outbox mark, so
-`invcheck` could never see the applied indexes still. `run.sh` scales the
-matcher (which also runs the reconciler and the outbox relay) to 0, publishes
-the handoffs already committed with `scripts/demos/drain-outbox`, runs
-`invcheck check` as a Job, and scales the matcher back. Hints left in RabbitMQ
-stay there. The report's `audit` states the replicas before and after and what
-was drained; a matcher that cannot be put back is a safety failure (exit 4).
+`invcheck` could never see the applied indexes still. A paused matcher
+empties no queue, and the drain publishes into the same reject-publish queues,
+so `run.sh` first lets the matcher keep consuming until every queue is at most
+80% of its max-length (`HEADROOM_PCT`, limits read from the live broker),
+for at most 600 s (`HEADROOM_WAIT_S`); past that bound the audit fails. It
+then scales the matcher (which also runs the reconciler and the outbox relay)
+to 0, publishes the handoffs already committed with
+`scripts/demos/drain-outbox` (a refused publish is retried for up to 20 s),
+runs `invcheck check` as a Job, and scales the matcher back. Hints left in
+RabbitMQ stay there. The report's `audit` states the replicas before and
+after, the headroom wait (`headroom`: threshold, bound, seconds waited, each
+queue's limit and its depth when the pause began) and what was drained, with
+the retries; a matcher that cannot be put back is a safety failure (exit 4).
 
 `loadtest/background.py` samples the load k6 cannot see every 5 s, from before
 k6 until the audit's pause (`raw/background.jsonl`): the broker's confirm

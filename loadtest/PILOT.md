@@ -84,7 +84,8 @@ support is a preflight failure; it cannot create a cluster.
 Every stage has its own supervisor deadline: `supervise <stage> <seconds>`
 refuses a stage without one. A run stage gets its k6 duration plus 900 s
 (`stage_timeout`: dataset, scrapes, settle, read-back, the audit and the
-report); deployment 1800 s. The first pilot's step (960 s of load) hit the
+report) plus the 600 s bound on waiting for queue headroom before the audit's
+pause; deployment 1800 s. The first pilot's step (960 s of load) hit the
 old single 1800 s default during invcheck retries, and an 1800 s soak could
 never have met it.
 

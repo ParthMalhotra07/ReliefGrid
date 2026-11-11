@@ -21,7 +21,11 @@
 # 4. Runs the scenario with k6 pinned to K6_CPUS (taskset).
 # 5. Scrapes again, lets matching settle (SETTLE_SECONDS), reads back every
 #    request the run created (loadreport statuses), then audits without
-#    admission as demo 5 does: scales the matcher to 0, publishes the
+#    admission as demo 5 does. First the matcher keeps consuming until every
+#    queue is at most HEADROOM_PCT% (80) of its max-length, for at most
+#    HEADROOM_WAIT_S (600 s; past it the audit fails): paused, it empties
+#    nothing, and the drain publishes into the same reject-publish queues.
+#    Then it scales the matcher to 0, publishes the
 #    handoffs already committed (scripts/demos/drain-outbox), runs invcheck
 #    check as a Job, and scales the matcher back. WAITING requests retry for
 #    as long as the matcher runs, so invcheck could never be quiescent.
@@ -88,6 +92,12 @@ esac
 OPS="${OPS:-$((OFFERED * 105 / 100 + 50))}"
 SAMPLE_SECONDS="${SAMPLE_SECONDS:-5}"
 SETTLE_SECONDS="${SETTLE_SECONDS:-20}"
+# Before the audit's pause, the matcher keeps consuming until every queue is
+# at most HEADROOM_PCT% of its max-length, checked every HEADROOM_POLL_S for
+# at most HEADROOM_WAIT_S; past the bound the audit fails.
+HEADROOM_PCT="${HEADROOM_PCT:-80}"
+HEADROOM_WAIT_S="${HEADROOM_WAIT_S:-600}"
+HEADROOM_POLL_S="${HEADROOM_POLL_S:-15}"
 SPILL_DIR="${SPILL_DIR:-$HOME/.cache/reliefgrid/S5.2}"
 TOOLS_IMAGE="${TOOLS_IMAGE:-reliefgrid/tools:dev}"
 # RUN_DIR is an explicit, unique output path; never infer it from timestamps in logs.
@@ -242,10 +252,44 @@ for secret in sorted({p, u.quote(p, safe=""), u.quote(p)}, key=len, reverse=True
     text = text.replace(secret, "[redacted]")
 open(sys.argv[3], "w").write(text)' "$DIR/raw/handoff-drain.err.tmp" /dev/null "$DIR/raw/handoff-drain.log" || rc=1
 	if [ "$rc" = 0 ]; then
-		jq -c '{read: .Read, published: .Published, marked: .Marked}' "$DIR/raw/handoff-drain.out.tmp" >"$DIR/raw/handoff-drain.json" || rc=1
+		jq -c '{read: .Read, published: .Published, marked: .Marked, retries: .Retries}' "$DIR/raw/handoff-drain.out.tmp" >"$DIR/raw/handoff-drain.json" || rc=1
 	fi
 	rm -f "$DIR/raw/handoff-drain.out.tmp" "$DIR/raw/handoff-drain.err.tmp"
 	return "$rc"
+}
+
+# queue_limits: each named queue's max-length on the live broker (the lower
+# of its x-max-length argument and its effective policy), as JSON.
+queue_limits() {
+	kn exec "statefulset/$RELEASE-rabbitmq" -- rabbitmqctl -q list_queues name arguments effective_policy_definition --formatter json |
+		python3 -I "$ROOT/loadtest/headroom.py" limits
+}
+# wait_for_headroom: with the matcher still consuming, sample (as settle)
+# every HEADROOM_POLL_S until every queue in raw/queue-limits.json is at most
+# HEADROOM_PCT% of its limit. Paused, the matcher empties nothing, and the
+# drain publishes into the same queues under reject-publish. Passes only on
+# a sample within HEADROOM_WAIT_S; a gap is never headroom. Writes
+# raw/headroom.json: the bound, the wait and the depths of the last sample
+# (the one the pause follows).
+wait_for_headroom() {
+	local t0="$SECONDS" waited line ok=false
+	while :; do
+		sample_background settle || true
+		line="$(tail -n 1 "$DIR/raw/background.jsonl")"
+		waited=$((SECONDS - t0))
+		if python3 -I "$ROOT/loadtest/headroom.py" check --limits "$DIR/raw/queue-limits.json" --pct "$HEADROOM_PCT" \
+			<<<"$line" >"$DIR/raw/headroom-check.txt" && ((waited <= HEADROOM_WAIT_S)); then
+			ok=true
+			break
+		fi
+		((waited < HEADROOM_WAIT_S)) || break
+		sleep "$HEADROOM_POLL_S"
+	done
+	jq -c --argjson pct "$HEADROOM_PCT" --argjson bound "$HEADROOM_WAIT_S" --argjson waited "$waited" \
+		--argjson ok "$ok" --slurpfile limits "$DIR/raw/queue-limits.json" \
+		'{pct: $pct, boundSeconds: $bound, waitedSeconds: $waited, ok: $ok, limits: $limits[0], depthsAtPause: (.queues // null)}' \
+		<<<"$line" >"$DIR/raw/headroom.json"
+	[ "$ok" = true ]
 }
 
 restore() {
@@ -452,6 +496,10 @@ go run ./loadtest/cmd/loadreport statuses -dir "$DIR" -api "$API_URL" | tee "$DI
 # indexes still. Stop admission, publish the handoffs already committed,
 # check, then put the matcher back (restore() does too, on any exit).
 stop_bg_sampler
+queue_limits >"$DIR/raw/queue-limits.json" || die "cannot read the broker's queue limits"
+log "audit: waiting for headroom: every queue at most ${HEADROOM_PCT}% of its max-length, for at most ${HEADROOM_WAIT_S}s"
+wait_for_headroom || die "audit: no queue headroom within ${HEADROOM_WAIT_S}s: $(tr '\n' ';' <"$DIR/raw/headroom-check.txt")"
+log "audit: headroom after $(jq .waitedSeconds "$DIR/raw/headroom.json")s"
 log "audit: stopping retry admission ($MATCHER, $MATCHER_REPLICAS replicas)"
 pause_matcher || die "could not stop $MATCHER"
 bg_forward svc/storage-coordinator 8080 || die "no forward to the coordinator"
@@ -493,7 +541,8 @@ else
 fi
 stop_forwards
 audit_json="$(jq -c --argjson before "$MATCHER_REPLICAS" --argjson after "${matcher_after:-0}" \
-	'{mode: "without-admission", matcherReplicas: $before, matcherReplicasAfter: $after, drain: .}' "$DIR/raw/handoff-drain.json")"
+	--slurpfile headroom "$DIR/raw/headroom.json" \
+	'{mode: "without-admission", matcherReplicas: $before, matcherReplicasAfter: $after, headroom: $headroom[0], drain: .}' "$DIR/raw/handoff-drain.json")"
 
 # --- report -----------------------------------------------------------------------------------
 jq -n --arg run "$RUN_ID" --arg scenario "$SCENARIO" --arg started "$started" --arg ended "$ended" \

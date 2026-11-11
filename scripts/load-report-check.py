@@ -149,11 +149,52 @@ def check_audit(doc):
         bad(f"audit.matcherReplicasAfter: {get(doc, 'audit.matcherReplicasAfter')!r}, "
             f"the run found {get(doc, 'audit.matcherReplicas')}: matcher not restored")
         good = False
-    for k in ("read", "published", "marked"):
+    for k in ("read", "published", "marked", "retries"):
         good = need(doc, f"audit.drain.{k}", "nonnegint") and good
+    good = check_headroom(doc) and good
     if good:
+        h = doc["audit"]["headroom"]
         ok(f"audit: without admission (matcher {doc['audit']['matcherReplicas']} -> 0 -> {doc['audit']['matcherReplicasAfter']}), "
-           f"drained {doc['audit']['drain']['marked']} handoffs")
+           f"headroom after {h['waitedSeconds']} s, drained {doc['audit']['drain']['marked']} handoffs "
+           f"({doc['audit']['drain']['retries']} retries)")
+
+
+def check_headroom(doc):
+    """The pause followed a sample with every queue at most pct% of its
+    max-length, taken within the bound; anything else is a failed audit."""
+    h = get(doc, "audit.headroom")
+    if not isinstance(h, dict):
+        bad("audit.headroom: missing; the pause must follow a headroom check")
+        return False
+    good = need(doc, "audit.headroom.pct", "posint") and need(doc, "audit.headroom.boundSeconds", "posint")
+    good = need(doc, "audit.headroom.waitedSeconds", "nonnegint") and good
+    if not good:
+        return False
+    if not h["pct"] <= 100:
+        bad(f"audit.headroom.pct: {h['pct']} is not a percentage")
+        return False
+    if h.get("ok") is not True:
+        bad("audit.headroom.ok: the queues had no headroom when the bound expired")
+        return False
+    if h["waitedSeconds"] > h["boundSeconds"]:
+        bad(f"audit.headroom.waitedSeconds: {h['waitedSeconds']} past the {h['boundSeconds']} s bound")
+        return False
+    limits, depths = h.get("limits"), h.get("depthsAtPause")
+    if not isinstance(limits, dict) or not limits or not all(is_int(v) and v > 0 for v in limits.values()):
+        bad("audit.headroom.limits: want each queue's max-length")
+        return False
+    if not isinstance(depths, dict):
+        bad("audit.headroom.depthsAtPause: missing")
+        return False
+    for q, limit in limits.items():
+        d = depths.get(q)
+        if not isinstance(d, dict) or not is_int(d.get("ready")) or not is_int(d.get("unacked")):
+            bad(f"audit.headroom.depthsAtPause.{q}: not sampled")
+            return False
+        if d["ready"] + d["unacked"] > limit * h["pct"] // 100:
+            bad(f"audit.headroom.depthsAtPause.{q}: {d['ready'] + d['unacked']} over {h['pct']}% of {limit}")
+            return False
+    return True
 
 
 def cpus(spec):

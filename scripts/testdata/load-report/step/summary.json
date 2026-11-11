@@ -300,10 +300,35 @@
     "mode": "without-admission",
     "matcherReplicas": 2,
     "matcherReplicasAfter": 2,
+    "headroom": {
+      "pct": 80,
+      "boundSeconds": 600,
+      "waitedSeconds": 135,
+      "ok": true,
+      "limits": {
+        "matching.dead": 10000,
+        "matching.requests": 10000,
+        "matching.wakeups": 10000,
+        "retry.120s": 10000,
+        "retry.30s": 10000,
+        "retry.5s": 10000,
+        "wakeup.retry.5s": 10000
+      },
+      "depthsAtPause": {
+        "matching.dead": {"ready": 0, "unacked": 0},
+        "matching.requests": {"ready": 5984, "unacked": 16},
+        "matching.wakeups": {"ready": 7210, "unacked": 16},
+        "retry.120s": {"ready": 1638, "unacked": 0},
+        "retry.30s": {"ready": 216, "unacked": 0},
+        "retry.5s": {"ready": 0, "unacked": 0},
+        "wakeup.retry.5s": {"ready": 0, "unacked": 0}
+      }
+    },
     "drain": {
       "read": 0,
       "published": 0,
-      "marked": 0
+      "marked": 0,
+      "retries": 0
     }
   },
   "raw": [

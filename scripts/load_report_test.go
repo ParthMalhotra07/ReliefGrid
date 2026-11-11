@@ -143,6 +143,19 @@ func TestLoadReportCheckRejects(t *testing.T) {
 			p[k] = v
 		}
 	}
+	// depth sets (nil: deletes) one queue's depth at the pause; queue names
+	// have dots, so not through at.
+	depth := func(queue string, v any) func(*testing.T, map[string]any) {
+		return func(t *testing.T, m map[string]any) {
+			p, k := at(t, m, "audit.headroom.depthsAtPause")
+			d := p[k].(map[string]any)
+			if v == nil {
+				delete(d, queue)
+			} else {
+				d[queue] = v
+			}
+		}
+	}
 	step := func(i int, key string, v any) func(*testing.T, map[string]any) {
 		return func(t *testing.T, m map[string]any) {
 			m["steps"].([]any)[i].(map[string]any)[key] = v
@@ -216,6 +229,14 @@ func TestLoadReportCheckRejects(t *testing.T) {
 		{"matcher not restored", set("audit.matcherReplicasAfter", 0), "audit.matcherReplicasAfter"},
 		{"no matcher replicas", set("audit.matcherReplicas", 0), "audit.matcherReplicas"},
 		{"drain not recorded", del("audit.drain.marked"), "audit.drain.marked"},
+		{"drain retries not recorded", del("audit.drain.retries"), "audit.drain.retries"},
+		{"no headroom check", del("audit.headroom"), "audit.headroom"},
+		{"headroom bound expired", set("audit.headroom.ok", false), "audit.headroom.ok"},
+		{"headroom past the bound", set("audit.headroom.waitedSeconds", 601), "audit.headroom.waitedSeconds"},
+		{"headroom not a percentage", set("audit.headroom.pct", 120), "audit.headroom.pct"},
+		{"headroom without limits", set("audit.headroom.limits", map[string]any{}), "audit.headroom.limits"},
+		{"queue over the threshold at the pause", depth("matching.wakeups", map[string]any{"ready": 7985, "unacked": 16}), "audit.headroom.depthsAtPause.matching.wakeups"},
+		{"limited queue not sampled at the pause", depth("retry.5s", nil), "audit.headroom.depthsAtPause.retry.5s"},
 		// The retry load and broker backpressure k6 cannot see.
 		{"no background", del("background"), "background"},
 		{"background run unsampled", set("background.run.samples", 0), "background.run.samples"},
