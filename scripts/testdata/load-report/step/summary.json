@@ -125,7 +125,18 @@
       "readP99Ms": 40,
       "errorRate": 0.0,
       "droppedIterations": 0,
-      "listP99Ms": 90
+      "listP99Ms": 90,
+      "background": {
+        "samples": 24,
+        "gaps": 0,
+        "publishesNotConfirmed": 0,
+        "queuePeak": {
+          "matching.requests": 40,
+          "retry.120s": 0
+        },
+        "waitingFirst": 0,
+        "waitingLast": 3
+      }
     },
     {
       "targetRps": 20,
@@ -134,7 +145,18 @@
       "readP99Ms": 90,
       "errorRate": 0.001,
       "droppedIterations": 0,
-      "listP99Ms": 150
+      "listP99Ms": 150,
+      "background": {
+        "samples": 24,
+        "gaps": 0,
+        "publishesNotConfirmed": 0,
+        "queuePeak": {
+          "matching.requests": 220,
+          "retry.120s": 30
+        },
+        "waitingFirst": 3,
+        "waitingLast": 20
+      }
     },
     {
       "targetRps": 30,
@@ -143,7 +165,18 @@
       "readP99Ms": 200,
       "errorRate": 0.004,
       "droppedIterations": 0,
-      "listP99Ms": 380
+      "listP99Ms": 380,
+      "background": {
+        "samples": 24,
+        "gaps": 0,
+        "publishesNotConfirmed": 0,
+        "queuePeak": {
+          "matching.requests": 1800,
+          "retry.120s": 140
+        },
+        "waitingFirst": 20,
+        "waitingLast": 110
+      }
     },
     {
       "targetRps": 40,
@@ -152,7 +185,18 @@
       "readP99Ms": 320,
       "errorRate": 0.02,
       "droppedIterations": 140,
-      "listP99Ms": 700
+      "listP99Ms": 700,
+      "background": {
+        "samples": 24,
+        "gaps": 0,
+        "publishesNotConfirmed": 1310,
+        "queuePeak": {
+          "matching.requests": 9990,
+          "retry.120s": 600
+        },
+        "waitingFirst": 110,
+        "waitingLast": 400
+      }
     }
   ],
   "saturation": {
@@ -208,6 +252,59 @@
   "invariants": {
     "ledger": "PASS",
     "invcheck": "PASS"
+  },
+  "background": {
+    "run": {
+      "samples": 98,
+      "gaps": 1,
+      "publishesNotConfirmed": 1310,
+      "queuePeak": {
+        "matching.requests": 9990,
+        "retry.120s": 600
+      },
+      "waitingFirst": 0,
+      "waitingLast": 400
+    },
+    "afterRun": {
+      "samples": 64,
+      "gaps": 0,
+      "publishesNotConfirmed": 0,
+      "queuePeak": {
+        "matching.requests": 6100,
+        "retry.120s": 2400
+      },
+      "waitingFirst": 400,
+      "waitingLast": 2253
+    },
+    "atPause": {
+      "tMs": 1794306000000,
+      "phase": "pause",
+      "brokerReceivedConfirm": 425166,
+      "brokerConfirmed": 412087,
+      "queues": {
+        "matching.requests": {
+          "ready": 4549,
+          "unacked": 16
+        },
+        "retry.120s": {
+          "ready": 2104,
+          "unacked": 0
+        }
+      },
+      "waiting": 2253,
+      "waitingValid": true,
+      "waitingObservedAtMs": 1794305997080
+    }
+  },
+  "audit": {
+    "mode": "without-admission",
+    "matcherReplicas": 2,
+    "matcherReplicasAfter": 2,
+    "drain": {
+      "read": 0,
+      "published": 0,
+      "marked": 0
+    }
   },
   "raw": [
     {

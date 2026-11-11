@@ -209,6 +209,27 @@ func TestLoadReportCheckRejects(t *testing.T) {
 		{"steps not increasing", step(2, "targetRps", 15), "strictly increase"},
 		{"raw file without checksum", set("raw", []any{map[string]any{"path": "raw/k6-points.jsonl.gz", "committed": false}}), "raw"},
 		{"committed raw file missing", set("raw", []any{map[string]any{"path": "raw/missing.json", "committed": true}}), "raw"},
+		// invcheck can only be quiescent with retry admission stopped, and the
+		// run must hand the cluster back as it found it.
+		{"no audit", del("audit"), "audit"},
+		{"audit with admission running", set("audit.mode", "with-admission"), "audit.mode"},
+		{"matcher not restored", set("audit.matcherReplicasAfter", 0), "audit.matcherReplicasAfter"},
+		{"no matcher replicas", set("audit.matcherReplicas", 0), "audit.matcherReplicas"},
+		{"drain not recorded", del("audit.drain.marked"), "audit.drain.marked"},
+		// The retry load and broker backpressure k6 cannot see.
+		{"no background", del("background"), "background"},
+		{"background run unsampled", set("background.run.samples", 0), "background.run.samples"},
+		{"background run only gaps", func(t *testing.T, m map[string]any) {
+			run, _ := at(t, m, "background.run.gaps")
+			run["gaps"] = run["samples"]
+		}, "background.run"},
+		{"unconfirmed publishes not a count", set("background.run.publishesNotConfirmed", "1310"), "background.run.publishesNotConfirmed"},
+		{"no queue depths", set("background.afterRun.queuePeak", map[string]any{}), "background.afterRun.queuePeak"},
+		{"waiting not a count", set("background.run.waitingLast", "7"), "background.run.waitingLast"},
+		{"no pause sample", set("background.atPause", nil), "background.atPause"},
+		{"step without background", func(t *testing.T, m map[string]any) {
+			delete(m["steps"].([]any)[1].(map[string]any), "background")
+		}, "steps[1].background"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			m := loadReport(t)

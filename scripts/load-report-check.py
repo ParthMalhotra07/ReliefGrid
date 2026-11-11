@@ -13,6 +13,10 @@ What summary.json must state is what the plan asks a performance figure to
 state: hardware, versions, dataset, concurrency, duration, error rate, the
 percentile definition and, for a step run, the saturation point; matched
 latency is labelled "matched only" with the waiting count beside it.
+invcheck must have run with retry admission stopped (audit.mode
+"without-admission") and the matcher restored afterwards; the background
+load k6 cannot see (unconfirmed publishes, queue depth, WAITING) is stated
+for the run, after it, at the pause and for every step.
 """
 import hashlib
 import json
@@ -73,6 +77,83 @@ def need(doc, path, kind):
     if not good:
         bad(f"{path}: missing or not {kind} (got {v!r})")
     return good
+
+
+def is_int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def check_background_window(doc, path):
+    """One Background window: samples, gaps, unconfirmed publishes, queue peaks, WAITING."""
+    w = get(doc, path)
+    if not isinstance(w, dict):
+        bad(f"{path}: missing")
+        return False
+    good = need(doc, f"{path}.samples", "nonnegint") and need(doc, f"{path}.gaps", "nonnegint")
+    if not is_int(w.get("publishesNotConfirmed")):
+        bad(f"{path}.publishesNotConfirmed: missing or not an integer (got {w.get('publishesNotConfirmed')!r})")
+        good = False
+    peak = w.get("queuePeak")
+    if not (isinstance(peak, dict) and all(is_int(v) and v >= 0 for v in peak.values())):
+        bad(f"{path}.queuePeak: want queue -> messages")
+        good = False
+    for k in ("waitingFirst", "waitingLast"):
+        if k not in w or not (w[k] is None or (is_int(w[k]) and w[k] >= 0)):
+            bad(f"{path}.{k}: want a count or null (got {w.get(k)!r})")
+            good = False
+    if good and w["samples"] > w["gaps"] and not peak:
+        bad(f"{path}.queuePeak: good samples but no queue depths")
+        good = False
+    return good
+
+
+def check_background(doc):
+    if not isinstance(doc.get("background"), dict):
+        bad("background: missing (retry load and broker backpressure)")
+        return
+    good = all([check_background_window(doc, f"background.{k}") for k in ("run", "afterRun")])
+    if good:
+        run = doc["background"]["run"]
+        if run["samples"] == 0:
+            bad("background.run.samples: the run was not sampled")
+            good = False
+        elif run["gaps"] >= run["samples"]:
+            bad(f"background.run: every one of {run['samples']} samples is a gap")
+            good = False
+    pause = get(doc, "background.atPause")
+    if not (isinstance(pause, dict) and isinstance(pause.get("queues"), dict) and pause["queues"]
+            and is_int(pause.get("waiting")) and isinstance(pause.get("waitingValid"), bool)):
+        bad(f"background.atPause: want the pause sample's queues, waiting and waitingValid (got {pause!r})")
+        good = False
+    for i, st in enumerate(doc.get("steps") or []):
+        if isinstance(st, dict) and "background" not in st:
+            bad(f"steps[{i}].background: missing")
+            good = False
+        elif isinstance(st, dict) and not check_background_window(st, "background"):
+            bad(f"steps[{i}].background: invalid")
+            good = False
+    if good:
+        run, after = doc["background"]["run"], doc["background"]["afterRun"]
+        top = max(run["queuePeak"].items(), key=lambda kv: kv[1])
+        ok(f"background: {run['samples']} samples ({run['gaps']} gaps), {run['publishesNotConfirmed']} unconfirmed publishes, "
+           f"peak {top[0]} {top[1]}, waiting {run['waitingFirst']}->{run['waitingLast']}; after the run "
+           f"{after['publishesNotConfirmed']} unconfirmed, waiting {after['waitingLast']} at the pause")
+
+
+def check_audit(doc):
+    if get(doc, "audit.mode") != "without-admission":
+        bad(f"audit.mode: invcheck needs retry admission stopped, want 'without-admission', got {get(doc, 'audit.mode')!r}")
+        return
+    good = need(doc, "audit.matcherReplicas", "posint")
+    if good and get(doc, "audit.matcherReplicasAfter") != get(doc, "audit.matcherReplicas"):
+        bad(f"audit.matcherReplicasAfter: {get(doc, 'audit.matcherReplicasAfter')!r}, "
+            f"the run found {get(doc, 'audit.matcherReplicas')}: matcher not restored")
+        good = False
+    for k in ("read", "published", "marked"):
+        good = need(doc, f"audit.drain.{k}", "nonnegint") and good
+    if good:
+        ok(f"audit: without admission (matcher {doc['audit']['matcherReplicas']} -> 0 -> {doc['audit']['matcherReplicasAfter']}), "
+           f"drained {doc['audit']['drain']['marked']} handoffs")
 
 
 def cpus(spec):
@@ -339,6 +420,8 @@ def main(argv):
                     and all(num(p.get(k)) and p[k] >= 0 for k in ("cpuMillicoresMax", "memMiBMax", "cpuThrottledPeriods"))):
                 bad(f"pods[{i}]: want name, cpuMillicoresMax, memMiBMax, cpuThrottledPeriods")
 
+    check_background(doc)
+    check_audit(doc)
     for k in ("ledger", "invcheck"):
         if get(doc, f"invariants.{k}") != "PASS":
             bad(f"invariants.{k}: want PASS, got {get(doc, f'invariants.{k}')!r}")
