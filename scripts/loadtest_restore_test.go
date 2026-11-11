@@ -348,6 +348,71 @@ echo "after: ${#BG_PFS[@]} left"
 	}
 }
 
+// Before the pause the matcher keeps consuming until every queue has
+// headroom (at most HEADROOM_PCT% of its max-length), bounded by
+// HEADROOM_WAIT_S: a paused matcher empties nothing, and the drain publishes
+// into the same queues. An expired bound fails the audit, never passes it.
+func TestLoadRunWaitForHeadroom(t *testing.T) {
+	sample := func(wakeups int) string {
+		return fmt.Sprintf(`{"tMs":1,"phase":"settle","queues":{"matching.requests":{"ready":100,"unacked":16},"matching.wakeups":{"ready":%d,"unacked":16}}}`, wakeups)
+	}
+	for _, c := range []struct {
+		name    string
+		depths  []int
+		bound   string
+		wantErr bool
+		want    string
+	}{
+		{"drops below the threshold", []int{9936, 9100, 7984, 5000}, "5", false, `"ok":true`},
+		{"never drops", []int{9936, 9936, 9936, 9936, 9936, 9936, 9936, 9936, 9936, 9936}, "1", true, `"ok":false`},
+		{"a gap is not headroom", nil, "1", true, `"ok":false`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.MkdirAll(filepath.Join(dir, "raw"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			var lines strings.Builder
+			for _, d := range c.depths {
+				lines.WriteString(sample(d) + "\n")
+			}
+			if err := os.WriteFile(filepath.Join(dir, "samples"), []byte(lines.String()), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "raw", "queue-limits.json"), []byte(`{"matching.requests":10000,"matching.wakeups":10000}`), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			out, err := runFuncs(t, []string{"wait_for_headroom"}, `
+n=0
+sample_background() {
+	n=$((n + 1))
+	line="$(sed -n "${n}p" "$DIR/samples")"
+	[ -n "$line" ] || line='{"tMs":1,"phase":"settle","error":"broker: down"}'
+	echo "$line" >> "$DIR/raw/background.jsonl"
+	case "$line" in *error*) return 1 ;; esac
+}
+if wait_for_headroom; then echo "PASSED after $n samples"; else echo "FAILED after $n samples"; fi
+cat "$DIR/raw/headroom.json"
+`, "ROOT=..", "DIR="+dir, "HEADROOM_PCT=80", "HEADROOM_WAIT_S="+c.bound, "HEADROOM_POLL_S=0.3")
+			if err != nil {
+				t.Fatalf("%v\n%s", err, out)
+			}
+			if c.wantErr != strings.Contains(out, "FAILED") || !strings.Contains(out, c.want) {
+				t.Fatalf("want failed=%v and %s:\n%s", c.wantErr, c.want, out)
+			}
+			if !c.wantErr && (!strings.Contains(out, "PASSED after 3 samples") ||
+				!strings.Contains(out, `"depthsAtPause":{"matching.requests":{"ready":100,"unacked":16},"matching.wakeups":{"ready":7984,"unacked":16}}`)) {
+				t.Fatalf("want the pass on the first sample at or under 8000 and its depths recorded:\n%s", out)
+			}
+			for _, k := range []string{`"pct":80`, `"boundSeconds":` + c.bound, `"waitedSeconds":`, `"limits":{"matching.requests":10000,"matching.wakeups":10000}`} {
+				if !strings.Contains(out, k) {
+					t.Fatalf("headroom.json lacks %s:\n%s", k, out)
+				}
+			}
+		})
+	}
+}
+
 // The audit stops retry admission (the matcher) as demo 5 does; restore()
 // must put the matcher back on every exit, and a matcher it cannot put back
 // is a safety failure, like a cpuset or power profile left changed.
@@ -449,7 +514,7 @@ func TestLoadRunDrainHandoffs(t *testing.T) {
 			if err := os.WriteFile(bin, []byte(`#!/bin/sh
 printf '%s\n%s\n' "$COORDINATOR_URL" "$AMQP_URL" > "$SEEN"
 echo "dial $AMQP_URL: refused (p@ss:w/rd)" >&2
-echo '{"Read":3,"Published":3,"Marked":3}'
+echo '{"Read":3,"Published":3,"Marked":3,"Retries":2}'
 exit $DRAIN_EXIT
 `), 0o755); err != nil {
 				t.Fatal(err)
@@ -494,7 +559,7 @@ drain_handoffs http://127.0.0.1:5801 127.0.0.1:5999 && echo "drain ok" || echo "
 				t.Errorf("log not redacted:\n%s", logb)
 			}
 			got, err := os.ReadFile(filepath.Join(dir, "run", "raw", "handoff-drain.json"))
-			if c.exit == 0 && (err != nil || strings.TrimSpace(string(got)) != `{"read":3,"published":3,"marked":3}`) {
+			if c.exit == 0 && (err != nil || strings.TrimSpace(string(got)) != `{"read":3,"published":3,"marked":3,"retries":2}`) {
 				t.Errorf("drain report %q (%v)", got, err)
 			}
 			if leftovers, _ := filepath.Glob(filepath.Join(dir, "run", "raw", "handoff-drain.*.tmp")); len(leftovers) > 0 {
@@ -505,7 +570,8 @@ drain_handoffs http://127.0.0.1:5801 127.0.0.1:5999 && echo "drain ok" || echo "
 }
 
 // Fix for the pilot: every stage had the supervisor's 1800 s default, which a
-// 1800 s soak can never meet. A run stage gets its k6 duration plus 900 s.
+// 1800 s soak can never meet. A run stage gets its k6 duration plus 900 s,
+// plus the 600 s bound on waiting for queue headroom before the audit.
 func TestLoadStageTimeout(t *testing.T) {
 	script := `set -euo pipefail
 eval "$(sed -n '/^stage_timeout() {/,/^}/p' ../loadtest/pilot-supervision.sh)"
@@ -516,7 +582,7 @@ stage_timeout x && echo accepted || echo refused
 	if err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}
-	if !strings.Contains(string(out), "960 1860 1500 2700 ") || !strings.Contains(string(out), "refused") {
+	if !strings.Contains(string(out), "1560 2460 2100 3300 ") || !strings.Contains(string(out), "refused") {
 		t.Fatalf("%s", out)
 	}
 }
@@ -558,7 +624,7 @@ if supervise step /bin/true; then echo "no deadline accepted"; else echo "no dea
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(argv), `"--timeout-seconds", "960", "--", "/bin/true"`) {
+	if !strings.Contains(string(argv), `"--timeout-seconds", "1560", "--", "/bin/true"`) {
 		t.Fatalf("supervisor argv %s", argv)
 	}
 	if _, err := os.Stat(filepath.Join(out, "step.supervisor")); err == nil {
@@ -570,5 +636,12 @@ func TestLoadBackgroundSampler(t *testing.T) {
 	out, err := exec.CommandContext(t.Context(), "python3", "-I", "load-background-test.py").CombinedOutput()
 	if err != nil {
 		t.Fatalf("%v: %s", err, out)
+	}
+}
+
+func TestLoadHeadroom(t *testing.T) {
+	out, err := exec.CommandContext(t.Context(), "python3", "-I", "load-headroom-test.py").CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
 	}
 }
