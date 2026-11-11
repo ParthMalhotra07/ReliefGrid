@@ -75,7 +75,7 @@ queue's depth, and WAITING from the API's workflow walk. The report's
 `background` gives, for the run, for after it (k6 stopped, retries still
 running) and for each step: unconfirmed publishes, peak depth per queue and
 WAITING, plus the sample taken at the pause.
-Raw files over 5 MiB move to `SPILL_DIR` (default `~/.cache/reliefgrid/S5.2`)
+Raw files over 5 MiB move to `SPILL_DIR/<runId>/` (default `~/.cache/reliefgrid/S5.2`; an existing file there is never replaced)
 and are recorded by size and sha256. `raw/requests.csv.gz`, one line per
 request, is always committed.
 

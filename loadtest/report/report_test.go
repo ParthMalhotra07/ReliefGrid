@@ -2,6 +2,7 @@ package report_test
 
 import (
 	"compress/gzip"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -330,7 +331,7 @@ func TestBuildSpillsLargeRawFiles(t *testing.T) {
 			if r.Committed || r.SHA256 == "" || r.Bytes <= 2048 {
 				t.Errorf("k6 points %+v: want spilled with size and sha256", r)
 			}
-			if _, err := os.Stat(filepath.Join(spill, filepath.Base(dir), r.Path)); err != nil {
+			if _, err := os.Stat(filepath.Join(spill, "S5.2-step-test", r.Path)); err != nil {
 				t.Errorf("spilled file not in the spill directory: %v", err)
 			}
 			spilled++
@@ -341,6 +342,71 @@ func TestBuildSpillsLargeRawFiles(t *testing.T) {
 	}
 	if code, out := checker(t, dir); code != 0 {
 		t.Fatalf("checker rejected a report with a spilled file (exit %d):\n%s", code, out)
+	}
+}
+
+// Runs kept in directories of the same name (every supervised run is in
+// <stage>/run) spill under their run IDs: one run's raw points must never
+// replace another's.
+func TestBuildSpillsEachRunUnderItsRunID(t *testing.T) {
+	spill := t.TempDir()
+	want := map[string]string{}
+	for i, id := range []string{"S5.2-step-a", "S5.2-step-b"} {
+		src := runDir(t, steady(0, 30, map[string]float64{"write": 50 + float64(i), "read": 10, "list": 40}), nil, nil, 25*time.Second)
+		dir := filepath.Join(t.TempDir(), "run")
+		if err := os.Rename(src, dir); err != nil {
+			t.Fatal(err)
+		}
+		var facts map[string]any
+		b, err := os.ReadFile(filepath.Join(dir, "facts.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = json.Unmarshal(b, &facts)
+		facts["runId"] = id
+		b, _ = json.Marshal(facts)
+		write(t, filepath.Join(dir, "facts.json"), string(b))
+		sum, err := report.Build(dir, report.Options{MaxCommitBytes: 2048, SpillDir: spill})
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, _ = json.Marshal(sum["raw"])
+		var raw []report.RawFile
+		_ = json.Unmarshal(b, &raw)
+		for _, r := range raw {
+			if r.Path == "raw/k6-points.jsonl.gz" {
+				want[id] = r.SHA256
+			}
+		}
+	}
+	for id, sha := range want {
+		b, err := os.ReadFile(filepath.Join(spill, id, "raw", "k6-points.jsonl.gz"))
+		if err != nil {
+			t.Fatalf("%s: spilled points: %v", id, err)
+		}
+		if got := fmt.Sprintf("%x", sha256.Sum256(b)); got != sha {
+			t.Errorf("%s: spilled points are not this run's (sha256 %s, report says %s)", id, got, sha)
+		}
+	}
+	if len(want) != 2 {
+		t.Fatalf("spilled %v", want)
+	}
+}
+
+// Build never replaces a file already in the spill directory.
+func TestBuildRefusesToOverwriteASpilledFile(t *testing.T) {
+	dir := runDir(t, steady(0, 30, map[string]float64{"write": 50, "read": 10, "list": 40}), nil, nil, 25*time.Second)
+	spill := t.TempDir()
+	old := filepath.Join(spill, "S5.2-step-test", "raw", "k6-points.jsonl.gz")
+	if err := os.MkdirAll(filepath.Dir(old), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	write(t, old, "an earlier run's points")
+	if _, err := report.Build(dir, report.Options{MaxCommitBytes: 2048, SpillDir: spill}); err == nil {
+		t.Fatal("Build replaced a spilled file")
+	}
+	if b, _ := os.ReadFile(old); string(b) != "an earlier run's points" {
+		t.Fatalf("spilled file changed: %q", b)
 	}
 }
 

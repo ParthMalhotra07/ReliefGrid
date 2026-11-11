@@ -222,7 +222,7 @@ func Build(dir string, opt Options) (map[string]any, error) {
 		}
 	}
 
-	raw, err := placeRaw(dir, opt)
+	raw, err := placeRaw(dir, facts.RunID, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -330,8 +330,10 @@ func writeRequestsCSV(path string, p Points, t0 time.Time) error {
 }
 
 // placeRaw lists the raw files (raw/**, dataset.json, k6-summary.json),
-// moving each one over MaxCommitBytes to SpillDir/<dir name>/.
-func placeRaw(dir string, opt Options) ([]RawFile, error) {
+// moving each one over MaxCommitBytes to SpillDir/<runID>/. The run ID, not
+// the directory's name, keys the spill: supervised runs all live in a
+// directory named "run". A file already there is never replaced.
+func placeRaw(dir, runID string, opt Options) ([]RawFile, error) {
 	var paths []string
 	for _, p := range []string{"dataset.json", "k6-summary.json"} {
 		if _, err := os.Stat(filepath.Join(dir, p)); err == nil {
@@ -368,7 +370,15 @@ func placeRaw(dir string, opt Options) ([]RawFile, error) {
 		if err != nil {
 			return nil, err
 		}
-		dst := filepath.Join(opt.SpillDir, filepath.Base(dir), rel)
+		if runID == "" || runID != filepath.Base(runID) || runID == "." || runID == ".." {
+			return nil, fmt.Errorf("report: run ID %q cannot name a spill directory", runID)
+		}
+		dst := filepath.Join(opt.SpillDir, runID, rel)
+		if _, err := os.Lstat(dst); err == nil {
+			return nil, fmt.Errorf("report: %s already exists; not replacing another run's file", dst)
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
 		if err := os.MkdirAll(filepath.Dir(dst), 0o750); err != nil {
 			return nil, err
 		}
