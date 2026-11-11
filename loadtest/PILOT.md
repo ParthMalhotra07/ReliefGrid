@@ -81,6 +81,13 @@ and manager inspection, then launches and reaps `/bin/true` through the exact
 supervisor/options used for stages. Inspection success without transient launch
 support is a preflight failure; it cannot create a cluster.
 
+Every stage has its own supervisor deadline: `supervise <stage> <seconds>`
+refuses a stage without one. A run stage gets its k6 duration plus 900 s
+(`stage_timeout`: dataset, scrapes, settle, read-back, the audit and the
+report); deployment 1800 s. The first pilot's step (960 s of load) hit the
+old single 1800 s default during invcheck retries, and an 1800 s soak could
+never have met it.
+
 The user-systemd service has a unique recorded unit, `KillMode=control-group`
 and a bounded stop deadline. A recorded main exit is valid when its cgroup is
 already gone. On a signal or a child outliving the runner, the supervisor stops

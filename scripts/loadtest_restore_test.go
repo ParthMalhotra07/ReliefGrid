@@ -310,3 +310,65 @@ func TestLoadPilotEntrypointOffline(t *testing.T) {
 		t.Fatalf("%v: %s", err, out)
 	}
 }
+
+// Fix for the pilot: every stage had the supervisor's 1800 s default, which a
+// 1800 s soak can never meet. A run stage gets its k6 duration plus 900 s.
+func TestLoadStageTimeout(t *testing.T) {
+	script := `set -euo pipefail
+eval "$(sed -n '/^stage_timeout() {/,/^}/p' ../loadtest/pilot-supervision.sh)"
+for d in 60 960 600 1800; do printf '%s ' "$(stage_timeout "$d")"; done
+stage_timeout x && echo accepted || echo refused
+`
+	out, err := exec.CommandContext(t.Context(), "bash", "-c", script).CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "960 1860 1500 2700 ") || !strings.Contains(string(out), "refused") {
+		t.Fatalf("%s", out)
+	}
+}
+
+// supervise() hands the stage's deadline to the supervisor, and refuses a
+// stage without one rather than fall back to the 1800 s default.
+func TestLoadSuperviseStageDeadline(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "loadtest"), 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "loadtest", "supervise.py"), []byte(`import json, pathlib, sys
+ev = pathlib.Path(sys.argv[sys.argv.index("--evidence-dir") + 1]); ev.mkdir(parents=True)
+(ev / "argv.json").write_text(json.dumps(sys.argv[1:]))
+(ev / "result.json").write_text(json.dumps({"exitConfirmed": True, "supervisorExit": 0}))
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	src, err := filepath.Abs("../loadtest/pilot-supervision.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	script := `set -euo pipefail
+ROOT="$1" OUT="$2"
+source "$3"
+supervise smoke "$(stage_timeout 60)" /bin/true
+echo "service_rc=$service_rc"
+if supervise step /bin/true; then echo "no deadline accepted"; else echo "no deadline refused"; fi
+`
+	b, err := exec.CommandContext(t.Context(), "bash", "-c", script, "test", root, out, src).CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v\n%s", err, b)
+	}
+	if !strings.Contains(string(b), "service_rc=0") || !strings.Contains(string(b), "no deadline refused") {
+		t.Fatalf("%s", b)
+	}
+	argv, err := os.ReadFile(filepath.Join(out, "smoke.supervisor", "argv.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(argv), `"--timeout-seconds", "960", "--", "/bin/true"`) {
+		t.Fatalf("supervisor argv %s", argv)
+	}
+	if _, err := os.Stat(filepath.Join(out, "step.supervisor")); err == nil {
+		t.Fatal("a stage without a deadline was launched")
+	}
+}

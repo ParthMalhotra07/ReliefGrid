@@ -99,7 +99,7 @@ with (p/'writes').open('a',buffering=1) as f:
 ROOT="$1"; OUT="$2"; mode="$3"
 source "$ROOT/loadtest/pilot-supervision.sh"
 pilot_capture_restoration() { echo "mock host restoration confirmed"; }
-supervise "$mode" /usr/bin/python3 "$OUT/worker.py" "$OUT" "$mode"
+supervise "$mode" 8 /usr/bin/python3 "$OUT/worker.py" "$OUT" "$mode"
 exit "$service_rc"
 ''')
             command = ['bash', str(shell), str(ROOT), str(d), mode]

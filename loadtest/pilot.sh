@@ -65,7 +65,7 @@ PYHOST
 
 # Inspection alone is insufficient: use the exact stage launch/stop options.
 # A failed or unconfirmed probe stops here, before any cluster creation.
-supervise preflight /bin/true
+supervise preflight 60 /bin/true
 test "$service_rc" = 0 || { echo "PREFLIGHT_FAILED: transient launch/reap" >&2; exit 7; }
 
 # Includes tracked, untracked and ignored entries, modes and symlink targets.
@@ -98,11 +98,12 @@ owned_now() {
   cmp "$OUT/owned-nodes.json" "$OUT/current-nodes.json"
 }
 
-supervise deploy bash loadtest/cluster.sh
+# Deployment: helm waits up to 8 + 10 min and the pods 5 min (cluster.sh).
+supervise deploy 1800 bash loadtest/cluster.sh
 test "$service_rc" = 0
 
 host_snapshot > "$OUT/host-before.json"
-supervise smoke bash loadtest/run.sh smoke
+supervise smoke "$(stage_timeout 60)" bash loadtest/run.sh smoke
 # Capture even when service_rc is nonzero, before testing acceptance or deletion.
 pilot_capture_restoration
 test "$service_rc" = 0
@@ -135,10 +136,11 @@ test -n "$nodes"
 mapfile -t owned_nodes <<<"$nodes"
 docker inspect "${owned_nodes[@]}" | jq -S '[.[] | {Id,Name}] | sort_by(.Id)' > "$OUT/owned-nodes.json"
 owned=true
-supervise deploy bash loadtest/cluster.sh
+supervise deploy 1800 bash loadtest/cluster.sh
 test "$service_rc" = 0
 host_snapshot > "$OUT/host-before.json"
-supervise step /usr/bin/env START_RPS=10 STEP_RPS=10 STEPS=8 RAMP_S=10 HOLD_S=110   bash loadtest/run.sh step
+# 8 steps of 10 s ramp + 110 s hold: 960 s of load.
+supervise step "$(stage_timeout $((8 * (10 + 110))))" /usr/bin/env START_RPS=10 STEP_RPS=10 STEPS=8 RAMP_S=10 HOLD_S=110   bash loadtest/run.sh step
 pilot_capture_restoration
 jq -e '.safetyFailure == false and .teeExit == 0 and
        (.k6Exit == 0 or .k6Exit == 99)' "$OUT/step.runner-status.json"
