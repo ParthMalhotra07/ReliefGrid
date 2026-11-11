@@ -29,12 +29,23 @@ trap 'interrupt_pilot 2' INT
 trap 'interrupt_pilot 15' TERM
 trap 'interrupt_pilot 1' HUP
 
+# stage_timeout <k6 duration seconds>: a run stage's supervisor deadline, the
+# load plus 900 s for everything around it (dataset, scrapes, settle,
+# read-back, pause and drain, invcheck, report). The supervisor's 1800 s
+# default once stopped a 960 s step mid-invcheck; a 1800 s soak never fits.
+stage_timeout() {
+  [[ "$1" =~ ^[1-9][0-9]*$ ]] || { echo "stage_timeout: want a duration in seconds, got '$1'" >&2; return 2; }
+  echo "$(($1 + 900))"
+}
+
+# supervise <stage> <timeout seconds> <command...>
 supervise() {
-  local stage="$1" rc
-  shift
+  local stage="$1" timeout="$2" rc
+  shift 2
+  [[ "$timeout" =~ ^[1-9][0-9]*$ ]] || { echo "supervise: stage $stage needs a timeout in seconds, got '$timeout'" >&2; return 2; }
   supervisor_evidence="$OUT/$stage.supervisor"
   RUN_DIR="$OUT/$stage" A15_EVIDENCE_DIR="$OUT/deploy-a15" \
-    python3 -I "$ROOT/loadtest/supervise.py" --evidence-dir "$supervisor_evidence" -- "$@" &
+    python3 -I "$ROOT/loadtest/supervise.py" --evidence-dir "$supervisor_evidence" --timeout-seconds "$timeout" -- "$@" &
   supervisor_pid=$!
   rc=0
   wait "$supervisor_pid" || rc=$?
