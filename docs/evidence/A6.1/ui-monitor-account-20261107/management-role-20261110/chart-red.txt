@@ -1,0 +1,12 @@
+--- FAIL: TestAppBrokerNativeBootImport (2.17s)
+    --- FAIL: TestAppBrokerNativeBootImport/reliefgrid (1.54s)
+        app_broker_boot_test.go:62: boot import must provision configured user and permissions
+    --- FAIL: TestAppBrokerNativeBootImport/reliefgrid-ui-monitor (0.30s)
+        app_broker_boot_test.go:62: boot import must provision configured user and permissions
+    --- FAIL: TestAppBrokerNativeBootImport/boot-test (0.33s)
+        app_broker_boot_test.go:62: boot import must provision configured user and permissions
+--- FAIL: TestAppUIBrokerMonitorIdentity (0.31s)
+    ui_monitor_chart_test.go:61: migration rollout: got ui-monitor-v1 want ui-monitor-v2
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.492s
+FAIL

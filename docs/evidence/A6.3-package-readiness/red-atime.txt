@@ -1,0 +1,21 @@
+test_reading_an_old_artifact_does_not_count_as_a_content_change (__main__.PackageTests.test_reading_an_old_artifact_does_not_count_as_a_content_change) ... ERROR
+
+======================================================================
+ERROR: test_reading_an_old_artifact_does_not_count_as_a_content_change (__main__.PackageTests.test_reading_an_old_artifact_does_not_count_as_a_content_change)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-package-readiness/scripts/package_readiness_test.py", line 134, in test_reading_an_old_artifact_does_not_count_as_a_content_change
+    self.assertTrue(package.validate(self.root, self.manifest, self.source)['ok'])
+                    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-package-readiness/scripts/package_readiness.py", line 85, in validate
+    require(actual.stat() == before, 'artifact changed while reading')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-package-readiness/scripts/package_readiness.py", line 27, in require
+    if not condition: raise ReadinessError(message)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+package_readiness.ReadinessError: artifact changed while reading
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (errors=1)

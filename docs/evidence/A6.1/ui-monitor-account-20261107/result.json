@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "namespace": "reliefgrid-monitor-7c8e3285",
+  "context": "kind-reliefgrid",
+  "stages": [
+    "existing PVC upgrade: stats readable, mutations/AMQP denied, application message survived",
+    "same PVC restart and no-op upgrade: credential stable and message survived",
+    "fresh PVC: read-only account works, denied operations remain denied"
+  ]
+}
