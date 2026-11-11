@@ -1,0 +1,101 @@
+{
+  "figures": {
+    "match.matched": {
+      "median": 1483,
+      "min": 1483,
+      "max": 1483,
+      "n": 3
+    },
+    "match.p50Ms": {
+      "median": 24358,
+      "min": 23977,
+      "max": 26879,
+      "n": 3
+    },
+    "match.p99Ms": {
+      "median": 356530.28,
+      "min": 337244.96,
+      "max": 362284.76,
+      "n": 3
+    },
+    "match.waiting": {
+      "median": 780,
+      "min": 780,
+      "max": 780,
+      "n": 3
+    },
+    "results.classes.list.p50Ms": {
+      "median": 130.41,
+      "min": 128.95,
+      "max": 134.2,
+      "n": 3
+    },
+    "results.classes.list.p95Ms": {
+      "median": 234.05,
+      "min": 233.21,
+      "max": 238.01,
+      "n": 3
+    },
+    "results.classes.list.p99Ms": {
+      "median": 291.22,
+      "min": 280.82,
+      "max": 305.65,
+      "n": 3
+    },
+    "results.classes.read.p50Ms": {
+      "median": 41.11,
+      "min": 40.19,
+      "max": 41.17,
+      "n": 3
+    },
+    "results.classes.read.p95Ms": {
+      "median": 67.87,
+      "min": 67.01,
+      "max": 68.9,
+      "n": 3
+    },
+    "results.classes.read.p99Ms": {
+      "median": 79.94,
+      "min": 79.12,
+      "max": 80.48,
+      "n": 3
+    },
+    "results.classes.write.p50Ms": {
+      "median": 135.98,
+      "min": 133.51,
+      "max": 136.53,
+      "n": 3
+    },
+    "results.classes.write.p95Ms": {
+      "median": 425.86,
+      "min": 420.57,
+      "max": 495.16,
+      "n": 3
+    },
+    "results.classes.write.p99Ms": {
+      "median": 684,
+      "min": 665.75,
+      "max": 690.92,
+      "n": 3
+    },
+    "results.errors.rate": {
+      "median": 0,
+      "min": 0.0005,
+      "max": 0.00125,
+      "n": 3
+    },
+    "results.throughputRps": {
+      "median": 25,
+      "min": 25,
+      "max": 25,
+      "n": 3
+    }
+  },
+  "payloadSha256": "0afe4e0727eb807ecf6ac82a4d177973ab76b4a851ff823648666b468bf7d18d",
+  "runs": [
+    "S5.2-baseline-20261111T105012Z",
+    "S5.2-baseline-20261111T110320Z",
+    "S5.2-baseline-20261111T111624Z"
+  ],
+  "scenario": "baseline"
+}
