@@ -5,9 +5,10 @@
 
 The directory holds summary.json (the report, schema below), the files it
 lists under "raw" with committed=true, and SHA256SUMS covering every file in
-the directory but itself. Prints one PASS or FAIL line per check and exits 1
-on any FAIL, 2 on bad usage, 3 for an inconclusive saturation bracket
-when every other validation passed.
+the directory but itself. SHA256SUMS may also list files the report keeps
+off-repo (committed=false), with the report's sha256. Prints one PASS or FAIL
+line per check and exits 1 on any FAIL, 2 on bad usage, 3 for an
+inconclusive saturation bracket when every other validation passed.
 
 What summary.json must state is what the plan asks a performance figure to
 state: hardware, versions, dataset, concurrency, duration, error rate, the
@@ -233,12 +234,27 @@ def check_files(d, doc):
             rel = os.path.relpath(os.path.join(root, name), d)
             if rel != "SHA256SUMS":
                 present.add(rel)
+    # Files the report keeps off-repo (committed=false) may be listed too, so
+    # the committed sums cover the whole run; such a file must be absent here
+    # and its sum must be the report's.
+    off_repo = {}
+    for r in doc.get("raw") if isinstance(doc.get("raw"), list) else []:
+        if isinstance(r, dict) and r.get("committed") is False and isinstance(r.get("path"), str):
+            off_repo[r["path"]] = r.get("sha256")
     good = True
     for rel in sorted(present - set(listed)):
         bad(f"SHA256SUMS: {rel} is not listed")
         good = False
     for rel, want in sorted(listed.items()):
         p = os.path.join(d, rel)
+        if rel in off_repo:
+            if os.path.lexists(p):
+                bad(f"SHA256SUMS: {rel} is kept off-repo by the report but is in the directory")
+                good = False
+            elif off_repo[rel] != want:
+                bad(f"SHA256SUMS: {rel} (off-repo) does not match the report's sha256")
+                good = False
+            continue
         if not os.path.isfile(p):
             bad(f"SHA256SUMS: lists {rel}, which is missing")
             good = False
@@ -249,7 +265,8 @@ def check_files(d, doc):
             bad(f"SHA256SUMS: {rel} does not match its checksum")
             good = False
     if good:
-        ok(f"SHA256SUMS: {len(listed)} files match")
+        n_off = len(set(listed) & set(off_repo))
+        ok(f"SHA256SUMS: {len(listed) - n_off} files match" + (f", {n_off} kept off-repo agree with the report" if n_off else ""))
 
     raw = doc.get("raw")
     if not isinstance(raw, list) or not raw:

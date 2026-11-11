@@ -295,6 +295,56 @@ func TestLoadReportCheckFiles(t *testing.T) {
 			t.Fatalf("want a SHA256SUMS failure, got exit %d:\n%s", code, out)
 		}
 	})
+	// SHA256SUMS may also list a file kept off-repo, so the committed sums
+	// cover every file of the run; the report must say it is not committed,
+	// with the same sha256.
+	appendSum := func(t *testing.T, dir, line string) {
+		t.Helper()
+		f, err := os.OpenFile(filepath.Join(dir, "SHA256SUMS"), os.O_APPEND|os.O_WRONLY, 0o644)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.WriteString(line + "\n"); err != nil {
+			t.Fatal(err)
+		}
+		_ = f.Close()
+	}
+	offRepo := strings.Repeat("b", 64) + "  raw/k6-points.jsonl.gz"
+	t.Run("off-repo file listed in SHA256SUMS", func(t *testing.T) {
+		dir := writeReport(t, loadReport(t))
+		appendSum(t, dir, offRepo)
+		if code, out := runLoadCheck(t, dir); code != 0 {
+			t.Fatalf("off-repo file with a matching sum rejected (exit %d):\n%s", code, out)
+		}
+	})
+	t.Run("off-repo sum disagrees with the report", func(t *testing.T) {
+		dir := writeReport(t, loadReport(t))
+		appendSum(t, dir, strings.Repeat("c", 64)+"  raw/k6-points.jsonl.gz")
+		if code, out := runLoadCheck(t, dir); code != 1 || !strings.Contains(out, "raw/k6-points.jsonl.gz") {
+			t.Fatalf("want a failure naming the off-repo file, got exit %d:\n%s", code, out)
+		}
+	})
+	t.Run("listed file missing and not declared off-repo", func(t *testing.T) {
+		dir := writeReport(t, loadReport(t))
+		appendSum(t, dir, strings.Repeat("d", 64)+"  raw/gone.json")
+		if code, out := runLoadCheck(t, dir); code != 1 || !strings.Contains(out, "raw/gone.json") {
+			t.Fatalf("want a failure naming raw/gone.json, got exit %d:\n%s", code, out)
+		}
+	})
+	t.Run("off-repo file present after all", func(t *testing.T) {
+		// A file the report says is not committed must not sit in the directory.
+		dir := writeReport(t, loadReport(t))
+		if err := os.MkdirAll(filepath.Join(dir, "raw"), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "raw", "k6-points.jsonl.gz"), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		appendSum(t, dir, fmt.Sprintf("%x  raw/k6-points.jsonl.gz", sha256.Sum256([]byte("x"))))
+		if code, out := runLoadCheck(t, dir); code != 1 || !strings.Contains(out, "raw/k6-points.jsonl.gz") {
+			t.Fatalf("want a failure naming the file, got exit %d:\n%s", code, out)
+		}
+	})
 	t.Run("smoke report needs no saturation", func(t *testing.T) {
 		m := loadReport(t)
 		m["scenario"] = "smoke"
