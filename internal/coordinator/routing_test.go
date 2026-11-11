@@ -2,6 +2,7 @@ package coordinator_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -299,25 +300,88 @@ func TestUnknownOutcomeIsStickyAcrossRetries(t *testing.T) {
 	}
 }
 
-// When nothing was proposed (NOT_LEADER, NO_LEADER, refused connections)
+// refusalGate is the coordinator's client transport in the budget-boundary
+// tests (issue #155). The routing loop retries until the budget's deadline,
+// so on its own whether the last attempt was sent before the budget ended is
+// a race between the jittered backoff and the deadline (about 1 run in 100
+// under -race). The gate decides it: attempts pass through until every node
+// in members has answered, and every later attempt is either held before it
+// is sent (send=false: as if no connection could be made) or sent (the
+// test's handler then decides what the node does).
+type refusalGate struct {
+	inner   *http.Transport
+	send    bool
+	closed  chan struct{} // closed once every member has answered
+	held    atomic.Int32  // attempts held unsent
+	mu      sync.Mutex
+	pending map[string]bool // members (by host) that have not answered yet
+}
+
+func newRefusalGate(t *testing.T, send bool) *refusalGate {
+	inner := http.DefaultTransport.(*http.Transport).Clone()
+	t.Cleanup(inner.CloseIdleConnections)
+	return &refusalGate{inner: inner, send: send, closed: make(chan struct{}), pending: map[string]bool{}}
+}
+
+// watch sets the members that must answer before the gate closes; call it
+// before the first routed request.
+func (g *refusalGate) watch(members []*fakeNode) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for _, n := range members {
+		g.pending[n.host()] = true
+	}
+}
+
+func (g *refusalGate) isClosed() bool {
+	select {
+	case <-g.closed:
+		return true
+	default:
+		return false
+	}
+}
+
+func (g *refusalGate) RoundTrip(r *http.Request) (*http.Response, error) {
+	if g.isClosed() && !g.send {
+		g.held.Add(1)
+		<-r.Context().Done() // nothing is written: the node cannot have proposed
+		return nil, r.Context().Err()
+	}
+	resp, err := g.inner.RoundTrip(r)
+	if err == nil {
+		g.mu.Lock()
+		if g.pending[r.URL.Host] {
+			delete(g.pending, r.URL.Host)
+			if len(g.pending) == 0 {
+				close(g.closed)
+			}
+		}
+		g.mu.Unlock()
+	}
+	return resp, err
+}
+
+// When nothing was proposed (NOT_LEADER, NO_LEADER)
 // the budget ends in 503 NO_LEADER: retryable, outcomeUnknown=false, with
 // Retry-After, and within the budget.
 //
-// The NO_LEADER and NOT_LEADER nodes each answer exactly once and then stop
-// listening, so every later attempt is a refused dial, never sent. Left
-// answering, they could still be mid-answer when the budget ends, and an
-// attempt cut off after it was sent correctly makes a mutation's outcome
-// unknown (TestHungNodeIsBoundedByTheBudget). Under parallel -race load that
-// happened in about 1 run in 100, whatever the budget.
+// Keep every node listening and explicitly refusing throughout the test:
+// closing a listener frees its port for an unrelated server (issue #119).
+// Once every member has refused, later attempts are held unsent until the
+// budget ends, so no attempt can be cut off after it was sent (issue #155).
+// A sent attempt cut off by the budget is correctly unknown:
+// TestBudgetCutOffAfterRefusalsIsUnknown covers that case.
 func TestNeverProposedExhaustionIsNoLeader(t *testing.T) {
 	const budget = time.Second // headroom for slow runners
-	h := newHarness(t, func(c *coordinator.Config) { c.Budget = budget })
+	gate := newRefusalGate(t, false)
+	h := newHarness(t, func(c *coordinator.Config) { c.Budget, c.Client = budget, &http.Client{Transport: gate} })
 	h.ready()
 	shard := h.nodes[2]
-	var noLeader, notLead atomic.Int32
-	shard[0].setHandler(answerOnce(shard[0], &noLeader, failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false)))
-	shard[1].setHandler(answerOnce(shard[1], &notLead, notLeader(shard[0], 1)))
-	shard[2].srv.Close() // refused: never sent
+	gate.watch(shard)
+	shard[0].setHandler(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false))
+	shard[1].setHandler(notLeader(shard[0], 1))
+	shard[2].setHandler(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false))
 
 	start := time.Now()
 	rec := h.do(routedCalls(t, h, 2)[0].call)
@@ -326,23 +390,93 @@ func TestNeverProposedExhaustionIsNoLeader(t *testing.T) {
 	if e.OutcomeUnknown || !e.Retryable || rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("error = %+v (Retry-After %q)", e, rec.Header().Get("Retry-After"))
 	}
-	if noLeader.Load() != 1 || notLead.Load() != 1 {
-		t.Fatalf("NO_LEADER answered %d times, NOT_LEADER %d; want each once", noLeader.Load(), notLead.Load())
+	if gate.held.Load() == 0 {
+		t.Fatal("no attempt was held after every member refused; the budget end was not on an unsent attempt")
+	}
+	// Check before the direct probes so only routed attempts count here.
+	for _, n := range shard {
+		if len(n.requests()) == 0 {
+			t.Fatalf("%s received no routed attempts; want every refusal path exercised", n.pod)
+		}
 	}
 	if elapsed > budget+500*time.Millisecond {
 		t.Fatalf("answered after %s; budget %s", elapsed, budget)
 	}
+
+	// Issue #119: a closed listener releases its port to unrelated servers.
+	// Require explicit, identified refusals on repeated calls, rather than
+	// relying on a transport error to mean that nothing was proposed.
+	client := &http.Client{Timeout: budget}
+	for i, n := range shard {
+		t.Run(n.pod+"/keeps refusing", func(t *testing.T) {
+			want := internalapi.NOLEADER
+			if i == 1 {
+				want = internalapi.NOTLEADER
+			}
+			for attempt := range 2 {
+				req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, n.srv.URL+"/internal/data/probe", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				resp, err := client.Do(req)
+				if err != nil {
+					t.Fatalf("refusal probe %d: %v; want an explicit %s answer with node identity", attempt+1, err, want)
+				}
+				var e internalapi.Error
+				err = json.NewDecoder(resp.Body).Decode(&e)
+				_ = resp.Body.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if resp.StatusCode != http.StatusServiceUnavailable || e.Code != want || e.OutcomeUnknown || !e.Retryable ||
+					resp.Header.Get(internalapi.HeaderServerID) != n.serverID() || resp.Header.Get(internalapi.HeaderShard) != "2" {
+					t.Fatalf("refusal probe %d: status=%d error=%+v headers=%v; want identified %s from %s", attempt+1, resp.StatusCode, e, resp.Header, want, n.serverID())
+				}
+			}
+		})
+	}
 }
 
-// answerOnce answers with h, counting in n, and stops n's listener before
-// the answer is written: every later dial to n is refused (never sent).
-// Connection: close keeps the client from reusing this connection.
-func answerOnce(node *fakeNode, n *atomic.Int32, h func(http.ResponseWriter, *http.Request, []byte)) func(http.ResponseWriter, *http.Request, []byte) {
-	return func(w http.ResponseWriter, r *http.Request, body []byte) {
-		n.Add(1)
-		_ = node.srv.Listener.Close()
-		w.Header().Set("Connection", "close")
-		h(w, r, body)
+// Issue #155: every member refused unproposed, then one more mutation
+// attempt was sent to a refusing node and the budget ended before it
+// answered. That node may have just become leader and proposed it, so the
+// budget ends in OUTCOME_UNKNOWN (CONTRIBUTING.md, Invariants, 5), not
+// NO_LEADER. AttemptTimeout equals the budget, so the budget's deadline is
+// what cuts the attempt off, as in the CI failure.
+func TestBudgetCutOffAfterRefusalsIsUnknown(t *testing.T) {
+	const budget = 400 * time.Millisecond
+	gate := newRefusalGate(t, true)
+	h := newHarness(t, func(c *coordinator.Config) {
+		c.Budget, c.AttemptTimeout, c.Client = budget, budget, &http.Client{Transport: gate}
+	})
+	h.ready()
+	shard := h.nodes[2]
+	gate.watch(shard)
+	var cutOff atomic.Int32
+	refuseThenHang := func(refuse func(http.ResponseWriter, *http.Request, []byte)) func(http.ResponseWriter, *http.Request, []byte) {
+		return func(w http.ResponseWriter, r *http.Request, b []byte) {
+			if gate.isClosed() { // every member has refused: this attempt was sent
+				cutOff.Add(1)
+				<-r.Context().Done()
+				return
+			}
+			refuse(w, r, b)
+		}
+	}
+	shard[0].setHandler(refuseThenHang(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false)))
+	shard[1].setHandler(refuseThenHang(notLeader(shard[0], 1)))
+	shard[2].setHandler(refuseThenHang(failWith(http.StatusServiceUnavailable, internalapi.NOLEADER, false)))
+
+	start := time.Now()
+	e := expectError(t, h.do(routedCalls(t, h, 2)[0].call), http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN)
+	if !e.OutcomeUnknown || !e.Retryable {
+		t.Fatalf("error = %+v, want outcomeUnknown and retryable", e)
+	}
+	if d := time.Since(start); d > budget+500*time.Millisecond {
+		t.Fatalf("answered after %s; budget %s", d, budget)
+	}
+	if n := cutOff.Load(); n != 1 {
+		t.Fatalf("%d attempts reached a node after every member refused, want exactly the one the budget cut off", n)
 	}
 }
 

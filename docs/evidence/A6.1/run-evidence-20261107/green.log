@@ -1,0 +1,9 @@
+test_deploy_failure_retains_run_evidence (__main__.EvidenceIsolation.test_deploy_failure_retains_run_evidence) ... ok
+test_explicit_directory_is_propagated (__main__.EvidenceIsolation.test_explicit_directory_is_propagated) ... ok
+test_images_default_is_unique_and_preserves_saved_evidence (__main__.EvidenceIsolation.test_images_default_is_unique_and_preserves_saved_evidence) ... ok
+test_smoke_failure_does_not_touch_saved_evidence (__main__.EvidenceIsolation.test_smoke_failure_does_not_touch_saved_evidence) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.586s
+
+OK

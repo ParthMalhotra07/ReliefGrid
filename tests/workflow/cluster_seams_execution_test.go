@@ -685,7 +685,7 @@ func clusterSnapshotBoundary(x *execution, code string) {
 		if next := c.snapshot(leader); next.AppliedIndex <= prior.AppliedIndex {
 			x.t.Fatal("new complete snapshot did not advance")
 		}
-		x.move(store.RequestMatched, nil)
+		x.confirm()
 		return
 	}
 	follower := followers[0]

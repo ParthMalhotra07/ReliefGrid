@@ -1,0 +1,15 @@
+test_tools_snapshot_requires_completed_owned_job_and_digest (__main__.ValidationTests.test_tools_snapshot_requires_completed_owned_job_and_digest) ... ERROR
+
+======================================================================
+ERROR: test_tools_snapshot_requires_completed_owned_job_and_digest (__main__.ValidationTests.test_tools_snapshot_requires_completed_owned_job_and_digest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 137, in test_tools_snapshot_requires_completed_owned_job_and_digest
+    self.assertEqual(result['job']['metadata']['uid'], 'job-uid')
+                     ~~~~~~^^^^^^^
+KeyError: 'job'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)

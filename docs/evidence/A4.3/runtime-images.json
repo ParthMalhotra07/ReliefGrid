@@ -1,0 +1,332 @@
+{
+  "pods": [
+    {
+      "namespace": "kube-system",
+      "name": "metrics-server-5fd65dd699-6ckfb",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "metrics-server",
+          "image": "registry.k8s.io/metrics-server/metrics-server:v0.9.1@sha256:4dbfba731a021437b4cab5ba2092569edbd898030c27d10c6ec85e03b63789f6"
+        }
+      ],
+      "containers": [
+        {
+          "name": "metrics-server",
+          "ready": true,
+          "restarts": 0,
+          "imageID": "registry.k8s.io/metrics-server/metrics-server@sha256:4dbfba731a021437b4cab5ba2092569edbd898030c27d10c6ec85e03b63789f6"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "keda-admission-webhooks-f7dd84d58-fwnd9",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "keda-admission-webhooks",
+          "image": "ghcr.io/kedacore/keda-admission-webhooks:2.21.0@sha256:3e27e9fe4ff3270769fbcf38bc292cd27b3e9590a4105b266b3c0512a690eea4"
+        }
+      ],
+      "containers": [
+        {
+          "name": "keda-admission-webhooks",
+          "ready": true,
+          "restarts": 0,
+          "imageID": "ghcr.io/kedacore/keda-admission-webhooks@sha256:3e27e9fe4ff3270769fbcf38bc292cd27b3e9590a4105b266b3c0512a690eea4"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "keda-operator-66788944cc-c5bh7",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "keda-operator",
+          "image": "ghcr.io/kedacore/keda:2.21.0@sha256:058179aa9ea3a66f16b2bb9924c25097854dcb48406b1352cf0749b2690265d7"
+        }
+      ],
+      "containers": [
+        {
+          "name": "keda-operator",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "ghcr.io/kedacore/keda@sha256:058179aa9ea3a66f16b2bb9924c25097854dcb48406b1352cf0749b2690265d7"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "keda-operator-metrics-apiserver-84889c547f-qnh7j",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "keda-operator-metrics-apiserver",
+          "image": "ghcr.io/kedacore/keda-metrics-apiserver:2.21.0@sha256:38ec9daa6eb40491f8c99a31bb00b90438213d927b837e8de1e8406db312fff9"
+        }
+      ],
+      "containers": [
+        {
+          "name": "keda-operator-metrics-apiserver",
+          "ready": true,
+          "restarts": 0,
+          "imageID": "ghcr.io/kedacore/keda-metrics-apiserver@sha256:38ec9daa6eb40491f8c99a31bb00b90438213d927b837e8de1e8406db312fff9"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "reliefgrid-api-5f5666b8db-qvzmd",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "api",
+          "image": "reliefgrid/api:a42-20261106-090066f"
+        }
+      ],
+      "containers": [
+        {
+          "name": "api",
+          "ready": true,
+          "restarts": 0,
+          "imageID": "docker.io/library/import-2026-11-06@sha256:681f59fb6d66361204db89f4cdc85877ffa0c5882904ba8ed9c368cad79c3410"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "reliefgrid-api-5f5666b8db-tnjrh",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "api",
+          "image": "reliefgrid/api:a42-20261106-090066f"
+        }
+      ],
+      "containers": [
+        {
+          "name": "api",
+          "ready": true,
+          "restarts": 0,
+          "imageID": "docker.io/library/import-2026-11-06@sha256:681f59fb6d66361204db89f4cdc85877ffa0c5882904ba8ed9c368cad79c3410"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "reliefgrid-matcher-9bbbcd8bd-lpllk",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "matcher",
+          "image": "reliefgrid/matcher:a42-20261106-090066f"
+        }
+      ],
+      "containers": [
+        {
+          "name": "matcher",
+          "ready": true,
+          "restarts": 0,
+          "imageID": "docker.io/library/import-2026-11-06@sha256:f40a0aa2311f80d594ae63c679d19fb11ffd54517078e377ebbf30aa6abaf1d4"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "reliefgrid-matcher-9bbbcd8bd-ntccz",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "matcher",
+          "image": "reliefgrid/matcher:a42-20261106-090066f"
+        }
+      ],
+      "containers": [
+        {
+          "name": "matcher",
+          "ready": true,
+          "restarts": 0,
+          "imageID": "docker.io/library/import-2026-11-06@sha256:f40a0aa2311f80d594ae63c679d19fb11ffd54517078e377ebbf30aa6abaf1d4"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-0-0",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-0-1",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-0-2",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-1-0",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-1-1",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-1-2",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-2-0",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-2-1",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    },
+    {
+      "namespace": "reliefgrid",
+      "name": "storage-shard-2-2",
+      "phase": "Running",
+      "images": [
+        {
+          "name": "storagenode",
+          "image": "reliefgrid/storagenode:dev"
+        }
+      ],
+      "containers": [
+        {
+          "name": "storagenode",
+          "ready": true,
+          "restarts": 1,
+          "imageID": "docker.io/library/import-2026-11-05@sha256:0a5d985338bff45e62d3fc5a0d4eda820d904c822c54a0226b3fcb12e562b680"
+        }
+      ]
+    }
+  ],
+  "brokerPVC": {
+    "name": "data-reliefgrid-rabbitmq-0",
+    "uid": "a3dea786-e406-4091-8ce3-842ff22b8a86",
+    "phase": "Bound"
+  }
+}

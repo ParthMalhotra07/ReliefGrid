@@ -1,0 +1,26 @@
+image:
+  pullPolicy: IfNotPresent
+  keda:
+    tag: 2.21.0@sha256:058179aa9ea3a66f16b2bb9924c25097854dcb48406b1352cf0749b2690265d7
+  metricsApiServer:
+    tag: 2.21.0@sha256:38ec9daa6eb40491f8c99a31bb00b90438213d927b837e8de1e8406db312fff9
+  webhooks:
+    tag: 2.21.0@sha256:3e27e9fe4ff3270769fbcf38bc292cd27b3e9590a4105b266b3c0512a690eea4
+watchNamespace: reliefgrid
+nodeSelector: {role: infra}
+tolerations: [{key: role, operator: Equal, value: infra, effect: NoSchedule}]
+permissions:
+  operator:
+    restrict:
+      secret: true
+      namesAllowList: [reliefgrid-rabbitmq]
+resources:
+  operator:
+    requests: {cpu: 100m, memory: 100Mi}
+    limits: {cpu: "1", memory: 512Mi}
+  metricServer:
+    requests: {cpu: 100m, memory: 100Mi}
+    limits: {cpu: "1", memory: 384Mi}
+  webhooks:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: "1", memory: 256Mi}

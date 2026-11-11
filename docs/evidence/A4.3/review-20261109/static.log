@@ -1,0 +1,23 @@
+bash scripts/verify-A4.3-static.sh
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	6.391s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
+..................
+----------------------------------------------------------------------
+Ran 18 tests in 0.095s
+
+OK
+✔ known rejected CAS rereads before retrying cancellation (3.276467ms)
+✔ permanent conflict remains failure after exactly three attempts (0.382809ms)
+✔ unknown outcome, domain conflicts and server failures are never retried or accepted (0.458283ms)
+✔ failed authoritative reread stops the retry (0.281347ms)
+✔ successful first cancellation is never duplicated (0.307458ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 144.191547
+A4.3 STATIC VERIFY: PASS

@@ -47,7 +47,7 @@ SCHEDULE_BACKEND=m8 SCHEDULE_IDS=2,3,4,5,6,7,8,9,10,11,14,15,16,17 \
 
 Use `SCHEDULE_BACKEND=cluster` for kind or leave it unset for both. The cluster
 path runs demo-reset unless `SCHEDULE_RESET=0` is explicitly supplied. It pauses
-matcher admission, verifies no foreign pending outbox work for the relay case, uses a reconnecting
+matcher admission, verifies no foreign pending outbox work for every cluster selection, uses a reconnecting
 loopback coordinator port-forward (NetworkPolicy stays enabled), and restores
 both shard replicas and matcher admission on exit, including a Go test timeout.
 Do not run it alongside another cluster test or on a non-disposable deployment.
@@ -81,3 +81,33 @@ restoration if storage restoration fails, and reports the failure.
 
 Normal `make check` remains cluster-free. The `schedules` tag opts into these
 infrastructure tests; a draft PR is not evidence that A2.3 acceptance passed.
+
+## Durable-handoff follow-up (#109)
+
+SCH04 reads attemptA's exact durable closure before retargeting and again after
+attemptB owns the resource, and tries the late attempt at both boundaries. The
+resource/request/attempt/fingerprint, retry reason, disposition and frozen
+closure timestamp must match; a later successful match cannot substitute for
+this proof.
+
+Every applicable schedule now observes production matcher/cleanup transitions,
+checks the expected event family, immutable payload, entity version/time and
+operation result, then replays the unchanged command. Current entity state and
+the strong pending-outbox rows must remain identical. Fixture final versions and
+claims are unchanged. Direct synthetic confirmation steps now use the production
+confirmation helper. SCH13a/b restore an already-matched fixture without a new
+workflow handoff; their snapshot row-equivalence assertions remain authoritative.
+
+Kind fixtures publish their verified pending events with real mandatory confirms
+to a disposable broker/vhost before marking them. A durable audit queue receives
+events on `relief.events`. This avoids hiding later seeds behind the public
+pending endpoint's 100-row bound. A foreign pending entity or incomplete drain
+fails; no foreign work is silently marked, and no event is marked without a routed
+confirm. All cluster selections require an initially clean pending outbox, even
+with `SCHEDULE_RESET=0`. Matcher admission and storage are restored on exit.
+
+The omission negative control runs only against M8: it commits the terminal
+entity while deliberately stripping its outbox event. The old final-state fixture
+still passes, while the durable-row assertion rejects it. Pure negative cases
+also reject missing/duplicate/corrupted rows and missing or foreign closures.
+No deliberately broken command is sent to kind by these negative controls.
