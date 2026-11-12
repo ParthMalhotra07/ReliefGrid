@@ -21,7 +21,8 @@ per read. `comparison.md` holds the full tables, and `comparison.json` the same 
 - Slim layout as in Phase 1 (01feb5b): k6 points, datasets, statuses, cgroup samples
   and metrics scrapes stay off-repo. `summary.json` gives each one's bytes, sha256 and
   location, and `SHA256SUMS` still lists them. `tools/slim.py` applies this.
-- `check.txt` is `scripts/load-report-check.py` on every run here.
+- `check.txt` is `scripts/load-report-check.py`, as changed in this branch, run on
+  every run here.
 - `aggregate-*.json` come from `loadreport aggregate`.
 
 ## Additions to the usual report
@@ -37,6 +38,9 @@ per read. `comparison.md` holds the full tables, and `comparison.json` the same 
   runs had no idle sample.
 - **Coordinator CPU per step.** From the run's `raw/cgroup.jsonl`, over each step's
   hold window. For baselines, the window starts after warm-up.
+- **Barriers vs uncounted commands.** The non-command entries are split using
+  `storage_raft_fsm_apply_seconds_count`: entries that never reached `FSM.Apply` are
+  barriers, no-ops or configuration entries; the rest are applied commands.
 - Tools: `tools/extras.py`, `tools/compare.py` and `tools/compare-config.json`.
   `compare.py` recomputes the per-step percentiles from `raw/requests.csv.gz`, using
   linear interpolation, and asserts that every p99 equals the report's.
@@ -61,11 +65,30 @@ per read. `comparison.md` holds the full tables, and `comparison.json` the same 
 
 Notes:
 
-- **Saturation is above the measured range.** `load-report-check.py` exits 3 on the
-  step runs: "no step breaks a threshold up to 80 req/s; raise the top step". This is
-  the expected outcome of the change, not a failure. Every other check passes. Each
-  step run's acceptance records `saturation-above-range`
-  (`extras/phase2/*.acceptance.txt`).
+- **Saturation is above the measured range.** At the measured commit, the check exited
+  3 on every step run ("INCONCLUSIVE saturation: no step breaks a threshold up to 80
+  req/s; raise the top step"), with every other check passing. The run driver accepted
+  exactly that case as `saturation-above-range` (`extras/phase2/*.acceptance.txt`).
+  This branch moves that rule into the harness. `load-report-check.py` now passes a
+  step run that breaks no threshold up to its top step as `saturation: > <top> req/s`,
+  provided the report states no saturation point. A run whose first step already
+  breaks a threshold is still INCONCLUSIVE (exit 3). `check.txt` is the updated check,
+  and every run passes, including `saturation: > 80 req/s` on all three step runs.
+- **The 29 non-command entries are not barriers.** In every shard of every Phase 2
+  run, Raft entries equal FSM applies (growth of the highest
+  `storage_raft_fsm_apply_seconds_count`), so 0 entries committed without reaching
+  `FSM.Apply`. The term never changed (2 throughout), and storage reads in the window
+  were 0 strong and 0 stale.
+  - The 0-27 per shard are commands that had applied but were not yet counted by the
+    receiving replica's command-latency counter. `metrics-end` is scraped the moment
+    k6 stops, while the matcher and outbox are still writing.
+  - No caller issued an explicit strong read inside the measured window.
+  - The only caller in a load run that still asks for strong reads is `cmd/invcheck`
+    (the audit, default `-consistency strong`), and it runs after `metrics-end`. The
+    statuses read-back also runs after the window, through the API, whose default is
+    linearizable since #166. `scripts/verify-reconcile.py` also reads strong, but it
+    is verification only and is never part of a load run.
+  - Phase 1, for scale: 270191 barriers per step run.
 - **The coordinator is the next limit.** It sits at 98% of its 250 m limit, throttled
   87-95% of periods, from 50 req/s upwards. It forwards every storage call, and in
   Phase 2 it forwards about 2.1x as many per baseline run (about 407k against 194k).
@@ -88,10 +111,42 @@ Notes:
    idle-scrape check counted 10 metrics files, not 9, because the storage label
    selector also matches the coordinator pod. The count was restricted to
    `storage-shard-*.prom`, the cluster was torn down, and the sequence was restarted.
-2. **Step-1 was finished by hand.** It exited 3 (saturation above range) with every
-   other gate passing. The driver's acceptance was revised to accept exactly that
-   case. Step-1 was finished with the revised tail: checks, then teardown. The
-   remaining runs used the revised driver unattended.
+2. **Step-1's acceptance tail was run by hand.** Every harness stage of step-1 ran
+   unattended under the driver:
+   - `loadtest/run.sh step` (k6 load)
+   - `loadreport build` (report, SHA256SUMS and spill)
+   - the read-back, audit and invcheck
+   - `load-report-check.py`
+   - host restoration
+
+   `run.sh` exited 3 (`runnerExit 3`, `reportExit 3`, `k6Exit 0`,
+   `safetyFailure false`) on the saturation INCONCLUSIVE alone, and the driver
+   stopped with the cluster kept. Only the driver's own acceptance tail then ran by
+   hand, at 17:26:54Z, about 1 min after the report was built (17:25:54Z). It
+   wrote nothing inside the run directory:
+   ```
+   grep -vE '^(PASS  |== )' run.require-saturation.log   # only the two saturation/report INCONCLUSIVE lines
+   echo SATURATION_ABOVE_RANGE ... > saturation-above-range.txt
+   jq -e '.safetyFailure == false and .teeExit == 0 and .k6Exit == 0 and .runnerExit == 3 and .reportExit == 3' run.runner-status.json
+   jq -e '.ok == true and .verdict == "clean" and (has("incomplete") | not) and .report.quiescent == true' run/raw/invcheck.json
+   jq -e '.invariants.ledger == "PASS" and .invariants.invcheck == "PASS" and .invariants.unreadable == 0
+          and .audit.mode == "without-admission" and .audit.matcherReplicasAfter == .audit.matcherReplicas' run/summary.json
+   tar ... docs/evidence/A1.5 | sha256sum   # equal to a15-before.sha256
+   docker inspect <kind nodes> | cmp - owned-nodes.json   # the run's own cluster
+   make cluster-down CLUSTER=reliefgrid
+   tar ... docs/evidence/A1.5 | sha256sum   # still equal
+   echo "PHASE2_RUN_ACCEPTED step-1 ..." > acceptance.txt
+   ```
+   Checksums (13 Nov):
+   - In every run's original directory, `sha256sum -c SHA256SUMS` passes for every
+     file the harness listed. No file in any run directory is newer than its
+     SHA256SUMS.
+   - The step runs' k6 points, which the harness spilled to
+     `~/.cache/reliefgrid/S5.2/<runId>/`, match the sha256 in their `summary.json`.
+   - Every committed file is byte-identical to the harness's, except `summary.json`
+     (only its `raw` list, where the slim step marks off-repo files with their
+     sha256) and that file's line in `SHA256SUMS`.
+   - The remaining runs used the revised driver unattended.
 3. **The Phase 1 idle control failed to start once** (`stage_timeout` rejects a 0 s
    stage). No cluster had been created yet. The idle stage now takes its 60 s idle
    window as its stage length. The rerun was accepted.

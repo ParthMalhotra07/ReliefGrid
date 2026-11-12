@@ -9,6 +9,9 @@
    "raftEntries": 25948,
    "commands": 25942,
    "nonCommand": 6,
+   "fsmApplies": 25948,
+   "barriers": 0,
+   "appliedUncounted": 6,
    "reads": {
     "linearizable": 109178,
     "stale": 0,
@@ -20,6 +23,9 @@
    "raftEntries": 36967,
    "commands": 36967,
    "nonCommand": 0,
+   "fsmApplies": 36967,
+   "barriers": 0,
+   "appliedUncounted": 0,
    "reads": {
     "linearizable": 148647,
     "stale": 0,
@@ -31,6 +37,9 @@
    "raftEntries": 19027,
    "commands": 19026,
    "nonCommand": 1,
+   "fsmApplies": 19027,
+   "barriers": 0,
+   "appliedUncounted": 1,
    "reads": {
     "linearizable": 88050,
     "stale": 0,
@@ -51,6 +60,9 @@
    "raftEntries": 0,
    "commands": 0,
    "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
    "reads": {
     "linearizable": 383,
     "stale": 0,
@@ -65,6 +77,9 @@
    "raftEntries": 0,
    "commands": 0,
    "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
    "reads": {
     "linearizable": 384,
     "stale": 0,
@@ -79,6 +94,9 @@
    "raftEntries": 0,
    "commands": 0,
    "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
    "reads": {
     "linearizable": 384,
     "stale": 0,

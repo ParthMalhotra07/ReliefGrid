@@ -9,6 +9,9 @@
    "raftEntries": 72084,
    "commands": 14601,
    "nonCommand": 57483,
+   "fsmApplies": 14601,
+   "barriers": 57483,
+   "appliedUncounted": 0,
    "reads": {
     "linearizable": 0,
     "stale": 0,
@@ -20,6 +23,9 @@
    "raftEntries": 68274,
    "commands": 13456,
    "nonCommand": 54818,
+   "fsmApplies": 13456,
+   "barriers": 54818,
+   "appliedUncounted": 0,
    "reads": {
     "linearizable": 0,
     "stale": 0,
@@ -31,6 +37,9 @@
    "raftEntries": 68520,
    "commands": 13593,
    "nonCommand": 54927,
+   "fsmApplies": 13597,
+   "barriers": 54923,
+   "appliedUncounted": 4,
    "reads": {
     "linearizable": 0,
     "stale": 0,

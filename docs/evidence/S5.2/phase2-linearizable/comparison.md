@@ -14,6 +14,7 @@
 |---|---|---|
 | Step run: Raft entries / FSM commands per run | 342242 / 72046 | 132108 / 132079 |
 | Step run: non-command entries per run (share of the log) | 270196 (79.0%) | 29 (0.0%) |
+| Step run: non-command split: barriers (committed, never reached FSM.Apply; max of 3 runs) / commands applied but in flight at the end scrape | 270191 (270774) / 5 | 0 (0) / 29 |
 | Step run: storage reads by mode per run | linearizable 0, stale 0, strong 270149 | linearizable 555572, stale 0, strong 0 |
 | Baseline run: Raft entries / FSM commands per run | 207539 / 41267 | 82473 / 82462 |
 | Baseline run: non-command entries per run (share of the log) | 166272 (80.1%) | 11 (0.0%) |

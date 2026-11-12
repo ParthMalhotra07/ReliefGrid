@@ -12,6 +12,13 @@ From files the runner already keeps (no cluster access):
                          replica that received it; ok and error)
             nonCommand   raftEntries - commands: barriers, no-ops and configuration
                          entries (plus any errored command that still committed)
+            fsmApplies   growth of the shard's highest storage_raft_fsm_apply_seconds_count:
+                         entries that reached FSM.Apply (commands only)
+            barriers     raftEntries - fsmApplies: committed entries that never reached
+                         FSM.Apply (barriers, no-ops, configuration)
+            appliedUncounted  fsmApplies - commands: commands applied but not yet
+                         observed by the receiving replica's latency counter when
+                         the end scrape was taken (in flight at the scrape)
             reads        growth of storage_read_latency_seconds_count by consistency
   coordinatorCpu  the storage-coordinator pod's CPU (millicores) per step window
                   (facts.json steps, ramp excluded), from raw/cgroup.jsonl.
@@ -45,9 +52,11 @@ def snapshot(d):
         for metric, lab, v in prom(os.path.join(d, name)):
             if 'shard' not in lab:
                 continue
-            s = shards.setdefault(int(lab['shard']), {'commit': 0.0, 'commands': 0.0, 'reads': {}})
+            s = shards.setdefault(int(lab['shard']), {'commit': 0.0, 'fsm': 0.0, 'commands': 0.0, 'reads': {}})
             if metric == 'storage_raft_commit_index':
                 s['commit'] = max(s['commit'], v)
+            elif metric == 'storage_raft_fsm_apply_seconds_count':
+                s['fsm'] = max(s['fsm'], v)
             elif metric == 'storage_command_latency_seconds_count':
                 s['commands'] += v
             elif metric == 'storage_read_latency_seconds_count':
@@ -66,8 +75,10 @@ def delta(a_dir, b_dir, seconds):
         entries = y['commit'] - x['commit']
         commands = y['commands'] - x['commands']
         reads = {c: int(y['reads'].get(c, 0) - x['reads'].get(c, 0)) for c in sorted(set(x['reads']) | set(y['reads']))}
+        fsm = y['fsm'] - x['fsm']
         row = {'shard': shard, 'raftEntries': int(entries), 'commands': int(commands),
-               'nonCommand': int(entries - commands), 'reads': reads}
+               'nonCommand': int(entries - commands), 'fsmApplies': int(fsm),
+               'barriers': int(entries - fsm), 'appliedUncounted': int(fsm - commands), 'reads': reads}
         if seconds:
             row['seconds'] = round(seconds, 1)
             row['nonCommandPerS'] = round((entries - commands) / seconds, 2)

@@ -174,7 +174,10 @@ def agg(p):
                 for k, v in sh['reads'].items():
                     reads[k] = reads.get(k, 0) + v
         n = len(runs) or 1
-        return {'raftEntriesPerRun': round(ent / n), 'commandsPerRun': round(cmd / n), 'nonCommandPerRun': round((ent - cmd) / n),
+        fsm = sum(sh['fsmApplies'] for r in runs for sh in r['raft'])
+        return {'barriersPerRun': round((ent - fsm) / n), 'appliedUncountedPerRun': round((fsm - cmd) / n),
+                'barriersMaxRun': max(sum(sh['raftEntries'] - sh['fsmApplies'] for sh in r['raft']) for r in runs),
+                'raftEntriesPerRun': round(ent / n), 'commandsPerRun': round(cmd / n), 'nonCommandPerRun': round((ent - cmd) / n),
                 'nonCommandShare': None if not ent else round((ent - cmd) / ent, 4), 'readsPerRun': {k: round(v / n) for k, v in sorted(reads.items())}}
     a['raftStep'] = raft_share(p['steps'])
     a['raftBaseline'] = raft_share(p['baselines'])
@@ -232,6 +235,9 @@ def markdown(labels, A, P):
         x, y = A[a][key], A[b][key]
         w(f"| {name}: Raft entries / FSM commands per run | {x['raftEntriesPerRun']} / {x['commandsPerRun']} | {y['raftEntriesPerRun']} / {y['commandsPerRun']} |")
         w(f"| {name}: non-command entries per run (share of the log) | {x['nonCommandPerRun']} ({x['nonCommandShare']:.1%}) | {y['nonCommandPerRun']} ({y['nonCommandShare']:.1%}) |")
+        if key == 'raftStep':
+            w(f"| {name}: non-command split: barriers (committed, never reached FSM.Apply; max of 3 runs) / commands applied but in flight at the end scrape | "
+              f"{x['barriersPerRun']} ({x['barriersMaxRun']}) / {x['appliedUncountedPerRun']} | {y['barriersPerRun']} ({y['barriersMaxRun']}) / {y['appliedUncountedPerRun']} |")
         w(f"| {name}: storage reads by mode per run | {', '.join(f'{k} {v}' for k, v in x['readsPerRun'].items())} | {', '.join(f'{k} {v}' for k, v in y['readsPerRun'].items())} |")
     ia, ib = A[a]['idle'], A[b]['idle']
     w(f"| Idle: non-command entries/s per shard (samples) | {fmt(ia and ia['nonCommandPerSPerShard'])} ({ia and ia['samples']}) | {fmt(ib and ib['nonCommandPerSPerShard'])} ({ib and ib['samples']}) |")
