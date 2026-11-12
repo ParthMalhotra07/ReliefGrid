@@ -79,7 +79,7 @@
       "n": 3
     },
     "results.errors.rate": {
-      "median": 0,
+      "median": 0.001,
       "min": 0.0005,
       "max": 0.00125,
       "n": 3

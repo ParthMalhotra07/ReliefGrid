@@ -64,7 +64,7 @@ func Aggregate(dirs []string) (map[string]any, error) {
 		if len(v)%2 == 0 {
 			med = (v[len(v)/2-1] + v[len(v)/2]) / 2
 		}
-		figs[f] = Spread{Median: round2(med), Min: v[0], Max: v[len(v)-1], N: len(v)}
+		figs[f] = Spread{Median: med, Min: v[0], Max: v[len(v)-1], N: len(v)}
 	}
 	return map[string]any{"scenario": scenario, "payloadSha256": payload, "runs": runs, "figures": figs}, nil
 }

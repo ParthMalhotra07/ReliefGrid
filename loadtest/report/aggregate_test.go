@@ -60,3 +60,35 @@ func TestAggregate(t *testing.T) {
 		t.Error("Aggregate mixed a baseline run into step runs")
 	}
 }
+
+// Rates are fractions, so rounding medians to two decimals erases real errors.
+func TestAggregatePreservesErrorRatePrecision(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		rates []float64
+		want  float64
+	}{
+		{"baseline", []float64{0.00125, 0.0005, 0.001}, 0.001},
+		{"step", []float64{0.001211, 0.000736, 0.00095}, 0.00095},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var dirs []string
+			for _, rate := range tc.rates {
+				dir := t.TempDir()
+				writeJSON(t, filepath.Join(dir, "summary.json"), map[string]any{
+					"scenario": "baseline", "dataset": map[string]any{"payloadSha256": "same"},
+					"results": map[string]any{"errors": map[string]any{"rate": rate}},
+				})
+				dirs = append(dirs, dir)
+			}
+			agg, err := report.Aggregate(dirs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := agg["figures"].(map[string]report.Spread)["results.errors.rate"]
+			if got.Median != tc.want {
+				t.Fatalf("median = %.12g, want %.12g", got.Median, tc.want)
+			}
+		})
+	}
+}
