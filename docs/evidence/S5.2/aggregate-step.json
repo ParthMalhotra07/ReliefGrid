@@ -1,0 +1,107 @@
+{
+  "figures": {
+    "match.matched": {
+      "median": 4276,
+      "min": 4276,
+      "max": 4276,
+      "n": 3
+    },
+    "match.p50Ms": {
+      "median": 21361.5,
+      "min": 21329.5,
+      "max": 22741.5,
+      "n": 3
+    },
+    "match.p99Ms": {
+      "median": 474995.5,
+      "min": 452319.25,
+      "max": 489753,
+      "n": 3
+    },
+    "match.waiting": {
+      "median": 2253,
+      "min": 2253,
+      "max": 2253,
+      "n": 3
+    },
+    "results.classes.list.p50Ms": {
+      "median": 158.53,
+      "min": 156.08,
+      "max": 159.29,
+      "n": 3
+    },
+    "results.classes.list.p95Ms": {
+      "median": 294.6,
+      "min": 293.37,
+      "max": 294.88,
+      "n": 3
+    },
+    "results.classes.list.p99Ms": {
+      "median": 367.06,
+      "min": 364.74,
+      "max": 368.52,
+      "n": 3
+    },
+    "results.classes.read.p50Ms": {
+      "median": 50.68,
+      "min": 50.07,
+      "max": 50.94,
+      "n": 3
+    },
+    "results.classes.read.p95Ms": {
+      "median": 83.21,
+      "min": 82.47,
+      "max": 83.42,
+      "n": 3
+    },
+    "results.classes.read.p99Ms": {
+      "median": 102.43,
+      "min": 102.37,
+      "max": 104.04,
+      "n": 3
+    },
+    "results.classes.write.p50Ms": {
+      "median": 167.25,
+      "min": 165.26,
+      "max": 168.78,
+      "n": 3
+    },
+    "results.classes.write.p95Ms": {
+      "median": 790.92,
+      "min": 773.21,
+      "max": 795.63,
+      "n": 3
+    },
+    "results.classes.write.p99Ms": {
+      "median": 1049.34,
+      "min": 1035.9,
+      "max": 1071.05,
+      "n": 3
+    },
+    "results.errors.rate": {
+      "median": 0.00095,
+      "min": 0.000736,
+      "max": 0.001211,
+      "n": 3
+    },
+    "results.throughputRps": {
+      "median": 43.86,
+      "min": 43.86,
+      "max": 43.87,
+      "n": 3
+    },
+    "saturation.rps": {
+      "median": 50,
+      "min": 50,
+      "max": 50,
+      "n": 3
+    }
+  },
+  "payloadSha256": "26f41071d5bb8450e9e5aac088a2b6974aa0f7c566990f40123597db3faafda2",
+  "runs": [
+    "S5.2-step-20261111T094442Z",
+    "S5.2-step-20261111T100632Z",
+    "S5.2-step-20261111T102827Z"
+  ],
+  "scenario": "step"
+}

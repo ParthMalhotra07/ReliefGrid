@@ -1,0 +1,99 @@
+== S5.2 Verify 2026-11-11T13:54:19Z, git ea6a3bae8fa5
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	5.919s
+PASS  report checker tests (scripts/load_report_test.go)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	0.061s
+PASS  storage metrics endpoint tests
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	0.336s
+PASS  coordinator metrics tests
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/dataset	0.180s
+PASS  dataset generator tests (loadtest/dataset)
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/report	0.279s
+PASS  report builder tests (loadtest/report)
+== docs/evidence/S5.2/S5.2-baseline-20261111T105012Z: S5.2-baseline-20261111T105012Z (baseline)
+PASS  results: 25 req/s; write p50/p95/p99 136.53/495.16/684 ms; read p50/p95/p99 41.17/68.9/79.94 ms; list p50/p95/p99 134.2/234.05/291.22 ms; errors 0.0005
+PASS  background: 121 samples (0 gaps), 0 unconfirmed publishes, peak matching.requests 3833, waiting 0->539; after the run 0 unconfirmed, waiting 621 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 2 handoffs (0 retries)
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-baseline-20261111T105012Z
+PASS  report docs/evidence/S5.2/S5.2-baseline-20261111T105012Z
+== docs/evidence/S5.2/S5.2-baseline-20261111T110320Z: S5.2-baseline-20261111T110320Z (baseline)
+PASS  results: 25 req/s; write p50/p95/p99 133.51/420.57/690.92 ms; read p50/p95/p99 40.19/67.01/79.12 ms; list p50/p95/p99 128.95/233.21/305.65 ms; errors 0.001
+PASS  background: 121 samples (0 gaps), 0 unconfirmed publishes, peak matching.requests 3584, waiting 0->524; after the run 0 unconfirmed, waiting 617 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 1 handoffs (0 retries)
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-baseline-20261111T110320Z
+PASS  report docs/evidence/S5.2/S5.2-baseline-20261111T110320Z
+== docs/evidence/S5.2/S5.2-baseline-20261111T111624Z: S5.2-baseline-20261111T111624Z (baseline)
+PASS  results: 25 req/s; write p50/p95/p99 135.98/425.86/665.75 ms; read p50/p95/p99 41.11/67.87/80.48 ms; list p50/p95/p99 130.41/238.01/280.82 ms; errors 0.00125
+PASS  background: 121 samples (0 gaps), 0 unconfirmed publishes, peak matching.requests 3576, waiting 0->507; after the run 0 unconfirmed, waiting 588 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 0 handoffs (0 retries)
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-baseline-20261111T111624Z
+PASS  report docs/evidence/S5.2/S5.2-baseline-20261111T111624Z
+== docs/evidence/S5.2/S5.2-soak-20261111T112933Z: S5.2-soak-20261111T112933Z (soak)
+PASS  results: 35 req/s; write p50/p95/p99 153.33/652.94/838.84 ms; read p50/p95/p99 46.99/76.17/93.75 ms; list p50/p95/p99 149.12/268.47/330.37 ms; errors 0.001275
+PASS  background: 359 samples (0 gaps), 416 unconfirmed publishes, peak matching.requests 10024, waiting 0->1815; after the run 0 unconfirmed, waiting 2311 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 75 s, drained 1 handoffs (0 retries)
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-soak-20261111T112933Z
+PASS  report docs/evidence/S5.2/S5.2-soak-20261111T112933Z
+== docs/evidence/S5.2/S5.2-step-20261111T094442Z: S5.2-step-20261111T094442Z (step)
+PASS  results: 43.87 req/s; write p50/p95/p99 168.78/795.63/1071.05 ms; read p50/p95/p99 50.94/83.42/104.04 ms; list p50/p95/p99 158.53/294.88/367.06 ms; errors 0.000736
+PASS  background: 193 samples (0 gaps), 5968 unconfirmed publishes, peak matching.requests 10021, waiting 0->478; after the run 5209 unconfirmed, waiting 1238 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 106 s, drained 1 handoffs (0 retries)
+PASS  saturation: 50 req/s, broken at 60 by writeP99
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261111T094442Z
+PASS  report docs/evidence/S5.2/S5.2-step-20261111T094442Z
+== docs/evidence/S5.2/S5.2-step-20261111T100632Z: S5.2-step-20261111T100632Z (step)
+PASS  results: 43.86 req/s; write p50/p95/p99 165.26/773.21/1035.9 ms; read p50/p95/p99 50.07/82.47/102.37 ms; list p50/p95/p99 156.08/294.6/368.52 ms; errors 0.00095
+PASS  background: 193 samples (0 gaps), 6381 unconfirmed publishes, peak matching.requests 10020, waiting 0->515; after the run 4569 unconfirmed, waiting 1246 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 106 s, drained 0 handoffs (0 retries)
+PASS  saturation: 50 req/s, broken at 60 by writeP99
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261111T100632Z
+PASS  report docs/evidence/S5.2/S5.2-step-20261111T100632Z
+== docs/evidence/S5.2/S5.2-step-20261111T102827Z: S5.2-step-20261111T102827Z (step)
+PASS  results: 43.86 req/s; write p50/p95/p99 167.25/790.92/1049.34 ms; read p50/p95/p99 50.68/83.21/102.43 ms; list p50/p95/p99 159.29/293.37/364.74 ms; errors 0.001211
+PASS  background: 193 samples (0 gaps), 6324 unconfirmed publishes, peak matching.requests 10018, waiting 0->519; after the run 3693 unconfirmed, waiting 1235 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 106 s, drained 3 handoffs (0 retries)
+PASS  saturation: 50 req/s, broken at 60 by writeP99
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261111T102827Z
+PASS  report docs/evidence/S5.2/S5.2-step-20261111T102827Z
+== docs/evidence/S5.2/S5.2-step-20261111T094442Z: S5.2-step-20261111T094442Z (step)
+PASS  results: 43.87 req/s; write p50/p95/p99 168.78/795.63/1071.05 ms; read p50/p95/p99 50.94/83.42/104.04 ms; list p50/p95/p99 158.53/294.88/367.06 ms; errors 0.000736
+PASS  background: 193 samples (0 gaps), 5968 unconfirmed publishes, peak matching.requests 10021, waiting 0->478; after the run 5209 unconfirmed, waiting 1238 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 106 s, drained 1 handoffs (0 retries)
+PASS  saturation: 50 req/s, broken at 60 by writeP99
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261111T094442Z
+PASS  saturation point in docs/evidence/S5.2/S5.2-step-20261111T094442Z: 50 req/s; broken at 60 by writeP99
+== docs/evidence/S5.2/S5.2-step-20261111T100632Z: S5.2-step-20261111T100632Z (step)
+PASS  results: 43.86 req/s; write p50/p95/p99 165.26/773.21/1035.9 ms; read p50/p95/p99 50.07/82.47/102.37 ms; list p50/p95/p99 156.08/294.6/368.52 ms; errors 0.00095
+PASS  background: 193 samples (0 gaps), 6381 unconfirmed publishes, peak matching.requests 10020, waiting 0->515; after the run 4569 unconfirmed, waiting 1246 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 106 s, drained 0 handoffs (0 retries)
+PASS  saturation: 50 req/s, broken at 60 by writeP99
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261111T100632Z
+PASS  saturation point in docs/evidence/S5.2/S5.2-step-20261111T100632Z: 50 req/s; broken at 60 by writeP99
+== docs/evidence/S5.2/S5.2-step-20261111T102827Z: S5.2-step-20261111T102827Z (step)
+PASS  results: 43.86 req/s; write p50/p95/p99 167.25/790.92/1049.34 ms; read p50/p95/p99 50.68/83.21/102.43 ms; list p50/p95/p99 159.29/293.37/364.74 ms; errors 0.001211
+PASS  background: 193 samples (0 gaps), 6324 unconfirmed publishes, peak matching.requests 10018, waiting 0->519; after the run 3693 unconfirmed, waiting 1235 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 106 s, drained 3 handoffs (0 retries)
+PASS  saturation: 50 req/s, broken at 60 by writeP99
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261111T102827Z
+PASS  saturation point in docs/evidence/S5.2/S5.2-step-20261111T102827Z: 50 req/s; broken at 60 by writeP99
+
+S5.2 Verify: PASS

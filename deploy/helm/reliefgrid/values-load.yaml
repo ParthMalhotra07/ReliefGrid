@@ -1,0 +1,24 @@
+# S5.2 load runs only (loadtest/cluster.sh applies it after make app-deploy),
+# never the default: requests = limits on every container (Guaranteed QoS).
+# See deploy/helm/storage/values-load.yaml for the CPU budget.
+app:
+  api:
+    resources:
+      requests: {cpu: 400m, memory: 256Mi}
+      limits: {cpu: 400m, memory: 256Mi}
+  matcher:
+    resources:
+      requests: {cpu: 250m, memory: 256Mi}
+      limits: {cpu: 250m, memory: 256Mi}
+  ui:
+    resources:
+      requests: {cpu: 50m, memory: 64Mi}
+      limits: {cpu: 50m, memory: 64Mi}
+rabbitmq:
+  resources:
+    requests: {cpu: 750m, memory: 768Mi}
+    limits: {cpu: 750m, memory: 768Mi}
+traefik:
+  resources:
+    requests: {cpu: 300m, memory: 128Mi}
+    limits: {cpu: 300m, memory: 128Mi}
