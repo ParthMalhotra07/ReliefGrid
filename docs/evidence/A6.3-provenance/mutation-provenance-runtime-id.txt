@@ -1,0 +1,23 @@
+Negative control: provenance-runtime-id
+Disposable source copy only.
+Exit: 1
+test_binding_needs_exact_baseline_and_every_runtime_digest (__main__.ProvenanceTests.test_binding_needs_exact_baseline_and_every_runtime_digest) ... FAIL
+test_build_uses_iid_not_a_racy_tag_inspection (__main__.ProvenanceTests.test_build_uses_iid_not_a_racy_tag_inspection) ... ok
+test_dirty_untracked_or_mid_build_source_changes_never_pass (__main__.ProvenanceTests.test_dirty_untracked_or_mid_build_source_changes_never_pass) ... ok
+test_does_not_overwrite_or_put_evidence_inside_source (__main__.ProvenanceTests.test_does_not_overwrite_or_put_evidence_inside_source) ... ok
+test_invalid_image_failure_or_missing_component_leaves_no_success_manifest (__main__.ProvenanceTests.test_invalid_image_failure_or_missing_component_leaves_no_success_manifest) ... ok
+test_snapshot_build_binds_source_context_and_immutable_image (__main__.ProvenanceTests.test_snapshot_build_binds_source_context_and_immutable_image) ... ok
+
+======================================================================
+FAIL: test_binding_needs_exact_baseline_and_every_runtime_digest (__main__.ProvenanceTests.test_binding_needs_exact_baseline_and_every_runtime_digest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/reliefgrid-delivery-negative-gy8l0zg3/build_provenance_test.py", line 139, in test_binding_needs_exact_baseline_and_every_runtime_digest
+    with self.assertRaises(build.ProvenanceError): build.bind_runtime([record], altered)
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ProvenanceError not raised
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.194s
+
+FAILED (failures=1)

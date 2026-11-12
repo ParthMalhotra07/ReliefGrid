@@ -17,7 +17,7 @@ import (
 // create its default user, so the import must include the configured credentials.
 func TestAppBrokerNativeBootImport(t *testing.T) {
 	for _, credentials := range []struct{ user, password string }{
-		{"reliefgrid", "reliefgrid"}, {"boot-test", `custom:p@ss/word"`},
+		{"reliefgrid", "reliefgrid"}, {"reliefgrid-ui-monitor", "collision-fixture"}, {"boot-test", `custom:p@ss/word"`},
 	} {
 		t.Run(credentials.user, func(t *testing.T) {
 			docs := renderApp(t, "--set-string", "rabbitmq.username="+credentials.user,
@@ -44,8 +44,20 @@ func TestAppBrokerNativeBootImport(t *testing.T) {
 			if err := json.Unmarshal(raw, &got); err != nil {
 				t.Fatal(err)
 			}
-			wantUsers := []any{map[string]any{"name": credentials.user, "password": credentials.password, "tags": "administrator"}}
-			wantPermissions := []any{map[string]any{"user": credentials.user, "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}}
+			decode := func(key string) string {
+				t.Helper()
+				value, err := base64.StdEncoding.DecodeString(appField(t, secret, "data", key).(string))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return string(value)
+			}
+			monitorUser, monitorPassword := decode("ui-monitor-username"), decode("ui-monitor-password")
+			if monitorUser == credentials.user || monitorPassword == credentials.password || len(monitorPassword) < 32 {
+				t.Fatal("monitor identity must be independent")
+			}
+			wantUsers := []any{map[string]any{"name": credentials.user, "password": credentials.password, "tags": "administrator"}, map[string]any{"name": monitorUser, "password": monitorPassword, "tags": "management"}}
+			wantPermissions := []any{map[string]any{"user": credentials.user, "vhost": "/", "configure": ".*", "write": ".*", "read": ".*"}, map[string]any{"user": monitorUser, "vhost": "/", "configure": "^$", "write": "^$", "read": "^$"}}
 			if !reflect.DeepEqual(got["users"], wantUsers) || !reflect.DeepEqual(got["permissions"], wantPermissions) {
 				t.Fatal("boot import must provision configured user and permissions")
 			}

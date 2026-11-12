@@ -96,7 +96,7 @@ visibility, contracts, ADRs, evidence, final report, live-demo rehearsal notes a
 backup recording. Repository public visibility was observed on 7 November; that
 does not establish submission, presenter rehearsals, recording creation or playback. The public
 GitHub link, mandatory live demonstration and deployment-from-scratch backup
-recording are resolved submission requirements. The professor confirmed a report under10pages; the
+recording are resolved submission requirements. The professor confirmed a report under 10 pages; the
 [nine-page submission outline](submission-outline.md) is proposed for joint
 agreement. Final export/page-count and execution of external deliverables remain
 pending until recorded.

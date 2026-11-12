@@ -1,0 +1,17 @@
+Mutation: redirect-following
+Command: go test -race -count=1 -run TestClientNeverFollowsRedirectsIncludingInjectedClient .
+Exit: 1
+--- FAIL: TestClientNeverFollowsRedirectsIncludingInjectedClient (0.01s)
+    --- FAIL: TestClientNeverFollowsRedirectsIncludingInjectedClient/301 (0.00s)
+        auth_test.go:220: redirect policy bypassed or target received credential
+    --- FAIL: TestClientNeverFollowsRedirectsIncludingInjectedClient/302 (0.00s)
+        auth_test.go:220: redirect policy bypassed or target received credential
+    --- FAIL: TestClientNeverFollowsRedirectsIncludingInjectedClient/303 (0.00s)
+        auth_test.go:220: redirect policy bypassed or target received credential
+    --- FAIL: TestClientNeverFollowsRedirectsIncludingInjectedClient/307 (0.00s)
+        auth_test.go:220: redirect policy bypassed or target received credential
+    --- FAIL: TestClientNeverFollowsRedirectsIncludingInjectedClient/308 (0.00s)
+        auth_test.go:220: redirect policy bypassed or target received credential
+FAIL
+FAIL	authmutation	0.021s
+FAIL

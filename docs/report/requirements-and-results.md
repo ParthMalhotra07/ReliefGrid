@@ -15,40 +15,40 @@
 | Kubernetes microservice scaling | Demo9 | [script](../../scripts/demos/demo-9.sh) |
 
 All nine scripts were recorded twice in the
-[4November gate report](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/gate.txt):
-18/18PASS. The report records clean deployment per round, reset durations129s and
-104s, no cordons and the exact tested code-tree hash. These are observed times
+[4 November gate report](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/gate.txt):
+18/18 PASS. The report records clean deployment per round, reset durations 129 s and
+104 s, no cordons and the exact tested code-tree hash. These are observed times
 on Hrishabh's machine, not guaranteed setup times on every laptop.
 
 ## Historical gate measurements
 
-The retained 4November gate on dba92c514ef1, code-tree fingerprint ecc68871df28,
-records the following values. Shard counts refer only to demo4's deterministic
+The retained 4 November gate on dba92c514ef1, code-tree fingerprint ecc68871df28,
+records the following values. Shard counts refer only to demo 4's deterministic
 300-key seed, not the total changing application dataset:
 
 - Round 1: shard counts `107/84/109`; election `3642 ms`; acknowledged `2692`; while down `2089`; replay command index `7911 -> 13690`.
 - Round 2: shard counts `107/84/109`; election `5007 ms`; acknowledged `2635`; while down `2017`; replay command index `7320 -> 12188`.
 
-Sources: [round1 demo4](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-4.txt),
-[demo6](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-6.txt),
-[demo7](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-7.txt);
-[round2 demo4](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-4.txt),
-[demo6](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-6.txt),
-[demo7](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-7.txt).
-Demo6 used seed6, four writers for40s, and stopped shard1's leader about8s into
-the workload while keeping its replacement Pending. All2,692/2,635 acknowledged
-writes were read back, with zero lost in these runs;2,089/2,017 were acknowledged
-while that leader was down. The observed elections were approximately3.6s/5.0s,
-not an SLA. Demo7 continued the same stopped-node handoff, added100 writes while
-it was down, and verified all100 in the restarted node's own FSM. The replay
+Sources: [round1 demo 4](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-4.txt),
+[demo 6](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-6.txt),
+[demo 7](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-7.txt);
+[round2 demo 4](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-4.txt),
+[demo 6](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-6.txt),
+[demo 7](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-7.txt).
+Demo6 used seed 6, four writers for 40 s, and stopped shard1's leader about 8 s into
+the workload while keeping its replacement Pending. All 2,692/2,635 acknowledged
+writes were read back, with zero lost in these runs; 2,089/2,017 were acknowledged
+while that leader was down. The observed elections were approximately 3.6 s/5.0 s,
+not an SLA. Demo7 continued the same stopped-node handoff, added 100 writes while
+it was down, and verified all 100 in the restarted node's own FSM. The replay
 figures above are completed SQLite command indexes, not Raft log indexes.
 
 The gate host is hrishabh-sharrma-ThinkPad-E14-Gen-7. Separate retained records
-describe that host as **8 CPUs, Intel Core Ultra7 258V**
+describe that host as **8 CPUs, Intel Core Ultra 7 258V**
 ([CPU record](../evidence/S4.4/bench-apply-20261103T085339Z.txt#L10)) and show
-**31,094 MiB total usable memory** (about30.37GiB)
+**31,094 MiB total usable memory** (about 30.37 GiB)
 ([resource record](../evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/resources.txt#L1)).
-Those are separate host records, not synchronized measurements of the4November
+Those are separate host records, not synchronized measurements of the4 November
 gate. That gate's CPU allocation, power policy and unrelated concurrent load were
 not retained; this missing context prevents treating its functional numbers as
 a controlled capacity benchmark. Application background activity was present.
@@ -194,7 +194,7 @@ or current application throughput. No microbenchmark value fills the pending tab
 - The original PS field labels and implementation choices are recorded in
   [architecture](architecture.md); bare alias compliance still needs #128's
   review. `/api/v1` equivalence alone is insufficient.
-- The professor confirmed a report under10pages. The proposed nine-page
+- The professor confirmed a report under 10 pages. The proposed nine-page
   [submission outline](submission-outline.md), final reviewed SHA, final gate,
   rehearsals, recording/playback and submission receipt remain final-package
   deliverables. Public visibility is observed separately from actual submission.
@@ -204,7 +204,7 @@ or current application throughput. No microbenchmark value fills the pending tab
   a present-system performance guarantee; other major extensions remain future work.
   Hrishabh built the fence implementation and benchmark as S4.1; #152 packages
   that existing study as M6. All three replicas run in one Go test process over
-  127.0.0.1, not three separate processes or hosts. Go1.27.2 was pinned in source
+  127.0.0.1, not three separate processes or hosts. Go 1.27.2 was pinned in source
   and recorded in the separate safety run; the benchmark raw output omits its
   runtime version, so the benchmark runtime remains unrecorded.
 - Application aging #151 is merged in this baseline, but remains disabled by
@@ -216,10 +216,10 @@ or current application throughput. No microbenchmark value fills the pending tab
 ## Agreed core-gate scope and open enhancements
 
 The [agreed scope](../operations/gate-scope.md) runs the core-system gate with
-aging0s and autoscaling off; #29 auth follows the gate. No such gate result closes
+aging 0s and autoscaling off; #29 auth follows the gate. No such gate result closes
 the unfinished A4.4/A4.5 enhancements. Separate aging evidence is planned for the
-13th; final-cohort autoscaling evidence for the13th–14th if included; auth wiring
-by the15th before the17th freeze. If autoscaling is omitted, it is untested on the
+13th; final-cohort autoscaling evidence for the 13th–14th if included; auth wiring
+by the 15th before the 17th freeze. If autoscaling is omitted, it is untested on the
 final cohort; the qualified historical #123 observations remain recorded above.
 These are plans, not completed executions. The final integrated gate/result stays
 PENDING until its actual scope/source/images and raw outputs are recorded.

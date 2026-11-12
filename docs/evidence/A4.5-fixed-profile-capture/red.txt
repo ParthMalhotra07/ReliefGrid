@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 8, in <module>
+    import capture_fixed_profile as capture
+ModuleNotFoundError: No module named 'capture_fixed_profile'

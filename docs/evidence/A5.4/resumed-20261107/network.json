@@ -1,0 +1,14 @@
+{
+  "internal": true,
+  "ipam": {
+    "Driver": "default",
+    "Options": {},
+    "Config": [
+      {
+        "Subnet": "10.240.0.0/12",
+        "IPRange": "10.240.0.0/24",
+        "Gateway": "10.240.0.1"
+      }
+    ]
+  }
+}

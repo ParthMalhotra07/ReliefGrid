@@ -4,7 +4,7 @@ ReliefGrid matches emergency requests to geographically suitable resources using
 Raft-backed sharded storage and asynchronous workflows. This report describes the
 implemented core, refreshed against main
 `82cc664828b2dec1bea5f95f3661fbdb2f185054`. It distinguishes measured evidence
-from planned enhancements. The professor has confirmed **under10pages** for the
+from planned enhancements. The professor has confirmed **under 10 pages** for the
 submission; this repository document set retains detailed material. The proposed
 [nine-page submission outline](submission-outline.md) still needs joint agreement
 and actual export/page-count verification. Owner review remains pending.
@@ -41,7 +41,7 @@ Cloud is optional and parked following the instructor's direction.
 ## Reproducibility and claim boundary
 
 The [recorded course gate](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/gate.txt)
-reports18/18 demo passes across two clean deployments on4November. That evidence
+reports18/18 demo passes across two clean deployments on4 November. That evidence
 belongs to the recorded code tree, not automatically to every later commit.
 See the [UI evidence](../evidence/A4.1) for the merged dispatch interface.
 Metrics, autoscaling and API refinements have their own PR/evidence lifecycle;
