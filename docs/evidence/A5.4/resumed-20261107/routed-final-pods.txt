@@ -1,0 +1,12 @@
+NAME                                   READY   STATUS      RESTARTS   AGE
+storage-bootstrap-1-rb4lf              0/1     Completed   0          111s
+storage-coordinator-79c68595d4-d965b   1/1     Running     0          111s
+storage-shard-0-0                      1/1     Running     0          111s
+storage-shard-0-1                      1/1     Running     0          111s
+storage-shard-0-2                      1/1     Running     0          111s
+storage-shard-1-0                      1/1     Running     0          111s
+storage-shard-1-1                      1/1     Running     0          111s
+storage-shard-1-2                      1/1     Running     0          111s
+storage-shard-2-0                      1/1     Running     0          111s
+storage-shard-2-1                      1/1     Running     0          111s
+storage-shard-2-2                      1/1     Running     0          111s

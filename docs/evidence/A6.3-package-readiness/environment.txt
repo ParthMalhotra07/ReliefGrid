@@ -1,0 +1,5 @@
+go version go1.27.2 linux/amd64
+Python 3.14.4
+git version 2.53.0
+764ced55c742e2c8d8907a738376397897f58dad
+2026-11-10T18:41:17Z

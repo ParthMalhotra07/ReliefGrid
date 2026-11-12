@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import tempfile
 from unittest.mock import patch
 import sys
+import subprocess
 
 import aging_rollout as aging
 
@@ -111,6 +112,98 @@ class RolloutTests(unittest.TestCase):
         aging.stable(approval, records, first, second)
         second['pods'][1]['metadata']['uid'] = 'replacement'
         with self.assertRaises(aging.RolloutError): aging.stable(approval, records, first, second)
+
+    def test_committed_voter_ids_and_suffrage_are_individually_required(self):
+        for field, value in (('id', 'foreign/inc'), ('suffrage', 'Nonvoter')):
+            with self.subTest(field=field):
+                approval, records, snapshot = fixture()
+                snapshot['statuses']['storage-shard-0-1']['configuration']['servers'][0][field] = value
+                with self.assertRaisesRegex(aging.RolloutError, 'committed voter configuration differs'):
+                    aging.validate(approval, records, snapshot)
+
+    def test_exactly_one_leader_is_required_independently_of_agreement(self):
+        approval, records, snapshot = fixture()
+        snapshot['statuses']['storage-shard-0-0']['state'] = 'Follower'
+        with self.assertRaisesRegex(aging.RolloutError, 'shard has no unique leader'):
+            aging.validate(approval, records, snapshot)
+
+    def test_stable_rejects_valid_new_leader_and_term_between_passes(self):
+        for change in ('leader', 'term'):
+            with self.subTest(change=change):
+                approval, records, first = fixture()
+                second = copy.deepcopy(first)
+                for name, status in second['statuses'].items():
+                    if status['shard'] != 0: continue
+                    if change == 'term': status['term'] += 1
+                    else:
+                        status['leaderId'] = 'storage-shard-0-1/inc'
+                        status['state'] = 'Leader' if name == 'storage-shard-0-1' else 'Follower'
+                self.assertTrue(aging.validate(approval, records, second)['ok'])
+                with self.assertRaisesRegex(aging.RolloutError, 'leader view changed'):
+                    aging.stable(approval, records, first, second)
+
+    def test_each_source_label_is_required_after_approval_hash_is_updated(self):
+        for label in ('io.reliefgrid.source-tree', 'io.reliefgrid.context-sha256'):
+            with self.subTest(label=label):
+                approval, records, snapshot = fixture()
+                records[0]['images'][0]['labels'][label] = '0' * (40 if label.endswith('tree') else 64)
+                approval['canonicalBuildRecordSHA256'] = [aging.record_hash(record) for record in records]
+                with self.assertRaisesRegex(aging.RolloutError, 'image/source labels differ'):
+                    aging.validate(approval, records, snapshot)
+
+    def test_pod_revision_must_match_completed_statefulset(self):
+        approval, records, snapshot = fixture()
+        snapshot['pods'][1]['metadata']['labels']['controller-revision-hash'] = 'old'
+        with self.assertRaisesRegex(aging.RolloutError, 'pod has old storage revision'):
+            aging.validate(approval, records, snapshot)
+
+    def test_missing_admission_catchup_state_and_commit_are_not_true(self):
+        for field in ('admitted', 'caughtUp', 'hasState', 'committed'):
+            with self.subTest(field=field):
+                approval, records, snapshot = fixture()
+                target = snapshot['statuses']['storage-shard-0-1']
+                if field == 'committed': target = target['configuration']
+                target.pop(field)
+                with self.assertRaises((aging.RolloutError, KeyError)):
+                    aging.validate(approval, records, snapshot)
+
+    def cli_failure(self, snapshot=None, read_failure=False):
+        approval, records, valid = fixture()
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            approved = directory / 'approval.json'
+            approved.write_text(json.dumps(approval))
+            output = directory / 'result.json'
+            argv = ['check', '--approval', str(approved), '--context', 'kind-reliefgrid', '--namespace', 'reliefgrid', '--output', str(output)]
+            for index, record in enumerate(records):
+                path = directory / f'build-{index}.json'
+                path.write_text(json.dumps(record))
+                argv += ['--build-record', str(path)]
+            if read_failure:
+                # Git ancestry/tree succeed; the first actual kubectl read fails.
+                responses = [SimpleNamespace(stdout=''), SimpleNamespace(stdout='b' * 40),
+                             subprocess.CalledProcessError(1, ['kubectl'], stderr='PRIVATE-MARKER')]
+                with patch.object(sys, 'argv', argv), patch.object(aging.subprocess, 'run', side_effect=responses):
+                    self.assertEqual(aging.main(), 1)
+            else:
+                with patch.object(sys, 'argv', argv), patch.object(aging, 'collect', side_effect=[snapshot or valid, valid]), \
+                     patch.object(aging.subprocess, 'run', return_value=SimpleNamespace(stdout='b' * 40)):
+                    self.assertEqual(aging.main(), 1)
+            self.assertTrue(output.exists(), 'FAIL must be saved for rejudging')
+            result = json.loads(output.read_bytes())
+            self.assertFalse(result['ok'])
+            self.assertNotIn('PRIVATE-MARKER', output.read_text())
+            return result
+
+    def test_failed_run_json_read_saves_fail_without_secret_output(self):
+        result = self.cli_failure(read_failure=True)
+        self.assertEqual(result['error'], 'read command failed; no readiness inferred')
+
+    def test_malformed_server_identity_saves_fail_instead_of_escaping(self):
+        _, _, snapshot = fixture()
+        snapshot['statuses']['storage-shard-0-1']['serverId'] = None
+        result = self.cli_failure(snapshot)
+        self.assertEqual(result['error'], 'source, input or read verification failed')
 
     def test_collect_uses_only_get_and_readonly_storage_status(self):
         _, _, snapshot = fixture()

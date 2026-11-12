@@ -225,7 +225,7 @@ def main():
         result = stable(approval, records, first, second)
         result.update(context=args.context, namespace=args.namespace, minimumSeamAncestor=MINIMUM_SEAM,
                       first=sanitize(first), second=sanitize(second), canonicalApprovalSHA256=record_hash(approval))
-    except (RolloutError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+    except (RolloutError, OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError) as error:
         result['error'] = str(error) if isinstance(error, RolloutError) else 'source, input or read verification failed'
     if args.output and not args.output.exists():
         with args.output.open('x') as stream: stream.write(json.dumps(result, indent=2, sort_keys=True) + '\n')

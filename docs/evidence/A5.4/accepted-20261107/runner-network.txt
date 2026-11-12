@@ -1,0 +1,7 @@
+PASS: runner external HTTPS blocked
+NAME                                     STATUS   ROLES           AGE     VERSION
+reliefgrid-offline-final-control-plane   Ready    control-plane   3m35s   v1.37.0
+reliefgrid-offline-final-worker          Ready    <none>          2m54s   v1.37.0
+reliefgrid-offline-final-worker2         Ready    <none>          2m54s   v1.37.0
+reliefgrid-offline-final-worker3         Ready    <none>          2m54s   v1.37.0
+reliefgrid-offline-final-worker4         Ready    <none>          2m54s   v1.37.0

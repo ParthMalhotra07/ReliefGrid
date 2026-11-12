@@ -1,0 +1,27 @@
+EE.
+======================================================================
+ERROR: test_corrupt_missing_and_escaping_assets_fail_before_deployment (__main__.OfflineKitTest.test_corrupt_missing_and_escaping_assets_fail_before_deployment)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/scripts/offline-kit-test.py", line 19, in test_corrupt_missing_and_escaping_assets_fail_before_deployment
+    module.verify_files(root)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "<repo>/scripts/offline-kit.py", line 4, in verify_files
+    raise ValueError('offline artifact verification not implemented')
+ValueError: offline artifact verification not implemented
+
+======================================================================
+ERROR: test_only_new_isolated_kind_names_are_allowed (__main__.OfflineKitTest.test_only_new_isolated_kind_names_are_allowed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/scripts/offline-kit-test.py", line 33, in test_only_new_isolated_kind_names_are_allowed
+    module.check_cluster_name('reliefgrid-offline-check')
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<repo>/scripts/offline-kit.py", line 6, in check_cluster_name
+    raise ValueError('isolated offline cluster selection not implemented')
+ValueError: isolated offline cluster selection not implemented
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+FAILED (errors=2)

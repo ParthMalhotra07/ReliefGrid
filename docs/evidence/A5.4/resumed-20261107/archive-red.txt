@@ -1,0 +1,14 @@
+.F....
+======================================================================
+FAIL: test_missing_oci_blob_is_rejected_before_cluster_creation (__main__.OfflineKitTest.test_missing_oci_blob_is_rejected_before_cluster_creation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 70, in test_missing_oci_blob_is_rejected_before_cluster_creation
+    with self.assertRaises(ValueError):validate(archive)
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.033s
+
+FAILED (failures=1)

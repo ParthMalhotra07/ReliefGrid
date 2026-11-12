@@ -25,7 +25,7 @@ app_demo() {
   forward "svc/${APP_RELEASE:-reliefgrid}-rabbitmq" 5672 || { fail "preflight: broker AMQP forward"; demo_end; }
   export DEMO_AMQP_ENDPOINT="amqp://127.0.0.1:$FWD_PORT"
   export DEMO_OUTBOX_DRAIN="$DEMO_TMP/drain-outbox"
-  run "build bounded relay-only handoff drainer" go build -o "$DEMO_OUTBOX_DRAIN" "$REPO_ROOT/scripts/demos/drain-outbox" || { fail "build handoff drainer"; demo_end; }
+  run "prepare bounded relay-only handoff drainer" bash "$REPO_ROOT/scripts/prepare-outbox-drainer.sh" "$DEMO_OUTBOX_DRAIN" || { fail "build handoff drainer"; demo_end; }
  fi
  local out="$EVIDENCE_ROOT/$DEMO_RUN_ID/demo-$1-app"
  if run "public API assertions and recorded observations" python3 "$REPO_ROOT/scripts/demos/app_demo.py" "$1" --out "$out"; then
