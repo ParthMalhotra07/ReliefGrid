@@ -592,6 +592,92 @@ func TestCommittedRejectionIsNotRetried(t *testing.T) {
 	}
 }
 
+// Issue #162 (CONTRIBUTING.md, Invariants, 5): a 4xx without a committed
+// Result after an attempt that may have been proposed was refused before
+// proposing and does not settle the earlier attempt, so the forward ends at
+// once in OUTCOME_UNKNOWN; the caller retries the same operationId and the
+// FSM replays whatever committed. A 4xx carrying a Result is a committed
+// apply for this operationId (or its replay) and is returned, as is a 200;
+// a 4xx with no earlier unknown is still a definite answer.
+func TestFourXXAfterUnknownStaysUnknown(t *testing.T) {
+	rejection := func(status int, code internalapi.ErrorCode, res *store.Result) func(http.ResponseWriter, *http.Request, []byte) {
+		return func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+			writeJSON(w, status, internalapi.Error{Code: code, Message: string(code), Result: res})
+		}
+	}
+	committed := func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+		writeJSON(w, http.StatusOK, internalapi.MutationResponse{RingVersion: 1,
+			Result: store.Result{Outcome: store.OutcomeOK, OperationID: "op-route", Shard: 1, Replayed: true}})
+	}
+	conflict := rejection(http.StatusConflict, internalapi.DOMAINCONFLICT,
+		&store.Result{Outcome: store.OutcomeDomainConflict, OperationID: "op-route", Shard: 1})
+	firsts := map[string]func(http.ResponseWriter, *http.Request, []byte){
+		"storage OUTCOME_UNKNOWN": failWith(http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN, true),
+		"connection dropped":      dropConnection,
+	}
+	for _, tc := range []struct {
+		name     string
+		first    string // key in firsts, or "" for no earlier unknown
+		then     func(http.ResponseWriter, *http.Request, []byte)
+		status   int
+		wantCode internalapi.ErrorCode // "" for a 200
+	}{
+		{"unknown then committed 409", "storage OUTCOME_UNKNOWN", conflict, http.StatusConflict, internalapi.DOMAINCONFLICT},
+		{"dropped then committed 409", "connection dropped", conflict, http.StatusConflict, internalapi.DOMAINCONFLICT},
+		{"unknown then 409 without Result", "storage OUTCOME_UNKNOWN", rejection(http.StatusConflict, internalapi.RINGVERSIONMISMATCH, nil), http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN},
+		{"dropped then 409 without Result", "connection dropped", rejection(http.StatusConflict, internalapi.DOMAINCONFLICT, nil), http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN},
+		{"unknown then 403", "storage OUTCOME_UNKNOWN", rejection(http.StatusForbidden, internalapi.FORBIDDEN, nil), http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN},
+		{"unknown then 400", "storage OUTCOME_UNKNOWN", rejection(http.StatusBadRequest, internalapi.INVALID, nil), http.StatusServiceUnavailable, internalapi.OUTCOMEUNKNOWN},
+		{"plain 409", "", conflict, http.StatusConflict, internalapi.DOMAINCONFLICT},
+		{"unknown then committed", "storage OUTCOME_UNKNOWN", committed, http.StatusOK, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			h := newHarness(t, func(c *coordinator.Config) { c.Budget = 2 * time.Second })
+			h.ready()
+			var calls atomic.Int32
+			for _, n := range h.nodes[1] { // whichever member gets each attempt
+				n.setHandler(func(w http.ResponseWriter, r *http.Request, b []byte) {
+					if calls.Add(1) == 1 && tc.first != "" {
+						firsts[tc.first](w, r, b)
+						return
+					}
+					tc.then(w, r, b)
+				})
+			}
+			start := time.Now()
+			rec := h.do(routedCalls(t, h, 1)[4].call) // transition request
+			if took := time.Since(start); took > time.Second {
+				t.Fatalf("forward took %s: a 4xx or 200 must end it, not the budget", took)
+			}
+			want := int32(2)
+			if tc.first == "" {
+				want = 1
+			}
+			if n := calls.Load(); n != want {
+				t.Fatalf("%d attempts, want %d", n, want)
+			}
+			if tc.wantCode == "" {
+				if rec.Code != http.StatusOK {
+					t.Fatalf("status = %d (%s), want 200", rec.Code, rec.Body.String())
+				}
+				if got := decodeJSON[internalapi.MutationResponse](t, rec).Result; got.Outcome != store.OutcomeOK || got.OperationID != "op-route" {
+					t.Fatalf("result = %+v, want the committed OK for op-route", got)
+				}
+				return
+			}
+			e := expectError(t, rec, tc.status, tc.wantCode)
+			unknown := tc.wantCode == internalapi.OUTCOMEUNKNOWN
+			if e.OutcomeUnknown != unknown || unknown && (!e.Retryable || rec.Header().Get("Retry-After") == "") {
+				t.Fatalf("error = %+v (Retry-After %q), want outcomeUnknown=%v", e, rec.Header().Get("Retry-After"), unknown)
+			}
+			if !unknown && (e.Result == nil || e.Result.Outcome != store.OutcomeDomainConflict || e.Result.OperationID != "op-route") {
+				t.Fatalf("result = %+v, want the committed DOMAIN_CONFLICT for op-route", e.Result)
+			}
+		})
+	}
+}
+
 // RING_VERSION_MISMATCH: a caller with another ringVersion is refused before
 // any forward, with the coordinator's version; a storage node's mismatch is
 // returned as is (never proposed) and not retried on other members.
