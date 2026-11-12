@@ -1,0 +1,9 @@
+Combined new embedded Go wrappers in an isolated standard-library module; not a full integrated repository gate.
+=== RUN   TestAgingRolloutRegressions
+--- PASS: TestAgingRolloutRegressions (0.10s)
+=== RUN   TestBuildProvenanceRegressions
+--- PASS: TestBuildProvenanceRegressions (0.26s)
+=== RUN   TestPackageReadinessRegressions
+--- PASS: TestPackageReadinessRegressions (0.17s)
+PASS
+ok  	deliverytools	1.539s
