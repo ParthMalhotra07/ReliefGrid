@@ -19,7 +19,7 @@ remain canonical.
 
 The aliases match HTTP methods, exact collection paths and UUID-shaped entity
 paths. They preserve query strings. Named SPA paths such as `/requests/new` and
-`/resources/register` remain under UI routing, including its normal404 for unimplemented pages. `/events` is deliberately not aliased;
+`/resources/register` remain under UI routing, including its normal 404 for unimplemented pages. `/events` is deliberately not aliased;
 the UI's event stream remains `/api/v1/events`. Non-PS operations, including the
 request collection listing, retain only their canonical contract server.
 
@@ -27,6 +27,7 @@ request collection listing, retain only their canonical contract server.
 |---|---|---|
 | Request `id` | `requestId` | Stable UUID identifying a request |
 | Resource `id` | `resourceId` | Stable UUID identifying a resource |
+| Request/resource type | `requestType` / `resourceType` in entity bodies; `type` in list filters and indexed storage metadata | Entity kind-specific fields retain the PS type; the shared filter/index name selects that same domain value |
 | Creation time | `createdAt` | UTC timestamp persisted when created; keyed retries retain it |
 | Availability | `windowStart`, `windowEnd`, `status` | A usable resource is AVAILABLE in its time window and has no active claim; ASSIGNED/OFFLINE resources cannot be freely assigned |
 
