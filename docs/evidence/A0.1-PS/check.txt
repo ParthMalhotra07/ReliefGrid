@@ -1,0 +1,52 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+0 issues.
+golangci-lint run --build-tags chaos ./cmd/invcheck/...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/chaos/judge	1.053s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	26.961s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	1.060s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	7.235s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	1.129s
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher/replay	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	2.985s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	1.498s
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	18.370s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/admission	1.266s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	14.268s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	21.530s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	35.877s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	31.072s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	93.465s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/merkle	1.389s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	1.059s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	1.046s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	15.062s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	6.775s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/obs	1.271s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	6.426s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	105.029s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	6.710s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	7.101s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	16.614s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit	5.381s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit/audittest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	1.060s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testnet	1.056s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testseam	1.773s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	20.838s
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	11.634s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	112.618s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	1.058s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	1.209s
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	1.359s
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	1.232s
+go test -race -tags chaos ./cmd/invcheck/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	3.373s
