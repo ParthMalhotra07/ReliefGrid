@@ -310,6 +310,7 @@ ui-build: ## Rebuild the pinned offline React/Leaflet assets (Node version in to
 
 verify-A4.1: ## Real-browser offline/reconnect UI checks and isolated live-broker projection safety
 	bash scripts/verify-A4.1.sh
+
 .PHONY: metrics-up metrics-ui metrics-down verify-A4.2-static
 metrics-up: ## Install private Prometheus/Grafana after the A4.2 app deployment
 	bash scripts/metrics-up.sh
@@ -350,3 +351,12 @@ verify-A4.3-static: ## Verify controller ownership and rejecting incomplete scal
 verify-A4.3: ## Observe Ready matcher up/down under bounded k6 redelivery load
 	bash scripts/autoscaling-load-tool.sh
 	PYTHONDONTWRITEBYTECODE=1 python3 scripts/verify-A4.3.py
+
+
+.PHONY: verify-ps-aliases-static verify-ps-aliases
+verify-ps-aliases-static: ## PS Table2 route isolation and both missing API success regressions
+	go test -count=1 -run '^TestPS' ./internal/api/...
+	go test -tags integration -count=1 -run '^TestPSTable2Aliases' ./scripts/...
+
+verify-ps-aliases: verify-ps-aliases-static ## Verify seven aliases and canonical replay through deployed Traefik
+	PYTHONDONTWRITEBYTECODE=1 python3 scripts/verify-ps-aliases.py

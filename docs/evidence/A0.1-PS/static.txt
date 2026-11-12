@@ -1,0 +1,7 @@
+go test -count=1 -run '^TestPS' ./internal/api/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	0.040s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+go test -tags integration -count=1 -run '^TestPSTable2Aliases' ./scripts/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	2.178s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]

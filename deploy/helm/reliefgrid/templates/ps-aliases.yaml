@@ -1,0 +1,77 @@
+{{- if .Values.app.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+  labels:
+    {{- include "reliefgrid.labels" . | nindent 4 }}
+spec:
+  addPrefix:
+    prefix: /api/v1
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "reliefgrid.fullname" . }}-ps-aliases
+  labels:
+    {{- include "reliefgrid.labels" . | nindent 4 }}
+spec:
+  entryPoints: [web]
+  routes:
+    - match: "Method(`POST`) && Path(`/requests`)"
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+      services:
+        - name: {{ include "reliefgrid.fullname" . }}-api
+          port: 8080
+    - match: "Method(`GET`) && PathRegexp(`^/requests/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)"
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+      services:
+        - name: {{ include "reliefgrid.fullname" . }}-api
+          port: 8080
+    - match: "Method(`PUT`) && PathRegexp(`^/requests/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/status$`)"
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+      services:
+        - name: {{ include "reliefgrid.fullname" . }}-api
+          port: 8080
+    - match: "Method(`POST`) && Path(`/resources`)"
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+      services:
+        - name: {{ include "reliefgrid.fullname" . }}-api
+          port: 8080
+    - match: "Method(`GET`) && Path(`/resources`)"
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+      services:
+        - name: {{ include "reliefgrid.fullname" . }}-api
+          port: 8080
+    - match: "Method(`PUT`) && PathRegexp(`^/resources/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/status$`)"
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+      services:
+        - name: {{ include "reliefgrid.fullname" . }}-api
+          port: 8080
+    - match: "Method(`POST`) && PathRegexp(`^/match/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)"
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: {{ include "reliefgrid.fullname" . }}-ps-prefix
+      services:
+        - name: {{ include "reliefgrid.fullname" . }}-api
+          port: 8080
+{{- end }}

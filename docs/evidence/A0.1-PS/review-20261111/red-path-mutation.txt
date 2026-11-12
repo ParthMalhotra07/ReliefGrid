@@ -1,0 +1,6 @@
+--- FAIL: TestPSTable2AliasesAreNarrowAndUseCanonicalAPI (2.03s)
+    --- FAIL: TestPSTable2AliasesAreNarrowAndUseCanonicalAPI/submit_request (0.00s)
+        ps_alias_chart_test.go:39: missing PS operation route or duplicate: submit request: want exactly one "Method(`POST`) && Path(`/requests`)", got 0
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.042s
+FAIL

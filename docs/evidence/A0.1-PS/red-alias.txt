@@ -1,0 +1,7 @@
+--- FAIL: TestPSTable2AliasesAreNarrowAndUseCanonicalAPI (2.62s)
+    ps_alias_chart_test.go:12: missing Middleware reliefgrid-ps-prefix
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.624s
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
+FAIL
