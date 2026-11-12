@@ -94,7 +94,7 @@ def main():
     resource_list = json.loads(resource_list_data)
     (out / 'resource-list.json').write_bytes(resource_list_data)
     assert resource_list['partial'] is False and resource_list['failedShards'] == [], resource_list
-    assert resource_list['consistency'] == 'strong', resource_list
+    assert resource_list['consistency'] in ('strong', 'linearizable'), resource_list
     positions = resource_list['positions']
     assert len(positions) == 3 and {p['shard'] for p in positions} == {0, 1, 2}, resource_list
     assert all(p['hasMore'] is False for p in positions), 'resource listing truncated; no claim of completeness'

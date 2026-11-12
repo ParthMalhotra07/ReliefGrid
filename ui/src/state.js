@@ -29,7 +29,7 @@ export class EventIDs {
 export function list(value, kind) {
   if (
     !value ||
-    value.consistency !== "strong" ||
+    !["strong", "linearizable"].includes(value.consistency) ||
     value.partial !== false ||
     !Array.isArray(value.failedShards) ||
     value.failedShards.length ||

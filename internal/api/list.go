@@ -33,6 +33,12 @@ type listQuery struct {
 	after  string
 }
 
+// listConsistency is the read mode of every public list scan, named
+// explicitly so the response reports the mode the scan was read in rather
+// than a fixed label: linearizable, the read fence (S4.1). The store refuses
+// an answer served weaker than asked, and strong also satisfies it.
+const listConsistency = store.ConsistencyLinearizable
+
 // Same accepted coordinate text as the frozen public near parameter.
 var nearPattern = regexp.MustCompile(`^-?(90(\.0+)?|[0-8]?\d(\.\d+)?),-?(180(\.0+)?|1[0-7]\d(\.\d+)?|\d?\d(\.\d+)?)$`)
 
@@ -49,7 +55,7 @@ func parseList(r *http.Request, kind store.Kind) (listQuery, error) {
 			return listQuery{}, invalid(field, "unknown or repeated query parameter")
 		}
 	}
-	q := listQuery{scan: store.ScanQuery{Kind: kind}, limit: 50, radius: 50}
+	q := listQuery{scan: store.ScanQuery{Kind: kind, Consistency: listConsistency}, limit: 50, radius: 50}
 	if query.Has("limit") {
 		q.limit, err = strconv.Atoi(query.Get("limit"))
 		if err != nil || q.limit < 1 || q.limit > 100 {
@@ -238,7 +244,7 @@ func (s *Server) listRequests(w http.ResponseWriter, r *http.Request) error {
 		FailedShards []int               `json:"failedShards"`
 		Consistency  string              `json:"consistency"`
 		NextCursor   string              `json:"nextCursor,omitempty"`
-	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: "strong", NextCursor: next})
+	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: string(q.scan.Consistency), NextCursor: next})
 	return nil
 }
 
@@ -266,6 +272,6 @@ func (s *Server) listResources(w http.ResponseWriter, r *http.Request) error {
 		FailedShards []int               `json:"failedShards"`
 		Consistency  string              `json:"consistency"`
 		NextCursor   string              `json:"nextCursor,omitempty"`
-	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: "strong", NextCursor: next})
+	}{Items: items, Positions: positions, FailedShards: []int{}, Consistency: string(q.scan.Consistency), NextCursor: next})
 	return nil
 }

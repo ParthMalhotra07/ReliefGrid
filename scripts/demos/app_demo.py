@@ -25,7 +25,7 @@ import uuid
 
 def require_complete(page):
     assert page['partial'] is False and page['failedShards'] == [], page
-    assert page['consistency'] == 'strong', page
+    assert page['consistency'] in ('strong', 'linearizable'), page
     assert len(page['positions']) == 3 and {p['shard'] for p in page['positions']} == {0, 1, 2}, page
     assert all(p.get('hasMore') is False for p in page['positions']), 'bounded listing is truncated'
 
