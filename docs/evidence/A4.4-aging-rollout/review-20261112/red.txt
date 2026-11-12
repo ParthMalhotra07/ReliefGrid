@@ -1,0 +1,42 @@
+test_cli_verifies_lineage_and_writes_rejudgable_sanitized_result (__main__.RolloutTests.test_cli_verifies_lineage_and_writes_rejudgable_sanitized_result) ... ok
+test_collect_uses_only_get_and_readonly_storage_status (__main__.RolloutTests.test_collect_uses_only_get_and_readonly_storage_status) ... ok
+test_committed_voter_ids_and_suffrage_are_individually_required (__main__.RolloutTests.test_committed_voter_ids_and_suffrage_are_individually_required) ... ok
+test_complete_cohort_and_disabled_producer (__main__.RolloutTests.test_complete_cohort_and_disabled_producer) ... ok
+test_each_source_label_is_required_after_approval_hash_is_updated (__main__.RolloutTests.test_each_source_label_is_required_after_approval_hash_is_updated) ... ok
+test_exactly_one_leader_is_required_independently_of_agreement (__main__.RolloutTests.test_exactly_one_leader_is_required_independently_of_agreement) ... ok
+test_failed_run_json_read_saves_fail_without_secret_output (__main__.RolloutTests.test_failed_run_json_read_saves_fail_without_secret_output) ... ok
+test_malformed_server_identity_saves_fail_instead_of_escaping (__main__.RolloutTests.test_malformed_server_identity_saves_fail_instead_of_escaping) ... ERROR
+test_missing_admission_catchup_state_and_commit_are_not_true (__main__.RolloutTests.test_missing_admission_catchup_state_and_commit_are_not_true) ... ok
+test_missing_duplicate_old_or_unready_replica_never_passes (__main__.RolloutTests.test_missing_duplicate_old_or_unready_replica_never_passes) ... ok
+test_owner_approval_and_build_record_integrity_required (__main__.RolloutTests.test_owner_approval_and_build_record_integrity_required) ... ok
+test_pod_revision_must_match_completed_statefulset (__main__.RolloutTests.test_pod_revision_must_match_completed_statefulset) ... ok
+test_raft_views_need_exact_voters_admission_and_one_agreed_leader (__main__.RolloutTests.test_raft_views_need_exact_voters_admission_and_one_agreed_leader) ... ok
+test_sanitized_artifacts_can_be_rejudged_and_have_no_unrelated_secrets (__main__.RolloutTests.test_sanitized_artifacts_can_be_rejudged_and_have_no_unrelated_secrets) ... ok
+test_stable_rejects_valid_new_leader_and_term_between_passes (__main__.RolloutTests.test_stable_rejects_valid_new_leader_and_term_between_passes) ... ok
+test_two_passes_reject_pod_replacement_but_allow_advancing_indexes (__main__.RolloutTests.test_two_passes_reject_pod_replacement_but_allow_advancing_indexes) ... ok
+
+======================================================================
+ERROR: test_malformed_server_identity_saves_fail_instead_of_escaping (__main__.RolloutTests.test_malformed_server_identity_saves_fail_instead_of_escaping)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-aging-rollout/scripts/aging_rollout_test.py", line 205, in test_malformed_server_identity_saves_fail_instead_of_escaping
+    result = self.cli_failure(snapshot)
+  File "/home/parthmalhotra/reliefgrid-aging-rollout/scripts/aging_rollout_test.py", line 191, in cli_failure
+    self.assertEqual(aging.main(), 1)
+                     ~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-aging-rollout/scripts/aging_rollout.py", line 225, in main
+    result = stable(approval, records, first, second)
+  File "/home/parthmalhotra/reliefgrid-aging-rollout/scripts/aging_rollout.py", line 194, in stable
+    before, after = validate(approval, records, first), validate(approval, records, second)
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-aging-rollout/scripts/aging_rollout.py", line 164, in validate
+    require(status.get('podName') == name and status.get('serverId', '').startswith(name + '/'), 'status identity differs from the observed pod')
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'startswith'
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.014s
+
+FAILED (errors=1)
+AGING ROLLOUT: PASS (no enablement)
+AGING ROLLOUT: FAIL

@@ -1,0 +1,9 @@
+Mutation: duplicate-header-acceptance
+Command: go test -race -count=1 -run TestReceiverOverlapStrictHeadersAndFailClosed .
+Exit: 1
+--- FAIL: TestReceiverOverlapStrictHeadersAndFailClosed (0.00s)
+    --- FAIL: TestReceiverOverlapStrictHeadersAndFailClosed/case_duplicate (0.00s)
+        auth_test.go:71: malformed or absent credential accepted
+FAIL
+FAIL	authmutation	0.010s
+FAIL
