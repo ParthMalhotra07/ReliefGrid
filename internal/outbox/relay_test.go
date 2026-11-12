@@ -205,7 +205,7 @@ type readFault struct {
 }
 
 func (s *readFault) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]store.OutboxEvent, error) {
-	if _, ok := ctx.Deadline(); !ok || q.Wait != time.Second || q.Consistency != store.ConsistencyStrong || q.Limit != 100 {
+	if _, ok := ctx.Deadline(); !ok || q.Wait != time.Second || q.Consistency != store.ConsistencyLinearizable || q.Limit != 100 {
 		s.t.Fatalf("read options/deadline: %+v", q)
 	}
 	return nil, store.ErrUnknownOutcome

@@ -132,7 +132,7 @@ func TestReadServedWeakerThanAskedIsRefused(t *testing.T) {
 // With no read mode set, nothing changes (the rule above applies only to an
 // explicit WithReadConsistency): point reads send no consistency and accept
 // an answer that does not say how it was served, and scans and outbox pages
-// send strong and accept an unlabelled answer, exactly as before #72.
+// send linearizable (the read fence) and accept an unlabelled answer.
 func TestNoReadModeIsUnchanged(t *testing.T) {
 	f := newFake(t)
 	c := newClient(t, f)
@@ -142,7 +142,7 @@ func TestNoReadModeIsUnchanged(t *testing.T) {
 			t.Errorf("%s, unlabelled answer: %v", name, err)
 		}
 	}
-	want := []string{"", "", "key=kv%3Aa", "consistency=strong&kind=resource&limit=10&ringVersion=1", "consistency=strong&limit=10&shard=2"}
+	want := []string{"", "", "key=kv%3Aa", "consistency=linearizable&kind=resource&limit=10&ringVersion=1", "consistency=linearizable&limit=10&shard=2"}
 	for i, r := range f.requests() {
 		if r.query != want[i] {
 			t.Errorf("%s sent %q, want %q", r.path, r.query, want[i])

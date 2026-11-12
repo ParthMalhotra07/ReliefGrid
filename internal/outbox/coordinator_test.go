@@ -13,7 +13,7 @@ import (
 
 // The HTTP adapter delegates both reads and commits to the real FSM. It checks
 // the relay -> production coordclient wire path, not a second storage model.
-func TestRelayThroughCoordinatorClientUsesStrongWaitAndShardBatch(t *testing.T) {
+func TestRelayThroughCoordinatorClientUsesFencedWaitAndShardBatch(t *testing.T) {
 	ctx, s := fixtureStore(t)
 	seed(t, ctx, s, 3)
 	reads, marks := 0, 0
@@ -26,7 +26,7 @@ func TestRelayThroughCoordinatorClientUsesStrongWaitAndShardBatch(t *testing.T) 
 		case "GET /internal/outbox":
 			reads++
 			q := r.URL.Query()
-			if q.Get("shard") != "0" || q.Get("limit") != "100" || q.Get("consistency") != "strong" || q.Get("wait") != "1" {
+			if q.Get("shard") != "0" || q.Get("limit") != "100" || q.Get("consistency") != "linearizable" || q.Get("wait") != "1" {
 				t.Errorf("wrong wire read: %s", r.URL.RawQuery)
 			}
 			rows, err := s.PendingOutbox(r.Context(), store.OutboxQuery{Shard: 0, Limit: 100})
@@ -35,7 +35,7 @@ func TestRelayThroughCoordinatorClientUsesStrongWaitAndShardBatch(t *testing.T) 
 				w.WriteHeader(500)
 				return
 			}
-			answer = map[string]any{"ringVersion": 1, "shard": 0, "events": rows, "read": map[string]any{"consistency": "strong"}}
+			answer = map[string]any{"ringVersion": 1, "shard": 0, "events": rows, "read": map[string]any{"consistency": "linearizable"}}
 		case "POST /internal/outbox/published":
 			marks++
 			var cmd store.MarkOutboxPublished
