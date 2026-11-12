@@ -129,11 +129,12 @@ func TestReadServedWeakerThanAskedIsRefused(t *testing.T) {
 	}
 }
 
-// With no read mode set, nothing changes (the rule above applies only to an
-// explicit WithReadConsistency): point reads send no consistency and accept
-// an answer that does not say how it was served, and scans and outbox pages
-// send linearizable (the read fence) and accept an unlabelled answer.
-func TestNoReadModeIsUnchanged(t *testing.T) {
+// With no read mode set, every read defaults to linearizable (S4.1): point
+// reads, scans and outbox pages all send consistency=linearizable, never
+// leaving the server to default to strong. The labelling rule above applies
+// only to an explicit WithReadConsistency, so an answer that does not say how
+// it was served is accepted, but one served stale is a retryable read error.
+func TestNoReadModeDefaultsToLinearizable(t *testing.T) {
 	f := newFake(t)
 	c := newClient(t, f)
 	f.setAnswer(readAnswer(""))
@@ -142,10 +143,20 @@ func TestNoReadModeIsUnchanged(t *testing.T) {
 			t.Errorf("%s, unlabelled answer: %v", name, err)
 		}
 	}
-	want := []string{"", "", "key=kv%3Aa", "consistency=linearizable&kind=resource&limit=10&ringVersion=1", "consistency=linearizable&limit=10&shard=2"}
+	want := []string{"consistency=linearizable", "consistency=linearizable", "consistency=linearizable&key=kv%3Aa", "consistency=linearizable&kind=resource&limit=10&ringVersion=1", "consistency=linearizable&limit=10&shard=2"}
 	for i, r := range f.requests() {
 		if r.query != want[i] {
 			t.Errorf("%s sent %q, want %q", r.path, r.query, want[i])
+		}
+	}
+
+	f2 := newFake(t)
+	c2 := newClient(t, f2)
+	f2.setAnswer(readAnswer(internalapi.ReadInfoConsistencyStale))
+	for name, err := range readAll(t, c2, "") {
+		var ce *coordclient.Error
+		if !errors.As(err, &ce) || !ce.Retryable || errors.Is(err, store.ErrUnknownOutcome) || errors.Is(err, store.ErrNotFound) {
+			t.Errorf("%s, default read answered stale: err = %v, want a retryable read error", name, err)
 		}
 	}
 }

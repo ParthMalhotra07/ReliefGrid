@@ -253,7 +253,7 @@ func TestReadShapes(t *testing.T) {
 	if got, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50}); err != nil || len(got) != 1 || got[0].EventID != "e1" {
 		t.Fatalf("PendingOutbox = %+v, %v", got, err)
 	}
-	want := []string{"/internal/data/kv:a?", "/internal/resources/s7/closures/a-1?", "/internal/operations/op-1?key=kv%3Aa", "/internal/outbox?consistency=linearizable&limit=50&shard=2"}
+	want := []string{"/internal/data/kv:a?consistency=linearizable", "/internal/resources/s7/closures/a-1?consistency=linearizable", "/internal/operations/op-1?consistency=linearizable&key=kv%3Aa", "/internal/outbox?consistency=linearizable&limit=50&shard=2"}
 	for i, r := range f.requests() {
 		if r.method != http.MethodGet || r.path+"?"+r.query != want[i] {
 			t.Errorf("read %d = %s %s?%s, want GET %s", i, r.method, r.path, r.query, want[i])
