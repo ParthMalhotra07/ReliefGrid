@@ -206,7 +206,8 @@ Check that a clean clone follows the documented setup; README, contracts, ADRs,
 reviewed report, current evidence and real rehearsal notes are accessible; the
 backup recording shows deployment from scratch and plays correctly; and the
 submitted public GitHub repository URL and actual submission receipt are recorded.
-Report length and format remain pending professor confirmation. Record the final
+The professor requires a report under ten pages, including references. The
+shared outline and exported page count still need final review. Record the final
 stable tag and exact commit, including any changes after rehearsals that need
 retesting. None of these outcomes is established merely by writing this runbook.
 

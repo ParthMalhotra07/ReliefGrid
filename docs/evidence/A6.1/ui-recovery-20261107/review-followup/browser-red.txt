@@ -1,0 +1,74 @@
+
+> reliefgrid-dispatch@0.1.0 test:browser
+> playwright test --grep resources identify|same-render
+
+
+Running 2 tests using 1 worker
+
+  ✘  1 e2e/dispatch.spec.js:308:1 › resources identify latest and saved observations through refresh recovery (5.8s)
+  ✘  2 e2e/dispatch.spec.js:318:1 › same-render action reentry admits only one pending write (846ms)
+
+
+  1) e2e/dispatch.spec.js:308:1 › resources identify latest and saved observations through refresh recovery
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: getByRole('region', { name: 'Resources' })
+    Expected substring: "LATEST READ"
+    Received string:    "Resources 1◈Water team AlphaWater · Assigned #11111111BUSY"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" getByRole('region', { name: 'Resources' }) with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Resources' })
+        14 × locator resolved to <section aria-label="Resources" class="panel resources-panel">…</section>
+           - unexpected value "Resources 1◈Water team AlphaWater · Assigned #11111111BUSY"
+
+
+      309 |   await page.goto("/");
+      310 |   const resources = page.getByRole("region", { name: "Resources" });
+    > 311 |   await expect(resources).toContainText("LATEST READ");
+          |                           ^
+      312 |   await request.post("/__test/state", { data: { fail: true, eventId } });
+      313 |   await expect(resources).toContainText("SAVED VIEW");
+      314 |   await request.post("/__test/state", { data: { fail: false, eventId: "55555555-5555-4555-8555-555555555555" } });
+        at <checkout>/ui/e2e/dispatch.spec.js:311:27
+
+    Error Context: test-results/dispatch-resources-identif-e5d51-ns-through-refresh-recovery/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/dispatch-resources-identif-e5d51-ns-through-refresh-recovery/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/dispatch-resources-identif-e5d51-ns-through-refresh-recovery/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) e2e/dispatch.spec.js:318:1 › same-render action reentry admits only one pending write ─────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 2
+
+      340 |     return submitted;
+      341 |   });
+    > 342 |   expect(writes).toBe(1);
+          |                  ^
+      343 | });
+      344 |
+        at <checkout>/ui/e2e/dispatch.spec.js:342:18
+
+    Error Context: test-results/dispatch-same-render-actio-8826d-mits-only-one-pending-write/error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/dispatch-same-render-actio-8826d-mits-only-one-pending-write/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/dispatch-same-render-actio-8826d-mits-only-one-pending-write/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    e2e/dispatch.spec.js:308:1 › resources identify latest and saved observations through refresh recovery
+    e2e/dispatch.spec.js:318:1 › same-render action reentry admits only one pending write ──────────

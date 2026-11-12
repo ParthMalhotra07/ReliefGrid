@@ -1,0 +1,14 @@
+# github.com/ParthMalhotra07/ReliefGrid/internal/auth [github.com/ParthMalhotra07/ReliefGrid/internal/auth.test]
+internal/auth/auth_test.go:22:14: undefined: SenderConfig
+internal/auth/auth_test.go:25:14: undefined: ReceiverConfig
+internal/auth/auth_test.go:29:13: undefined: ReceiverConfig
+internal/auth/auth_test.go:32:31: undefined: SenderConfig
+internal/auth/auth_test.go:32:61: undefined: ReceiverConfig
+internal/auth/auth_test.go:47:12: undefined: ReceiverConfig
+internal/auth/auth_test.go:50:16: undefined: Header
+internal/auth/auth_test.go:54:7: undefined: ReceiverConfig
+internal/auth/auth_test.go:59:28: undefined: Header
+internal/auth/auth_test.go:60:17: undefined: Header
+internal/auth/auth_test.go:60:17: too many errors
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/auth [build failed]
+FAIL

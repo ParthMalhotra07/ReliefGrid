@@ -1,0 +1,14 @@
+.F.....
+======================================================================
+FAIL: test_image_identity_is_inspected_for_the_exported_platform (__main__.OfflineKitTest.test_image_identity_is_inspected_for_the_exported_platform)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<checkout>/scripts/offline-kit-test.py", line 78, in test_image_identity_is_inspected_for_the_exported_platform
+    self.assertIn('--platform=linux/amd64',command.call_args.args)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: '--platform=linux/amd64' not found in ('docker', 'image', 'inspect', 'example:tag')
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.034s
+
+FAILED (failures=1)

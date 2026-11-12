@@ -1,0 +1,6 @@
+PASS: all five nodes Ready through the private API
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked
+PASS: external HTTPS blocked

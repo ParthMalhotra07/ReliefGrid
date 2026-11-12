@@ -1,0 +1,20 @@
+..........Node isolation probe: ["docker", "exec", "reliefgrid-offline-probe-control-plane", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+reliefgrid-offline-probe-control-plane: PASS: external HTTPS blocked
+Node isolation probe: ["docker", "exec", "reliefgrid-offline-probe-worker1", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+reliefgrid-offline-probe-worker1: PASS: external HTTPS blocked
+Node isolation probe: ["docker", "exec", "reliefgrid-offline-probe-worker2", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+reliefgrid-offline-probe-worker2: PASS: external HTTPS blocked
+Node isolation probe: ["docker", "exec", "reliefgrid-offline-probe-worker3", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+reliefgrid-offline-probe-worker3: PASS: external HTTPS blocked
+Node isolation probe: ["docker", "exec", "reliefgrid-offline-probe-worker4", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+reliefgrid-offline-probe-worker4: PASS: external HTTPS blocked
+.Node isolation probe: ["docker", "exec", "control", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+control: PASS: external HTTPS blocked
+Node isolation probe: ["docker", "exec", "worker1", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+worker1: PASS: external HTTPS blocked
+Node isolation probe: ["docker", "exec", "worker2", "bash", "-ec", "set -eu\ncommand -v curl >/dev/null\nif curl --noproxy '*' -ks --connect-timeout 2 --max-time 4 https://1.1.1.1/ -o /dev/null; then exit 1; fi\necho 'PASS: external HTTPS blocked'\n"]
+..........
+----------------------------------------------------------------------
+Ran 21 tests in 0.570s
+
+OK

@@ -1,0 +1,19 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+internal/auth/auth_test.go:50:27: net/http/httptest.NewRequest must not be called. use net/http/httptest.NewRequestWithContext (noctx)
+		r := httptest.NewRequest(http.MethodGet, "http://storage/internal/data", nil)
+		                        ^
+internal/auth/auth_test.go:67:28: net/http/httptest.NewRequest must not be called. use net/http/httptest.NewRequestWithContext (noctx)
+			r := httptest.NewRequest(http.MethodGet, "http://storage/internal/data", nil)
+			                        ^
+internal/auth/auth_test.go:74:26: net/http/httptest.NewRequest must not be called. use net/http/httptest.NewRequestWithContext (noctx)
+	r := httptest.NewRequest(http.MethodGet, "http://storage/internal/data", nil)
+	                        ^
+internal/auth/auth_test.go:129:27: SA1008: keys in http.Header are canonicalized, "X-ReliefGrid-Internal-Token" is not canonical; fix the constant or use http.CanonicalHeaderKey (staticcheck)
+	if calls.Load() != 12 || r.Header[Header][0] != previous || r.Header[strings.ToLower(Header)][0] != previous || len(r.Header) != 2 {
+	                         ^
+4 issues:
+* noctx: 3
+* staticcheck: 1
+make: *** [Makefile:97: lint] Error 1

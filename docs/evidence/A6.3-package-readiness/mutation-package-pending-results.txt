@@ -1,0 +1,30 @@
+Negative control: package-pending-results
+Disposable source copy only.
+Exit: 1
+PACKAGE CONSISTENCY: PASS (owner review still required)
+PACKAGE CONSISTENCY: FAIL
+PACKAGE CONSISTENCY: FAIL
+test_cli_records_manifest_hash_and_never_writes_inside_source_or_package (__main__.PackageTests.test_cli_records_manifest_hash_and_never_writes_inside_source_or_package) ... ok
+test_complete_consistent_declared_package (__main__.PackageTests.test_complete_consistent_declared_package) ... ok
+test_json_mutation_cannot_satisfy_binding_or_source_hashes (__main__.PackageTests.test_json_mutation_cannot_satisfy_binding_or_source_hashes) ... ok
+test_missing_unlisted_changed_or_escaped_artifact_is_rejected (__main__.PackageTests.test_missing_unlisted_changed_or_escaped_artifact_is_rejected) ... ok
+test_reading_an_old_artifact_does_not_count_as_a_content_change (__main__.PackageTests.test_reading_an_old_artifact_does_not_count_as_a_content_change) ... ok
+test_real_git_source_and_tag_identity (__main__.PackageTests.test_real_git_source_and_tag_identity) ... ok
+test_stale_pending_or_incomplete_summaries_do_not_pass (__main__.PackageTests.test_stale_pending_or_incomplete_summaries_do_not_pass) ...
+  test_stale_pending_or_incomplete_summaries_do_not_pass (__main__.PackageTests.test_stale_pending_or_incomplete_summaries_do_not_pass) (name='performance.json') ... FAIL
+test_symlinks_and_qualification_preservation (__main__.PackageTests.test_symlinks_and_qualification_preservation) ... ok
+test_unresolved_signoff_source_and_binding_are_required (__main__.PackageTests.test_unresolved_signoff_source_and_binding_are_required) ... ok
+
+======================================================================
+FAIL: test_stale_pending_or_incomplete_summaries_do_not_pass (__main__.PackageTests.test_stale_pending_or_incomplete_summaries_do_not_pass) (name='performance.json')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/reliefgrid-delivery-negative-y807whtt/package_readiness_test.py", line 112, in test_stale_pending_or_incomplete_summaries_do_not_pass
+    with self.assertRaises(package.ReadinessError): package.validate(self.root, self.manifest, self.source)
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ReadinessError not raised
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.089s
+
+FAILED (failures=1)

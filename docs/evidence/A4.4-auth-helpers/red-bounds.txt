@@ -1,0 +1,5 @@
+--- FAIL: TestClientRequiresBoundedCallsAndPreservesIdleCleanup (0.00s)
+    auth_test.go:113: unbounded request reached the transport
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/auth	0.011s
+FAIL

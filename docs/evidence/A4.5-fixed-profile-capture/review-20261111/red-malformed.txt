@@ -1,0 +1,103 @@
+test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) ...
+  test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='app') ... ERROR
+  test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='storage') ... ERROR
+  test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='pod-status') ... ERROR
+  test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='tools-status') ... ERROR
+
+======================================================================
+ERROR: test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='app')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 273, in test_malformed_shapes_persist_sanitized_fail_artifacts
+    self.assertEqual(capture.main(), 1)
+                     ~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 249, in main
+    first = collect(args.context, args.namespace, args.release)
+  File "/usr/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1247, in _execute_mock_call
+    result = effect(*args, **kwargs)
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 270, in read_profile
+    return capture.sanitize(malformed)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 83, in sanitize
+    app=dict(enabled=app.get('enabled'), autoscaling=dict(enabled=app.get('autoscaling', {}).get('enabled')),
+                     ^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+
+======================================================================
+ERROR: test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='storage')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 273, in test_malformed_shapes_persist_sanitized_fail_artifacts
+    self.assertEqual(capture.main(), 1)
+                     ~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 249, in main
+    first = collect(args.context, args.namespace, args.release)
+  File "/usr/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1247, in _execute_mock_call
+    result = effect(*args, **kwargs)
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 270, in read_profile
+    return capture.sanitize(malformed)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 82, in sanitize
+    result['values'] = dict(storage=dict(enabled=values.get('storage', {}).get('enabled')),
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+
+======================================================================
+ERROR: test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='pod-status')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 273, in test_malformed_shapes_persist_sanitized_fail_artifacts
+    self.assertEqual(capture.main(), 1)
+                     ~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 249, in main
+    first = collect(args.context, args.namespace, args.release)
+  File "/usr/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/unittest/mock.py", line 1247, in _execute_mock_call
+    result = effect(*args, **kwargs)
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 270, in read_profile
+    return capture.sanitize(malformed)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 68, in sanitize
+    result = dict(deployments=[], replicasets=[], pods=[pod_record(p) for p in snapshot['pods']])
+                                                        ~~~~~~~~~~^^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 54, in pod_record
+    for container in status.get('containerStatuses', []):
+                     ^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+
+======================================================================
+ERROR: test_malformed_shapes_persist_sanitized_fail_artifacts (__main__.ValidationTests.test_malformed_shapes_persist_sanitized_fail_artifacts) (field='tools-status')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile_test.py", line 273, in test_malformed_shapes_persist_sanitized_fail_artifacts
+    self.assertEqual(capture.main(), 1)
+                     ~~~~~~~~~~~~^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 254, in main
+    result['tools'] = tools_observation(job, pods)
+                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-gate-capture/scripts/capture_fixed_profile.py", line 197, in tools_observation
+    require(job.get('metadata', {}).get('uid') and job.get('status', {}).get('succeeded') == 1,
+                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'get'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.014s
+
+FAILED (errors=4)
