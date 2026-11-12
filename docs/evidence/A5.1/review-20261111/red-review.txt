@@ -1,0 +1,25 @@
+REVIEW137 VERIFY FAIL
+architecture missing hash mod 3
+architecture missing 0.2493
+architecture missing 0.75
+architecture missing PS Table 3
+architecture missing 3 s
+architecture missing 5 s
+architecture missing /internal/nodes/register
+architecture missing /internal/nodes/heartbeat
+architecture missing /internal/data/{key}
+Docker mapping missing
+recorded gate numbers differ/missing: - Round 1: shard counts `107/84/109`; election `3642 ms`; acknowledged `2692`; while down `2089`; replay command index `7911 -> 13690`.
+recorded gate numbers differ/missing: - Round 2: shard counts `107/84/109`; election `5007 ms`; acknowledged `2635`; while down `2017`; replay command index `7320 -> 12188`.
+missing chaos scenario kill-leader
+missing chaos scenario kill-follower
+missing chaos scenario restart-shard
+missing chaos scenario isolate-replica
+missing chaos scenario isolate-leader
+missing chaos scenario delay-isolate-leader
+missing chaos scenario lose-quorum
+missing chaos scenario delay-follower
+missing chaos scenario stop-worker
+missing chaos scenario restart-coordinator
+missing chaos scenario control-lost-write
+missing chaos scenario control-stale-reader

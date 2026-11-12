@@ -20,21 +20,78 @@ All nine scripts were recorded twice in the
 104s, no cordons and the exact tested code-tree hash. These are observed times
 on Hrishabh's machine, not guaranteed setup times on every laptop.
 
+## Historical gate measurements
+
+The retained 4November gate on dba92c514ef1, code-tree fingerprint ecc68871df28,
+records the following values. Shard counts refer only to demo4's deterministic
+300-key seed, not the total changing application dataset:
+
+- Round 1: shard counts `107/84/109`; election `3642 ms`; acknowledged `2692`; while down `2089`; replay command index `7911 -> 13690`.
+- Round 2: shard counts `107/84/109`; election `5007 ms`; acknowledged `2635`; while down `2017`; replay command index `7320 -> 12188`.
+
+Sources: [round1 demo4](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-4.txt),
+[demo6](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-6.txt),
+[demo7](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-1/demo-7.txt);
+[round2 demo4](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-4.txt),
+[demo6](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-6.txt),
+[demo7](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/round-2/demo-7.txt).
+Demo6 used seed6, four writers for40s, and stopped shard1's leader about8s into
+the workload while keeping its replacement Pending. All2,692/2,635 acknowledged
+writes were read back, with zero lost in these runs;2,089/2,017 were acknowledged
+while that leader was down. The observed elections were approximately3.6s/5.0s,
+not an SLA. Demo7 continued the same stopped-node handoff, added100 writes while
+it was down, and verified all100 in the restarted node's own FSM. The replay
+figures above are completed SQLite command indexes, not Raft log indexes.
+
+The gate host is hrishabh-sharrma-ThinkPad-E14-Gen-7. Separate retained records
+describe that host as **8 CPUs, Intel Core Ultra7 258V**
+([CPU record](../evidence/S4.4/bench-apply-20261103T085339Z.txt#L10)) and show
+**31,094 MiB total usable memory** (about30.37GiB)
+([resource record](../evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/resources.txt#L1)).
+Those are separate host records, not synchronized measurements of the4November
+gate. That gate's CPU allocation, power policy and unrelated concurrent load were
+not retained; this missing context prevents treating its functional numbers as
+a controlled capacity benchmark. Application background activity was present.
+
 ## Retained reliability evidence and limits
 
 These are retained observations with their original source/tree/image
 qualifications. No historical run is promoted to acceptance of integrated main
-`ce643ee` or pending PR combinations.
+`82cc664` or pending PR combinations.
 
 | Evidence | What it supports | Boundary |
 |---|---|---|
 | [Course gate](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/gate.txt#L1) | Recorded 18/18 demo passes across two resets; clean recorded tree, fingerprint ecc68871df28 | Historical course gate, not a fresh gate on integrated main or later PRs |
-| [Replacement/admission](../evidence/S4.2/admission-replace-hrishabh-sharrma-ThinkPad-E14-Gen-7.txt#L1) | Recorded 63/63 checks, including interrupted replacement | Recorded host/date/tree; not arbitrary multi-disk disaster recovery |
-| [Physical schedule seams](../evidence/S4.6b/kind-hrishabh-sharrma-ThinkPad-E14-Gen-7.txt#L1) | crictl kills at proven log/snapshot boundaries; SCH01/12/13a/13b retained PASS | Seams image and selected schedules, not every failure timing |
-| [Same-index audit](../evidence/S4.5/kind-20261103T120239Z.txt#L1) | Retained replica audit observations at a common index | Sampled-state digest equality, not complete protocol correctness |
-| [Chaos re-judging](../evidence/S4.3/rejudge-20261101/README.md#L1) | Eleven saved reports re-judged using conservative reconstructed coverage; coordinator physically re-run separately | Original ledgers not re-read; not twelve newly executed passes |
+| [S4.2 — Replacement/admission](../evidence/S4.2/admission-replace-hrishabh-sharrma-ThinkPad-E14-Gen-7.txt#L1) | Recorded 63/63 checks, including interrupted replacement | Recorded host/date/tree; not arbitrary multi-disk disaster recovery |
+| [S4.6b — Physical schedule seams](../evidence/S4.6b/kind-hrishabh-sharrma-ThinkPad-E14-Gen-7.txt#L1) | crictl kills at proven log/snapshot boundaries; SCH01/12/13a/13b retained PASS | Seams image and selected schedules, not every failure timing |
+| [S4.5 — Same-index audit](../evidence/S4.5/kind-20261103T120239Z.txt#L1) | Retained replica audit observations at a common index | Sampled-state digest equality, not complete protocol correctness |
+| [S4.3 — Chaos re-judging](../evidence/S4.3/rejudge-20261101/README.md#L1) | Eleven saved reports re-judged using conservative reconstructed coverage; coordinator physically re-run separately | Original ledgers not re-read; not twelve newly executed passes |
 | [Application trace](../evidence/S4.4/verify-app-trace-20261104T180039Z.txt#L1) and adjacent JSON | One Jaeger trace includes API, coordinator, storage, relay/matcher path | One observed trace, not full delivery/correctness proof |
 | [Aging seam](../evidence/S4.4-aging/README.md#L1) | Merged transactional seam, focused/full check logs and four mutation failures | README explicitly records no physical cluster; not enabled application aging |
+
+S4.6's [retained CI verification](../evidence/S4.6/verify-hrishabh-sharrma-ThinkPad-E14-Gen-7.txt)
+records its original tooling/check outcome; it is not a current integrated gate.
+S4.2, S4.3, S4.5, S4.6 and S4.6b are Hrishabh's storage/reliability goals.
+
+The S4.3 [suite definition](../../chaos/scripts/suite.sh) contains twelve scenarios:
+
+- `kill-leader`: election and acknowledged-write retention.
+- `kill-follower`: majority service and return/catch-up.
+- `restart-shard`: explicit outage followed by group recovery.
+- `isolate-replica`: partitioned-replica behavior and recovery.
+- `isolate-leader`: the isolated leader must not commit or serve fenced reads.
+- `delay-isolate-leader`: delayed acknowledgments followed by leader isolation.
+- `lose-quorum`: no committed/fenced service while a majority is unavailable.
+- `delay-follower`: majority progress and later lag convergence.
+- `stop-worker`: data-worker outage with shard-majority behavior.
+- `restart-coordinator`: routing outage, unchanged ring and recovery.
+- `control-lost-write`: injected acknowledged-loss negative control; success
+  means the judge detects that injected fault and no unrelated failure.
+- `control-stale-reader`: injected stale-read negative control with the same
+  isolation of the intended failure.
+
+These are ten faults plus two judge controls, not twelve newly executed clean
+production-fault passes. The retained re-judging/coverage limits below still apply.
 
 Chaos failures remain evidence. The [10-second coordinator run](../evidence/S4.3/suite-20261101T144808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/summary.txt#L1)
 reports FAILED for insufficient per-shard read coverage. The later 30-second run
@@ -67,7 +124,8 @@ and reports outbox backlog ([implementation](../../internal/invcheck/invcheck.go
 Complete, clean and quiescent must all hold. A nil-error result is needed for
 completeness; applied indexes are checked before/after the walk because these
 cross-shard reads are not one snapshot
-([index checks](../../internal/invcheck/invcheck.go#L89)). Quiesce admission and
+([quiescence fields](../../internal/invcheck/invcheck.go#L82),
+[completeness boundary](../../internal/invcheck/invcheck.go#L89)). Quiesce admission and
 settle workflows before treating this as stable-state evidence. An empty
 violations list on incomplete or busy input is insufficient.
 
@@ -82,12 +140,12 @@ retains its own [evidence lifecycle](validation-addendum.md).
 
 ## Performance methodology and pending measurements
 
-#126 remains draft at `e7501aeaa07a8a8007a03c258fb5e9f080531715`, with no final
-load evidence. A dirty-tree one-minute smoke is not a final benchmark. The
-integrated baseline has ledger support; proposed seeded datasets, k6 scenarios,
-report generator and run/check scripts remain pending that PR. Older #129/#130
-prerequisites must be reconciled with the final integrated revision, not copied
-as current blockers.
+[#126](https://github.com/ParthMalhotra07/ReliefGrid/pull/126) remains the
+load-report handoff; final reviewed measurements have not been supplied for this
+report. The earlier e7501ae tooling draft and dirty-tree smoke are historical,
+not a final benchmark. Pilot investigation does not fill the pending table.
+The final measured source/images, tooling and acceptance must be reconciled
+before reporting numerical capacity or classifying publish backpressure.
 
 The proposed method uses seeded datasets; smoke, step-to-saturation, baseline
 and soak scenarios; the load Raft profile; declared Guaranteed resources;
@@ -136,13 +194,13 @@ or current application throughput. No microbenchmark value fills the pending tab
 - The original PS field labels and implementation choices are recorded in
   [architecture](architecture.md); bare alias compliance still needs #128's
   review. `/api/v1` equivalence alone is insufficient.
-- Instructor-confirmed report length/format, final reviewed SHA, final gate,
+- The professor confirmed a report under10pages. The proposed nine-page
+  [submission outline](submission-outline.md), final reviewed SHA, final gate,
   rehearsals, recording/playback and submission receipt remain final-package
   deliverables. Public visibility is observed separately from actual submission.
 - Both owners agreed to use the existing S4.1 barrier-versus-fence study as the
-  single M6 experiment. Its ADR006 decision record remains in
-  [#152](https://github.com/ParthMalhotra07/ReliefGrid/pull/152), outside this source
-  baseline. This is a bounded historical study, not a new protocol extension or
+  single M6 experiment. [ADR006](../adr/006-read-fence-study.md) is merged
+  via #152 and is included in this baseline. This is a bounded historical study, not a new protocol extension or
   a present-system performance guarantee; other major extensions remain future work.
   Hrishabh built the fence implementation and benchmark as S4.1; #152 packages
   that existing study as M6. All three replicas run in one Go test process over
@@ -154,3 +212,14 @@ or current application throughput. No microbenchmark value fills the pending tab
   requires coordinator plus all nine storage replicas to support the seam and
   rollout verification before enabling it. No enabled-cluster aging acceptance
   or completed enhanced gate is inferred from that merge.
+
+## Agreed core-gate scope and open enhancements
+
+The [agreed scope](../operations/gate-scope.md) runs the core-system gate with
+aging0s and autoscaling off; #29 auth follows the gate. No such gate result closes
+the unfinished A4.4/A4.5 enhancements. Separate aging evidence is planned for the
+13th; final-cohort autoscaling evidence for the13th–14th if included; auth wiring
+by the15th before the17th freeze. If autoscaling is omitted, it is untested on the
+final cohort; the qualified historical #123 observations remain recorded above.
+These are plans, not completed executions. The final integrated gate/result stays
+PENDING until its actual scope/source/images and raw outputs are recorded.

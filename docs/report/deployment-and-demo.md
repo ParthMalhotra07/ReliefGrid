@@ -36,6 +36,27 @@ failure tolerance. Infra-worker/coordinator loss may block routing without
 destroying committed shard history. An eviction/toleration interval is not a
 measured recovery SLA.
 
+## Docker implementation (PS §9.1)
+
+Each deployed application/data service has a multi-stage Dockerfile:
+[API](../../cmd/api/Dockerfile), [matcher](../../cmd/matcher/Dockerfile),
+[coordinator](../../cmd/coordinator/Dockerfile),
+[storage node](../../cmd/storagenode/Dockerfile), and [UI](../../ui/Dockerfile).
+The [tools image](../../cmd/invcheck/Dockerfile) supplies invcheck rather than an
+additional business microservice. Go builder images compile static binaries;
+pinned distroless runtime images run as numeric nonroot user65532. The matcher
+container contains relay/consumer/reconciler roles, not separate service images.
+
+[make app-images](../../scripts/app-images.sh) builds/inspects application images;
+the [app deploy script](../../scripts/app-deploy.sh) imports local images into
+kind before installing Helm. The storage reset builds/loads its own storage,
+coordinator and tools images. Kubernetes Services/DNS provide communication;
+HTTP routes API→coordinator→storage, while AMQP connects matcher and RabbitMQ.
+Helm probes, replicas and placement govern these running containers. The retained
+gate's version/image IDs and container-backed demos support actual build/run/
+communication observations on that historical source; Dockerfiles alone are not
+evidence that a new checkout has been built or deployed successfully.
+
 ## Operator sequence
 
 1. Install the pinned tools in [CONTRIBUTING](../../CONTRIBUTING.md) and
@@ -75,6 +96,7 @@ visibility, contracts, ADRs, evidence, final report, live-demo rehearsal notes a
 backup recording. Repository public visibility was observed on 7 November; that
 does not establish submission, presenter rehearsals, recording creation or playback. The public
 GitHub link, mandatory live demonstration and deployment-from-scratch backup
-recording are resolved submission requirements. Report length/format alone
-still needs professor confirmation; execution of those deliverables remains
+recording are resolved submission requirements. The professor confirmed a report under10pages; the
+[nine-page submission outline](submission-outline.md) is proposed for joint
+agreement. Final export/page-count and execution of external deliverables remain
 pending until recorded.

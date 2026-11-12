@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = ['docs/report/README.md', 'docs/report/architecture.md',
             'docs/report/workflow-and-messaging.md', 'docs/report/requirements-and-results.md',
             'docs/report/deployment-and-demo.md', 'docs/report/validation-addendum.md',
+            'docs/report/submission-outline.md',
             'docs/adr/004-attempt-closure.md', 'docs/adr/005-outbox-handoff.md']
 
 

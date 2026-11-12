@@ -35,7 +35,7 @@ flowchart LR
 
 ## Source baseline
 
-The integrated source baseline is main `ce643ee190935a737ccbc347ea29a386d8fa9dd6`,
+The integrated source baseline is main `82cc664828b2dec1bea5f95f3661fbdb2f185054`,
 including merged public contract/API refinements #134/#136 and recovery #146.
 Hrishabh supplied the storage/reliability contribution against `e50685d`; the
 storage, internal contract, ring and admission source files cited below are
@@ -50,17 +50,33 @@ shard: nine storage processes. Each replica runs HashiCorp Raft with a SQLite FS
 and the coordinator routes keys to the owning shard. The storage StatefulSets
 select data workers and use anti-affinity so a shard's replicas occupy different
 data workers. See [placement](../../deploy/helm/storage/templates/statefulset.yaml#L17)
-and the [ring contract](../../contracts/ring.yaml#L1). There are **128 virtual
+and the [ring contract](../../contracts/ring.yaml#L1). Placement is specified by
+the [data-worker selector](../../deploy/helm/storage/templates/statefulset.yaml#L35)
+and [anti-affinity](../../deploy/helm/storage/templates/statefulset.yaml#L40).
+There are **128 virtual
 nodes per shard, 384 tokens total**, not 128 tokens across the system. A two-of-three
 majority can commit; loss of that majority prevents committed service on that
 shard. These are shard guarantees, not a cross-shard transaction or a multi-host
 cloud availability claim.
 
+The PS §4 offers `hash(request_id) mod 3` as an example; §12 leaves the exact
+partitioning strategy to the implementation. We use a consistent-hash ring to
+reduce remapping when adding a shard while preserving the three-shard deployment.
+The read-only [#100 simulation](https://github.com/ParthMalhotra07/ReliefGrid/pull/100)
+places 10,000 deterministic synthetic keys on three and four shards: 2,493 move,
+a measured fraction **0.2493**, against the ring's ideal 0.25. The
+[published response example](../../contracts/internal.yaml#L954) retains those
+counts. For a uniform fixed hash, changing direct modulo partitioning from
+hash mod 3 to mod 4 keeps only three of the twelve residue classes on the same
+numbered shard: expected movement is **0.75**. That is an analytical comparison,
+not a separate measured mod-N deployment. The simulation does not install a
+fourth shard, migrate stored data or certify a performance improvement.
+
 Durability comes from the Raft log and stable store in raft-boltdb and completed
 Raft file snapshots on each replica's PVC. The persistent paths are
 `<DataDir>/raft/raft.db` and `<DataDir>/snapshots`; the same Bolt store supplies
 Raft's log and stable interfaces. See [persistent stores](../../internal/raftstore/node.go#L180)
-and [Raft construction](../../internal/raftstore/node.go#L224). Majority replication
+and [Raft construction](../../internal/raftstore/node.go#L261). Majority replication
 and these stores preserve committed history subject to the disk/filesystem
 failure model. SQLite commit is the local visibility boundary after committed
 commands apply; SQLite alone is not the durable source.
@@ -68,7 +84,7 @@ commands apply; SQLite alone is not the durable source.
 The FSM is derived state. Startup rebuilds its directory, restores the latest
 completed snapshot and replays the committed log suffix once commit information
 is known. See [startup](../../internal/raftstore/node.go#L236) and
-[restore](../../internal/raftstore/statemachine.go#L109). SQLite is on emptyDir;
+[restore](../../internal/raftstore/statemachine.go#L249). SQLite is on emptyDir;
 `/data` is a PVC ([volumes](../../deploy/helm/storage/templates/statefulset.yaml#L133)).
 `fsm.Open` refuses an existing schema to prevent replay into an old database.
 File-backed FSM databases use WAL and `synchronous=OFF`, one writer and a separate
@@ -136,6 +152,35 @@ information ([coordinator scan](../../internal/coordinator/scan.go#L38)). A fail
 or partial read is never proof of an empty candidate set. Pagination is not a
 globally atomic snapshot across three shards.
 
+### PS Table 3 and §8 mapping
+
+PS Table 3's five example internal interfaces map directly to the private contract:
+
+- `POST /internal/nodes/register`: node identity/incarnation and group registration;
+  [registration contract](../../contracts/internal.yaml#L52).
+- `POST /internal/nodes/heartbeat`: availability, leader and applied-position hints;
+  [heartbeat contract](../../contracts/internal.yaml#L99).
+- `PUT /internal/data/{key}`: create/update through the coordinator, with operation
+  identity and committed version preconditions; [data contract](../../contracts/internal.yaml#L157).
+- `GET /internal/data/{key}`: routed data retrieval with the declared read mode;
+  [data contract](../../contracts/internal.yaml#L157).
+- `DELETE /internal/data/{key}`: versioned deletion/tombstone rather than deletion
+  of retained dedupe/closure history; [data contract](../../contracts/internal.yaml#L157).
+
+For PS §8, nodes send heartbeats every **1 s** by default
+([sender](../../internal/storagenode/heartbeat.go#L38)); the coordinator marks an
+absent node SUSPECT after **3 s** and DOWN after **5 s**
+([defaults](../../internal/coordinator/coordinator.go#L35)). These are configurable
+heartbeat thresholds, not measured election or end-to-end recovery deadlines.
+Failed-node routing is avoided through the heartbeat/leader view and bounded
+leader discovery/retry; an available Raft majority can elect a new leader and
+continue, while loss of a majority fails explicitly. A heartbeat never grants
+write authority to an arbitrary replica. A restarted node restores/replays and
+becomes data-ready only after catch-up; demos6/7 record behavior before, during
+and after stopping/restarting the storage pod. The
+[historical gate measurements](requirements-and-results.md) distinguish these
+observations from configured thresholds and from Kubernetes Ready alone.
+
 ## Committed consistency and storage guarantees
 
 Committed apply runs serially in log order. For domain commands with an operation
@@ -174,6 +219,13 @@ entries also differ from command indexes ([index boundary](../../internal/raftst
 `strongReadFence: fence` selects how explicit linearizable reads are implemented;
 it does not change the contract's strong default
 ([storage values](../../deploy/helm/storage/values.yaml#L29)).
+
+Application read paths that leave their mode unspecified currently use strong
+(Barrier) reads. Configuring the optional fence does not make those calls
+linearizable-mode requests automatically. Therefore the S4.1/M6 fence study is
+not proof that the current app workload uses the fence or gains its measured
+speedup. A separate post-gate read-mode PR and before/after load comparison are
+planned; no default or contract is changed by this report.
 
 TryClaim checks permanent closure, recognizes the same bound claim, closes a
 conflicting/ineligible attempt, or commits the eligible claim. Rejection-and-closure

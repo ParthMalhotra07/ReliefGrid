@@ -1,0 +1,6 @@
+v24.16.0
+11.13.0
+esbuild 0.28.2; playwright 1.64.1
+node_modules target: <worktree-root>/reliefgrid-a41/ui/node_modules
+932c22cb5ca778357c177411394726e96276ddb8cce2dfb6025c77baeb1ed917  static/app-6PQBRLMY.js
+21198020e847183815ded03b4af9f8c6fd78913449cdf7955121437fb6919895  static/manifest.json
