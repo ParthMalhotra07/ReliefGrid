@@ -19,7 +19,7 @@ import (
 // only 9090, to pods labelled reliefgrid.io/metrics-scraper=true. The mgmt
 // port (8081) stays operator-only and the data port keeps its rules.
 
-func renderStorage(t *testing.T) []map[string]any {
+func renderStorage(t *testing.T, flags ...string) []map[string]any {
 	t.Helper()
 	helm, err := exec.LookPath("helm")
 	if err != nil {
@@ -30,7 +30,8 @@ func renderStorage(t *testing.T) []map[string]any {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, helm, "template", "storage", "../deploy/helm/storage", "--namespace", "reliefgrid").Output()
+	args := append([]string{"template", "storage", "../deploy/helm/storage", "--namespace", "reliefgrid"}, flags...)
+	out, err := exec.CommandContext(ctx, helm, args...).Output()
 	if err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) {
