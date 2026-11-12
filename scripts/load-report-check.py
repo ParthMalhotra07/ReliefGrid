@@ -8,7 +8,10 @@ lists under "raw" with committed=true, and SHA256SUMS covering every file in
 the directory but itself. SHA256SUMS may also list files the report keeps
 off-repo (committed=false), with the report's sha256. Prints one PASS or FAIL
 line per check and exits 1 on any FAIL, 2 on bad usage, 3 for an
-inconclusive saturation bracket when every other validation passed.
+inconclusive saturation bracket (the first step already breaks a threshold)
+when every other validation passed. A step run that breaks no threshold up to
+its top step is a valid result, "saturation > <top> req/s", provided the
+report states no saturation point.
 
 What summary.json must state is what the plan asks a performance figure to
 state: hardware, versions, dataset, concurrency, duration, error rate, the
@@ -382,8 +385,11 @@ def check_saturation(doc):
         return
     first_broken = next((i for i, s in enumerate(steps) if broken_by(s)), None)
     if first_broken is None:
-        inconclusive = True
-        print(f"INCONCLUSIVE  saturation: no step breaks a threshold up to {targets[-1]} req/s; raise the top step")
+        # Saturation lies above the tested range: a lower bound, not a bracket.
+        if doc.get("saturation") is not None:
+            bad(f"saturation: no step breaks a threshold up to {targets[-1]} req/s, the report says {doc.get('saturation')!r}")
+            return
+        ok(f"saturation: > {targets[-1]} req/s (no step breaks a threshold up to {targets[-1]} req/s)")
         return
     if first_broken == 0:
         inconclusive = True
