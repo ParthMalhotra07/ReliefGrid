@@ -24,10 +24,10 @@
 // WithReadConsistency makes every read explicit (#72): point reads send the
 // mode, scans and outbox pages that name none use it, and an answer that
 // was served weaker than asked, or does not say how it was served, is a
-// retryable *Error rather than a result. Without it, point reads send no
-// mode and are not checked, and a scan or outbox page that names no mode is
-// sent as linearizable (the S4.1 read fence) and refuses only an answer
-// served stale. strong stays available to a caller that names it.
+// retryable *Error rather than a result. Without it, every read (point
+// reads, and scans and outbox pages that name no mode) is sent as
+// linearizable (the S4.1 read fence) and refuses only an answer served
+// stale. strong stays available to a caller that names it.
 //
 // Mutations and scans carry the client's ringVersion. Every call has a
 // deadline: the caller's, capped at the client's timeout. The cap covers the
@@ -546,22 +546,22 @@ func (c *Client) servedAs(asked, served string) error {
 	return &Error{Status: http.StatusOK, Message: fmt.Sprintf("asked for a %s read, served %q", asked, served), Retryable: true, read: true}
 }
 
-// pointRead is a read of one key, closure or operation. With a client read
-// mode it sends the mode and checks the answer's read info against it.
+// pointRead is a read of one key, closure or operation. It sends the
+// client's read mode, else linearizable (never left for the server to
+// default to strong), and checks the answer's read info against it.
 func (c *Client) pointRead(ctx context.Context, op, path string, query url.Values, resp any, info *internalapi.ReadInfo) error {
-	if c.readMode != "" {
-		if query == nil {
-			query = url.Values{}
-		}
-		query.Set("consistency", string(c.readMode))
+	mode, err := c.queryMode("")
+	if err != nil {
+		return err
 	}
+	if query == nil {
+		query = url.Values{}
+	}
+	query.Set("consistency", mode)
 	if err := c.read(ctx, op, path, query, resp); err != nil {
 		return err
 	}
-	if c.readMode == "" {
-		return nil
-	}
-	return c.servedAs(string(c.readMode), string(info.Consistency))
+	return c.servedAs(mode, string(info.Consistency))
 }
 
 func (c *Client) CreateEntity(ctx context.Context, cmd store.CreateEntity) (store.Result, error) {
