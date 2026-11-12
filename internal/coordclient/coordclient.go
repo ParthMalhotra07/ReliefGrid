@@ -44,6 +44,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -72,11 +73,12 @@ const maxBody = 16 << 20
 // Client is a store.Store backed by the coordinator. It is safe for
 // concurrent use.
 type Client struct {
-	internalAuth *auth.SenderConfig
-	unknown      map[string]bool // unresolved operations; never evict an unknown outcome
-	base         string
-	http         *http.Client
-	timeout      time.Duration
+	internalAuth     *auth.SenderConfig
+	internalAuthFile string
+	unknown          map[string]bool // unresolved operations; never evict an unknown outcome
+	base             string
+	http             *http.Client
+	timeout          time.Duration
 	// readMode is WithReadConsistency's mode; "" means none was set.
 	readMode store.Consistency
 	// tracerProvider records client spans (S4.4); nil uses the global one.
@@ -95,6 +97,13 @@ type Option func(*Client)
 // authenticated client; app and node clients must each wrap the raw transport.
 func WithInternalAuth(cfg auth.SenderConfig) Option {
 	return func(c *Client) { c.internalAuth = &cfg }
+}
+
+// WithInternalAuthFile loads a sender credential once in New, before any I/O.
+// An empty path leaves authentication unchanged for callers of disabled clusters.
+// When set, this file supplies the credential instead of WithInternalAuth.
+func WithInternalAuthFile(path string) Option {
+	return func(c *Client) { c.internalAuthFile = path }
 }
 
 // WithHTTPClient sets the HTTP client (default: a fresh http.Client).
@@ -134,6 +143,13 @@ func New(ctx context.Context, baseURL string, opts ...Option) (*Client, error) {
 	c := &Client{base: strings.TrimRight(baseURL, "/"), http: &http.Client{}, timeout: DefaultTimeout}
 	for _, o := range opts {
 		o(c)
+	}
+	if c.internalAuthFile != "" {
+		token, err := os.ReadFile(c.internalAuthFile)
+		if err != nil {
+			return nil, fmt.Errorf("coordclient: read sender token: %w", err)
+		}
+		c.internalAuth = &auth.SenderConfig{Token: string(token)}
 	}
 	if c.internalAuth != nil {
 		client, err := auth.NewClient(c.http, *c.internalAuth)

@@ -97,7 +97,7 @@ func TestRunServesTheLoadedRing(t *testing.T) {
 	ready := make(chan string, 1)
 	errc := make(chan error, 1)
 	go func() {
-		errc <- run(ctx, config{AppAuthFiles: tokens, NodeAuthFiles: tokens, NodeSenderTokenFile: tokens.Token, HTTPAddr: "127.0.0.1:0", RingPath: "../../contracts/ring.yaml", Coordinator: coordinator.Config{OperatorToken: "t"}}, ready)
+		errc <- run(ctx, config{InternalAuthEnabled: true, AppAuthFiles: tokens, NodeAuthFiles: tokens, NodeSenderTokenFile: tokens.Token, HTTPAddr: "127.0.0.1:0", RingPath: "../../contracts/ring.yaml", Coordinator: coordinator.Config{OperatorToken: "t"}}, ready)
 	}()
 	var addr string
 	select {

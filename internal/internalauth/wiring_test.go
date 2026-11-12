@@ -16,7 +16,7 @@ func TestReceiverRefusesBeforeHandler(t *testing.T) {
 	for _, token := range []string{"", "wrong", "current", "previous"} {
 		called := false
 		h := Receiver(auth.ReceiverConfig{Token: "current", PreviousToken: "previous"}, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { called = true; w.WriteHeader(204) }))
-		req := httptest.NewRequest("POST", "/internal/data/x", nil)
+		req := httptest.NewRequestWithContext(t.Context(), "POST", "/internal/data/x", nil)
 		if token != "" {
 			req.Header.Set(auth.Header, token)
 		}
@@ -103,7 +103,7 @@ func TestReceiverRejectsDuplicatesAndEmptyConfiguration(t *testing.T) {
 	for _, cfg := range []auth.ReceiverConfig{{Token: "current"}, {}} {
 		called := false
 		h := Receiver(cfg, http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
-		req := httptest.NewRequest("GET", "/internal/ring", nil)
+		req := httptest.NewRequestWithContext(t.Context(), "GET", "/internal/ring", nil)
 		req.Header.Add(auth.Header, "current")
 		req.Header.Add(auth.Header, "current")
 		rec := httptest.NewRecorder()
@@ -111,5 +111,15 @@ func TestReceiverRejectsDuplicatesAndEmptyConfiguration(t *testing.T) {
 		if called || rec.Code != 401 {
 			t.Fatal("duplicate or unconfigured receiver reached handler")
 		}
+	}
+}
+
+func TestUnreadablePreviousIsNotAbsent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(path, []byte("current"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := (Files{Token: path, PreviousToken: t.TempDir()}).Load(); err == nil {
+		t.Fatal("unreadable previous accepted")
 	}
 }

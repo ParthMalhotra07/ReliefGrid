@@ -234,3 +234,11 @@ func TestClientNeverFollowsRedirectsIncludingInjectedClient(t *testing.T) {
 		})
 	}
 }
+
+func TestReceiverEmptyHeaderWithoutPrevious(t *testing.T) {
+	r := httptest.NewRequestWithContext(t.Context(), "GET", "/internal/ring", nil)
+	r.Header.Set(Header, "")
+	if (ReceiverConfig{Token: current}).Authorize(r) {
+		t.Fatal("empty header matched absent previous credential")
+	}
+}

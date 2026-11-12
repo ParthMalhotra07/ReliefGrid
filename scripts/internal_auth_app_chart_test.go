@@ -3,12 +3,14 @@
 package scripts_test
 
 import (
+	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 func TestAppInternalAuthMountsExcludeUI(t *testing.T) {
-	docs := renderApp(t, "-f", filepath.Join("..", "deploy", "helm", "reliefgrid", "values-app-kind.yaml"))
+	docs := renderApp(t, "-f", filepath.Join("..", "deploy", "helm", "reliefgrid", "values-app-kind.yaml"), "--set", "internalAuth.enabled=true")
 	for _, name := range []string{"api", "matcher", "ui"} {
 		d := appDocument(t, docs, "Deployment", "reliefgrid-"+name)
 		spec := appField(t, d, "spec", "template", "spec").(map[string]any)
@@ -31,6 +33,25 @@ func TestAppInternalAuthMountsExcludeUI(t *testing.T) {
 		}
 		if found != (name != "ui") {
 			t.Fatalf("%s auth mount=%v", name, found)
+		}
+	}
+}
+
+func TestAppInternalAuthDisabled(t *testing.T) {
+	for _, extra := range [][]string{nil, {"--set", "internalAuth.enabled=false"}} {
+		flags := append([]string{"-f", filepath.Join("..", "deploy", "helm", "reliefgrid", "values-app-kind.yaml")}, extra...)
+		docs := renderApp(t, flags...)
+		for _, name := range []string{"api", "matcher", "ui"} {
+			d := appDocument(t, docs, "Deployment", "reliefgrid-"+name)
+			encoded, err := json.Marshal(d)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, s := range []string{"internal-auth", "INTERNAL_AUTH_TOKEN_FILE"} {
+				if strings.Contains(string(encoded), s) {
+					t.Fatalf("disabled %s contains %s", name, s)
+				}
+			}
 		}
 	}
 }

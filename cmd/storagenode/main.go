@@ -61,6 +61,7 @@ func main() {
 
 // config is read from the environment the StatefulSet sets.
 type config struct {
+	InternalAuthEnabled bool
 	NodeAuthFiles       internalauth.Files
 	NodeSenderTokenFile string
 	Raft                raftstore.Config
@@ -147,6 +148,13 @@ func loadConfig(getenv func(string) string) (config, error) {
 	if _, _, err := net.SplitHostPort(cfg.MgmtAddr); err != nil {
 		return config{}, fmt.Errorf("MGMT_ADDR %q: %w", cfg.MgmtAddr, err)
 	}
+	if value := getenv("INTERNAL_AUTH_ENABLED"); value != "" {
+		enabled, err := strconv.ParseBool(value)
+		if err != nil {
+			return config{}, fmt.Errorf("INTERNAL_AUTH_ENABLED: %w", err)
+		}
+		cfg.InternalAuthEnabled = enabled
+	}
 	cfg.NodeSenderTokenFile = get("NODE_AUTH_SENDER_TOKEN_FILE", "/var/run/reliefgrid/node-auth/sender-token")
 	cfg.NodeAuthFiles = internalauth.Files{Token: get("NODE_AUTH_TOKEN_FILE", "/var/run/reliefgrid/node-auth/token"), PreviousToken: get("NODE_AUTH_PREVIOUS_TOKEN_FILE", "/var/run/reliefgrid/node-auth/previous-token")}
 	hb := &cfg.Heartbeat
@@ -188,21 +196,25 @@ func run(ctx context.Context, cfg config) error {
 	if cfg.Raft.Shard >= rg.Shards() {
 		return fmt.Errorf("SHARD %d is outside the ring's %d shards", cfg.Raft.Shard, rg.Shards())
 	}
-	nodeAuth, err := cfg.NodeAuthFiles.Load()
-	if err != nil {
-		return err
-	}
-	nodeSender, err := internalauth.LoadSender(cfg.NodeSenderTokenFile)
-	if err != nil {
-		return err
-	}
-	raw := cfg.Heartbeat.Client
-	if raw == nil {
-		raw = &http.Client{Timeout: time.Second}
-	}
-	cfg.Heartbeat.Client, err = auth.NewClient(raw, nodeSender)
-	if err != nil {
-		return err
+	var nodeAuth *auth.ReceiverConfig
+	if cfg.InternalAuthEnabled {
+		loaded, err := cfg.NodeAuthFiles.Load()
+		if err != nil {
+			return err
+		}
+		nodeAuth = &loaded
+		nodeSender, err := internalauth.LoadSender(cfg.NodeSenderTokenFile)
+		if err != nil {
+			return err
+		}
+		raw := cfg.Heartbeat.Client
+		if raw == nil {
+			raw = &http.Client{Timeout: time.Second}
+		}
+		cfg.Heartbeat.Client, err = auth.NewClient(raw, nodeSender)
+		if err != nil {
+			return err
+		}
 	}
 	if cfg.AdmissionOff {
 		slog.Warn("!!! ADMISSION=off: M7 admission is DISABLED; an empty or wiped disk opens Raft at once. Tests and local runs only, never a cluster. !!!")
@@ -292,7 +304,7 @@ func run(ctx context.Context, cfg config) error {
 		slog.Warn("OPERATOR_TOKEN is not set; operator endpoints (/mgmt/bootstrap, /mgmt/snapshot, /mgmt/dump) are disabled")
 	}
 	s := storagenode.New(n, storagenode.Config{
-		InternalAuth: &nodeAuth, Ring: rg, Shard: cfg.Raft.Shard, PodName: cfg.Raft.PodName, Timeout: cfg.RequestTimeout,
+		InternalAuth: nodeAuth, Ring: rg, Shard: cfg.Raft.Shard, PodName: cfg.Raft.PodName, Timeout: cfg.RequestTimeout,
 		LeaderHTTP:    func(a raft.ServerAddress) string { return storagenode.HTTPAddrFor(a, cfg.HTTPPort) },
 		OperatorToken: cfg.OperatorToken, Metrics: metrics,
 	})

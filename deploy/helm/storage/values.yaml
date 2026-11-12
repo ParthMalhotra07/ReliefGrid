@@ -79,6 +79,7 @@ tracing:
 # then senderToken=new and restart senders; finally remove previousToken and
 # restart receivers. See docs/operations/internal-auth.md.
 internalAuth:
+  enabled: false # Enables both app and node HTTP authentication.
   token: ""
   previousToken: ""
   senderToken: ""

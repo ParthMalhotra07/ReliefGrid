@@ -1,6 +1,7 @@
 package coordinator_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordinator"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 )
 
 func TestAuthRefusalAfterUnknownRemainsUnknown(t *testing.T) {
@@ -52,7 +54,7 @@ func TestCoordinatorSeparatesAppAndNodeCredentials(t *testing.T) {
 		if tc.path == "/internal/nodes/register" {
 			method = "POST"
 		}
-		req := httptest.NewRequest(method, tc.path, nil)
+		req := httptest.NewRequestWithContext(t.Context(), method, tc.path, nil)
 		if tc.token != "" {
 			req.Header.Set(auth.Header, tc.token)
 		}
@@ -60,6 +62,29 @@ func TestCoordinatorSeparatesAppAndNodeCredentials(t *testing.T) {
 		c.Handler().ServeHTTP(rec, req)
 		if (rec.Code == 401) != tc.refused {
 			t.Fatalf("%s token=%q: %d %s", tc.path, tc.token, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+func TestMalformedStorageAuthRefusalRemainsUnknown(t *testing.T) {
+	for _, body := range []any{
+		"proxy unauthorized",
+		internalapi.Error{Code: internalapi.UNAUTHORIZED, OutcomeUnknown: true},
+		internalapi.Error{Code: internalapi.UNAUTHORIZED, Result: &store.Result{Outcome: store.OutcomeOK}},
+	} {
+		h := newHarness(t, func(c *coordinator.Config) {})
+		h.ready()
+		key, _ := keyOn(t, h.rg, 0, "kv:", "malformed-auth")
+		for _, n := range h.nodes[0] {
+			n.setHandler(func(w http.ResponseWriter, _ *http.Request, _ []byte) {
+				w.WriteHeader(401)
+				_ = json.NewEncoder(w).Encode(body)
+			})
+		}
+		rec := h.do(call{method: http.MethodPut, path: "/internal/data/" + key, body: map[string]any{"ringVersion": h.rg.Version(), "operationId": "malformed-auth", "at": t0, "value": 1}})
+		e := decodeJSON[internalapi.Error](t, rec)
+		if rec.Code != 503 || e.Code != internalapi.OUTCOMEUNKNOWN || !e.OutcomeUnknown {
+			t.Fatalf("malformed refusal erased uncertainty: %d %+v", rec.Code, e)
 		}
 	}
 }

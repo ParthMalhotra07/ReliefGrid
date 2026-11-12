@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -148,5 +150,75 @@ func TestMalformedAuthRefusalCannotProveRejection(t *testing.T) {
 	f.mu.Unlock()
 	if _, err := c.CreateEntity(t.Context(), cmd); errors.Is(err, store.ErrUnknownOutcome) {
 		t.Fatalf("committed answer did not resolve uncertainty: %v", err)
+	}
+}
+
+func TestDeleteAuthRefusalKeepsUnknown(t *testing.T) {
+	f := newFake(t)
+	f.answer = func(w http.ResponseWriter, r *http.Request, n int) {
+		if r.URL.Query().Get("operationId") != "delete-auth" {
+			t.Error("missing query operationId")
+		}
+		if n == 1 {
+			writeJSON(w, 503, internalapi.Error{Code: internalapi.OUTCOMEUNKNOWN, OutcomeUnknown: true})
+			return
+		}
+		writeJSON(w, 403, internalapi.Error{Code: internalapi.UNAUTHORIZED})
+	}
+	c, err := coordclient.New(t.Context(), f.srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := store.CompareAndSet{Delete: true, Meta: store.Meta{OperationID: "delete-auth", At: t0}, Key: "kv:auth"}
+	for range 2 {
+		if _, err := c.CompareAndSet(t.Context(), cmd); !errors.Is(err, store.ErrUnknownOutcome) {
+			t.Fatalf("lost DELETE uncertainty: %v", err)
+		}
+	}
+}
+
+func TestStructured401WithOutcomeCannotProveRejection(t *testing.T) {
+	for _, body := range []internalapi.Error{
+		{Code: internalapi.UNAUTHORIZED, Result: &store.Result{Outcome: store.OutcomeOK}},
+		{Code: internalapi.UNAUTHORIZED, OutcomeUnknown: true},
+	} {
+		f := newFake(t)
+		f.answer = func(w http.ResponseWriter, _ *http.Request, _ int) { writeJSON(w, 401, body) }
+		c, err := coordclient.New(t.Context(), f.srv.URL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = c.CreateEntity(t.Context(), store.CreateEntity{Meta: store.Meta{OperationID: "auth-result", At: t0}, Key: "kv:auth", Value: json.RawMessage(`1`)})
+		if !errors.Is(err, store.ErrUnknownOutcome) {
+			t.Fatalf("401 with outcome treated as rejection: %v", err)
+		}
+	}
+}
+
+func TestInternalAuthFileBeforeInitialRing(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.Header.Get(auth.Header) != "file-token" {
+			t.Error("missing file token")
+		}
+		writeJSON(w, 200, ringV1)
+	}))
+	defer srv.Close()
+	path := filepath.Join(t.TempDir(), "sender-token")
+	for _, token := range []string{"", "bad\n", "file-token"} {
+		if err := os.WriteFile(path, []byte(token), 0600); err != nil {
+			t.Fatal(err)
+		}
+		_, err := coordclient.New(t.Context(), srv.URL, coordclient.WithInternalAuthFile(path))
+		if (err == nil) != (token == "file-token") {
+			t.Fatalf("file validation: %v", err)
+		}
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("invalid token sent: %d calls", calls.Load())
+	}
+	if _, err := coordclient.New(t.Context(), srv.URL, coordclient.WithInternalAuthFile(path+"-missing")); err == nil {
+		t.Fatal("missing file accepted")
 	}
 }

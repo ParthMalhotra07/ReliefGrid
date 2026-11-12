@@ -6,14 +6,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestDataAuthRunsBeforeHandlerWithIdentity(t *testing.T) {
 	n := newFakeNode(t)
 	s := newTestServer(t, n)
+	s.metrics = newNodeMetrics(0, "storage-shard-0-0", time.Now)
 	s.internalAuth = &auth.ReceiverConfig{Token: "node-current", PreviousToken: "node-old"}
 	for _, token := range []string{"", "app-token", "node-current", "node-old"} {
-		req := httptest.NewRequest(http.MethodPut, "/internal/data/kv:auth", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/internal/data/kv:auth", nil)
 		if token != "" {
 			req.Header.Set(auth.Header, token)
 		}
@@ -36,13 +38,13 @@ func TestDataAuthRunsBeforeHandlerWithIdentity(t *testing.T) {
 	}
 	for _, path := range []string{"/healthz", "/readyz"} {
 		rec := httptest.NewRecorder()
-		s.mgmtRoutes().ServeHTTP(rec, httptest.NewRequest("GET", path, nil))
+		s.mgmtRoutes().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", path, nil))
 		if rec.Code == 401 {
 			t.Fatalf("probe protected: %s", path)
 		}
 	}
 	rec := httptest.NewRecorder()
-	s.metricsRoutes().ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	s.metricsRoutes().ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/metrics", nil))
 	if rec.Code != 200 {
 		t.Fatalf("metrics %d", rec.Code)
 	}

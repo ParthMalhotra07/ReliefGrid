@@ -55,6 +55,8 @@ func main() {
 
 // config is read from the environment the Deployment sets.
 type config struct {
+	InternalAuthEnabled bool
+	Listen              func(context.Context, string, string) (net.Listener, error)
 	NodeAuthFiles       internalauth.Files
 	NodeSenderTokenFile string
 	AppAuthFiles        internalauth.Files
@@ -83,6 +85,13 @@ func loadConfig(getenv func(string) string) (config, error) {
 		return config{}, fmt.Errorf("HTTP_ADDR %q: %w", cfg.HTTPAddr, err)
 	}
 	cfg.AppAuthFiles = internalauth.Files{Token: get("INTERNAL_AUTH_TOKEN_FILE", "/var/run/reliefgrid/internal-auth/token"), PreviousToken: get("INTERNAL_AUTH_PREVIOUS_TOKEN_FILE", "/var/run/reliefgrid/internal-auth/previous-token")}
+	if value := getenv("INTERNAL_AUTH_ENABLED"); value != "" {
+		enabled, err := strconv.ParseBool(value)
+		if err != nil {
+			return config{}, fmt.Errorf("INTERNAL_AUTH_ENABLED: %w", err)
+		}
+		cfg.InternalAuthEnabled = enabled
+	}
 	cfg.NodeSenderTokenFile = get("NODE_AUTH_SENDER_TOKEN_FILE", "/var/run/reliefgrid/node-auth/sender-token")
 	cfg.NodeAuthFiles = internalauth.Files{Token: get("NODE_AUTH_TOKEN_FILE", "/var/run/reliefgrid/node-auth/token"), PreviousToken: get("NODE_AUTH_PREVIOUS_TOKEN_FILE", "/var/run/reliefgrid/node-auth/previous-token")}
 	c := &cfg.Coordinator
@@ -121,24 +130,26 @@ func run(ctx context.Context, cfg config, ready chan<- string) error {
 	if err != nil {
 		return fmt.Errorf("refusing to start: %w", err)
 	}
-	appAuth, err := cfg.AppAuthFiles.Load()
-	if err != nil {
-		return err
-	}
-	nodeAuth, err := cfg.NodeAuthFiles.Load()
-	if err != nil {
-		return err
-	}
-	nodeSender, err := internalauth.LoadSender(cfg.NodeSenderTokenFile)
-	if err != nil {
-		return err
-	}
 	cc := cfg.Coordinator
-	cc.AppAuth, cc.NodeAuth = &appAuth, &nodeAuth
-	// Wrap the raw node client directly, never an app-authenticated client.
-	cc.Client, err = auth.NewClient(cc.Client, nodeSender)
-	if err != nil {
-		return err
+	if cfg.InternalAuthEnabled {
+		appAuth, err := cfg.AppAuthFiles.Load()
+		if err != nil {
+			return err
+		}
+		nodeAuth, err := cfg.NodeAuthFiles.Load()
+		if err != nil {
+			return err
+		}
+		nodeSender, err := internalauth.LoadSender(cfg.NodeSenderTokenFile)
+		if err != nil {
+			return err
+		}
+		cc.AppAuth, cc.NodeAuth = &appAuth, &nodeAuth
+		// Wrap the raw node client directly, never an app-authenticated client.
+		cc.Client, err = auth.NewClient(cc.Client, nodeSender)
+		if err != nil {
+			return err
+		}
 	}
 	cc.Ring = rg
 	c, err := coordinator.New(cc)
@@ -148,7 +159,11 @@ func run(ctx context.Context, cfg config, ready chan<- string) error {
 	if cc.OperatorToken == "" {
 		slog.Warn("OPERATOR_TOKEN is not set; /admin is disabled")
 	}
-	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", cfg.HTTPAddr)
+	listen := cfg.Listen
+	if listen == nil {
+		listen = (&net.ListenConfig{}).Listen
+	}
+	ln, err := listen(ctx, "tcp", cfg.HTTPAddr)
 	if err != nil {
 		return err
 	}

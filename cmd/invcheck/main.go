@@ -70,7 +70,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/internalauth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/invcheck"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
 	"github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger"
@@ -199,7 +201,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 
 	ctx, cancel := context.WithTimeout(ctx, *timeout)
 	defer cancel()
-	client, err := coordclient.New(ctx, *coord, coordclient.WithReadConsistency(store.Consistency(*mode)))
+	client, err := coordclient.New(ctx, *coord, coordclient.WithReadConsistency(store.Consistency(*mode)), coordclient.WithInternalAuthFile(os.Getenv("INTERNAL_AUTH_TOKEN_FILE")))
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "invcheck: coordinator %s: %v\n", *coord, err)
 		return exitIncomplete
@@ -226,7 +228,20 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 				return exitIncomplete
 			}
 			d.ReadConsistency = *mode
-			d.Probes = probes(probeTo, shardOf, *mode, &http.Client{})
+			nodeClient := &http.Client{}
+			if path := os.Getenv("NODE_AUTH_SENDER_TOKEN_FILE"); path != "" {
+				sender, err := internalauth.LoadSender(path)
+				if err != nil {
+					_, _ = fmt.Fprintln(stderr, err)
+					return exitIncomplete
+				}
+				nodeClient, err = auth.NewClient(nodeClient, sender)
+				if err != nil {
+					_, _ = fmt.Fprintln(stderr, err)
+					return exitIncomplete
+				}
+			}
+			d.Probes = probes(probeTo, shardOf, *mode, nodeClient)
 		}
 		return load(ctx, d, *path, stdout)
 	case "verify":

@@ -87,8 +87,10 @@ spec:
             - name: HTTP_ADDR
               value: {{ printf ":%d" ($port | int) | quote }}
             {{- if ne $name "ui" }}
+            {{- if $.Values.internalAuth.enabled }}
             - name: INTERNAL_AUTH_TOKEN_FILE
               value: /var/run/reliefgrid/internal-auth/sender-token
+            {{- end }}
             - name: COORDINATOR_URL
               value: {{ $.Values.app.coordinatorURL | quote }}
             {{- end }}
@@ -126,7 +128,7 @@ spec:
                   name: {{ include "reliefgrid.fullname" $ }}-rabbitmq
                   key: ui-management-url
             {{- end }}
-          {{- if ne $name "ui" }}
+          {{- if and $.Values.internalAuth.enabled (ne $name "ui") }}
           volumeMounts:
             - name: internal-auth
               mountPath: /var/run/reliefgrid/internal-auth
@@ -146,7 +148,7 @@ spec:
             failureThreshold: 3
           resources:
             {{- toYaml $app.resources | nindent 12 }}
-      {{- if ne $name "ui" }}
+      {{- if and $.Values.internalAuth.enabled (ne $name "ui") }}
       volumes:
         - name: internal-auth
           secret:

@@ -87,12 +87,16 @@ spec:
               value: /etc/reliefgrid/ring.yaml
             - name: REQUEST_TIMEOUT_MS
               value: {{ $.Values.requestTimeoutMs | quote }}
+            {{- if $.Values.internalAuth.enabled }}
+            - name: INTERNAL_AUTH_ENABLED
+              value: "true"
             - name: NODE_AUTH_TOKEN_FILE
               value: /var/run/reliefgrid/node-auth/token
             - name: NODE_AUTH_PREVIOUS_TOKEN_FILE
               value: /var/run/reliefgrid/node-auth/previous-token
             - name: NODE_AUTH_SENDER_TOKEN_FILE
               value: /var/run/reliefgrid/node-auth/sender-token
+            {{- end }}
             - name: OPERATOR_TOKEN
               valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
             {{- include "storage.tracingEnv" (dict "root" $ "service" "storagenode") | nindent 12 }}
@@ -137,9 +141,11 @@ spec:
           resources:
             {{- toYaml $.Values.resources | nindent 12 }}
           volumeMounts:
+            {{- if $.Values.internalAuth.enabled }}
             - name: node-auth
               mountPath: /var/run/reliefgrid/node-auth
               readOnly: true
+            {{- end }}
             - name: data
               mountPath: /data
             - name: fsm
@@ -150,10 +156,12 @@ spec:
               mountPath: /etc/reliefgrid
               readOnly: true
       volumes:
+        {{- if $.Values.internalAuth.enabled }}
         - name: node-auth
           secret:
             secretName: reliefgrid-node-auth
             defaultMode: 0440
+        {{- end }}
         - name: fsm
           emptyDir: {}
         - name: tmp

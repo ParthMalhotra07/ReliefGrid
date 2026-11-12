@@ -50,6 +50,9 @@ spec:
               value: ":9090"
             - name: RING_PATH
               value: /etc/reliefgrid/ring.yaml
+            {{- if .Values.internalAuth.enabled }}
+            - name: INTERNAL_AUTH_ENABLED
+              value: "true"
             - name: NODE_AUTH_TOKEN_FILE
               value: /var/run/reliefgrid/node-auth/token
             - name: NODE_AUTH_PREVIOUS_TOKEN_FILE
@@ -60,6 +63,7 @@ spec:
               value: /var/run/reliefgrid/internal-auth/token
             - name: INTERNAL_AUTH_PREVIOUS_TOKEN_FILE
               value: /var/run/reliefgrid/internal-auth/previous-token
+            {{- end }}
             - name: OPERATOR_TOKEN
               valueFrom: {secretKeyRef: {name: storage-operator-token, key: token}}
             {{- include "storage.tracingEnv" (dict "root" . "service" "coordinator") | nindent 12 }}
@@ -79,16 +83,19 @@ spec:
           resources:
             {{- toYaml .Values.coordinator.resources | nindent 12 }}
           volumeMounts:
+            {{- if .Values.internalAuth.enabled }}
             - name: node-auth
               mountPath: /var/run/reliefgrid/node-auth
               readOnly: true
             - name: internal-auth
               mountPath: /var/run/reliefgrid/internal-auth
               readOnly: true
+            {{- end }}
             - name: ring
               mountPath: /etc/reliefgrid
               readOnly: true
       volumes:
+        {{- if .Values.internalAuth.enabled }}
         - name: node-auth
           secret:
             secretName: reliefgrid-node-auth
@@ -97,6 +104,7 @@ spec:
           secret:
             secretName: reliefgrid-internal-auth
             defaultMode: 0440
+        {{- end }}
         - name: ring
           configMap:
             name: storage-ring
