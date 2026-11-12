@@ -845,7 +845,7 @@ components:
           - strong
           - linearizable
           - stale
-          description: Weakest read mode used. Public authoritative lists use strong reads for the core release.
+          description: Weakest read mode used. Public authoritative lists are read linearizable (the read fence) by default; a strong answer also satisfies them, and a stale one is never returned as a list.
         nextCursor:
           type: string
           minLength: 1
@@ -1042,7 +1042,7 @@ components:
           - strong
           - linearizable
           - stale
-          description: Weakest read mode used. Public authoritative lists use strong reads for the core release.
+          description: Weakest read mode used. Public authoritative lists are read linearizable (the read fence) by default; a strong answer also satisfies them, and a stale one is never returned as a list.
         nextCursor:
           type: string
           minLength: 1
