@@ -91,8 +91,8 @@ Submission must include the **public GitHub repository URL**; verify signed-out
 access to [this repository](https://github.com/ParthMalhotra07/ReliefGrid). A live
 demonstration is **mandatory**. The recording is a backup and must show deployment
 from scratch, including every deployment step; verify that the recording plays
-back successfully. Report length and format remain **pending professor
-confirmation**.
+back successfully. The professor requires the report to be **under 10 pages**.
+The shared outline, final formatting and exported page count still need review.
 
 The [report core](https://github.com/ParthMalhotra07/ReliefGrid/pull/137) and
 [three-round rehearsal runbook](https://github.com/ParthMalhotra07/ReliefGrid/pull/144)
