@@ -1,0 +1,1 @@
+Two clean npm-ci/build asset sets are byte-identical (all generated files). Node 24.16.0, npm 11.13.0; ordinary local node_modules, no symlink.
