@@ -253,7 +253,7 @@ func TestReadShapes(t *testing.T) {
 	if got, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50}); err != nil || len(got) != 1 || got[0].EventID != "e1" {
 		t.Fatalf("PendingOutbox = %+v, %v", got, err)
 	}
-	want := []string{"/internal/data/kv:a?", "/internal/resources/s7/closures/a-1?", "/internal/operations/op-1?key=kv%3Aa", "/internal/outbox?consistency=strong&limit=50&shard=2"}
+	want := []string{"/internal/data/kv:a?", "/internal/resources/s7/closures/a-1?", "/internal/operations/op-1?key=kv%3Aa", "/internal/outbox?consistency=linearizable&limit=50&shard=2"}
 	for i, r := range f.requests() {
 		if r.method != http.MethodGet || r.path+"?"+r.query != want[i] {
 			t.Errorf("read %d = %s %s?%s, want GET %s", i, r.method, r.path, r.query, want[i])
@@ -282,7 +282,7 @@ func TestScanShapeAndPartial(t *testing.T) {
 		t.Fatalf("scan = %+v, want the partial result (and hasMore) unchanged", got)
 	}
 	r := f.requests()[0]
-	if r.path != "/internal/scan" || r.query != "consistency=strong&geohashPrefixes=tt+n&geohashPrefixes=ttp&kind=resource&limit=20&ringVersion=1&statuses=AVAILABLE&statuses=OFFLINE&type=WATER" {
+	if r.path != "/internal/scan" || r.query != "consistency=linearizable&geohashPrefixes=tt+n&geohashPrefixes=ttp&kind=resource&limit=20&ringVersion=1&statuses=AVAILABLE&statuses=OFFLINE&type=WATER" {
 		t.Fatalf("scan sent %s?%s", r.path, r.query)
 	}
 

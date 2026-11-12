@@ -139,7 +139,7 @@ func (e *Engine) Step(ctx context.Context) (Report, error) {
 	defer func() { <-e.permit }()
 	report := Report{}
 	if e.pending == nil {
-		q := store.ScanQuery{Kind: store.KindRequest, Statuses: []string{"PENDING", "WAITING", "MATCHING", "RETRYING", "CANCELLING", "FULFILLING"}, Limit: e.cfg.PageSize, Cursor: e.cursor, Consistency: store.ConsistencyStrong}
+		q := store.ScanQuery{Kind: store.KindRequest, Statuses: []string{"PENDING", "WAITING", "MATCHING", "RETRYING", "CANCELLING", "FULFILLING"}, Limit: e.cfg.PageSize, Cursor: e.cursor, Consistency: store.ConsistencyLinearizable}
 		page, err := e.scan(ctx, q)
 		if err != nil {
 			if errors.Is(err, store.ErrRingVersionMismatch) {

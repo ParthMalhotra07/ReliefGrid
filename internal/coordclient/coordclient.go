@@ -25,8 +25,9 @@
 // mode, scans and outbox pages that name none use it, and an answer that
 // was served weaker than asked, or does not say how it was served, is a
 // retryable *Error rather than a result. Without it, point reads send no
-// mode and are not checked, and a strong scan or outbox page refuses only
-// an answer served stale.
+// mode and are not checked, and a scan or outbox page that names no mode is
+// sent as linearizable (the S4.1 read fence) and refuses only an answer
+// served stale. strong stays available to a caller that names it.
 //
 // Mutations and scans carry the client's ringVersion. Every call has a
 // deadline: the caller's, capped at the client's timeout. The cap covers the
@@ -498,19 +499,27 @@ func entityID(key, prefix string) (string, error) {
 }
 
 // consistency is the wire form of a read mode: the zero value is sent as
-// an explicit strong, so the call never depends on a server default.
+// an explicit linearizable, so the call never depends on a server default
+// (a storage node still treats a missing mode as strong). linearizable is
+// served through the read fence (S4.1): the leader confirms its leadership
+// with a quorum and waits for its FSM to reach the commit index, with no
+// log entry per read; strong commits a barrier entry for every read. Both
+// return only committed state, and neither is a precondition for a write:
+// writes are CAS on version and claims go through TryClaim, each checked
+// inside the FSM apply (invariant 1), so the default only changes what a
+// read costs, not what it may return.
 func consistency(m store.Consistency) (string, error) {
 	switch m {
-	case "", store.ConsistencyStrong:
-		return string(store.ConsistencyStrong), nil
-	case store.ConsistencyLinearizable, store.ConsistencyStale:
+	case "", store.ConsistencyLinearizable:
+		return string(store.ConsistencyLinearizable), nil
+	case store.ConsistencyStrong, store.ConsistencyStale:
 		return string(m), nil
 	}
 	return "", invalid("consistency %q must be strong, linearizable or stale", m)
 }
 
 // queryMode is the mode a scan or outbox page is read in: its own, else the
-// client's, else strong.
+// client's, else linearizable.
 func (c *Client) queryMode(m store.Consistency) (string, error) {
 	if m == "" {
 		m = c.readMode
