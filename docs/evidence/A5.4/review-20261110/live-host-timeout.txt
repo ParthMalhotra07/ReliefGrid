@@ -1,0 +1,18 @@
+Created network-none disposable runner: 73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26
+Real lifecycle command: ('docker', 'start', '--attach', '73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26')
+runner-started
+Real lifecycle command: ('docker', 'stop', '--time', '10', '73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26')
+Flag --time has been deprecated, use --timeout instead
+73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26
+Real lifecycle command: ('docker', 'wait', '73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26')
+Real lifecycle command: ('docker', 'inspect', '--format', '{{.State.Running}}', '73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26')
+Real lifecycle command: ('docker', 'rm', '73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26')
+73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26
+PASS: attached host client timed out as intended
+{
+  "containerName": "reliefgrid-offline-host-timeout-runner-d0924bdfa10a4b2999d3b532bef96956",
+  "containerId": "73367e2a994939ad7daac67023e0c709709ab783e9c286a97495be0305d6ee26",
+  "exitConfirmed": true,
+  "exitCode": 0
+}
+PASS: exact owned runner stopped, waited, confirmed exited and removed

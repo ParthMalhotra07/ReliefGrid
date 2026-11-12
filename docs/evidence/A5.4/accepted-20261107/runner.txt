@@ -1,0 +1,20 @@
+PASS: runner external HTTPS blocked
+Running offline demo-1
+PASS offline demo-1
+Running offline demo-2
+PASS offline demo-2
+Running offline demo-3
+PASS offline demo-3
+Running offline demo-4
+PASS offline demo-4
+Running offline demo-5
+PASS offline demo-5
+Running offline demo-6
+PASS offline demo-6
+Running offline demo-7
+PASS offline demo-7
+Running offline demo-8
+PASS offline demo-8
+Running offline demo-9
+PASS offline demo-9
+OFFLINE ACCEPTANCE PASS:9/9 demos with runner/node external egress denied

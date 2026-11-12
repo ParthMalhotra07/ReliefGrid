@@ -1,0 +1,31 @@
+{
+  "result": "PASS",
+  "demos": 9,
+  "source": "9b2480e46f5d2c2b0d3231f96983bb16a97c1b0c",
+  "manifestSha256": "fc69f0cdbfd36c074e7a9f7e24a6791f9bfb2c85cb66d4d5d7977f07687bbe1c",
+  "roles": {
+    "api": "reliefgrid/api:offline-9b2480e46f5d",
+    "matcher": "reliefgrid/matcher:offline-9b2480e46f5d",
+    "ui": "reliefgrid/ui:offline-9b2480e46f5d",
+    "storagenode": "reliefgrid/storagenode:offline-9b2480e46f5d",
+    "coordinator": "reliefgrid/coordinator:offline-9b2480e46f5d",
+    "tools": "reliefgrid/tools:offline-9b2480e46f5d",
+    "rabbitmq": "reliefgrid-offline/rabbitmq:offline-9b2480e46f5d",
+    "traefik": "reliefgrid-offline/traefik:offline-9b2480e46f5d",
+    "node": "reliefgrid-offline/node:offline-9b2480e46f5d",
+    "runner": "reliefgrid-offline/runner:offline-9b2480e46f5d"
+  },
+  "internalNetwork": true,
+  "ipam": {
+    "Driver": "default",
+    "Options": {},
+    "Config": [
+      {
+        "Subnet": "10.240.0.0/12",
+        "IPRange": "10.240.0.0/24",
+        "Gateway": "10.240.0.1"
+      }
+    ]
+  },
+  "externalHTTPSBlockedOnFiveNodesAfterAcceptance": true
+}
