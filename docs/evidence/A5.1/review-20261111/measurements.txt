@@ -1,0 +1,1 @@
+REVIEW137 VERIFY PASS: two gate-round measurement rows match raw evidence; PS/Docker/scenario coverage present

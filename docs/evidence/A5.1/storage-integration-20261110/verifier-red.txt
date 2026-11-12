@@ -1,0 +1,25 @@
+F.F
+======================================================================
+FAIL: test_out_of_bounds_source_line_rejected (__main__.ReportLinkTests.test_out_of_bounds_source_line_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<report-worktree>/scripts/verify-report-test.py", line 42, in test_out_of_bounds_source_line_rejected
+    with self.assertRaisesRegex(SystemExit, 'source line outside file'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SystemExit not raised
+
+======================================================================
+FAIL: test_validation_addendum_broken_link_rejected (__main__.ReportLinkTests.test_validation_addendum_broken_link_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<report-worktree>/scripts/verify-report-test.py", line 34, in test_validation_addendum_broken_link_rejected
+    with self.assertRaisesRegex(SystemExit, 'validation-addendum.md: broken local link'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SystemExit not raised
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.003s
+
+FAILED (failures=2)
+REPORT VERIFY PASS: 7 chapters/ADRs, 1 local source/evidence links
+REPORT VERIFY PASS: 7 chapters/ADRs, 0 local source/evidence links
