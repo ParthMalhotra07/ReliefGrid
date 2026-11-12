@@ -1,0 +1,48 @@
+{
+ "dir": "~/.cache/reliefgrid/S5.2-phase1-20261111T081905Z/baseline-2",
+ "runId": "S5.2-baseline-20261111T110320Z",
+ "scenario": "baseline",
+ "git": "7dd19404d6df0f7c098810d4c1ad093355a0cd3a",
+ "load": [
+  {
+   "shard": 0,
+   "raftEntries": 72084,
+   "commands": 14601,
+   "nonCommand": 57483,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 57474
+   }
+  },
+  {
+   "shard": 1,
+   "raftEntries": 68274,
+   "commands": 13456,
+   "nonCommand": 54818,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 54808
+   }
+  },
+  {
+   "shard": 2,
+   "raftEntries": 68520,
+   "commands": 13593,
+   "nonCommand": 54927,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 54898
+   }
+  }
+ ],
+ "coordinatorCpu": [
+  {
+   "targetRps": null,
+   "millicores": 120.1,
+   "samples": 92
+  }
+ ]
+}

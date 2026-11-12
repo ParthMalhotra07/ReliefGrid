@@ -1,0 +1,83 @@
+{
+ "dir": "~/.cache/reliefgrid/S5.2-phase1-20261111T081905Z/step-1",
+ "runId": "S5.2-step-20261111T094442Z",
+ "scenario": "step",
+ "git": "7dd19404d6df0f7c098810d4c1ad093355a0cd3a",
+ "load": [
+  {
+   "shard": 0,
+   "raftEntries": 112940,
+   "commands": 23809,
+   "nonCommand": 89131,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 89111
+   }
+  },
+  {
+   "shard": 1,
+   "raftEntries": 110190,
+   "commands": 22959,
+   "nonCommand": 87231,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 87219
+   }
+  },
+  {
+   "shard": 2,
+   "raftEntries": 119882,
+   "commands": 25464,
+   "nonCommand": 94418,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 94406
+   }
+  }
+ ],
+ "coordinatorCpu": [
+  {
+   "targetRps": 10,
+   "millicores": 55.4,
+   "samples": 21
+  },
+  {
+   "targetRps": 20,
+   "millicores": 151.5,
+   "samples": 21
+  },
+  {
+   "targetRps": 30,
+   "millicores": 124.6,
+   "samples": 21
+  },
+  {
+   "targetRps": 40,
+   "millicores": 139.3,
+   "samples": 21
+  },
+  {
+   "targetRps": 50,
+   "millicores": 153.0,
+   "samples": 21
+  },
+  {
+   "targetRps": 60,
+   "millicores": 167.6,
+   "samples": 21
+  },
+  {
+   "targetRps": 70,
+   "millicores": 184.5,
+   "samples": 22
+  },
+  {
+   "targetRps": 80,
+   "millicores": 180.9,
+   "samples": 22
+  }
+ ]
+}

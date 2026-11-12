@@ -1,0 +1,58 @@
+{
+ "out": "docs/evidence/S5.2/phase2-linearizable/comparison",
+ "phases": {
+  "Phase 1 (strong default, 7dd1940)": {
+   "commit": "7dd19404d6df0f7c098810d4c1ad093355a0cd3a",
+   "steps": [
+    "docs/evidence/S5.2/S5.2-step-20261111T094442Z",
+    "docs/evidence/S5.2/S5.2-step-20261111T100632Z",
+    "docs/evidence/S5.2/S5.2-step-20261111T102827Z"
+   ],
+   "baselines": [
+    "docs/evidence/S5.2/S5.2-baseline-20261111T105012Z",
+    "docs/evidence/S5.2/S5.2-baseline-20261111T110320Z",
+    "docs/evidence/S5.2/S5.2-baseline-20261111T111624Z"
+   ],
+   "extras": {
+    "S5.2-baseline-20261111T110320Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase1/baseline-2.json",
+    "S5.2-step-20261111T094442Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase1/step-1.json",
+    "S5.2-baseline-20261111T111624Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase1/baseline-3.json",
+    "S5.2-step-20261111T102827Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase1/step-3.json",
+    "S5.2-baseline-20261111T105012Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase1/baseline-1.json",
+    "S5.2-step-20261111T100632Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase1/step-2.json"
+   },
+   "idle": [
+    "docs/evidence/S5.2/phase2-linearizable/extras/phase1/p1-idle.json"
+   ]
+  },
+  "Phase 2 (linearizable default, 514bb33)": {
+   "commit": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+   "steps": [
+    "docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T170848Z",
+    "docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T173017Z",
+    "docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T175029Z"
+   ],
+   "baselines": [
+    "docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T181041Z",
+    "docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T182431Z",
+    "docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T183824Z"
+   ],
+   "extras": {
+    "S5.2-baseline-20261112T182431Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase2/baseline-2.json",
+    "S5.2-step-20261112T170848Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase2/step-1.json",
+    "S5.2-baseline-20261112T183824Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase2/baseline-3.json",
+    "S5.2-step-20261112T175029Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase2/step-3.json",
+    "S5.2-baseline-20261112T181041Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase2/baseline-1.json",
+    "S5.2-step-20261112T173017Z": "docs/evidence/S5.2/phase2-linearizable/extras/phase2/step-2.json"
+   },
+   "idle": [
+    "docs/evidence/S5.2/phase2-linearizable/extras/phase2/baseline-1.json",
+    "docs/evidence/S5.2/phase2-linearizable/extras/phase2/baseline-2.json",
+    "docs/evidence/S5.2/phase2-linearizable/extras/phase2/baseline-3.json",
+    "docs/evidence/S5.2/phase2-linearizable/extras/phase2/step-1.json",
+    "docs/evidence/S5.2/phase2-linearizable/extras/phase2/step-2.json",
+    "docs/evidence/S5.2/phase2-linearizable/extras/phase2/step-3.json"
+   ]
+  }
+ }
+}

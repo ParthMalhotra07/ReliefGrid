@@ -1,0 +1,92 @@
+{
+ "dir": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-2",
+ "runId": "S5.2-baseline-20261112T182431Z",
+ "scenario": "baseline",
+ "git": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+ "load": [
+  {
+   "shard": 0,
+   "raftEntries": 27123,
+   "commands": 27120,
+   "nonCommand": 3,
+   "reads": {
+    "linearizable": 112509,
+    "stale": 0,
+    "strong": 0
+   }
+  },
+  {
+   "shard": 1,
+   "raftEntries": 37440,
+   "commands": 37431,
+   "nonCommand": 9,
+   "reads": {
+    "linearizable": 150075,
+    "stale": 0,
+    "strong": 0
+   }
+  },
+  {
+   "shard": 2,
+   "raftEntries": 17733,
+   "commands": 17728,
+   "nonCommand": 5,
+   "reads": {
+    "linearizable": 83368,
+    "stale": 0,
+    "strong": 0
+   }
+  }
+ ],
+ "coordinatorCpu": [
+  {
+   "targetRps": null,
+   "millicores": 218.4,
+   "samples": 92
+  }
+ ],
+ "idle": [
+  {
+   "shard": 0,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "reads": {
+    "linearizable": 384,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 1,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "reads": {
+    "linearizable": 385,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 2,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "reads": {
+    "linearizable": 380,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  }
+ ]
+}

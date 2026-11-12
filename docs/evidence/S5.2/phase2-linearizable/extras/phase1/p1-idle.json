@@ -1,0 +1,47 @@
+{
+ "dir": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/p1-idle",
+ "idle": [
+  {
+   "shard": 0,
+   "raftEntries": 384,
+   "commands": 0,
+   "nonCommand": 384,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 380
+   },
+   "seconds": 61.7,
+   "nonCommandPerS": 6.23,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 1,
+   "raftEntries": 384,
+   "commands": 0,
+   "nonCommand": 384,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 385
+   },
+   "seconds": 61.7,
+   "nonCommandPerS": 6.23,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 2,
+   "raftEntries": 383,
+   "commands": 0,
+   "nonCommand": 383,
+   "reads": {
+    "linearizable": 0,
+    "stale": 0,
+    "strong": 382
+   },
+   "seconds": 61.7,
+   "nonCommandPerS": 6.21,
+   "commandsPerS": 0.0
+  }
+ ]
+}

@@ -1,0 +1,3694 @@
+{
+ "phases": {
+  "Phase 1 (strong default, 7dd1940)": {
+   "commit": "7dd19404d6df0f7c098810d4c1ad093355a0cd3a",
+   "steps": [
+    {
+     "runId": "S5.2-step-20261111T094442Z",
+     "saturationRps": 50,
+     "aboveRange": false,
+     "topStepRps": 80,
+     "brokenAt": 60,
+     "brokenBy": [
+      "writeP99"
+     ],
+     "firstAtLimit": {
+      "targetRps": 20,
+      "components": [
+       "storage-coordinator"
+      ]
+     },
+     "errorRate": 0.000736,
+     "refusedPublishesRun": 5968,
+     "wakeupsPeakRun": 10016,
+     "steps": [
+      {
+       "targetRps": 10,
+       "achievedRps": 7.43,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 345,
+         "p50Ms": 8.6,
+         "p95Ms": 12.74,
+         "p99Ms": 38.77
+        },
+        "read": {
+         "n": 368,
+         "p50Ms": 3.71,
+         "p95Ms": 5.43,
+         "p99Ms": 25.62
+        },
+        "list": {
+         "n": 104,
+         "p50Ms": 7.17,
+         "p95Ms": 10.19,
+         "p99Ms": 38.39
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 2
+      },
+      {
+       "targetRps": 20,
+       "achievedRps": 19.73,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 781,
+         "p50Ms": 21.76,
+         "p95Ms": 140.49,
+         "p99Ms": 172.82
+        },
+        "read": {
+         "n": 1169,
+         "p50Ms": 13.23,
+         "p95Ms": 49.27,
+         "p99Ms": 63.95
+        },
+        "list": {
+         "n": 220,
+         "p50Ms": 18.68,
+         "p95Ms": 140.87,
+         "p99Ms": 174.83
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 78
+      },
+      {
+       "targetRps": 30,
+       "achievedRps": 29.87,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1196,
+         "p50Ms": 133.78,
+         "p95Ms": 505.45,
+         "p99Ms": 671.44
+        },
+        "read": {
+         "n": 1764,
+         "p50Ms": 41.42,
+         "p95Ms": 67.35,
+         "p99Ms": 81.53
+        },
+        "list": {
+         "n": 326,
+         "p50Ms": 129.12,
+         "p95Ms": 214.82,
+         "p99Ms": 250.47
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 2,
+       "wakeupsPeak": 238
+      },
+      {
+       "targetRps": 40,
+       "achievedRps": 39.88,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1553,
+         "p50Ms": 148.95,
+         "p95Ms": 636.79,
+         "p99Ms": 780.43
+        },
+        "read": {
+         "n": 2399,
+         "p50Ms": 46.17,
+         "p95Ms": 73.54,
+         "p99Ms": 90.75
+        },
+        "list": {
+         "n": 435,
+         "p50Ms": 141.73,
+         "p95Ms": 254.05,
+         "p99Ms": 301.7
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 840
+      },
+      {
+       "targetRps": 50,
+       "achievedRps": 49.9,
+       "errorRate": 0.000911,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1899,
+         "p50Ms": 162.43,
+         "p95Ms": 725.59,
+         "p99Ms": 970.23
+        },
+        "read": {
+         "n": 3059,
+         "p50Ms": 49.53,
+         "p95Ms": 78.22,
+         "p99Ms": 95.09
+        },
+        "list": {
+         "n": 531,
+         "p50Ms": 154.33,
+         "p95Ms": 281.22,
+         "p99Ms": 362.51
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 2247
+      },
+      {
+       "targetRps": 60,
+       "achievedRps": 59.88,
+       "errorRate": 0.000607,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2353,
+         "p50Ms": 176.98,
+         "p95Ms": 805.13,
+         "p99Ms": 1119.15
+        },
+        "read": {
+         "n": 3597,
+         "p50Ms": 53.72,
+         "p95Ms": 84.86,
+         "p99Ms": 103.94
+        },
+        "list": {
+         "n": 637,
+         "p50Ms": 165.49,
+         "p95Ms": 290.25,
+         "p99Ms": 351.73
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 1,
+       "wakeupsPeak": 4960
+      },
+      {
+       "targetRps": 70,
+       "achievedRps": 69.85,
+       "errorRate": 0.001562,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2765,
+         "p50Ms": 187.34,
+         "p95Ms": 838.87,
+         "p99Ms": 1207.95
+        },
+        "read": {
+         "n": 4134,
+         "p50Ms": 55.58,
+         "p95Ms": 89.12,
+         "p99Ms": 109.5
+        },
+        "list": {
+         "n": 785,
+         "p50Ms": 179.15,
+         "p95Ms": 313.51,
+         "p99Ms": 388.77
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 8413
+      },
+      {
+       "targetRps": 80,
+       "achievedRps": 79.88,
+       "errorRate": 0.00091,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 3029,
+         "p50Ms": 188.68,
+         "p95Ms": 876.18,
+         "p99Ms": 1245.41
+        },
+        "read": {
+         "n": 4905,
+         "p50Ms": 56.38,
+         "p95Ms": 90.64,
+         "p99Ms": 113.52
+        },
+        "list": {
+         "n": 853,
+         "p50Ms": 182.89,
+         "p95Ms": 323.77,
+         "p99Ms": 387.62
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 5387,
+       "wakeupsPeak": 10016
+      }
+     ],
+     "coordinatorCpu": {
+      "10": 55.4,
+      "20": 151.5,
+      "30": 124.6,
+      "40": 139.3,
+      "50": 153.0,
+      "60": 167.6,
+      "70": 184.5,
+      "80": 180.9
+     },
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 112940,
+       "commands": 23809,
+       "nonCommand": 89131,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 89111
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 110190,
+       "commands": 22959,
+       "nonCommand": 87231,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 87219
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 119882,
+       "commands": 25464,
+       "nonCommand": 94418,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 94406
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-step-20261111T100632Z",
+     "saturationRps": 50,
+     "aboveRange": false,
+     "topStepRps": 80,
+     "brokenAt": 60,
+     "brokenBy": [
+      "writeP99"
+     ],
+     "firstAtLimit": {
+      "targetRps": 20,
+      "components": [
+       "storage-coordinator"
+      ]
+     },
+     "errorRate": 0.00095,
+     "refusedPublishesRun": 6381,
+     "wakeupsPeakRun": 10020,
+     "steps": [
+      {
+       "targetRps": 10,
+       "achievedRps": 7.43,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 345,
+         "p50Ms": 8.54,
+         "p95Ms": 12.96,
+         "p99Ms": 28.27
+        },
+        "read": {
+         "n": 368,
+         "p50Ms": 3.62,
+         "p95Ms": 5.6,
+         "p99Ms": 11.07
+        },
+        "list": {
+         "n": 104,
+         "p50Ms": 7.16,
+         "p95Ms": 9.04,
+         "p99Ms": 12.34
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 2
+      },
+      {
+       "targetRps": 20,
+       "achievedRps": 19.65,
+       "errorRate": 0.000463,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 778,
+         "p50Ms": 19.88,
+         "p95Ms": 146.16,
+         "p99Ms": 188.02
+        },
+        "read": {
+         "n": 1164,
+         "p50Ms": 10.36,
+         "p95Ms": 50.6,
+         "p99Ms": 65.9
+        },
+        "list": {
+         "n": 220,
+         "p50Ms": 15.37,
+         "p95Ms": 139.06,
+         "p99Ms": 188.55
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 69
+      },
+      {
+       "targetRps": 30,
+       "achievedRps": 29.87,
+       "errorRate": 0.000609,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1196,
+         "p50Ms": 144.45,
+         "p95Ms": 565.3,
+         "p99Ms": 739.0
+        },
+        "read": {
+         "n": 1764,
+         "p50Ms": 44.73,
+         "p95Ms": 69.76,
+         "p99Ms": 81.67
+        },
+        "list": {
+         "n": 326,
+         "p50Ms": 138.24,
+         "p95Ms": 225.51,
+         "p99Ms": 270.52
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 1,
+       "wakeupsPeak": 343
+      },
+      {
+       "targetRps": 40,
+       "achievedRps": 39.89,
+       "errorRate": 0.001139,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1552,
+         "p50Ms": 145.66,
+         "p95Ms": 621.12,
+         "p99Ms": 768.49
+        },
+        "read": {
+         "n": 2401,
+         "p50Ms": 45.35,
+         "p95Ms": 72.7,
+         "p99Ms": 89.68
+        },
+        "list": {
+         "n": 435,
+         "p50Ms": 140.08,
+         "p95Ms": 254.2,
+         "p99Ms": 293.85
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 978
+      },
+      {
+       "targetRps": 50,
+       "achievedRps": 49.92,
+       "errorRate": 0.001639,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1900,
+         "p50Ms": 163.36,
+         "p95Ms": 720.84,
+         "p99Ms": 996.81
+        },
+        "read": {
+         "n": 3060,
+         "p50Ms": 49.04,
+         "p95Ms": 78.84,
+         "p99Ms": 95.61
+        },
+        "list": {
+         "n": 531,
+         "p50Ms": 154.5,
+         "p95Ms": 282.15,
+         "p99Ms": 345.12
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 2331
+      },
+      {
+       "targetRps": 60,
+       "achievedRps": 59.89,
+       "errorRate": 0.000304,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2354,
+         "p50Ms": 177.37,
+         "p95Ms": 790.57,
+         "p99Ms": 1104.02
+        },
+        "read": {
+         "n": 3598,
+         "p50Ms": 53.6,
+         "p95Ms": 86.39,
+         "p99Ms": 106.04
+        },
+        "list": {
+         "n": 636,
+         "p50Ms": 166.51,
+         "p95Ms": 302.9,
+         "p99Ms": 377.6
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": -4,
+       "wakeupsPeak": 5101
+      },
+      {
+       "targetRps": 70,
+       "achievedRps": 69.84,
+       "errorRate": 0.001041,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2762,
+         "p50Ms": 183.68,
+         "p95Ms": 848.63,
+         "p99Ms": 1242.53
+        },
+        "read": {
+         "n": 4136,
+         "p50Ms": 55.98,
+         "p95Ms": 88.02,
+         "p99Ms": 109.3
+        },
+        "list": {
+         "n": 784,
+         "p50Ms": 178.29,
+         "p95Ms": 327.62,
+         "p99Ms": 393.64
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 8532
+      },
+      {
+       "targetRps": 80,
+       "achievedRps": 79.9,
+       "errorRate": 0.001024,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 3031,
+         "p50Ms": 174.99,
+         "p95Ms": 808.5,
+         "p99Ms": 1100.92
+        },
+        "read": {
+         "n": 4906,
+         "p50Ms": 52.29,
+         "p95Ms": 87.4,
+         "p99Ms": 107.82
+        },
+        "list": {
+         "n": 852,
+         "p50Ms": 174.85,
+         "p95Ms": 308.09,
+         "p99Ms": 373.13
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 5952,
+       "wakeupsPeak": 10020
+      }
+     ],
+     "coordinatorCpu": {
+      "10": 56.2,
+      "20": 144.6,
+      "30": 121.9,
+      "40": 139.2,
+      "50": 153.4,
+      "60": 168.5,
+      "70": 187.9,
+      "80": 182.2
+     },
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 117213,
+       "commands": 24765,
+       "nonCommand": 92448,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 92428
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 107631,
+       "commands": 22359,
+       "nonCommand": 85272,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 85261
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 117401,
+       "commands": 24880,
+       "nonCommand": 92521,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 92500
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-step-20261111T102827Z",
+     "saturationRps": 50,
+     "aboveRange": false,
+     "topStepRps": 80,
+     "brokenAt": 60,
+     "brokenBy": [
+      "writeP99"
+     ],
+     "firstAtLimit": {
+      "targetRps": 20,
+      "components": [
+       "storage-coordinator"
+      ]
+     },
+     "errorRate": 0.001211,
+     "refusedPublishesRun": 6324,
+     "wakeupsPeakRun": 10014,
+     "steps": [
+      {
+       "targetRps": 10,
+       "achievedRps": 7.42,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 345,
+         "p50Ms": 8.63,
+         "p95Ms": 12.76,
+         "p99Ms": 21.56
+        },
+        "read": {
+         "n": 367,
+         "p50Ms": 3.66,
+         "p95Ms": 5.42,
+         "p99Ms": 6.22
+        },
+        "list": {
+         "n": 104,
+         "p50Ms": 7.31,
+         "p95Ms": 9.77,
+         "p99Ms": 16.15
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 2
+      },
+      {
+       "targetRps": 20,
+       "achievedRps": 19.69,
+       "errorRate": 0.000462,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 779,
+         "p50Ms": 17.7,
+         "p95Ms": 153.25,
+         "p99Ms": 230.4
+        },
+        "read": {
+         "n": 1167,
+         "p50Ms": 8.66,
+         "p95Ms": 50.51,
+         "p99Ms": 64.82
+        },
+        "list": {
+         "n": 220,
+         "p50Ms": 15.54,
+         "p95Ms": 140.53,
+         "p99Ms": 185.91
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 54
+      },
+      {
+       "targetRps": 30,
+       "achievedRps": 29.9,
+       "errorRate": 0.000912,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1197,
+         "p50Ms": 137.92,
+         "p95Ms": 550.45,
+         "p99Ms": 718.6
+        },
+        "read": {
+         "n": 1764,
+         "p50Ms": 43.12,
+         "p95Ms": 67.55,
+         "p99Ms": 82.54
+        },
+        "list": {
+         "n": 328,
+         "p50Ms": 128.75,
+         "p95Ms": 213.75,
+         "p99Ms": 243.1
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": -2,
+       "wakeupsPeak": 322
+      },
+      {
+       "targetRps": 40,
+       "achievedRps": 39.91,
+       "errorRate": 0.000228,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1554,
+         "p50Ms": 152.06,
+         "p95Ms": 658.25,
+         "p99Ms": 821.04
+        },
+        "read": {
+         "n": 2401,
+         "p50Ms": 46.91,
+         "p95Ms": 73.58,
+         "p99Ms": 86.23
+        },
+        "list": {
+         "n": 435,
+         "p50Ms": 148.92,
+         "p95Ms": 252.45,
+         "p99Ms": 309.76
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 3,
+       "wakeupsPeak": 1045
+      },
+      {
+       "targetRps": 50,
+       "achievedRps": 49.92,
+       "errorRate": 0.001639,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1901,
+         "p50Ms": 162.67,
+         "p95Ms": 718.61,
+         "p99Ms": 853.66
+        },
+        "read": {
+         "n": 3059,
+         "p50Ms": 49.57,
+         "p95Ms": 78.42,
+         "p99Ms": 93.86
+        },
+        "list": {
+         "n": 531,
+         "p50Ms": 154.92,
+         "p95Ms": 276.83,
+         "p99Ms": 346.86
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 1,
+       "wakeupsPeak": 2436
+      },
+      {
+       "targetRps": 60,
+       "achievedRps": 59.87,
+       "errorRate": 0.001367,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2353,
+         "p50Ms": 176.57,
+         "p95Ms": 813.89,
+         "p99Ms": 1115.09
+        },
+        "read": {
+         "n": 3596,
+         "p50Ms": 53.3,
+         "p95Ms": 84.17,
+         "p99Ms": 101.25
+        },
+        "list": {
+         "n": 637,
+         "p50Ms": 167.01,
+         "p95Ms": 295.12,
+         "p99Ms": 359.56
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": -1,
+       "wakeupsPeak": 5180
+      },
+      {
+       "targetRps": 70,
+       "achievedRps": 69.83,
+       "errorRate": 0.001302,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2761,
+         "p50Ms": 186.08,
+         "p95Ms": 849.39,
+         "p99Ms": 1159.55
+        },
+        "read": {
+         "n": 4136,
+         "p50Ms": 56.81,
+         "p95Ms": 89.84,
+         "p99Ms": 107.97
+        },
+        "list": {
+         "n": 784,
+         "p50Ms": 188.13,
+         "p95Ms": 320.31,
+         "p99Ms": 401.52
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 8485
+      },
+      {
+       "targetRps": 80,
+       "achievedRps": 79.93,
+       "errorRate": 0.001251,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 3032,
+         "p50Ms": 182.34,
+         "p95Ms": 860.59,
+         "p99Ms": 1180.37
+        },
+        "read": {
+         "n": 4907,
+         "p50Ms": 54.05,
+         "p95Ms": 89.22,
+         "p99Ms": 110.58
+        },
+        "list": {
+         "n": 853,
+         "p50Ms": 176.45,
+         "p95Ms": 314.0,
+         "p99Ms": 381.56
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 5557,
+       "wakeupsPeak": 10014
+      }
+     ],
+     "coordinatorCpu": {
+      "10": 54.8,
+      "20": 143.4,
+      "30": 123.2,
+      "40": 137.5,
+      "50": 153.1,
+      "60": 168.5,
+      "70": 188.4,
+      "80": 184.0
+     },
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 115342,
+       "commands": 24421,
+       "nonCommand": 90921,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 90908
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 111145,
+       "commands": 23220,
+       "nonCommand": 87925,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 87906
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 114982,
+       "commands": 24261,
+       "nonCommand": 90721,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 90707
+       }
+      }
+     ]
+    }
+   ],
+   "baselines": [
+    {
+     "runId": "S5.2-baseline-20261111T105012Z",
+     "rate": null,
+     "classes": {
+      "write": {
+       "p50Ms": 136.53,
+       "p95Ms": 495.16,
+       "p99Ms": 684
+      },
+      "read": {
+       "p50Ms": 41.17,
+       "p95Ms": 68.9,
+       "p99Ms": 79.94
+      },
+      "list": {
+       "p50Ms": 134.2,
+       "p95Ms": 234.05,
+       "p99Ms": 291.22
+      }
+     },
+     "errorRate": 0.0005,
+     "achievedRps": 25,
+     "refusedPublishesRun": 0,
+     "wakeupsPeakRun": 232,
+     "coordinatorCpu": 119.8,
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 71260,
+       "commands": 14414,
+       "nonCommand": 56846,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 56828
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 66203,
+       "commands": 13007,
+       "nonCommand": 53196,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 53181
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 70081,
+       "commands": 13849,
+       "nonCommand": 56232,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 56188
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-baseline-20261111T110320Z",
+     "rate": null,
+     "classes": {
+      "write": {
+       "p50Ms": 133.51,
+       "p95Ms": 420.57,
+       "p99Ms": 690.92
+      },
+      "read": {
+       "p50Ms": 40.19,
+       "p95Ms": 67.01,
+       "p99Ms": 79.12
+      },
+      "list": {
+       "p50Ms": 128.95,
+       "p95Ms": 233.21,
+       "p99Ms": 305.65
+      }
+     },
+     "errorRate": 0.001,
+     "achievedRps": 25,
+     "refusedPublishesRun": 0,
+     "wakeupsPeakRun": 216,
+     "coordinatorCpu": 120.1,
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 72084,
+       "commands": 14601,
+       "nonCommand": 57483,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 57474
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 68274,
+       "commands": 13456,
+       "nonCommand": 54818,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 54808
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 68520,
+       "commands": 13593,
+       "nonCommand": 54927,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 54898
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-baseline-20261111T111624Z",
+     "rate": null,
+     "classes": {
+      "write": {
+       "p50Ms": 135.98,
+       "p95Ms": 425.86,
+       "p99Ms": 665.75
+      },
+      "read": {
+       "p50Ms": 41.11,
+       "p95Ms": 67.87,
+       "p99Ms": 80.48
+      },
+      "list": {
+       "p50Ms": 130.41,
+       "p95Ms": 238.01,
+       "p99Ms": 280.82
+      }
+     },
+     "errorRate": 0.00125,
+     "achievedRps": 25,
+     "refusedPublishesRun": 0,
+     "wakeupsPeakRun": 232,
+     "coordinatorCpu": 119.9,
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 70867,
+       "commands": 14253,
+       "nonCommand": 56614,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 56605
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 66283,
+       "commands": 13029,
+       "nonCommand": 53254,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 53228
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 69046,
+       "commands": 13600,
+       "nonCommand": 55446,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 55409
+       }
+      }
+     ]
+    }
+   ],
+   "idle": [
+    [
+     {
+      "shard": 0,
+      "raftEntries": 384,
+      "commands": 0,
+      "nonCommand": 384,
+      "reads": {
+       "linearizable": 0,
+       "stale": 0,
+       "strong": 380
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 6.23,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 1,
+      "raftEntries": 384,
+      "commands": 0,
+      "nonCommand": 384,
+      "reads": {
+       "linearizable": 0,
+       "stale": 0,
+       "strong": 385
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 6.23,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 2,
+      "raftEntries": 383,
+      "commands": 0,
+      "nonCommand": 383,
+      "reads": {
+       "linearizable": 0,
+       "stale": 0,
+       "strong": 382
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 6.21,
+      "commandsPerS": 0.0
+     }
+    ]
+   ]
+  },
+  "Phase 2 (linearizable default, 514bb33)": {
+   "commit": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+   "steps": [
+    {
+     "runId": "S5.2-step-20261112T170848Z",
+     "saturationRps": null,
+     "aboveRange": true,
+     "topStepRps": 80,
+     "brokenAt": null,
+     "brokenBy": null,
+     "firstAtLimit": {
+      "targetRps": 20,
+      "components": [
+       "storage-coordinator"
+      ]
+     },
+     "errorRate": 0.001093,
+     "refusedPublishesRun": 33,
+     "wakeupsPeakRun": 195,
+     "steps": [
+      {
+       "targetRps": 10,
+       "achievedRps": 7.42,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 345,
+         "p50Ms": 7.76,
+         "p95Ms": 11.59,
+         "p99Ms": 27.24
+        },
+        "read": {
+         "n": 367,
+         "p50Ms": 2.43,
+         "p95Ms": 5.07,
+         "p99Ms": 19.48
+        },
+        "list": {
+         "n": 104,
+         "p50Ms": 4.29,
+         "p95Ms": 5.88,
+         "p99Ms": 7.04
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 0
+      },
+      {
+       "targetRps": 20,
+       "achievedRps": 19.69,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 779,
+         "p50Ms": 8.04,
+         "p95Ms": 57.32,
+         "p99Ms": 70.86
+        },
+        "read": {
+         "n": 1167,
+         "p50Ms": 2.54,
+         "p95Ms": 19.93,
+         "p99Ms": 52.74
+        },
+        "list": {
+         "n": 220,
+         "p50Ms": 5.8,
+         "p95Ms": 56.15,
+         "p99Ms": 72.42
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 9
+      },
+      {
+       "targetRps": 30,
+       "achievedRps": 29.89,
+       "errorRate": 0.000304,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1198,
+         "p50Ms": 26.42,
+         "p95Ms": 63.11,
+         "p99Ms": 85.32
+        },
+        "read": {
+         "n": 1764,
+         "p50Ms": 4.51,
+         "p95Ms": 51.66,
+         "p99Ms": 54.05
+        },
+        "list": {
+         "n": 326,
+         "p50Ms": 25.66,
+         "p95Ms": 64.66,
+         "p99Ms": 86.8
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator",
+        "storage-shard-1-0"
+       ],
+       "refusedPublishes": 2,
+       "wakeupsPeak": 25
+      },
+      {
+       "targetRps": 40,
+       "achievedRps": 39.9,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1553,
+         "p50Ms": 50.37,
+         "p95Ms": 92.45,
+         "p99Ms": 113.2
+        },
+        "read": {
+         "n": 2401,
+         "p50Ms": 4.42,
+         "p95Ms": 28.63,
+         "p99Ms": 45.53
+        },
+        "list": {
+         "n": 435,
+         "p50Ms": 33.56,
+         "p95Ms": 82.77,
+         "p99Ms": 106.49
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 2,
+       "wakeupsPeak": 35
+      },
+      {
+       "targetRps": 50,
+       "achievedRps": 49.89,
+       "errorRate": 0.000729,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1898,
+         "p50Ms": 56.71,
+         "p95Ms": 104.15,
+         "p99Ms": 158.82
+        },
+        "read": {
+         "n": 3059,
+         "p50Ms": 7.21,
+         "p95Ms": 38.03,
+         "p99Ms": 53.55
+        },
+        "list": {
+         "n": 531,
+         "p50Ms": 42.64,
+         "p95Ms": 99.34,
+         "p99Ms": 152.54
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 1,
+       "wakeupsPeak": 44
+      },
+      {
+       "targetRps": 60,
+       "achievedRps": 59.84,
+       "errorRate": 0.001367,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2351,
+         "p50Ms": 69.89,
+         "p95Ms": 139.95,
+         "p99Ms": 244.89
+        },
+        "read": {
+         "n": 3595,
+         "p50Ms": 8.5,
+         "p95Ms": 41.91,
+         "p99Ms": 65.94
+        },
+        "list": {
+         "n": 636,
+         "p50Ms": 54.17,
+         "p95Ms": 122.45,
+         "p99Ms": 152.76
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": -1,
+       "wakeupsPeak": 94
+      },
+      {
+       "targetRps": 70,
+       "achievedRps": 69.88,
+       "errorRate": 0.000911,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2767,
+         "p50Ms": 80.14,
+         "p95Ms": 200.01,
+         "p99Ms": 311.1
+        },
+        "read": {
+         "n": 4136,
+         "p50Ms": 11.36,
+         "p95Ms": 52.57,
+         "p99Ms": 69.88
+        },
+        "list": {
+         "n": 784,
+         "p50Ms": 68.91,
+         "p95Ms": 151.67,
+         "p99Ms": 196.94
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 130
+      },
+      {
+       "targetRps": 80,
+       "achievedRps": 79.9,
+       "errorRate": 0.002389,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 3030,
+         "p50Ms": 88.68,
+         "p95Ms": 231.71,
+         "p99Ms": 354.25
+        },
+        "read": {
+         "n": 4908,
+         "p50Ms": 15.15,
+         "p95Ms": 55.73,
+         "p99Ms": 73.27
+        },
+        "list": {
+         "n": 851,
+         "p50Ms": 80.73,
+         "p95Ms": 168.49,
+         "p99Ms": 236.4
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 30,
+       "wakeupsPeak": 195
+      }
+     ],
+     "coordinatorCpu": {
+      "10": 50.8,
+      "20": 156.6,
+      "30": 225.1,
+      "40": 244.1,
+      "50": 245.3,
+      "60": 245.9,
+      "70": 245.7,
+      "80": 245.6
+     },
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 49039,
+       "commands": 49035,
+       "nonCommand": 4,
+       "reads": {
+        "linearizable": 200433,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 45108,
+       "commands": 45095,
+       "nonCommand": 13,
+       "reads": {
+        "linearizable": 189140,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 36087,
+       "commands": 36076,
+       "nonCommand": 11,
+       "reads": {
+        "linearizable": 157156,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-step-20261112T173017Z",
+     "saturationRps": null,
+     "aboveRange": true,
+     "topStepRps": 80,
+     "brokenAt": null,
+     "brokenBy": null,
+     "firstAtLimit": {
+      "targetRps": 20,
+      "components": [
+       "storage-coordinator"
+      ]
+     },
+     "errorRate": 0.00121,
+     "refusedPublishesRun": 8,
+     "wakeupsPeakRun": 159,
+     "steps": [
+      {
+       "targetRps": 10,
+       "achievedRps": 7.45,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 347,
+         "p50Ms": 7.9,
+         "p95Ms": 10.77,
+         "p99Ms": 13.39
+        },
+        "read": {
+         "n": 369,
+         "p50Ms": 2.53,
+         "p95Ms": 4.25,
+         "p99Ms": 7.22
+        },
+        "list": {
+         "n": 103,
+         "p50Ms": 4.05,
+         "p95Ms": 5.81,
+         "p99Ms": 7.49
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 9
+      },
+      {
+       "targetRps": 20,
+       "achievedRps": 19.72,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 778,
+         "p50Ms": 8.13,
+         "p95Ms": 49.35,
+         "p99Ms": 78.36
+        },
+        "read": {
+         "n": 1169,
+         "p50Ms": 2.4,
+         "p95Ms": 39.79,
+         "p99Ms": 41.59
+        },
+        "list": {
+         "n": 222,
+         "p50Ms": 5.53,
+         "p95Ms": 47.7,
+         "p99Ms": 76.41
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 3,
+       "wakeupsPeak": 10
+      },
+      {
+       "targetRps": 30,
+       "achievedRps": 29.92,
+       "errorRate": 0.000304,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1199,
+         "p50Ms": 28.61,
+         "p95Ms": 68.57,
+         "p99Ms": 89.6
+        },
+        "read": {
+         "n": 1765,
+         "p50Ms": 3.7,
+         "p95Ms": 56.27,
+         "p99Ms": 59.63
+        },
+        "list": {
+         "n": 327,
+         "p50Ms": 26.93,
+         "p95Ms": 69.39,
+         "p99Ms": 92.38
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 21
+      },
+      {
+       "targetRps": 40,
+       "achievedRps": 39.91,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1554,
+         "p50Ms": 51.43,
+         "p95Ms": 89.94,
+         "p99Ms": 125.56
+        },
+        "read": {
+         "n": 2399,
+         "p50Ms": 4.45,
+         "p95Ms": 29.91,
+         "p99Ms": 49.56
+        },
+        "list": {
+         "n": 437,
+         "p50Ms": 35.61,
+         "p95Ms": 91.86,
+         "p99Ms": 114.91
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": -1,
+       "wakeupsPeak": 27
+      },
+      {
+       "targetRps": 50,
+       "achievedRps": 49.94,
+       "errorRate": 0.000364,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1896,
+         "p50Ms": 53.45,
+         "p95Ms": 101.75,
+         "p99Ms": 146.25
+        },
+        "read": {
+         "n": 3066,
+         "p50Ms": 6.39,
+         "p95Ms": 30.76,
+         "p99Ms": 48.86
+        },
+        "list": {
+         "n": 531,
+         "p50Ms": 39.47,
+         "p95Ms": 99.63,
+         "p99Ms": 129.69
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 1,
+       "wakeupsPeak": 65
+      },
+      {
+       "targetRps": 60,
+       "achievedRps": 59.92,
+       "errorRate": 0.001062,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2360,
+         "p50Ms": 67.81,
+         "p95Ms": 142.42,
+         "p99Ms": 230.38
+        },
+        "read": {
+         "n": 3596,
+         "p50Ms": 8.71,
+         "p95Ms": 40.92,
+         "p99Ms": 59.26
+        },
+        "list": {
+         "n": 635,
+         "p50Ms": 55.6,
+         "p95Ms": 126.73,
+         "p99Ms": 176.8
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 3,
+       "wakeupsPeak": 72
+      },
+      {
+       "targetRps": 70,
+       "achievedRps": 69.88,
+       "errorRate": 0.002081,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2770,
+         "p50Ms": 75.89,
+         "p95Ms": 187.16,
+         "p99Ms": 357.11
+        },
+        "read": {
+         "n": 4134,
+         "p50Ms": 12.1,
+         "p95Ms": 50.54,
+         "p99Ms": 71.66
+        },
+        "list": {
+         "n": 783,
+         "p50Ms": 64.41,
+         "p95Ms": 169.43,
+         "p99Ms": 236.67
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": -1,
+       "wakeupsPeak": 88
+      },
+      {
+       "targetRps": 80,
+       "achievedRps": 79.92,
+       "errorRate": 0.002616,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 3033,
+         "p50Ms": 88.87,
+         "p95Ms": 232.12,
+         "p99Ms": 388.5
+        },
+        "read": {
+         "n": 4907,
+         "p50Ms": 14.77,
+         "p95Ms": 53.79,
+         "p99Ms": 76.52
+        },
+        "list": {
+         "n": 851,
+         "p50Ms": 77.33,
+         "p95Ms": 188.77,
+         "p99Ms": 246.8
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 8,
+       "wakeupsPeak": 159
+      }
+     ],
+     "coordinatorCpu": {
+      "10": 51.0,
+      "20": 162.6,
+      "30": 226.8,
+      "40": 241.8,
+      "50": 246.4,
+      "60": 245.6,
+      "70": 244.9,
+      "80": 246.1
+     },
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 49267,
+       "commands": 49262,
+       "nonCommand": 5,
+       "reads": {
+        "linearizable": 203651,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 45031,
+       "commands": 45025,
+       "nonCommand": 6,
+       "reads": {
+        "linearizable": 188349,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 38441,
+       "commands": 38414,
+       "nonCommand": 27,
+       "reads": {
+        "linearizable": 165274,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-step-20261112T175029Z",
+     "saturationRps": null,
+     "aboveRange": true,
+     "topStepRps": 80,
+     "brokenAt": null,
+     "brokenBy": null,
+     "firstAtLimit": {
+      "targetRps": 20,
+      "components": [
+       "storage-coordinator"
+      ]
+     },
+     "errorRate": 0.000617,
+     "refusedPublishesRun": 6,
+     "wakeupsPeakRun": 127,
+     "steps": [
+      {
+       "targetRps": 10,
+       "achievedRps": 7.44,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 346,
+         "p50Ms": 7.96,
+         "p95Ms": 12.44,
+         "p99Ms": 21.3
+        },
+        "read": {
+         "n": 369,
+         "p50Ms": 2.61,
+         "p95Ms": 5.77,
+         "p99Ms": 12.9
+        },
+        "list": {
+         "n": 103,
+         "p50Ms": 4.13,
+         "p95Ms": 13.25,
+         "p99Ms": 17.03
+        }
+       },
+       "podsAtLimit": [],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 3
+      },
+      {
+       "targetRps": 20,
+       "achievedRps": 19.72,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 778,
+         "p50Ms": 7.87,
+         "p95Ms": 57.2,
+         "p99Ms": 70.04
+        },
+        "read": {
+         "n": 1169,
+         "p50Ms": 2.41,
+         "p95Ms": 35.35,
+         "p99Ms": 61.18
+        },
+        "list": {
+         "n": 222,
+         "p50Ms": 5.22,
+         "p95Ms": 62.72,
+         "p99Ms": 69.4
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 0,
+       "wakeupsPeak": 13
+      },
+      {
+       "targetRps": 30,
+       "achievedRps": 29.93,
+       "errorRate": 0,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1198,
+         "p50Ms": 21.7,
+         "p95Ms": 76.01,
+         "p99Ms": 83.9
+        },
+        "read": {
+         "n": 1767,
+         "p50Ms": 6.62,
+         "p95Ms": 45.26,
+         "p99Ms": 47.8
+        },
+        "list": {
+         "n": 327,
+         "p50Ms": 18.89,
+         "p95Ms": 78.3,
+         "p99Ms": 85.16
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 4,
+       "wakeupsPeak": 21
+      },
+      {
+       "targetRps": 40,
+       "achievedRps": 39.9,
+       "errorRate": 0.000228,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1554,
+         "p50Ms": 47.79,
+         "p95Ms": 86.24,
+         "p99Ms": 109.68
+        },
+        "read": {
+         "n": 2398,
+         "p50Ms": 4.07,
+         "p95Ms": 27.06,
+         "p99Ms": 41.19
+        },
+        "list": {
+         "n": 437,
+         "p50Ms": 30.4,
+         "p95Ms": 83.65,
+         "p99Ms": 96.05
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 3,
+       "wakeupsPeak": 45
+      },
+      {
+       "targetRps": 50,
+       "achievedRps": 49.91,
+       "errorRate": 0.000364,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 1894,
+         "p50Ms": 55.51,
+         "p95Ms": 101.9,
+         "p99Ms": 145.74
+        },
+        "read": {
+         "n": 3065,
+         "p50Ms": 5.36,
+         "p95Ms": 32.68,
+         "p99Ms": 51.87
+        },
+        "list": {
+         "n": 531,
+         "p50Ms": 41.01,
+         "p95Ms": 102.37,
+         "p99Ms": 130.58
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": -3,
+       "wakeupsPeak": 47
+      },
+      {
+       "targetRps": 60,
+       "achievedRps": 59.89,
+       "errorRate": 0.001366,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2358,
+         "p50Ms": 66.52,
+         "p95Ms": 138.8,
+         "p99Ms": 215.54
+        },
+        "read": {
+         "n": 3595,
+         "p50Ms": 9.21,
+         "p95Ms": 42.12,
+         "p99Ms": 59.42
+        },
+        "list": {
+         "n": 635,
+         "p50Ms": 50.86,
+         "p95Ms": 114.51,
+         "p99Ms": 160.92
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": -1,
+       "wakeupsPeak": 80
+      },
+      {
+       "targetRps": 70,
+       "achievedRps": 69.93,
+       "errorRate": 0.00065,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 2771,
+         "p50Ms": 75.66,
+         "p95Ms": 174.24,
+         "p99Ms": 317.78
+        },
+        "read": {
+         "n": 4137,
+         "p50Ms": 12.23,
+         "p95Ms": 54.67,
+         "p99Ms": 72.01
+        },
+        "list": {
+         "n": 784,
+         "p50Ms": 68.14,
+         "p95Ms": 159.78,
+         "p99Ms": 217.97
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 3,
+       "wakeupsPeak": 99
+      },
+      {
+       "targetRps": 80,
+       "achievedRps": 79.89,
+       "errorRate": 0.00091,
+       "droppedIterations": 0,
+       "classes": {
+        "write": {
+         "n": 3033,
+         "p50Ms": 87.4,
+         "p95Ms": 236.85,
+         "p99Ms": 389.51
+        },
+        "read": {
+         "n": 4904,
+         "p50Ms": 14.95,
+         "p95Ms": 59.52,
+         "p99Ms": 79.03
+        },
+        "list": {
+         "n": 851,
+         "p50Ms": 84.77,
+         "p95Ms": 185.66,
+         "p99Ms": 253.25
+        }
+       },
+       "podsAtLimit": [
+        "storage-coordinator"
+       ],
+       "refusedPublishes": 6,
+       "wakeupsPeak": 127
+      }
+     ],
+     "coordinatorCpu": {
+      "10": 50.5,
+      "20": 157.1,
+      "30": 221.9,
+      "40": 239.8,
+      "50": 246.0,
+      "60": 246.2,
+      "70": 245.3,
+      "80": 245.4
+     },
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 51528,
+       "commands": 51525,
+       "nonCommand": 3,
+       "reads": {
+        "linearizable": 212378,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 45813,
+       "commands": 45807,
+       "nonCommand": 6,
+       "reads": {
+        "linearizable": 192375,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 36011,
+       "commands": 35998,
+       "nonCommand": 13,
+       "reads": {
+        "linearizable": 157961,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ]
+    }
+   ],
+   "baselines": [
+    {
+     "runId": "S5.2-baseline-20261112T181041Z",
+     "rate": null,
+     "classes": {
+      "write": {
+       "p50Ms": 31.91,
+       "p95Ms": 75.12,
+       "p99Ms": 93.57
+      },
+      "read": {
+       "p50Ms": 2.68,
+       "p95Ms": 30.83,
+       "p99Ms": 51.45
+      },
+      "list": {
+       "p50Ms": 18.29,
+       "p95Ms": 72.22,
+       "p99Ms": 91.3
+      }
+     },
+     "errorRate": 0.00025,
+     "achievedRps": 25,
+     "refusedPublishesRun": 0,
+     "wakeupsPeakRun": 31,
+     "coordinatorCpu": 217.1,
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 25948,
+       "commands": 25942,
+       "nonCommand": 6,
+       "reads": {
+        "linearizable": 109178,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 36967,
+       "commands": 36967,
+       "nonCommand": 0,
+       "reads": {
+        "linearizable": 148647,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 19027,
+       "commands": 19026,
+       "nonCommand": 1,
+       "reads": {
+        "linearizable": 88050,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-baseline-20261112T182431Z",
+     "rate": null,
+     "classes": {
+      "write": {
+       "p50Ms": 32.37,
+       "p95Ms": 79.11,
+       "p99Ms": 99.46
+      },
+      "read": {
+       "p50Ms": 2.49,
+       "p95Ms": 39.78,
+       "p99Ms": 60
+      },
+      "list": {
+       "p50Ms": 21.12,
+       "p95Ms": 71.5,
+       "p99Ms": 85.66
+      }
+     },
+     "errorRate": 8.3e-05,
+     "achievedRps": 25,
+     "refusedPublishesRun": 0,
+     "wakeupsPeakRun": 29,
+     "coordinatorCpu": 218.4,
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 27123,
+       "commands": 27120,
+       "nonCommand": 3,
+       "reads": {
+        "linearizable": 112509,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 37440,
+       "commands": 37431,
+       "nonCommand": 9,
+       "reads": {
+        "linearizable": 150075,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 17733,
+       "commands": 17728,
+       "nonCommand": 5,
+       "reads": {
+        "linearizable": 83368,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ]
+    },
+    {
+     "runId": "S5.2-baseline-20261112T183824Z",
+     "rate": null,
+     "classes": {
+      "write": {
+       "p50Ms": 31.02,
+       "p95Ms": 69.73,
+       "p99Ms": 85.16
+      },
+      "read": {
+       "p50Ms": 2.35,
+       "p95Ms": 26.74,
+       "p99Ms": 56.43
+      },
+      "list": {
+       "p50Ms": 17.5,
+       "p95Ms": 66.41,
+       "p99Ms": 90.31
+      }
+     },
+     "errorRate": 0.000167,
+     "achievedRps": 25,
+     "refusedPublishesRun": 0,
+     "wakeupsPeakRun": 28,
+     "coordinatorCpu": 213.2,
+     "raft": [
+      {
+       "shard": 0,
+       "raftEntries": 26870,
+       "commands": 26870,
+       "nonCommand": 0,
+       "reads": {
+        "linearizable": 112239,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "raftEntries": 38034,
+       "commands": 38030,
+       "nonCommand": 4,
+       "reads": {
+        "linearizable": 154736,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "raftEntries": 18276,
+       "commands": 18272,
+       "nonCommand": 4,
+       "reads": {
+        "linearizable": 85833,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ]
+    }
+   ],
+   "idle": [
+    [
+     {
+      "shard": 0,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 383,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 1,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 384,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 2,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 384,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 384,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 1,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 385,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 2,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 380,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 385,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 1,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 385,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 2,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 384,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 385,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 1,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 382,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 2,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 384,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.6,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 382,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 1,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 386,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 2,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 384,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 385,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 1,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 385,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     },
+     {
+      "shard": 2,
+      "raftEntries": 0,
+      "commands": 0,
+      "nonCommand": 0,
+      "reads": {
+       "linearizable": 381,
+       "stale": 0,
+       "strong": 0
+      },
+      "seconds": 61.7,
+      "nonCommandPerS": 0.0,
+      "commandsPerS": 0.0
+     }
+    ]
+   ]
+  }
+ },
+ "aggregate": {
+  "Phase 1 (strong default, 7dd1940)": {
+   "saturationRps": {
+    "median": 50,
+    "min": 50,
+    "max": 50,
+    "n": 3
+   },
+   "aboveRange": [
+    false,
+    false,
+    false
+   ],
+   "topStepRps": 80,
+   "brokenAt": [
+    60,
+    60,
+    60
+   ],
+   "brokenBy": [
+    [
+     "writeP99"
+    ],
+    [
+     "writeP99"
+    ],
+    [
+     "writeP99"
+    ]
+   ],
+   "firstAtLimit": [
+    {
+     "targetRps": 20,
+     "components": [
+      "storage-coordinator"
+     ]
+    },
+    {
+     "targetRps": 20,
+     "components": [
+      "storage-coordinator"
+     ]
+    },
+    {
+     "targetRps": 20,
+     "components": [
+      "storage-coordinator"
+     ]
+    }
+   ],
+   "perStep": [
+    {
+     "targetRps": 10,
+     "write.p50Ms": 8.6,
+     "write.p95Ms": 12.76,
+     "write.p99Ms": 28.27,
+     "read.p50Ms": 3.66,
+     "read.p95Ms": 5.43,
+     "read.p99Ms": 11.07,
+     "list.p50Ms": 7.17,
+     "list.p95Ms": 9.77,
+     "list.p99Ms": 16.15,
+     "errorRate": 0,
+     "achievedRps": 7.43,
+     "coordinatorMillicores": 55.4,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 2,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    },
+    {
+     "targetRps": 20,
+     "write.p50Ms": 19.88,
+     "write.p95Ms": 146.16,
+     "write.p99Ms": 188.02,
+     "read.p50Ms": 10.36,
+     "read.p95Ms": 50.51,
+     "read.p99Ms": 64.82,
+     "list.p50Ms": 15.54,
+     "list.p95Ms": 140.53,
+     "list.p99Ms": 185.91,
+     "errorRate": 0.000462,
+     "achievedRps": 19.69,
+     "coordinatorMillicores": 144.6,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 69,
+     "podsAtLimit": [
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    },
+    {
+     "targetRps": 30,
+     "write.p50Ms": 137.92,
+     "write.p95Ms": 550.45,
+     "write.p99Ms": 718.6,
+     "read.p50Ms": 43.12,
+     "read.p95Ms": 67.55,
+     "read.p99Ms": 81.67,
+     "list.p50Ms": 129.12,
+     "list.p95Ms": 214.82,
+     "list.p99Ms": 250.47,
+     "errorRate": 0.000609,
+     "achievedRps": 29.87,
+     "coordinatorMillicores": 123.2,
+     "refusedPublishes": 1,
+     "wakeupsPeak": 322,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    },
+    {
+     "targetRps": 40,
+     "write.p50Ms": 148.95,
+     "write.p95Ms": 636.79,
+     "write.p99Ms": 780.43,
+     "read.p50Ms": 46.17,
+     "read.p95Ms": 73.54,
+     "read.p99Ms": 89.68,
+     "list.p50Ms": 141.73,
+     "list.p95Ms": 254.05,
+     "list.p99Ms": 301.7,
+     "errorRate": 0.000228,
+     "achievedRps": 39.89,
+     "coordinatorMillicores": 139.2,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 978,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    },
+    {
+     "targetRps": 50,
+     "write.p50Ms": 162.67,
+     "write.p95Ms": 720.84,
+     "write.p99Ms": 970.23,
+     "read.p50Ms": 49.53,
+     "read.p95Ms": 78.42,
+     "read.p99Ms": 95.09,
+     "list.p50Ms": 154.5,
+     "list.p95Ms": 281.22,
+     "list.p99Ms": 346.86,
+     "errorRate": 0.001639,
+     "achievedRps": 49.92,
+     "coordinatorMillicores": 153.1,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 2331,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    },
+    {
+     "targetRps": 60,
+     "write.p50Ms": 176.98,
+     "write.p95Ms": 805.13,
+     "write.p99Ms": 1115.09,
+     "read.p50Ms": 53.6,
+     "read.p95Ms": 84.86,
+     "read.p99Ms": 103.94,
+     "list.p50Ms": 166.51,
+     "list.p95Ms": 295.12,
+     "list.p99Ms": 359.56,
+     "errorRate": 0.000607,
+     "achievedRps": 59.88,
+     "coordinatorMillicores": 168.5,
+     "refusedPublishes": -1,
+     "wakeupsPeak": 5101,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    },
+    {
+     "targetRps": 70,
+     "write.p50Ms": 186.08,
+     "write.p95Ms": 848.63,
+     "write.p99Ms": 1207.95,
+     "read.p50Ms": 55.98,
+     "read.p95Ms": 89.12,
+     "read.p99Ms": 109.3,
+     "list.p50Ms": 179.15,
+     "list.p95Ms": 320.31,
+     "list.p99Ms": 393.64,
+     "errorRate": 0.001302,
+     "achievedRps": 69.84,
+     "coordinatorMillicores": 187.9,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 8485,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    },
+    {
+     "targetRps": 80,
+     "write.p50Ms": 182.34,
+     "write.p95Ms": 860.59,
+     "write.p99Ms": 1180.37,
+     "read.p50Ms": 54.05,
+     "read.p95Ms": 89.22,
+     "read.p99Ms": 110.58,
+     "list.p50Ms": 176.45,
+     "list.p95Ms": 314.0,
+     "list.p99Ms": 381.56,
+     "errorRate": 0.001024,
+     "achievedRps": 79.9,
+     "coordinatorMillicores": 182.2,
+     "refusedPublishes": 5557,
+     "wakeupsPeak": 10016,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    }
+   ],
+   "baseline": {
+    "write.p50Ms": {
+     "median": 135.98,
+     "min": 133.51,
+     "max": 136.53,
+     "n": 3
+    },
+    "write.p95Ms": {
+     "median": 425.86,
+     "min": 420.57,
+     "max": 495.16,
+     "n": 3
+    },
+    "write.p99Ms": {
+     "median": 684,
+     "min": 665.75,
+     "max": 690.92,
+     "n": 3
+    },
+    "read.p50Ms": {
+     "median": 41.11,
+     "min": 40.19,
+     "max": 41.17,
+     "n": 3
+    },
+    "read.p95Ms": {
+     "median": 67.87,
+     "min": 67.01,
+     "max": 68.9,
+     "n": 3
+    },
+    "read.p99Ms": {
+     "median": 79.94,
+     "min": 79.12,
+     "max": 80.48,
+     "n": 3
+    },
+    "list.p50Ms": {
+     "median": 130.41,
+     "min": 128.95,
+     "max": 134.2,
+     "n": 3
+    },
+    "list.p95Ms": {
+     "median": 234.05,
+     "min": 233.21,
+     "max": 238.01,
+     "n": 3
+    },
+    "list.p99Ms": {
+     "median": 291.22,
+     "min": 280.82,
+     "max": 305.65,
+     "n": 3
+    },
+    "errorRate": {
+     "median": 0.001,
+     "min": 0.0005,
+     "max": 0.00125,
+     "n": 3
+    },
+    "coordinatorMillicores": {
+     "median": 119.9,
+     "min": 119.8,
+     "max": 120.1,
+     "n": 3
+    },
+    "refusedPublishes": {
+     "median": 0,
+     "min": 0,
+     "max": 0,
+     "n": 3
+    },
+    "wakeupsPeak": {
+     "median": 232,
+     "min": 216,
+     "max": 232,
+     "n": 3
+    }
+   },
+   "stepRun": {
+    "errorRate": {
+     "median": 0.00095,
+     "min": 0.000736,
+     "max": 0.001211,
+     "n": 3
+    },
+    "refusedPublishes": {
+     "median": 6324,
+     "min": 5968,
+     "max": 6381,
+     "n": 3
+    },
+    "wakeupsPeak": {
+     "median": 10016,
+     "min": 10014,
+     "max": 10020,
+     "n": 3
+    }
+   },
+   "raftStep": {
+    "raftEntriesPerRun": 342242,
+    "commandsPerRun": 72046,
+    "nonCommandPerRun": 270196,
+    "nonCommandShare": 0.7895,
+    "readsPerRun": {
+     "linearizable": 0,
+     "stale": 0,
+     "strong": 270149
+    }
+   },
+   "raftBaseline": {
+    "raftEntriesPerRun": 207539,
+    "commandsPerRun": 41267,
+    "nonCommandPerRun": 166272,
+    "nonCommandShare": 0.8012,
+    "readsPerRun": {
+     "linearizable": 0,
+     "stale": 0,
+     "strong": 166206
+    }
+   },
+   "raftStepPerShard": [
+    [
+     {
+      "shard": 0,
+      "nonCommand": 89131,
+      "commands": 23809
+     },
+     {
+      "shard": 1,
+      "nonCommand": 87231,
+      "commands": 22959
+     },
+     {
+      "shard": 2,
+      "nonCommand": 94418,
+      "commands": 25464
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "nonCommand": 92448,
+      "commands": 24765
+     },
+     {
+      "shard": 1,
+      "nonCommand": 85272,
+      "commands": 22359
+     },
+     {
+      "shard": 2,
+      "nonCommand": 92521,
+      "commands": 24880
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "nonCommand": 90921,
+      "commands": 24421
+     },
+     {
+      "shard": 1,
+      "nonCommand": 87925,
+      "commands": 23220
+     },
+     {
+      "shard": 2,
+      "nonCommand": 90721,
+      "commands": 24261
+     }
+    ]
+   ],
+   "idle": {
+    "samples": 1,
+    "nonCommandPerSPerShard": {
+     "median": 6.23,
+     "min": 6.21,
+     "max": 6.23,
+     "n": 3
+    },
+    "commandsPerSPerShard": {
+     "median": 0.0,
+     "min": 0.0,
+     "max": 0.0,
+     "n": 3
+    },
+    "perShard": [
+     [
+      {
+       "shard": 0,
+       "seconds": 61.7,
+       "raftEntries": 384,
+       "commands": 0,
+       "nonCommand": 384,
+       "nonCommandPerS": 6.23,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 380
+       }
+      },
+      {
+       "shard": 1,
+       "seconds": 61.7,
+       "raftEntries": 384,
+       "commands": 0,
+       "nonCommand": 384,
+       "nonCommandPerS": 6.23,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 385
+       }
+      },
+      {
+       "shard": 2,
+       "seconds": 61.7,
+       "raftEntries": 383,
+       "commands": 0,
+       "nonCommand": 383,
+       "nonCommandPerS": 6.21,
+       "reads": {
+        "linearizable": 0,
+        "stale": 0,
+        "strong": 382
+       }
+      }
+     ]
+    ]
+   }
+  },
+  "Phase 2 (linearizable default, 514bb33)": {
+   "saturationRps": null,
+   "aboveRange": [
+    true,
+    true,
+    true
+   ],
+   "topStepRps": 80,
+   "brokenAt": [
+    null,
+    null,
+    null
+   ],
+   "brokenBy": [
+    null,
+    null,
+    null
+   ],
+   "firstAtLimit": [
+    {
+     "targetRps": 20,
+     "components": [
+      "storage-coordinator"
+     ]
+    },
+    {
+     "targetRps": 20,
+     "components": [
+      "storage-coordinator"
+     ]
+    },
+    {
+     "targetRps": 20,
+     "components": [
+      "storage-coordinator"
+     ]
+    }
+   ],
+   "perStep": [
+    {
+     "targetRps": 10,
+     "write.p50Ms": 7.9,
+     "write.p95Ms": 11.59,
+     "write.p99Ms": 21.3,
+     "read.p50Ms": 2.53,
+     "read.p95Ms": 5.07,
+     "read.p99Ms": 12.9,
+     "list.p50Ms": 4.13,
+     "list.p95Ms": 5.88,
+     "list.p99Ms": 7.49,
+     "errorRate": 0,
+     "achievedRps": 7.44,
+     "coordinatorMillicores": 50.8,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 3,
+     "podsAtLimit": [
+      [],
+      [],
+      []
+     ]
+    },
+    {
+     "targetRps": 20,
+     "write.p50Ms": 8.04,
+     "write.p95Ms": 57.2,
+     "write.p99Ms": 70.86,
+     "read.p50Ms": 2.41,
+     "read.p95Ms": 35.35,
+     "read.p99Ms": 52.74,
+     "list.p50Ms": 5.53,
+     "list.p95Ms": 56.15,
+     "list.p99Ms": 72.42,
+     "errorRate": 0,
+     "achievedRps": 19.72,
+     "coordinatorMillicores": 157.1,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 10,
+     "podsAtLimit": [
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    },
+    {
+     "targetRps": 30,
+     "write.p50Ms": 26.42,
+     "write.p95Ms": 68.57,
+     "write.p99Ms": 85.32,
+     "read.p50Ms": 4.51,
+     "read.p95Ms": 51.66,
+     "read.p99Ms": 54.05,
+     "list.p50Ms": 25.66,
+     "list.p95Ms": 69.39,
+     "list.p99Ms": 86.8,
+     "errorRate": 0.000304,
+     "achievedRps": 29.92,
+     "coordinatorMillicores": 225.1,
+     "refusedPublishes": 2,
+     "wakeupsPeak": 21,
+     "podsAtLimit": [
+      [
+       "storage-coordinator",
+       "storage-shard-1-0"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    },
+    {
+     "targetRps": 40,
+     "write.p50Ms": 50.37,
+     "write.p95Ms": 89.94,
+     "write.p99Ms": 113.2,
+     "read.p50Ms": 4.42,
+     "read.p95Ms": 28.63,
+     "read.p99Ms": 45.53,
+     "list.p50Ms": 33.56,
+     "list.p95Ms": 83.65,
+     "list.p99Ms": 106.49,
+     "errorRate": 0,
+     "achievedRps": 39.9,
+     "coordinatorMillicores": 241.8,
+     "refusedPublishes": 2,
+     "wakeupsPeak": 35,
+     "podsAtLimit": [
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    },
+    {
+     "targetRps": 50,
+     "write.p50Ms": 55.51,
+     "write.p95Ms": 101.9,
+     "write.p99Ms": 146.25,
+     "read.p50Ms": 6.39,
+     "read.p95Ms": 32.68,
+     "read.p99Ms": 51.87,
+     "list.p50Ms": 41.01,
+     "list.p95Ms": 99.63,
+     "list.p99Ms": 130.58,
+     "errorRate": 0.000364,
+     "achievedRps": 49.91,
+     "coordinatorMillicores": 246.0,
+     "refusedPublishes": 1,
+     "wakeupsPeak": 47,
+     "podsAtLimit": [
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    },
+    {
+     "targetRps": 60,
+     "write.p50Ms": 67.81,
+     "write.p95Ms": 139.95,
+     "write.p99Ms": 230.38,
+     "read.p50Ms": 8.71,
+     "read.p95Ms": 41.91,
+     "read.p99Ms": 59.42,
+     "list.p50Ms": 54.17,
+     "list.p95Ms": 122.45,
+     "list.p99Ms": 160.92,
+     "errorRate": 0.001366,
+     "achievedRps": 59.89,
+     "coordinatorMillicores": 245.9,
+     "refusedPublishes": -1,
+     "wakeupsPeak": 80,
+     "podsAtLimit": [
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    },
+    {
+     "targetRps": 70,
+     "write.p50Ms": 75.89,
+     "write.p95Ms": 187.16,
+     "write.p99Ms": 317.78,
+     "read.p50Ms": 12.1,
+     "read.p95Ms": 52.57,
+     "read.p99Ms": 71.66,
+     "list.p50Ms": 68.14,
+     "list.p95Ms": 159.78,
+     "list.p99Ms": 217.97,
+     "errorRate": 0.000911,
+     "achievedRps": 69.88,
+     "coordinatorMillicores": 245.3,
+     "refusedPublishes": 0,
+     "wakeupsPeak": 99,
+     "podsAtLimit": [
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    },
+    {
+     "targetRps": 80,
+     "write.p50Ms": 88.68,
+     "write.p95Ms": 232.12,
+     "write.p99Ms": 388.5,
+     "read.p50Ms": 14.95,
+     "read.p95Ms": 55.73,
+     "read.p99Ms": 76.52,
+     "list.p50Ms": 80.73,
+     "list.p95Ms": 185.66,
+     "list.p99Ms": 246.8,
+     "errorRate": 0.002389,
+     "achievedRps": 79.9,
+     "coordinatorMillicores": 245.6,
+     "refusedPublishes": 8,
+     "wakeupsPeak": 159,
+     "podsAtLimit": [
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ],
+      [
+       "storage-coordinator"
+      ]
+     ]
+    }
+   ],
+   "baseline": {
+    "write.p50Ms": {
+     "median": 31.91,
+     "min": 31.02,
+     "max": 32.37,
+     "n": 3
+    },
+    "write.p95Ms": {
+     "median": 75.12,
+     "min": 69.73,
+     "max": 79.11,
+     "n": 3
+    },
+    "write.p99Ms": {
+     "median": 93.57,
+     "min": 85.16,
+     "max": 99.46,
+     "n": 3
+    },
+    "read.p50Ms": {
+     "median": 2.49,
+     "min": 2.35,
+     "max": 2.68,
+     "n": 3
+    },
+    "read.p95Ms": {
+     "median": 30.83,
+     "min": 26.74,
+     "max": 39.78,
+     "n": 3
+    },
+    "read.p99Ms": {
+     "median": 56.43,
+     "min": 51.45,
+     "max": 60,
+     "n": 3
+    },
+    "list.p50Ms": {
+     "median": 18.29,
+     "min": 17.5,
+     "max": 21.12,
+     "n": 3
+    },
+    "list.p95Ms": {
+     "median": 71.5,
+     "min": 66.41,
+     "max": 72.22,
+     "n": 3
+    },
+    "list.p99Ms": {
+     "median": 90.31,
+     "min": 85.66,
+     "max": 91.3,
+     "n": 3
+    },
+    "errorRate": {
+     "median": 0.000167,
+     "min": 8.3e-05,
+     "max": 0.00025,
+     "n": 3
+    },
+    "coordinatorMillicores": {
+     "median": 217.1,
+     "min": 213.2,
+     "max": 218.4,
+     "n": 3
+    },
+    "refusedPublishes": {
+     "median": 0,
+     "min": 0,
+     "max": 0,
+     "n": 3
+    },
+    "wakeupsPeak": {
+     "median": 29,
+     "min": 28,
+     "max": 31,
+     "n": 3
+    }
+   },
+   "stepRun": {
+    "errorRate": {
+     "median": 0.001093,
+     "min": 0.000617,
+     "max": 0.00121,
+     "n": 3
+    },
+    "refusedPublishes": {
+     "median": 8,
+     "min": 6,
+     "max": 33,
+     "n": 3
+    },
+    "wakeupsPeak": {
+     "median": 159,
+     "min": 127,
+     "max": 195,
+     "n": 3
+    }
+   },
+   "raftStep": {
+    "raftEntriesPerRun": 132108,
+    "commandsPerRun": 132079,
+    "nonCommandPerRun": 29,
+    "nonCommandShare": 0.0002,
+    "readsPerRun": {
+     "linearizable": 555572,
+     "stale": 0,
+     "strong": 0
+    }
+   },
+   "raftBaseline": {
+    "raftEntriesPerRun": 82473,
+    "commandsPerRun": 82462,
+    "nonCommandPerRun": 11,
+    "nonCommandShare": 0.0001,
+    "readsPerRun": {
+     "linearizable": 348212,
+     "stale": 0,
+     "strong": 0
+    }
+   },
+   "raftStepPerShard": [
+    [
+     {
+      "shard": 0,
+      "nonCommand": 4,
+      "commands": 49035
+     },
+     {
+      "shard": 1,
+      "nonCommand": 13,
+      "commands": 45095
+     },
+     {
+      "shard": 2,
+      "nonCommand": 11,
+      "commands": 36076
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "nonCommand": 5,
+      "commands": 49262
+     },
+     {
+      "shard": 1,
+      "nonCommand": 6,
+      "commands": 45025
+     },
+     {
+      "shard": 2,
+      "nonCommand": 27,
+      "commands": 38414
+     }
+    ],
+    [
+     {
+      "shard": 0,
+      "nonCommand": 3,
+      "commands": 51525
+     },
+     {
+      "shard": 1,
+      "nonCommand": 6,
+      "commands": 45807
+     },
+     {
+      "shard": 2,
+      "nonCommand": 13,
+      "commands": 35998
+     }
+    ]
+   ],
+   "idle": {
+    "samples": 6,
+    "nonCommandPerSPerShard": {
+     "median": 0.0,
+     "min": 0.0,
+     "max": 0.0,
+     "n": 18
+    },
+    "commandsPerSPerShard": {
+     "median": 0.0,
+     "min": 0.0,
+     "max": 0.0,
+     "n": 18
+    },
+    "perShard": [
+     [
+      {
+       "shard": 0,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 383,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 384,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 384,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ],
+     [
+      {
+       "shard": 0,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 384,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 385,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 380,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ],
+     [
+      {
+       "shard": 0,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 385,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 385,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 384,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ],
+     [
+      {
+       "shard": 0,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 385,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 382,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "seconds": 61.6,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 384,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ],
+     [
+      {
+       "shard": 0,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 382,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 386,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 384,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ],
+     [
+      {
+       "shard": 0,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 385,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 1,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 385,
+        "stale": 0,
+        "strong": 0
+       }
+      },
+      {
+       "shard": 2,
+       "seconds": 61.7,
+       "raftEntries": 0,
+       "commands": 0,
+       "nonCommand": 0,
+       "nonCommandPerS": 0.0,
+       "reads": {
+        "linearizable": 381,
+        "stale": 0,
+        "strong": 0
+       }
+      }
+     ]
+    ]
+   }
+  }
+ }
+}
