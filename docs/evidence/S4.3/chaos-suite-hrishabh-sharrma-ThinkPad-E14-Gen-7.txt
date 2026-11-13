@@ -1,10 +1,10 @@
 # S4.3 Chaos Mesh suite
 result:     PASSED (22/22 checks)
 host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
-date:       2026-11-01T12:02:20Z
-code tree:  6f563dbdb00c (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk cmd/invcheck internal loadtest chaos deploy/helm/storage scripts/verify-S4.3.sh | git hash-object --stdin)
+date:       2026-11-12T16:30:54Z
+code tree:  326ccff19780 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk cmd/invcheck internal loadtest chaos deploy/helm/storage scripts/verify-S4.3.sh | git hash-object --stdin)
 code dirty: no (uncommitted changes under those paths)
-suite:      docs/evidence/S4.3/suite-20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
+suite:      docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
 
 ## checks
 PASS  kill-leader: --seed 7 --plan is one JSON plan, the same both times
@@ -30,72 +30,72 @@ PASS  resources: measured before Chaos Mesh, after its install and after the run
 PASS  no NetworkChaos left behind
 PASS  every kind node Ready
 
-# S4.3 chaos suite 20261101T112942Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
+# S4.3 chaos suite 20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7
 result: PASSED (12/12 runs)
 chaos mesh: {"version":"2.8.7","kubernetes":"v1.37.0","images":["ghcr.io/chaos-mesh/chaos-daemon:v2.8.7@sha256:3f2108e42a7ced02ef57fd3f0dd8dc71067689f3174ae58a5b0bb8dc31465d55","ghcr.io/chaos-mesh/chaos-mesh:v2.8.7@sha256:e972b7d995c117f8728ed9b792685b4e45ab9c6eb2e92d766a3040aa5987428d"],"smoke":{"pod":"storage-shard-0-0","injected":true,"recovered":true}}
 
 run                    pass  faultS  recovS  acked unknown unresolv   lost  stale probeSrvd quorumAck firstAckH
-kill-leader            PASS   4.341     3.6   6313       0        0      0      0        19        23         8
-kill-follower          PASS  11.657     0.6   6164       0        0      0      0         0       178        18
-restart-shard          PASS   5.162     5.9  11661       0        0      0      0        33        32        45
-isolate-replica        PASS  20.962    12.4   7402       0        0      0      0       138       534        33
-isolate-leader         PASS  20.537     3.7   7712       0        0      0      0         0       435        42
-delay-isolate-leader   PASS  20.602     4.8   6945       0        0      0      0         0       105       331
-lose-quorum            PASS  20.037    21.8   7138       4        0      0      0         0         0      1166
-delay-follower         PASS   26.33    -1.0   8188       0        0      0      0         0       682        30
-stop-worker            PASS  30.967    -1.0  22208       0        0      0      0         0       642        20
-restart-coordinator    PASS   0.859     0.9   7196       4        0      0      0         0         0      4507
-control-lost-write     PASS  11.666     0.6   6506       0        0      1      0         0       252        78
-control-stale-reader   PASS  26.131    -1.0   7968       0        0      0    645       462       350        78
+kill-leader            PASS   4.358     2.6   6313       0        0      0      0         0        45        37
+kill-follower          PASS   4.432     0.4   6144       0        0      0      0         0        57        50
+restart-shard          PASS   4.186     4.9  11674       0        0      0      0        18        35         6
+isolate-replica        PASS  21.383    14.3   7214       0        0      0      0       134       514         3
+isolate-leader         PASS  20.642     3.0   7732       0        0      0      0         0       359        14
+delay-isolate-leader   PASS  20.351     4.7   6919       0        0      0      0         0        99       832
+lose-quorum            PASS  20.096    21.3   6843       4        0      0      0         0         0       597
+delay-follower         PASS  25.812    -1.0   8147       0        0      0      0         0       560        74
+stop-worker            PASS   30.74    -1.0  22186       0        0      0      0         0       727         6
+restart-coordinator    PASS  32.051    32.8   6197      12        0      0      0         0         0      1906
+control-lost-write     PASS  11.127     0.3   6494       0        0      1      0         0       254        49
+control-stale-reader   PASS  25.369    -1.0   7958       0        0      0    514       450       584        50
 
 ## failures
 
 ## faulted shard availability (writes and reads around each fault)
-kill-leader: {"acksBefore":290,"acksDuring":29,"acksAfter":1402,"acksInsideFault":23,"readsDuring":41,"readsServedDuring":37,"readsServedInsideFault":32,"probeServedInsideFault":{"storage-shard-1-0":19},"firstAckAfterFaultMs":51,"firstAckAfterHealMs":8,"writeLatencyMs":{"n":29,"p50":5.427488,"p99":2780.076954,"max":2780.076954},"readLatencyMs":{"n":41,"p50":1.955523,"p99":3001.171453,"max":3001.171453},"errorsDuring":0}
-kill-follower: {"acksBefore":196,"acksDuring":216,"acksAfter":1209,"acksInsideFault":178,"readsDuring":250,"readsServedDuring":82,"readsServedInsideFault":68,"probeServedInsideFault":{},"firstAckAfterFaultMs":18,"firstAckAfterHealMs":18,"writeLatencyMs":{"n":216,"p50":4.812611,"p99":8.134745,"max":11.164692},"readLatencyMs":{"n":250,"p50":1.063667,"p99":7.990491,"max":3000.705134},"errorsDuring":0}
-restart-shard: {"acksBefore":230,"acksDuring":37,"acksAfter":2628,"acksInsideFault":32,"readsDuring":143,"readsServedDuring":53,"readsServedInsideFault":48,"probeServedInsideFault":{"storage-shard-1-2":33},"firstAckAfterFaultMs":84,"firstAckAfterHealMs":45,"writeLatencyMs":{"n":37,"p50":4.755036,"p99":2725.551811,"max":2725.551811},"readLatencyMs":{"n":143,"p50":1.165708,"p99":3000.343988,"max":3000.455188},"errorsDuring":0}
-isolate-replica: {"acksBefore":254,"acksDuring":593,"acksAfter":2279,"acksInsideFault":534,"readsDuring":760,"readsServedDuring":540,"readsServedInsideFault":464,"probeServedInsideFault":{"storage-shard-0-1":138},"firstAckAfterFaultMs":47,"firstAckAfterHealMs":33,"writeLatencyMs":{"n":593,"p50":4.692457,"p99":12.230621,"max":1790.818641},"readLatencyMs":{"n":760,"p50":1.616975,"p99":6.770223,"max":1662.923626},"errorsDuring":0}
-isolate-leader: {"acksBefore":317,"acksDuring":451,"acksAfter":1800,"acksInsideFault":435,"readsDuring":645,"readsServedDuring":264,"readsServedInsideFault":246,"probeServedInsideFault":{},"firstAckAfterFaultMs":32,"firstAckAfterHealMs":42,"writeLatencyMs":{"n":451,"p50":4.886188,"p99":46.293106,"max":2527.254995},"readLatencyMs":{"n":645,"p50":1.116959,"p99":7.355677,"max":2444.37347},"errorsDuring":0}
-delay-isolate-leader: {"acksBefore":296,"acksDuring":120,"acksAfter":1471,"acksInsideFault":105,"readsDuring":443,"readsServedDuring":59,"readsServedInsideFault":43,"probeServedInsideFault":{},"firstAckAfterFaultMs":58,"firstAckAfterHealMs":331,"writeLatencyMs":{"n":120,"p50":366.219769,"p99":4470.462809,"max":4470.622599},"readLatencyMs":{"n":443,"p50":0.869153,"p99":571.590783,"max":4005.510381},"errorsDuring":4}
-lose-quorum: {"acksBefore":362,"acksDuring":45,"acksAfter":2363,"acksInsideFault":0,"readsDuring":1198,"readsServedDuring":62,"readsServedInsideFault":0,"probeServedInsideFault":{},"firstAckAfterFaultMs":6,"firstAckAfterHealMs":1166,"writeLatencyMs":{"n":45,"p50":4.540973,"p99":21.681441,"max":21.681441},"readLatencyMs":{"n":1198,"p50":0.845587,"p99":12.509635,"max":4002.33339},"errorsDuring":16}
-delay-follower: {"acksBefore":341,"acksDuring":736,"acksAfter":2121,"acksInsideFault":682,"readsDuring":942,"readsServedDuring":430,"readsServedInsideFault":397,"probeServedInsideFault":{},"firstAckAfterFaultMs":10,"firstAckAfterHealMs":30,"writeLatencyMs":{"n":736,"p50":4.471078,"p99":15.253531,"max":112.960392},"readLatencyMs":{"n":942,"p50":1.174432,"p99":6.698409,"max":124.42565},"errorsDuring":0}
-stop-worker: {"acksBefore":244,"acksDuring":649,"acksAfter":6337,"acksInsideFault":642,"readsDuring":337,"readsServedDuring":321,"readsServedInsideFault":318,"probeServedInsideFault":{},"firstAckAfterFaultMs":22,"firstAckAfterHealMs":20,"writeLatencyMs":{"n":649,"p50":4.901783,"p99":10.034064,"max":13.124247},"readLatencyMs":{"n":337,"p50":2.700145,"p99":3000.824545,"max":3001.210314},"errorsDuring":0}
-restart-coordinator: {"acksBefore":403,"acksDuring":4,"acksAfter":1622,"acksInsideFault":0,"readsDuring":3,"readsServedDuring":1,"readsServedInsideFault":0,"probeServedInsideFault":{},"firstAckAfterFaultMs":55,"firstAckAfterHealMs":4507,"writeLatencyMs":{"n":4,"p50":3.592433,"p99":4.711979,"max":4.711979},"readLatencyMs":{"n":3,"p50":4.765983,"p99":5000.987913,"max":5000.987913},"errorsDuring":6}
-control-lost-write: {"acksBefore":390,"acksDuring":302,"acksAfter":1684,"acksInsideFault":252,"readsDuring":331,"readsServedDuring":162,"readsServedInsideFault":133,"probeServedInsideFault":{},"firstAckAfterFaultMs":7,"firstAckAfterHealMs":78,"writeLatencyMs":{"n":302,"p50":4.771676,"p99":8.701581,"max":26.087599},"readLatencyMs":{"n":331,"p50":1.403926,"p99":9.044592,"max":3000.254054},"errorsDuring":0}
-control-stale-reader: {"acksBefore":123,"acksDuring":384,"acksAfter":1116,"acksInsideFault":350,"readsDuring":566,"readsServedDuring":563,"readsServedInsideFault":519,"probeServedInsideFault":{"storage-shard-2-1":462},"firstAckAfterFaultMs":53,"firstAckAfterHealMs":78,"writeLatencyMs":{"n":384,"p50":4.162084,"p99":11.142479,"max":19.388592},"readLatencyMs":{"n":566,"p50":1.226573,"p99":4.11012,"max":11.508868},"errorsDuring":0}
+kill-leader: {"acksBefore":343,"acksDuring":49,"acksAfter":1924,"acksInsideFault":45,"readsDuring":119,"readsServedDuring":36,"readsServedInsideFault":33,"probeServedInsideFault":{},"firstAckAfterFaultMs":2320,"firstAckAfterHealMs":37,"writeLatencyMs":{"n":49,"p50":4.432813,"p99":2334.188378,"max":2334.188378},"readLatencyMs":{"n":119,"p50":1.093044,"p99":2126.075379,"max":2153.462477},"errorsDuring":0}
+kill-follower: {"acksBefore":268,"acksDuring":111,"acksAfter":2062,"acksInsideFault":57,"readsDuring":101,"readsServedDuring":73,"readsServedInsideFault":40,"probeServedInsideFault":{},"firstAckAfterFaultMs":21,"firstAckAfterHealMs":50,"writeLatencyMs":{"n":111,"p50":4.349866,"p99":47.394844,"max":77.087737},"readLatencyMs":{"n":101,"p50":1.829747,"p99":58.697628,"max":3000.447601},"errorsDuring":0}
+restart-shard: {"acksBefore":331,"acksDuring":40,"acksAfter":3911,"acksInsideFault":35,"readsDuring":151,"readsServedDuring":43,"readsServedInsideFault":39,"probeServedInsideFault":{"storage-shard-1-1":18},"firstAckAfterFaultMs":28,"firstAckAfterHealMs":6,"writeLatencyMs":{"n":40,"p50":4.087422,"p99":2807.859955,"max":2807.859955},"readLatencyMs":{"n":151,"p50":0.883238,"p99":3000.265009,"max":3000.694986},"errorsDuring":0}
+isolate-replica: {"acksBefore":240,"acksDuring":577,"acksAfter":2526,"acksInsideFault":514,"readsDuring":774,"readsServedDuring":538,"readsServedInsideFault":459,"probeServedInsideFault":{"storage-shard-0-0":134},"firstAckAfterFaultMs":42,"firstAckAfterHealMs":3,"writeLatencyMs":{"n":577,"p50":4.413993,"p99":20.533033,"max":4024.52232},"readLatencyMs":{"n":774,"p50":1.291935,"p99":9.903207,"max":4002.734985},"errorsDuring":2}
+isolate-leader: {"acksBefore":235,"acksDuring":368,"acksAfter":1509,"acksInsideFault":359,"readsDuring":565,"readsServedDuring":177,"readsServedInsideFault":168,"probeServedInsideFault":{},"firstAckAfterFaultMs":16,"firstAckAfterHealMs":14,"writeLatencyMs":{"n":368,"p50":4.898251,"p99":1974.743086,"max":2100.274767},"readLatencyMs":{"n":565,"p50":0.914136,"p99":8.691074,"max":2088.844189},"errorsDuring":0}
+delay-isolate-leader: {"acksBefore":284,"acksDuring":109,"acksAfter":1496,"acksInsideFault":99,"readsDuring":436,"readsServedDuring":52,"readsServedInsideFault":42,"probeServedInsideFault":{},"firstAckAfterFaultMs":26,"firstAckAfterHealMs":832,"writeLatencyMs":{"n":109,"p50":381.830128,"p99":4578.322151,"max":4612.976999},"readLatencyMs":{"n":436,"p50":0.918553,"p99":617.051181,"max":4001.465404},"errorsDuring":4}
+lose-quorum: {"acksBefore":422,"acksDuring":9,"acksAfter":2842,"acksInsideFault":0,"readsDuring":1185,"readsServedDuring":10,"readsServedInsideFault":0,"probeServedInsideFault":{},"firstAckAfterFaultMs":2,"firstAckAfterHealMs":597,"writeLatencyMs":{"n":9,"p50":3.228122,"p99":6.837924,"max":6.837924},"readLatencyMs":{"n":1185,"p50":0.770872,"p99":4.233621,"max":4005.643288},"errorsDuring":16}
+delay-follower: {"acksBefore":252,"acksDuring":606,"acksAfter":1841,"acksInsideFault":560,"readsDuring":807,"readsServedDuring":304,"readsServedInsideFault":280,"probeServedInsideFault":{},"firstAckAfterFaultMs":70,"firstAckAfterHealMs":74,"writeLatencyMs":{"n":606,"p50":4.31827,"p99":12.605256,"max":17.732759},"readLatencyMs":{"n":807,"p50":0.944967,"p99":8.37076,"max":15.678798},"errorsDuring":0}
+stop-worker: {"acksBefore":271,"acksDuring":734,"acksAfter":7642,"acksInsideFault":727,"readsDuring":452,"readsServedDuring":438,"readsServedInsideFault":436,"probeServedInsideFault":{},"firstAckAfterFaultMs":25,"firstAckAfterHealMs":6,"writeLatencyMs":{"n":734,"p50":4.831565,"p99":10.696972,"max":20.237791},"readLatencyMs":{"n":452,"p50":2.604746,"p99":3000.850976,"max":3001.899044},"errorsDuring":0}
+restart-coordinator: {"acksBefore":395,"acksDuring":2,"acksAfter":1520,"acksInsideFault":0,"readsDuring":9,"readsServedDuring":1,"readsServedInsideFault":0,"probeServedInsideFault":{},"firstAckAfterFaultMs":33,"firstAckAfterHealMs":1906,"writeLatencyMs":{"n":2,"p50":4.047458,"p99":5.12413,"max":5.12413},"readLatencyMs":{"n":9,"p50":4.000757,"p99":5001.011957,"max":5001.011957},"errorsDuring":12}
+control-lost-write: {"acksBefore":365,"acksDuring":313,"acksAfter":1830,"acksInsideFault":254,"readsDuring":340,"readsServedDuring":182,"readsServedInsideFault":151,"probeServedInsideFault":{},"firstAckAfterFaultMs":72,"firstAckAfterHealMs":49,"writeLatencyMs":{"n":313,"p50":4.581528,"p99":11.127751,"max":30.221553},"readLatencyMs":{"n":340,"p50":1.279603,"p99":8.372722,"max":3000.379459},"errorsDuring":0}
+control-stale-reader: {"acksBefore":173,"acksDuring":626,"acksAfter":1839,"acksInsideFault":584,"readsDuring":791,"readsServedDuring":788,"readsServedInsideFault":725,"probeServedInsideFault":{"storage-shard-2-2":450},"firstAckAfterFaultMs":27,"firstAckAfterHealMs":50,"writeLatencyMs":{"n":626,"p50":4.090969,"p99":9.932865,"max":16.13123},"readLatencyMs":{"n":791,"p50":1.238145,"p99":6.636271,"max":10.924816},"errorsDuring":0}
 
 ## resources
-## before Chaos Mesh (storage only) (2026-11-01T11:29:59Z)
-reliefgrid-control-plane cpu 21.30% mem 1.006GiB / 30.37GiB
-reliefgrid-worker3 cpu 21.73% mem 292.5MiB / 30.37GiB
-reliefgrid-worker4 cpu 5.69% mem 224.5MiB / 30.37GiB
-reliefgrid-worker2 cpu 27.50% mem 343.9MiB / 30.37GiB
-reliefgrid-worker cpu 70.30% mem 225.6MiB / 30.37GiB
+## before Chaos Mesh (storage only) (2026-11-12T15:58:20Z)
+reliefgrid-worker4 cpu 5.32% mem 370MiB / 30.37GiB
+reliefgrid-control-plane cpu 21.02% mem 764.9MiB / 30.37GiB
+reliefgrid-worker2 cpu 13.92% mem 242.1MiB / 30.37GiB
+reliefgrid-worker3 cpu 11.61% mem 240.8MiB / 30.37GiB
+reliefgrid-worker cpu 13.75% mem 221.7MiB / 30.37GiB
                total        used        free      shared  buff/cache   available
-Mem:           31094        9541        5416         698       17288       21552
+Mem:           31094       11026        4395        1362       17488       20067
 
-## after the Chaos Mesh install (idle) (2026-11-01T11:30:36Z)
-reliefgrid-control-plane cpu 19.73% mem 1.076GiB / 30.37GiB
-reliefgrid-worker3 cpu 17.90% mem 290MiB / 30.37GiB
-reliefgrid-worker4 cpu 5.14% mem 248.5MiB / 30.37GiB
-reliefgrid-worker2 cpu 27.72% mem 352.1MiB / 30.37GiB
-reliefgrid-worker cpu 15.71% mem 236.9MiB / 30.37GiB
+## after the Chaos Mesh install (idle) (2026-11-12T15:59:11Z)
+reliefgrid-worker4 cpu 9.09% mem 399.5MiB / 30.37GiB
+reliefgrid-control-plane cpu 13.51% mem 972.8MiB / 30.37GiB
+reliefgrid-worker2 cpu 10.22% mem 287.3MiB / 30.37GiB
+reliefgrid-worker3 cpu 10.20% mem 275.3MiB / 30.37GiB
+reliefgrid-worker cpu 8.65% mem 254MiB / 30.37GiB
                total        used        free      shared  buff/cache   available
-Mem:           31094        9923        5013         708       17319       21171
-chaos-mesh pod chaos-controller-manager-6966764b7d-ttcvk on reliefgrid-worker4: 30 MiB
-chaos-mesh pod chaos-daemon-5r2p4 on reliefgrid-worker2: 9 MiB
-chaos-mesh pod chaos-daemon-n9v7d on reliefgrid-worker: 9 MiB
-chaos-mesh pod chaos-daemon-w9d4m on reliefgrid-worker3: 11 MiB
+Mem:           31094       11133        1670        1370       20113       19961
+chaos-mesh pod chaos-controller-manager-6fb845fd7f-ldm2p on reliefgrid-worker4: 32 MiB
+chaos-mesh pod chaos-daemon-9bs4l on reliefgrid-worker: 10 MiB
+chaos-mesh pod chaos-daemon-hwjb2 on reliefgrid-worker3: 11 MiB
+chaos-mesh pod chaos-daemon-qvskt on reliefgrid-worker2: 10 MiB
 
-## after the runs (2026-11-01T12:02:16Z)
-reliefgrid-control-plane cpu 15.75% mem 1.081GiB / 30.37GiB
-reliefgrid-worker3 cpu 28.42% mem 326.4MiB / 30.37GiB
-reliefgrid-worker4 cpu 4.74% mem 267.4MiB / 30.37GiB
-reliefgrid-worker2 cpu 22.93% mem 348.7MiB / 30.37GiB
-reliefgrid-worker cpu 23.06% mem 237.8MiB / 30.37GiB
+## after the runs (2026-11-12T16:30:51Z)
+reliefgrid-worker4 cpu 5.62% mem 450.4MiB / 30.37GiB
+reliefgrid-control-plane cpu 15.79% mem 1.004GiB / 30.37GiB
+reliefgrid-worker2 cpu 14.77% mem 316MiB / 30.37GiB
+reliefgrid-worker3 cpu 19.03% mem 351.2MiB / 30.37GiB
+reliefgrid-worker cpu 19.43% mem 329.4MiB / 30.37GiB
                total        used        free      shared  buff/cache   available
-Mem:           31094       10533        3631         843       18225       20561
-chaos-mesh pod chaos-controller-manager-6966764b7d-ttcvk on reliefgrid-worker4: 34 MiB
-chaos-mesh pod chaos-daemon-5r2p4 on reliefgrid-worker2: 12 MiB
-chaos-mesh pod chaos-daemon-n9v7d on reliefgrid-worker: 11 MiB
-chaos-mesh pod chaos-daemon-w9d4m on reliefgrid-worker3: 12 MiB
+Mem:           31094       10519        1999        1177       20210       20574
+chaos-mesh pod chaos-controller-manager-6fb845fd7f-ldm2p on reliefgrid-worker4: 35 MiB
+chaos-mesh pod chaos-daemon-9bs4l on reliefgrid-worker: 12 MiB
+chaos-mesh pod chaos-daemon-hwjb2 on reliefgrid-worker3: 12 MiB
+chaos-mesh pod chaos-daemon-qvskt on reliefgrid-worker2: 11 MiB

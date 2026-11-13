@@ -1,0 +1,8 @@
+21:56:34 kill-follower: plan {"experiment":"kill-follower","seed":441,"shard":2,"role":"follower","pick":0,"faultDelayMs":14994,"loadSeconds":90,"settleMaxSeconds":120,"prefix":"chaos-kill-follower-s441","workers":4,"keys":4,"intervalMs":50}
+21:56:35 target storage-shard-2-0 (follower, term 3)
+21:56:35 load running since 2026-11-12T16:26:35Z; fault in 14994ms
+21:57:01 fault pod-delete on storage-shard-2-0: 11s; recovery storage-shard-2-1 term 3
+21:58:15 injected: {"kind":"lost-write","key":"chaos-kill-follower-s441-1794500795-w3-k1","operationId":"inject-chaos-kill-follower-s441-1794500795-w3-k1-v204","version":205}
+21:58:33 FAILED: ledger: 1 acknowledged write(s) lost
+21:58:33 negative control lost-write: caught
+21:58:34 FAILED (1): report docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/control-lost-write.json
