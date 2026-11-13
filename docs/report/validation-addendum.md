@@ -1,9 +1,12 @@
 # Additional engineering validation
 
-These results extend the report core. They do not relabel the historical 18/18
-course gate or certify an unexecuted enhanced gate. Individual implementation
-PRs retain their own review/merge state; #134/#136 are now merged in source baseline ce643ee. Final integrated enhanced-gate
-results remain PENDING.
+These results extend the report core and preserve each run's scope. The
+[12 November scoped gate](../evidence/gate-20261112T100532Z/report.md) is now merged
+through #165: course 18/18, app-quiesced chaos 12/12 runs, Merkle 7/7 and strict
+invcheck/fixed-profile collection. Aging was 0s, autoscaling off and auth excluded.
+It does not certify those open enhancements, later forms/read/auth changes or a
+final integrated gate. #134/#136 are merged; implementation and execution are
+separate evidence claims.
 
 | Check | Observed result | Immutable evidence |
 |---|---|---|
@@ -37,11 +40,11 @@ retain the four manifest differences and these limits. They do not certify
 deployment of the reviewed source or the present cluster.
 
 These are functional and recovery observations, not throughput or saturation
-benchmarks. The storage/load chapter still needs Hrishabh's final repeated k6
-measurements. The [retained offline reports](https://github.com/ParthMalhotra07/ReliefGrid/tree/b4ae2487df19c18d0cc44d2f6e1dd5225fba4701/docs/evidence/A5.4/accepted-20261107)
-support nine passes for the recorded artifact. #139 still needs its reviewed
-host-preparation and timeout-cleanup follow-up; those historical reports are
-not acceptance of a new integrated kit or arbitrary offline host. Three joint
+benchmarks. The storage/load chapter now records accepted #126 Phase 1 measurements;
+later comparisons need their own accepted raw run references. The [retained offline reports](https://github.com/ParthMalhotra07/ReliefGrid/tree/b4ae2487df19c18d0cc44d2f6e1dd5225fba4701/docs/evidence/A5.4/accepted-20261107)
+support nine passes for the recorded artifact. #139's reviewed host-preparation and timeout-cleanup follow-up is merged;
+those historical reports still do not certify a new integrated kit or arbitrary
+offline host. Three joint
 presenter rehearsals and the final recording and submission receipt remain external deliverables.
 
 ## Physical evidence is bounded by its recorded source
@@ -54,7 +57,10 @@ does not include a physical cluster run. None is a fresh integrated gate on
 ce643ee or a blanket proof of every failure timing. Reported empty violation
 lists require complete, clean and quiescent inputs to be meaningful.
 
-#126 load measurements and final integrated gate evidence remain PENDING.
+Accepted #126 Phase 1 and the scoped #165 gate are recorded above. Later load
+comparisons and the final integrated gate remain pending. The scoped collector
+retains its own fixed API2/matcher2 snapshots with runtime build binding
+NOT_ESTABLISHED; it does not retroactively verify #123's missing final snapshot.
 Application aging stays disabled until rollout verification and policy agreement;
 auth/gate scope is not silently changed by this report integration. The final
 enhanced gate must retain explicit fixed API2/matcher2 restoration evidence,

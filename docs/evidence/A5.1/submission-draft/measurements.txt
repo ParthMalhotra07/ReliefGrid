@@ -1,0 +1,1 @@
+MEASUREMENTS PASS: seven retained reports, three saturation brackets, all aggregate medians/min/max/n recomputed; fractions and percentages retain precision

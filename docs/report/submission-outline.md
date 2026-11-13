@@ -5,7 +5,7 @@ order and page budgets below. This is an editorial plan, not an exported or
 page-counted report. Title, figures, captions, whitespace and references all count;
 there is no additional cover, contents page or appendix outside this budget.
 
-Integrated planning baseline: `5965f840f6fcf1e3d1044ed913def8982363fd31`. The report chapters merged in #137;
+Integrated planning baseline: `7fa4a7d0093d92477aa90a9a23fe1d3e942083b6`. The report chapters merged in #137;
 Hrishabh's outline-v2 refines their allocations without adding report sections.
 Source links below use that full planning SHA. Historical measurements retain
 their own source/tree/image identities; this baseline does not certify their
@@ -59,7 +59,7 @@ which timestamp the server supplies. Keep exact field wording tied to the
 original problem statement, not inferred from endpoint examples.
 
 Full mappings: [PS compliance](ps-compliance.md). Full schemas:
-[contracts](https://github.com/ParthMalhotra07/ReliefGrid/tree/5965f840f6fcf1e3d1044ed913def8982363fd31/contracts).
+[contracts](https://github.com/ParthMalhotra07/ReliefGrid/tree/7fa4a7d0093d92477aa90a9a23fe1d3e942083b6/contracts).
 
 ## 3. Architecture, sharding, consistency and schemas: 1.50 pages
 

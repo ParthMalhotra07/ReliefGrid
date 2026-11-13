@@ -138,43 +138,66 @@ observations are absent with an explicit failure flag, never a fresh zero
 ([metrics contract](../operations/storage-metrics.md#L7)). App/dashboard acceptance
 retains its own [evidence lifecycle](validation-addendum.md).
 
-## Performance methodology and pending measurements
+## Accepted S5.2 Phase 1 measurements
 
-[#126](https://github.com/ParthMalhotra07/ReliefGrid/pull/126) remains the
-load-report handoff; final reviewed measurements have not been supplied for this
-report. The earlier e7501ae tooling draft and dirty-tree smoke are historical,
-not a final benchmark. Pilot investigation does not fill the pending table.
-The final measured source/images, tooling and acceptance must be reconciled
-before reporting numerical capacity or classifying publish backpressure.
+#126 is merged. Seven retained load reports (three baseline, three step and one
+soak) describe measured source `7dd19404d6df0f7c098810d4c1ad093355a0cd3a`,
+recorded clean. The report/checker and aggregate rounding correction are accepted;
+this replaces the former blanket pending table, not the raw evidence.
 
-The proposed method uses seeded datasets; smoke, step-to-saturation, baseline
-and soak scenarios; the load Raft profile; declared Guaranteed resources;
-controlled CPU placement for kind versus k6; and a recorded power policy restored
-afterward. Record exact source SHA/dirty state and image identities, host CPU/RAM,
-tool pins, dataset/workload mix, read mode, topology, resource limits, timeouts,
-tracing sample ratio, warm-up, durations and offered/achieved load. Repeat
-controlled runs, report median plus min/max, and preserve raw and rejected runs.
-Review/merge the final tooling and acceptance criteria before describing this
-as executed methodology.
+The single host is an Intel Core Ultra 7 258V, eight logical CPUs and 30.4 GiB
+recorded RAM. kind used CPUs 0-5 and k6 6-7; the power profile was performance,
+restored afterward. Configured resources were Guaranteed, the Raft load profile
+and fixed API2/matcher2 were used, tracing/autoscaling were off. The storage fence
+setting alone does not establish that application callers used it: Phase 1
+predates #166's linearizable default. Recorded image IDs and source metadata
+must not be strengthened into an independently proven immutable build mapping.
+[Example environment/facts](../evidence/S5.2/S5.2-baseline-20261111T105012Z/facts.json).
 
-Report client p50/p95/p99 separately for writes, ID reads and lists, alongside
-errors by status/code and unknown outcomes. Pair offered/achieved throughput
-with Raft commit/apply histograms, per-pod CPU/memory and CPU-limit saturation.
-Histogram-derived quantiles are approximate and are not interchangeable with
-client latency percentiles. Verify acknowledged creates read back using the
-ledger; report unknown outcomes separately from acknowledged loss. Functional
-scaling/recovery observations do not replace saturation measurements.
+The seeded mix is 15% request creates, 10% resource registrations, 10% match,
+55% ID reads and 10% lists, seed 52. Baseline and soak exclude 120 s HTTP warm-up;
+the step run records no such warm-up. k6 uses open arrival rates, not a fixed
+closed-loop concurrency capacity test. Percentiles below are client HTTP
+milliseconds; repeated-row values are medians of each run's percentile, not
+pooled-request percentiles or confidence intervals.
 
-| Pending #126 result | Value | Required evidence |
-|---|---|---|
-| Final measured revision, runtime images and host configuration | PENDING | Clean source manifest and image/build binding |
-| Write, ID-read, list p50/p95/p99 | PENDING — no numbers claimed | Per-run raw k6 and report outputs |
-| Offered/achieved throughput and saturation step | PENDING | Step run plus acceptance/judge output |
-| Error rate, status/code breakdown and unknown resolution | PENDING | Client outcomes and ledger |
-| Raft commit/apply quantiles, CPU and memory | PENDING | Time-aligned raw metrics with units |
-| Acknowledged-create ledger read-back | PENDING | Complete ledger verification |
-| Repeat count, median/min/max and soak behavior | PENDING | All repeated run directories and comparison report |
-| Final integrated enhanced-gate result | PENDING | Named integrated revision, runtime evidence and full acceptance output |
+| Scenario | Repeats / measured duration | Offered / achieved req/s | Write / ID-read / list p99 ms | HTTP error fraction |
+|---|---|---|---|---|
+| Baseline | 3 x 600 s | 25 / 25 | 684.00 / 79.94 / 291.22 | 0.001 = 0.100% |
+| Step | 3 x 960 s | 10-80 steps / 43.86 aggregate median | 1049.34 / 102.43 / 367.06 across the run | 0.00095 = 0.095% |
+| Soak | 1 x 1800 s | 35 / 35 | 838.84 / 93.75 / 330.37 | 0.001275 = 0.1275% |
+
+Baseline write p99 spans 665.75-690.92 ms, ID reads 79.12-80.48 ms and lists
+280.82-305.65 ms; the error fraction spans 0.0005-0.00125. The three step runs
+all bracket the Phase 1 HTTP threshold at 50 req/s, failing the write-p99 1 s
+criterion at 60. This is distinct from the 43.86 aggregate rate over the stepped
+run, and is not sustainable matching throughput. The other acceptance limits
+are ID-read p99 <=250 ms, list p99 <=500 ms, HTTP errors <=1% and no dropped
+iterations. Baseline/soak retain zero dropped iterations.
+
+Sources: [baseline aggregate](../evidence/S5.2/aggregate-baseline.json),
+[step aggregate](../evidence/S5.2/aggregate-step.json),
+[soak report](../evidence/S5.2/S5.2-soak-20261111T112933Z/summary.json),
+[checker/method](../../loadtest/k6/README.md).
+
+Important qualification: HTTP completion did not mean the system quiesced under
+continued admission. Baseline matched/WAITING counts were 1483/780; step counts
+4276/2253. Matched latency excludes WAITING. Broker publish-confirm gaps and retry
+backlog are retained, not rounded away. The soak records 416 unconfirmed publishes
+during load; one step run records 5968, with 5209 in its after-run window. These
+observations are not automatically acknowledged data loss. Audits stopped retry
+admission, waited for historical ready+unacked headroom, drained durable handoffs,
+then checked invariants and restored matcher replicas. That is a stopped-admission
+audit, not proof of a stable busy-system equilibrium. #170's later total-message/
+returning-retry check is a separate harness change; historical reports keep their
+original audit rule. Off-repo raw files remain listed by hash, not revalidated as
+if their contents were present. [Retained verifier output](../evidence/S5.2/verify-hrishabh-sharrma-ThinkPad-E14-Gen-7.txt).
+
+| Still pending | Required evidence |
+|---|---|
+| Accepted later linearizable-versus-Barrier system-load comparison | Immutable run/source/image records and reviewed raw reports; do not substitute chat numbers |
+| Exploratory 100-110 req/s claim | n=1 with incomplete audit is exploratory, not validated capacity |
+| Final integrated gate and enhancements | Actual final source/images, alias/form checks and separately accepted auth/aging/autoscaling scope |
 
 Historical [FSM tracing microbenchmarks](../evidence/S4.4/bench-apply-20261103T085339Z.txt#L1)
 and [strong-read tracing microbenchmarks](../evidence/S4.4/bench-strongread-20261103T085339Z.txt#L1)
@@ -192,9 +215,10 @@ or current application throughput. No microbenchmark value fills the pending tab
   nor later PR approvals relabel the older course gate. Other app enhancements
   retain their reviewed implementation/evidence state.
 - The original PS field labels and implementation choices are recorded in
-  [architecture](architecture.md); bare alias compliance still needs #128's
-  review. `/api/v1` equivalence alone is insufficient.
-- The professor confirmed a report under 10 pages. The proposed nine-page
+  [PS mapping](ps-compliance.md). #128 is merged with per-path tests; the scoped
+  gate did not execute its ingress alias verifier, so final deployed alias checks
+  remain necessary. `/api/v1` equivalence alone is insufficient.
+- The professor confirmed a report under 10 pages. The agreed nine-page
   [submission outline](submission-outline.md), final reviewed SHA, final gate,
   rehearsals, recording/playback and submission receipt remain final-package
   deliverables. Public visibility is observed separately from actual submission.
@@ -215,11 +239,19 @@ or current application throughput. No microbenchmark value fills the pending tab
 
 ## Agreed core-gate scope and open enhancements
 
-The [agreed scope](../operations/gate-scope.md) runs the core-system gate with
-aging 0s and autoscaling off; #29 auth follows the gate. No such gate result closes
-the unfinished A4.4/A4.5 enhancements. Separate aging evidence is planned for the
-13th; final-cohort autoscaling evidence for the 13th–14th if included; auth wiring
-by the 15th before the 17th freeze. If autoscaling is omitted, it is untested on the
-final cohort; the qualified historical #123 observations remain recorded above.
-These are plans, not completed executions. The final integrated gate/result stays
-PENDING until its actual scope/source/images and raw outputs are recorded.
+The [agreed scope](../operations/gate-scope.md) was executed in the
+[12 November scoped gate](../evidence/gate-20261112T100532Z/report.md),
+source 1623c23. Recorded course reports are 18/18, chaos 12/12 runs (ten faults
+plus two controls, 22 checks), Merkle 7/7 and strict invcheck clean/quiescent.
+The fixed-profile collector records API2/matcher2, no HPA/ScaledObject and
+runtimeBuildBinding NOT_ESTABLISHED. The reset wrappers took 107/116 s on that
+host. These later snapshots do not fill missing restoration evidence in #123's
+earlier scaling run. Some console/chaos/dashboard/trace material remains in the
+original run root; the retained report explains that boundary.
+
+Positive aging still needs coordinator/all-nine-replica rollout verification and
+policy agreement. Auth requires all caller wiring plus joint enablement/rotation
+checks. Autoscaling, if included, needs final-cohort acceptance; otherwise label
+it untested on that cohort while retaining the qualified historical #123 result.
+The final gate must exercise the aliases and forms on its own recorded source.
+No schedule date or merged implementation alone establishes these acceptances.
