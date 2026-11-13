@@ -1,0 +1,56 @@
+# demo-8: Delete one API or matcher pod while traffic and work continue
+result:     PASS (2/2 checks)
+runId:      gate-20261112/round-2
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-12T10:28:23Z
+finished:   2026-11-12T10:28:45Z
+duration:   22.0 s
+code tree:  d52c88cc214e (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: 1623c23fef7a
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:d52ee1a3442a809569e6cc0c9d6108d89c44ac9735d98945d3bb701f77204cf7
+image reliefgrid/coordinator:dev: sha256:db10a4397af094e10d66e1ea67f42b392d1762bd2612a8b621b45a420f1f1c96
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/hrishabh-sharrma/.cache/reliefgrid/gate-20261112T100532Z/course/gate-20261112/round-2/demo-8-app
+
+## commands
+
+# await strict storage preflight after previous workload
+$ await_app_preflight
+[exit 0, 1.9 s]
+
+# prepare bounded relay-only handoff drainer
+$ bash /home/hrishabh-sharrma/code/ReliefGrid/scripts/prepare-outbox-drainer.sh /tmp/tmp.gk7RNWR54Q/drain-outbox
+[exit 0, 0.6 s]
+
+# public API assertions and recorded observations
+$ python3 /home/hrishabh-sharrma/code/ReliefGrid/scripts/demos/app_demo.py 8 --out /home/hrishabh-sharrma/.cache/reliefgrid/gate-20261112T100532Z/course/gate-20261112/round-2/demo-8-app
+PASS  api: two Ready pods before deletion
+PASS  interrupted create retried and replayed its original result
+PASS  api: a new UID becomes Ready within 90s
+PASS  api: traffic completed with no lost create outcome: []
+PASS  api: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  api: every successful create replay returned its original result
+PASS  matcher: two Ready pods before deletion
+PASS  matcher: a new UID becomes Ready within 90s
+PASS  matcher: traffic completed with no lost create outcome: []
+PASS  matcher: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  matcher: every successful create replay returned its original result
+PASS  1 interrupted calls observed; every one recovered using its original key and payload
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 19.3 s]

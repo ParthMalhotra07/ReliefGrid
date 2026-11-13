@@ -49,7 +49,8 @@ under `/assets/licenses.txt`.
 - Timeline entries are observations, not a durable audit journal. CANCELLING and
   FULFILLING remain visible until a later authoritative record changes them.
 - Match/start/cancel/fulfil actions use the existing public domain endpoints only.
-  Request/resource creation remains available through the existing public API.
+  Create-request and register-resource forms use those public APIs with a frozen
+  body and UUID Idempotency-Key; matching is automatic.
   Unknown outcomes are shown as unconfirmed and trigger a reread; claims are never
   edited from the browser.
 
@@ -70,3 +71,27 @@ The UI backend polls only `matching.requests` (ready/unacknowledged) and
 Missing or malformed counts produce nullable unknown values. Broker URLs, passwords,
 payloads and operator endpoints are never returned to the browser. This is not an
 outbox/TTL-queue metrics replacement; A4.2 provides the wider dashboards.
+
+## Creation forms
+
+The two forms submit only to the existing same-origin public POST endpoints.
+Before any write, a per-tab sessionStorage entry saves the exact body and UUID
+Idempotency-Key. Repeated clicks share one pending operation. A lost reply,
+timeout or unknown outcome keeps the original key/body locked across reloads;
+the user explicitly retries that submission. There is no offline write queue.
+Keep the browser tab/session until an unresolved create is confirmed; clearing
+browser storage or closing the tab can discard its local retry identity.
+
+A valid 201 receipt is retained before confirmation. Request confirmation reads
+the request by ID. Resources have no public GET-by-ID, so confirmation walks
+complete authoritative public pages (bounded to 32 pages/15 seconds); absence
+from a page is not a rejection. Missing/partial/stale observations fail closed.
+The UI then waits for a successful view refresh before permitting another
+submission. A failed confirmation retries reads without sending another POST.
+A known first INVALID refusal allows editing; it cannot erase an older unknown
+outcome. Current state comes from the reread, never a historical create replay.
+
+Resource availability is entered in browser-local time, converted to UTC once
+and frozen with the body. Neither internal/node/operator credentials nor manual
+claim edits are exposed. The browser fixtures verify these paths; a final
+deployment demonstration remains separate from the fixture acceptance.

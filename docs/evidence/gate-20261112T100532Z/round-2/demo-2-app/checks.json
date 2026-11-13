@@ -1,0 +1,70 @@
+[
+  {
+    "passed": true,
+    "assertion": "201 resource retains validated type, location, availability and unclaimed state"
+  },
+  {
+    "passed": true,
+    "assertion": "creation timestamps are UTC"
+  },
+  {
+    "passed": true,
+    "assertion": "complete authoritative resource list contains the created resource exactly once"
+  },
+  {
+    "passed": true,
+    "assertion": "invalid registration 0 is a definite 400 refusal"
+  },
+  {
+    "passed": true,
+    "assertion": "invalid registration 1 is a definite 400 refusal"
+  },
+  {
+    "passed": true,
+    "assertion": "invalid registration 2 is a definite 400 refusal"
+  },
+  {
+    "passed": true,
+    "assertion": "invalid registrations create no resources"
+  },
+  {
+    "passed": true,
+    "assertion": "status update persists at a different opaque version"
+  },
+  {
+    "passed": true,
+    "assertion": "partial availability update persists"
+  },
+  {
+    "passed": true,
+    "assertion": "public claim-managed status is a definite 409 refusal"
+  },
+  {
+    "passed": true,
+    "assertion": "public claim-managed status is a definite 409 refusal"
+  },
+  {
+    "passed": true,
+    "assertion": "all refused updates preserve the complete stored record and version"
+  },
+  {
+    "passed": true,
+    "assertion": "strong stored record preserves location and refuses public claim mutations"
+  },
+  {
+    "passed": true,
+    "assertion": "resource create replay retains original body and Location after updates"
+  },
+  {
+    "passed": true,
+    "assertion": "retry admission workers are identified before pausing"
+  },
+  {
+    "passed": true,
+    "assertion": "last committed handoffs drained with routed confirms while admission stays stopped"
+  },
+  {
+    "passed": true,
+    "assertion": "invcheck: complete, reciprocal, no terminal claim and outbox drained"
+  }
+]

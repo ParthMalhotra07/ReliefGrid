@@ -1,0 +1,7 @@
+src/create.js 87ms (unchanged)
+
+> reliefgrid-dispatch@0.1.0 format:check
+> prettier --check src e2e build.mjs playwright.config.js
+
+Checking formatting...
+All matched files use Prettier code style!
