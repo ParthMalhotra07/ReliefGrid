@@ -1,0 +1,1 @@
+{"name": "resource", "collection": "resources", "key": "c84fbb17-ca0c-510f-ac6b-cdb19878e99f", "body": {"resourceType": "WATER", "name": "Synthetic demo resource", "location": {"lat": -40, "lng": 30}, "windowStart": "2026-11-12T10:17:53Z", "windowEnd": "2026-11-12T12:18:53Z", "reusable": true}}

@@ -1,0 +1,103 @@
+# demo-1: Create a request, retrieve it, inspect its shard and replicas
+result:     PASS (7/7 checks)
+runId:      gate-20261112/round-1
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-12T10:18:47Z
+finished:   2026-11-12T10:18:50Z
+duration:   2.9 s
+code tree:  d52c88cc214e (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment; one new request (seed 1: MEDICINE at 28.6010,77.2010, 4 people, HIGH), Idempotency-Key 761ba56d-3527-4edc-b793-cafc22baf0e1, API http://localhost:8080/api/v1
+
+## versions
+git head: 1623c23fef7a
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:53dfd2140501449e506dbbb7793d74185f94ca05ef382dddd3eb51170a4e6a08
+image reliefgrid/coordinator:dev: sha256:df98cb0e39186a3bd7d14c2828e85b09915dd536cf43f4d9d40484a876d04c88
+
+## checks
+PASS  api: GET http://localhost:8080/api/v1/requests answers 200
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  create: 201, Location /api/v1/requests/6d0dc416-b5ff-567b-b325-6d1a3310333b, the submitted fields, status PENDING, version v1
+PASS  retrieve: 200 with the same requestId, type, location, details, peopleAffected, urgency and createdAt (status now WAITING)
+PASS  shard: req:6d0dc416-b5ff-567b-b325-6d1a3310333b is on shard 1, replicas storage-shard-1-0 storage-shard-1-1 storage-shard-1-2, leader storage-shard-1-0/888e29f0-e8af-44c5-9bdf-749712456180
+PASS  stored: req:6d0dc416-b5ff-567b-b325-6d1a3310333b holds the same ID, location and peopleAffected at version 2
+PASS  replicas: shard 1's replicas serve req:6d0dc416-b5ff-567b-b325-6d1a3310333b from their own FSM: all 3 replicas hold the same record at version 2 (strong read: 2)
+
+## commands
+
+# POST /requests
+$ curl -s -m 10 -D /tmp/tmp.JuGuGkJtl1/created.h -o /tmp/tmp.JuGuGkJtl1/created.json -w %{http_code}\n -X POST http://localhost:8080/api/v1/requests -H Content-Type: application/json -H Idempotency-Key: 761ba56d-3527-4edc-b793-cafc22baf0e1 -d {"requestType":"MEDICINE","location":{"lat":28.6010,"lng":77.2010},"details":"demo-1 seed 1: medical supplies at the north entrance","peopleAffected":4,"urgency":"HIGH"}
+201
+[exit 0, 0.0 s]
+201 body: {"createdAt":"2026-11-12T10:18:49.111Z","details":"demo-1 seed 1: medical supplies at the north entrance","location":{"lat":28.601,"lng":77.201},"peopleAffected":4,"requestId":"6d0dc416-b5ff-567b-b325-6d1a3310333b","requestType":"MEDICINE","status":"PENDING","updatedAt":"2026-11-12T10:18:49.111Z","urgency":"HIGH","version":"v1","assignedResourceId":null,"nextAttemptAt":null,"retryCount":0,"lastError":""}
+Location: /api/v1/requests/6d0dc416-b5ff-567b-b325-6d1a3310333b
+
+# GET the Location
+$ curl -s -m 10 -o /tmp/tmp.JuGuGkJtl1/got.json -w %{http_code}\n http://localhost:8080/api/v1/requests/6d0dc416-b5ff-567b-b325-6d1a3310333b
+200
+[exit 0, 0.0 s]
+
+# placement of req:6d0dc416-b5ff-567b-b325-6d1a3310333b (/admin/locate)
+$ jq .
+{
+  "hash": "b1a3c4268bd60496",
+  "key": "req:6d0dc416-b5ff-567b-b325-6d1a3310333b",
+  "leaderId": "storage-shard-1-0/888e29f0-e8af-44c5-9bdf-749712456180",
+  "replicas": [
+    "storage-shard-1-0",
+    "storage-shard-1-1",
+    "storage-shard-1-2"
+  ],
+  "ringVersion": 1,
+  "shard": 1
+}
+[exit 0, 0.0 s]
+
+# strong read of req:6d0dc416-b5ff-567b-b325-6d1a3310333b through the coordinator
+$ jq .
+{
+  "read": {
+    "appliedIndex": 144,
+    "consistency": "strong",
+    "servedBy": "storage-shard-1-0",
+    "stalePossible": false
+  },
+  "record": {
+    "key": "req:6d0dc416-b5ff-567b-b325-6d1a3310333b",
+    "kind": "request",
+    "version": 2,
+    "request": {
+      "id": "6d0dc416-b5ff-567b-b325-6d1a3310333b",
+      "type": "MEDICINE",
+      "location": {
+        "lat": 28.601,
+        "lng": 77.201
+      },
+      "geohash": "ttnfsy8",
+      "peopleAffected": 4,
+      "urgency": 2,
+      "details": "demo-1 seed 1: medical supplies at the north entrance",
+      "status": "WAITING",
+      "workflowGeneration": 0,
+      "nextAttemptAt": 1794478734137,
+      "retryCount": 1,
+      "lastError": "NO_CANDIDATE",
+      "createdAt": 1794478729111,
+      "updatedAt": 1794478729137
+    },
+    "updatedAt": 1794478729137
+  },
+  "ringVersion": 1
+}
+[exit 0, 0.0 s]
+
+# stale reads of req:6d0dc416-b5ff-567b-b325-6d1a3310333b on each replica (attempts retried: 0; last: all 3 replicas hold the same record at version 2)
+storage-shard-1-0: 200 {"version":2,"status":"WAITING","servedBy":"storage-shard-1-0","appliedIndex":144}
+storage-shard-1-1: 200 {"version":2,"status":"WAITING","servedBy":"storage-shard-1-1","appliedIndex":144}
+storage-shard-1-2: 200 {"version":2,"status":"WAITING","servedBy":"storage-shard-1-2","appliedIndex":144}
