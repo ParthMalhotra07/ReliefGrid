@@ -131,7 +131,7 @@ class OperationalAuthTest(unittest.TestCase):
    for method in ('crash','audit'):
     with self.subTest(method=method):
      obj=verify.Verify.__new__(verify.Verify);obj.out=out;obj.coord=origin;obj.seed='fixture';obj.scale=lambda count:None;obj.cases=[]
-     obj.scan_requests=lambda:[];obj.save=lambda *args:None;obj.call=lambda *args:{'events':[]}
+     obj.scan_requests=lambda:[];obj.save=lambda *args:None;obj.call=lambda *args:{'events':[],'read':{'consistency':'strong'}}
      manifests=[]
      def kube(*args,**kwargs):
       if args[0]=='create': manifests.append(json.loads(kwargs['stdin']));raise Captured()
