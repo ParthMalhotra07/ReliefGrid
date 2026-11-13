@@ -98,8 +98,8 @@ func TestWithReadConsistencySendsTheMode(t *testing.T) {
 // An answer served weaker than asked is a retryable read error, never a
 // result: a stale miss or old version must not stand in for a fenced read.
 // strong is accepted for linearizable (both are linearizable; strong goes
-// through the log). With a mode set, an answer that does not say how it was
-// served proves nothing either.
+// through the log). An answer that does not say how it was served proves
+// nothing either.
 func TestReadServedWeakerThanAskedIsRefused(t *testing.T) {
 	for _, tc := range []struct {
 		ask    store.Consistency
@@ -131,16 +131,16 @@ func TestReadServedWeakerThanAskedIsRefused(t *testing.T) {
 
 // With no read mode set, every read defaults to linearizable (S4.1): point
 // reads, scans and outbox pages all send consistency=linearizable, never
-// leaving the server to default to strong. The labelling rule above applies
-// only to an explicit WithReadConsistency, so an answer that does not say how
-// it was served is accepted, but one served stale is a retryable read error.
+// leaving the server to default to strong. The default is held to the same
+// rule as an explicit mode: an answer served stale is a retryable read error
+// (unlabelled and unknown answers: TestAuthoritativeReadRequiresAnAuthoritativeServedMode).
 func TestNoReadModeDefaultsToLinearizable(t *testing.T) {
 	f := newFake(t)
 	c := newClient(t, f)
-	f.setAnswer(readAnswer(""))
+	f.setAnswer(readAnswer(internalapi.ReadInfoConsistencyLinearizable))
 	for name, err := range readAll(t, c, "") {
 		if err != nil {
-			t.Errorf("%s, unlabelled answer: %v", name, err)
+			t.Errorf("%s, linearizable answer: %v", name, err)
 		}
 	}
 	want := []string{"consistency=linearizable", "consistency=linearizable", "consistency=linearizable&key=kv%3Aa", "consistency=linearizable&kind=resource&limit=10&ringVersion=1", "consistency=linearizable&limit=10&shard=2"}

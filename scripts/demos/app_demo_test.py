@@ -51,6 +51,15 @@ class ClientTests(unittest.TestCase):
             with self.assertRaises(AssertionError):
                 app.require_complete(bad)
 
+    def test_point_read_or_outbox_page_needs_an_authoritative_served_mode(self):
+        for served in ('strong', 'linearizable'):
+            answer = dict(record={}, read=dict(consistency=served, servedBy='storage-0-0', appliedIndex=1, stalePossible=False))
+            self.assertIs(app.require_served(answer), answer)
+        unlabelled = dict(record={}, read=dict(servedBy='storage-0-0', appliedIndex=1, stalePossible=False))
+        for bad in [unlabelled, dict(record={}), dict(record={}, read=None)] + [dict(record={}, read=dict(consistency=c)) for c in ('', None, 'eventual', 'stale')]:
+            with self.assertRaises(AssertionError):
+                app.require_served(bad)
+
     def test_burst_audit_restores_admission_workers_after_failure(self):
         demo = app.Demo.__new__(app.Demo)
         demo.release = 'reliefgrid'

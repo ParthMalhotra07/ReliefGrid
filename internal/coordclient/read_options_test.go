@@ -166,7 +166,7 @@ func TestCallerCancelCapsTheWholeRead(t *testing.T) {
 func TestPendingOutboxLongPoll(t *testing.T) {
 	f := newFake(t)
 	c := newClient(t, f)
-	f.setAnswer(answerWith(http.StatusOK, internalapi.OutboxPage{Shard: 2, Events: []store.OutboxEvent{{EventID: "e1"}}, RingVersion: 1}))
+	f.setAnswer(readAnswer(internalapi.ReadInfoConsistencyLinearizable))
 	ctx := testCtx(t)
 	if _, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50, Wait: time.Second, Consistency: store.ConsistencyLinearizable}); err != nil {
 		t.Fatalf("long poll: %v", err)

@@ -528,19 +528,18 @@ func (c *Client) queryMode(m store.Consistency) (string, error) {
 }
 
 // servedAs refuses an answer served weaker than asked: a stale miss is only
-// a hint, so it must never stand in for an authoritative result. strong and
-// linearizable both satisfy either. With a client read mode set, an answer
-// must also say how it was served; without one, only a stale answer is
-// refused (the behaviour before #72).
+// a hint, so it must never stand in for an authoritative result. asked is the
+// mode sent on the wire, so this holds whether it came from
+// WithReadConsistency, the query or the linearizable default. An
+// authoritative read (strong or linearizable) is accepted only if the answer
+// says it was served strong or linearizable (either satisfies either); a
+// missing, empty, unknown or stale label is the same retryable read error.
+// An explicit stale read accepts any answer.
 func (c *Client) servedAs(asked, served string) error {
 	if asked == string(store.ConsistencyStale) {
 		return nil
 	}
-	ok := served != string(store.ConsistencyStale)
-	if c.readMode != "" {
-		ok = served == string(store.ConsistencyStrong) || served == string(store.ConsistencyLinearizable)
-	}
-	if ok {
+	if served == string(store.ConsistencyStrong) || served == string(store.ConsistencyLinearizable) {
 		return nil
 	}
 	return &Error{Status: http.StatusOK, Message: fmt.Sprintf("asked for a %s read, served %q", asked, served), Retryable: true, read: true}

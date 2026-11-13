@@ -227,16 +227,17 @@ func TestReadShapes(t *testing.T) {
 	c := newClient(t, f)
 	ctx := testCtx(t)
 	rec := store.Record{Key: "kv:a", Kind: store.KindKV, Version: 3, Value: json.RawMessage(`1`)}
+	read := internalapi.ReadInfo{Consistency: internalapi.ReadInfoConsistencyLinearizable}
 	f.setAnswer(func(w http.ResponseWriter, r *http.Request, _ int) {
 		switch r.URL.Path {
 		case "/internal/data/kv:a":
-			writeJSON(w, http.StatusOK, internalapi.RecordResponse{Record: rec, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.RecordResponse{Record: rec, Read: read, RingVersion: 1})
 		case "/internal/resources/s7/closures/a-1":
-			writeJSON(w, http.StatusOK, internalapi.ClosureResponse{Closure: store.Closure{ResourceKey: "res:s7", AttemptID: "a-1"}, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.ClosureResponse{Closure: store.Closure{ResourceKey: "res:s7", AttemptID: "a-1"}, Read: read, RingVersion: 1})
 		case "/internal/operations/op-1":
-			writeJSON(w, http.StatusOK, internalapi.OperationResponse{Result: okResult, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.OperationResponse{Result: okResult, Read: read, RingVersion: 1})
 		case "/internal/outbox":
-			writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: 2, Events: []store.OutboxEvent{{EventID: "e1"}}, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: 2, Events: []store.OutboxEvent{{EventID: "e1"}}, Read: read, RingVersion: 1})
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL)
 		}
