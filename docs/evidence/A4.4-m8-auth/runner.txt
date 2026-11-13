@@ -1,1 +1,1 @@
-ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	1.531s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	1.434s

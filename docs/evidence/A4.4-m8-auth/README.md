@@ -16,8 +16,8 @@ The real shared helper is owned/tested in prerequisite #174.
 Focused race checks, four unsafe mutations, tagged schedules lint, full
 make check and generation checks pass. main-integration/ records the independent
 validation on main b77e5b9761119a73bed8f2d3eede40c863492275 before stacking on
-#174 for the shared staging implementation. Root-level outputs will record
-the final parent-stack validation. No protocol assertion, deadline or safety
+#174 for the shared staging implementation. Root-level outputs record the final parent-stack validation on #174 at
+6de485757723e7678a30beecae0d1832f5d66a98. No protocol assertion, deadline or safety
 invariant was relaxed.
 
 No kind, RabbitMQ campaign, 50-seed acceptance, enabled rollout or credential
