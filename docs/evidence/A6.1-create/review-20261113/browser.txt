@@ -1,0 +1,26 @@
+
+> reliefgrid-dispatch@0.1.0 test:browser
+> playwright test
+
+
+Running 17 tests using 1 worker
+
+  ✓   1 e2e/create.spec.js:27:1 › create request is keyed, same-task reentry sends once, and matching remains automatic (464ms)
+  ✓   2 e2e/create.spec.js:60:1 › a lost create reply survives reload and retries identical body/key without duplicates (601ms)
+  ✓   3 e2e/create.spec.js:99:1 › register resource sends UTC windows and confirms it in the public list (445ms)
+  ✓   4 e2e/create.spec.js:130:1 › failed current read keeps known creation locked and confirmation sends no second POST (485ms)
+  ✓   5 e2e/create.spec.js:161:1 › offline creation is disabled and the mobile form fits without horizontal overflow (428ms)
+  ✓   6 e2e/dispatch.spec.js:6:1 › dispatch shows authoritative state, assignments, filters and telemetry (423ms)
+  ✓   7 e2e/dispatch.spec.js:47:1 › events trigger authoritative refresh and reconnect recovers a missed update (474ms)
+  ✓   8 e2e/dispatch.spec.js:69:1 › saved list survives disconnected navigation and reconnect refreshes it (345ms)
+  ✓   9 e2e/dispatch.spec.js:101:1 › failed authoritative scan preserves the saved view and marks it stale (238ms)
+  ✓  10 e2e/dispatch.spec.js:116:1 › mobile layout retains the list, map and telemetry without horizontal overflow (347ms)
+  ✓  11 e2e/dispatch.spec.js:139:1 › an offline shell without a saved snapshot reports unknown data (312ms)
+  ✓  12 e2e/dispatch.spec.js:166:1 › duplicate events do not refetch and hints never replace authoritative state (325ms)
+  ✓  13 e2e/dispatch.spec.js:229:1 › cancel uses only the public status endpoint and waits for committed cleanup (390ms)
+  ✓  14 e2e/dispatch.spec.js:265:1 › an unknown write outcome remains visible after a successful reread (424ms)
+  ✓  15 e2e/dispatch.spec.js:291:1 › first read failure reports unavailable lists instead of endless loading (392ms)
+  ✓  16 e2e/dispatch.spec.js:308:1 › resources identify latest and saved observations through refresh recovery (348ms)
+  ✓  17 e2e/dispatch.spec.js:323:1 › same-render action reentry admits only one pending write (275ms)
+
+  17 passed (8.2s)
