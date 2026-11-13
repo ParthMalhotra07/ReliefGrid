@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" docker "$@"
+case "$*" in "image inspect "*) echo sha256:fake ;; esac
+exit 0
