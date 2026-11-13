@@ -1,0 +1,8 @@
+--- FAIL: TestAppInternalAuthMountsExcludeUI (1.64s)
+    --- FAIL: TestAppInternalAuthMountsExcludeUI/api (0.00s)
+        internal_auth_app_chart_test.go:47: api projected filename: got wrong-file want sender-token
+    --- FAIL: TestAppInternalAuthMountsExcludeUI/matcher (0.00s)
+        internal_auth_app_chart_test.go:47: matcher projected filename: got wrong-file want sender-token
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.351s
+FAIL

@@ -33,12 +33,13 @@ const apiReadinessPropagation = 5 * time.Second
 const apiShutdownDrain = 20 * time.Second
 
 type config struct {
-	metricsReady   chan<- string // optional in-process lifecycle observation, never an HTTP route
-	metricsAddress string
-	addr           string
-	coordinator    string
-	api            api.Config
-	amqp           string
+	metricsReady     chan<- string // optional in-process lifecycle observation, never an HTTP route
+	metricsAddress   string
+	addr             string
+	coordinator      string
+	internalAuthFile string
+	api              api.Config
+	amqp             string
 }
 
 func loadConfig(getenv func(string) string) (config, error) {
@@ -52,6 +53,9 @@ func loadConfig(getenv func(string) string) (config, error) {
 	if _, _, err := net.SplitHostPort(cfg.addr); err != nil {
 		return config{}, fmt.Errorf("HTTP_ADDR: %w", err)
 	}
+	// Chart-disabled deployments set no path. A configured sender file is
+	// validated by coordclient before its initial ring request.
+	cfg.internalAuthFile = getenv("INTERNAL_AUTH_TOKEN_FILE")
 	cfg.metricsAddress = getenv("METRICS_ADDR")
 	if cfg.metricsAddress != "" {
 		if _, _, err := net.SplitHostPort(cfg.metricsAddress); err != nil {
@@ -99,7 +103,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 func run(ctx context.Context, cfg config, backend store.Store, ready chan<- string) (runErr error) {
 	if backend == nil {
 		startup, cancel := context.WithTimeout(ctx, cfg.api.Budget)
-		client, err := coordclient.New(startup, cfg.coordinator, coordclient.WithTimeout(cfg.api.CallTimeout))
+		client, err := coordclient.New(startup, cfg.coordinator, coordclient.WithTimeout(cfg.api.CallTimeout), coordclient.WithInternalAuthFile(cfg.internalAuthFile))
 		cancel()
 		if err != nil {
 			return fmt.Errorf("connect coordinator: %w", err)

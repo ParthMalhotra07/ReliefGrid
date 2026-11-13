@@ -1,0 +1,8 @@
+--- FAIL: TestAppInternalAuthMountsExcludeUI (1.64s)
+    --- FAIL: TestAppInternalAuthMountsExcludeUI/api (0.00s)
+        internal_auth_app_chart_test.go:68: api credential mount directory: got /var/run/reliefgrid/wrong-auth want /var/run/reliefgrid/internal-auth
+    --- FAIL: TestAppInternalAuthMountsExcludeUI/matcher (0.00s)
+        internal_auth_app_chart_test.go:68: matcher credential mount directory: got /var/run/reliefgrid/wrong-auth want /var/run/reliefgrid/internal-auth
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.529s
+FAIL
