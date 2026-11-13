@@ -155,3 +155,11 @@ Notes:
 
 `scripts/verify-S5.2.sh` reads only `docs/evidence/S5.2/*/summary.json`, one level
 deep, so it still judges Phase 1. This directory is checked by `check.txt`.
+
+## Exploratory step run to 160 req/s (n=1, audit refused)
+
+`exploratory-160/` holds one exploratory run at 514bb33 plus the PR #170 harness
+fixes (fa8c872). It is n=1 and has no safety verdict: the audit refused on queue
+headroom after its 1200 s bound, so invcheck never ran. Reconstructed from raw k6
+points, it puts saturation at 100 req/s, broken at 110 by list p99 (570 ms). See its
+README. It does not change the results above.
