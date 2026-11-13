@@ -9,6 +9,7 @@ import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./app.css";
+import { CreateDialog } from "./CreateDialog.jsx";
 import { coalescedRefresh } from "./refresh.js";
 import {
   EventIDs,
@@ -114,6 +115,7 @@ function useDispatch() {
               "Live data loaded. Offline saving is unavailable on this device.",
             );
           }
+          return true;
         } catch (e) {
           if (alive.current) {
             setStale(true);
@@ -121,6 +123,7 @@ function useDispatch() {
               `Could not confirm current state (${e.message}). ${current.current ? "Showing saved data." : "Try refreshing when the service is available."}`,
             );
           }
+          return false;
         } finally {
           if (alive.current) setLoading(false);
         }
@@ -343,7 +346,8 @@ function App() {
     [view, setView] = useState("map"),
     [busy, setBusy] = useState(false),
     [actionError, setActionError] = useState(""),
-    [uncertain, setUncertain] = useState(null);
+    [uncertain, setUncertain] = useState(null),
+    [creating, setCreating] = useState(null);
   const actionPending = useRef(false);
   const requests = d.snapshot?.requests.items || [],
     resources = d.snapshot?.resources.items || [];
@@ -427,6 +431,15 @@ function App() {
   const pick = useCallback((id) => setSelected(id), []);
   return (
     <>
+      {creating && (
+        <CreateDialog
+          kind={creating}
+          online={d.online}
+          canCreate={d.online && !d.stale}
+          refresh={d.refresh}
+          onClose={() => setCreating(null)}
+        />
+      )}
       <header className="topbar">
         <a className="brand" href="/" aria-label="ReliefGrid home">
           <span className="brand-mark">
@@ -483,6 +496,23 @@ function App() {
             records exist; filters apply to the loaded view.
           </div>
         )}
+        <div className="create-toolbar" aria-label="Create records">
+          <button
+            className="button primary"
+            disabled={!canAct}
+            onClick={() => setCreating("request")}
+          >
+            Create request
+          </button>
+          <button
+            className="button"
+            disabled={!canAct}
+            onClick={() => setCreating("resource")}
+          >
+            Register resource
+          </button>
+          <span>Matching runs automatically.</span>
+        </div>
         <div className="summary">
           <Metric
             title="Open requests"

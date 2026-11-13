@@ -1,4 +1,7 @@
 import http from "node:http";
+import { randomUUID } from "node:crypto";
+const creations = new Map(),
+  createCalls = [];
 const requestId = "11111111-1111-4111-8111-111111111111",
   resourceId = "22222222-2222-4222-8222-222222222222";
 const clients = new Set();
@@ -49,6 +52,8 @@ http
       fail = false;
       unknownWrite = false;
       reads = 0;
+      creations.clear();
+      createCalls.length = 0;
       for (const c of clients) c.end();
       clients.clear();
       return send(res, 200, { ok: true });
@@ -69,6 +74,76 @@ http
             `id: ${b.eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: requestId, entityVersion: 5, eventType: "request.state_changed", ...b.hint, eventId: b.eventId })}\n\n`,
           );
       return send(res, 200, { ok: true });
+    }
+    if (p === "/__test/creations")
+      return send(res, 200, {
+        calls: createCalls,
+        records: [...creations.values()].map((v) => v.current),
+      });
+    if (
+      ["/api/v1/requests", "/api/v1/resources"].includes(p) &&
+      req.method === "POST"
+    ) {
+      const input = await body(req),
+        raw = JSON.stringify(input),
+        key = req.headers["idempotency-key"];
+      const kind = p.endsWith("requests") ? "request" : "resource";
+      createCalls.push({ path: p, key, body: raw });
+      if (!/^[0-9a-f-]{36}$/.test(key || ""))
+        return send(res, 400, { code: "INVALID", outcomeUnknown: false });
+      const slot = kind + ":" + key;
+      if (creations.has(slot)) {
+        const old = creations.get(slot);
+        if (old.body !== raw)
+          return send(res, 409, {
+            code: "CONFLICT_IDEMPOTENCY_KEY",
+            outcomeUnknown: false,
+          });
+        return send(res, 201, old.response);
+      }
+      const id = randomUUID(),
+        now = new Date().toISOString();
+      const response =
+        kind === "request"
+          ? {
+              ...record(),
+              ...input,
+              requestId: id,
+              status: "PENDING",
+              version: "v1",
+              assignedResourceId: null,
+              createdAt: now,
+              updatedAt: now,
+            }
+          : {
+              ...input,
+              resourceId: id,
+              version: "v1",
+              status: "AVAILABLE",
+              activeClaim: null,
+              locationRevision: 0,
+              createdAt: now,
+              updatedAt: now,
+            };
+      // An asynchronous matcher can advance the entity after creation. Replays
+      // retain the original response, so only a fresh read observes this state.
+      const current =
+        kind === "request"
+          ? { ...response, status: "WAITING", version: "v2" }
+          : response;
+      creations.set(slot, { kind, body: raw, response, current });
+      return send(res, 201, response);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/v1\/requests\/[0-9a-f-]{36}$/.test(p)
+    ) {
+      const found = [...creations.values()].find(
+        (v) => v.kind === "request" && p.endsWith(v.current.requestId),
+      );
+      return found
+        ? send(res, 200, found.current)
+        : send(res, 404, { code: "NOT_FOUND" });
     }
     if (p === "/api/v1/events") {
       res.writeHead(200, {
@@ -108,7 +183,12 @@ http
           message: "Shard read unavailable",
         });
       return send(res, 200, {
-        items: [record()],
+        items: [
+          record(),
+          ...[...creations.values()]
+            .filter((v) => v.kind === "request")
+            .map((v) => v.current),
+        ],
         positions,
         partial: false,
         failedShards: [],
@@ -137,6 +217,9 @@ http
             createdAt: "2026-11-05T00:00:00Z",
             updatedAt: "2026-11-05T06:01:00Z",
           },
+          ...[...creations.values()]
+            .filter((v) => v.kind === "resource")
+            .map((v) => v.current),
         ],
         positions,
         partial: false,
