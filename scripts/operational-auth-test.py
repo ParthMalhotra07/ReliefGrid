@@ -76,12 +76,14 @@ class OperationalAuthTest(unittest.TestCase):
  def check_pod(self,pod):
   spec=pod['spec'];self.assertEqual(spec['securityContext']['fsGroup'],65532)
   self.assertEqual(len(spec['volumes']),1)
+  self.assertEqual(spec['volumes'][0]['name'],'internal-auth')
   secret=spec['volumes'][0]['secret'];self.assertEqual(secret['secretName'],'reliefgrid-internal-auth')
   self.assertEqual(secret['items'],[{'key':'sender-token','path':'sender-token'}])
   self.assertEqual(secret['defaultMode'],0o440)
   for container in spec['containers']:
    self.assertIn({'name':'INTERNAL_AUTH_TOKEN_FILE','value':'/var/run/reliefgrid/internal-auth/sender-token'},container['env'])
-   self.assertTrue(container['volumeMounts'][0]['readOnly'])
+   mounts=[mount for mount in container['volumeMounts'] if mount.get('name')=='internal-auth']
+   self.assertEqual(mounts,[{'name':'internal-auth','mountPath':'/var/run/reliefgrid/internal-auth','readOnly':True}])
  def test_disabled_demo_audit_has_no_auth_mount(self):
   with patch.dict(os.environ,{'INTERNAL_AUTH_TOKEN_FILE':''}):
    from internal_auth import mount_app_sender
@@ -153,5 +155,13 @@ class OperationalAuthTest(unittest.TestCase):
     obj=verify.Verify(out,'unused-probe');obj.call(obj.coord,'GET','/internal/ring')
    metrics.get(origin+'/', '/internal/ring')
    self.assertEqual([row[1] for row in seen],['fixture-app-token']*3)
+
+ def test_disabled_sender_preserves_legacy_redirect_success(self):
+  from internal_auth import Sender
+  with self.fixture() as (origin,out,seen),patch.dict(os.environ,{'INTERNAL_AUTH_TOKEN_FILE':''}):
+   with Sender(origin).open(origin+'/internal/redirect',timeout=2) as response:
+    self.assertEqual(response.status,200)
+   self.assertEqual([row[0] for row in seen],['/internal/redirect','/api/v1/requests'])
+   self.assertEqual([row[1] for row in seen],[None,None])
 
 if __name__=='__main__': unittest.main()

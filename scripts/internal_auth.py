@@ -35,7 +35,10 @@ class Sender:
         if parts.path not in ('', '/') or parts.query:
             raise ValueError('internal auth: coordinator must be an origin URL')
         self._token = _token(os.environ.get('INTERNAL_AUTH_TOKEN_FILE', '') if path is None else path)
-        self._opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+        handlers = [urllib.request.ProxyHandler({})]
+        if self._token is not None:
+            handlers.append(_NoRedirect())
+        self._opener = urllib.request.build_opener(*handlers)
 
     def __repr__(self):
         return 'Sender([REDACTED])'
@@ -43,6 +46,10 @@ class Sender:
     def open(self, request, *, timeout):
         if not isinstance(request, urllib.request.Request):
             request = urllib.request.Request(request)
+        if self._token is None:
+            # Disabled auth preserves the existing anonymous HTTP transport,
+            # including redirects and caller-supplied operator headers.
+            return self._opener.open(request, timeout=timeout)
         parts = urllib.parse.urlsplit(request.full_url)
         if _origin(request.full_url) != self.origin or not parts.path.startswith('/internal/'):
             raise ValueError('internal auth: request outside coordinator internal routes')

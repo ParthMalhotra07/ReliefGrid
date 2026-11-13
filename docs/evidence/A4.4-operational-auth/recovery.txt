@@ -2,6 +2,6 @@
   _warnings.warn(self.warn_message, ResourceWarning)
 .....
 ----------------------------------------------------------------------
-Ran 25 tests in 13.348s
+Ran 25 tests in 13.338s
 
 OK

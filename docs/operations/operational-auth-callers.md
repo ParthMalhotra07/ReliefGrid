@@ -17,9 +17,11 @@ shell tracing around provisioning. The value is a path, not the credential.
 
 Python startup rejects missing, empty, whitespace, comma, non-ASCII and oversized
 configured files. An unset/empty path preserves the disabled profile; an invalid
-configured path does not fall back to anonymous. The shared sender binds calls
-to an explicit coordinator origin and /internal/ paths, disables proxies and
-refuses all redirects. It replaces internal header values and, when enabled,
+configured path does not fall back to anonymous. When configured, the shared sender binds calls to an explicit coordinator
+origin and /internal/ paths, disables proxies and refuses redirects. With the
+path unset, the legacy anonymous opener is preserved, including its redirect
+handling and caller headers. With auth configured, it replaces internal header
+values and
 does not combine the sender with operator/proxy authorization. Public API and
 telemetry calls use their existing transports and receive no internal token.
 Use only trusted coordinator endpoints; the header does not add TLS itself.
