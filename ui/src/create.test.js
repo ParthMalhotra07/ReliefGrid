@@ -239,3 +239,36 @@ test("input is validated before persisting and frozen windows are UTC", () => {
   );
   assert.throws(() => payload("resource", { ...resource, name: "" }));
 });
+
+test("a valid older current version cannot resolve a newer receipt or permit another creation", async () => {
+  for (const kind of ["request", "resource"]) {
+    const f = setup(kind);
+    const inputBody = kind === "request" ? input : resource;
+    f.responses.push(
+      reply(row(kind, "v3"), 201),
+      reply(kind === "request" ? row(kind, "v2") : page([row(kind, "v2")])),
+    );
+    await assert.rejects(f.client.submit(inputBody, fresh), /confirm/);
+    const retained = f.client.pending();
+    assert.deepEqual(retained.ack, { id, version: "v3" });
+    assert.equal(retained.key, key);
+    assert.deepEqual(JSON.parse(retained.body), inputBody);
+    await assert.rejects(
+      f.client.submit(
+        {
+          ...inputBody,
+          [kind === "request" ? "details" : "name"]: "another creation",
+        },
+        fresh,
+      ),
+      /saved submission/,
+    );
+    assert.equal(f.calls.filter((c) => c.method === "POST").length, 1);
+    f.responses.push(
+      reply(kind === "request" ? row(kind, "v4") : page([row(kind, "v4")])),
+    );
+    assert.equal((await f.client.submit(undefined, fresh)).version, "v4");
+    assert.equal(f.calls.filter((c) => c.method === "POST").length, 1);
+    assert.equal(f.client.pending(), null);
+  }
+});

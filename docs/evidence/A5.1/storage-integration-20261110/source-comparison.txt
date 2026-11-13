@@ -1,0 +1,4 @@
+Compared supplied draft source e50685d with integrated baseline 42741b1.
+Command: git diff --exit-code e50685d..42741b1 -- internal/fsm internal/raftstore internal/coordinator internal/store internal/invcheck internal/obs contracts/internal.yaml contracts/ring.yaml deploy/helm/storage cmd/storagectl internal/admission
+Exit code: 0
+No changes in referenced storage/internal-contract/ring/admission source paths.

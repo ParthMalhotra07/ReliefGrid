@@ -1,0 +1,8 @@
+REPORT VERIFY FAIL
+missing chapter: docs/report/README.md
+missing chapter: docs/report/architecture.md
+missing chapter: docs/report/workflow-and-messaging.md
+missing chapter: docs/report/requirements-and-results.md
+missing chapter: docs/report/deployment-and-demo.md
+missing chapter: docs/adr/004-attempt-closure.md
+missing chapter: docs/adr/005-outbox-handoff.md

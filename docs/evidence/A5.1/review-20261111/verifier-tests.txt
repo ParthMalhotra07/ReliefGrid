@@ -1,0 +1,8 @@
+test_out_of_bounds_source_line_rejected (__main__.ReportLinkTests.test_out_of_bounds_source_line_rejected) ... ok
+test_valid_source_range_and_external_link (__main__.ReportLinkTests.test_valid_source_range_and_external_link) ... ok
+test_validation_addendum_broken_link_rejected (__main__.ReportLinkTests.test_validation_addendum_broken_link_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.004s
+
+OK
