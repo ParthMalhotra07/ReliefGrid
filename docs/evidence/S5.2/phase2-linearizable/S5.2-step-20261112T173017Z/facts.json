@@ -1,0 +1,180 @@
+{
+  "goal": "S5.2",
+  "runId": "S5.2-step-20261112T173017Z",
+  "scenario": "step",
+  "startedAt": "2026-11-12T23:00:22.709336672+05:30",
+  "endedAt": "2026-11-12T17:46:22.709336672Z",
+  "warmupSeconds": 0,
+  "git": {
+    "sha": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+    "dirty": false
+  },
+  "host": {
+    "cpuModel": "Intel(R) Core(TM) Ultra 7 258V",
+    "logicalCpus": 8,
+    "memTotalGiB": 30.4,
+    "kernel": "7.0.0-43-generic",
+    "powerProfile": "performance",
+    "k6Cpus": "6-7",
+    "kindCpus": "0-5",
+    "powerProfileRestored": "balanced",
+    "powerProfileDegraded": "no",
+    "swapUsedMiB": 243,
+    "loadAvgStart": 1.85,
+    "cpuMHzStart": 3047,
+    "cpuMHzEnd": 3913
+  },
+  "versions": {
+    "k6": "v2.3.0",
+    "kind": "v0.33.0",
+    "kindNodeImage": "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5",
+    "kubectl": "v1.37.1",
+    "helm": "v3.22.1",
+    "go": "1.27.2",
+    "images": {
+      "api": "sha256:6360d092bdd11813de8b8a2f4274130880f839476f6e4b1a06b6db957a9b70a4",
+      "coordinator": "sha256:c69a04a6931d6f35bf00052c6b9f8062c47fd5db9b792ea1300c7067426dde07",
+      "matcher": "sha256:03ce39253ee63270804a0238a3d4523828ee72e5ee39eb79752297603c1bcb55",
+      "rabbitmq": "sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e",
+      "storagenode": "sha256:21955500c79b51ad3dc9ad8b903bf136a5e6450a333e410328ed377a405f2170",
+      "traefik": "sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65",
+      "ui": "sha256:b83b8e617936cd4d9b860fbde651e4bcb442f9d46eedeb4a6c33ac00202b57df"
+    }
+  },
+  "config": {
+    "raftProfile": "load",
+    "readFence": "fence",
+    "tracing": "off",
+    "autoscaling": "off",
+    "replicas": {
+      "api": 2,
+      "matcher": 2
+    },
+    "podQoS": "Guaranteed",
+    "podCpuLimitsMillicores": {
+      "reliefgrid-api-58b64f6b75-9llnl": 400,
+      "reliefgrid-api-58b64f6b75-gmccv": 400,
+      "reliefgrid-matcher-565b5fd68b-7cf8b": 250,
+      "reliefgrid-matcher-565b5fd68b-bfnk7": 250,
+      "reliefgrid-rabbitmq-0": 750,
+      "reliefgrid-traefik-7cc48c599-75cdh": 300,
+      "reliefgrid-ui-8d7977754-fc9sr": 50,
+      "storage-coordinator-6c449fd88-dx7zn": 250,
+      "storage-shard-0-0": 300,
+      "storage-shard-0-1": 300,
+      "storage-shard-0-2": 300,
+      "storage-shard-1-0": 300,
+      "storage-shard-1-1": 300,
+      "storage-shard-1-2": 300,
+      "storage-shard-2-0": 300,
+      "storage-shard-2-1": 300,
+      "storage-shard-2-2": 300
+    }
+  },
+  "load": {
+    "executor": "ramping-arrival-rate",
+    "durationSeconds": 960,
+    "maxVUs": 400
+  },
+  "steps": [
+    {
+      "targetRps": 10,
+      "from": "2026-11-12T23:00:32.709336+05:30",
+      "to": "2026-11-12T23:02:22.709336+05:30"
+    },
+    {
+      "targetRps": 20,
+      "from": "2026-11-12T23:02:32.709336+05:30",
+      "to": "2026-11-12T23:04:22.709336+05:30"
+    },
+    {
+      "targetRps": 30,
+      "from": "2026-11-12T23:04:32.709336+05:30",
+      "to": "2026-11-12T23:06:22.709336+05:30"
+    },
+    {
+      "targetRps": 40,
+      "from": "2026-11-12T23:06:32.709336+05:30",
+      "to": "2026-11-12T23:08:22.709336+05:30"
+    },
+    {
+      "targetRps": 50,
+      "from": "2026-11-12T23:08:32.709336+05:30",
+      "to": "2026-11-12T23:10:22.709336+05:30"
+    },
+    {
+      "targetRps": 60,
+      "from": "2026-11-12T23:10:32.709336+05:30",
+      "to": "2026-11-12T23:12:22.709336+05:30"
+    },
+    {
+      "targetRps": 70,
+      "from": "2026-11-12T23:12:32.709336+05:30",
+      "to": "2026-11-12T23:14:22.709336+05:30"
+    },
+    {
+      "targetRps": 80,
+      "from": "2026-11-12T23:14:32.709336+05:30",
+      "to": "2026-11-12T23:16:22.709336+05:30"
+    }
+  ],
+  "invcheck": {
+    "exitCode": 0
+  },
+  "audit": {
+    "mode": "without-admission",
+    "matcherReplicas": 2,
+    "matcherReplicasAfter": 2,
+    "headroom": {
+      "pct": 80,
+      "boundSeconds": 600,
+      "waitedSeconds": 0,
+      "ok": true,
+      "limits": {
+        "matching.dead": 10000,
+        "matching.requests": 10000,
+        "matching.wakeups": 10000,
+        "retry.120s": 10000,
+        "retry.30s": 10000,
+        "retry.5s": 10000,
+        "wakeup.retry.5s": 10000
+      },
+      "depthsAtPause": {
+        "matching.dead": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "matching.requests": {
+          "ready": 780,
+          "unacked": 16
+        },
+        "matching.wakeups": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "retry.120s": {
+          "ready": 1831,
+          "unacked": 0
+        },
+        "retry.30s": {
+          "ready": 427,
+          "unacked": 0
+        },
+        "retry.5s": {
+          "ready": 89,
+          "unacked": 0
+        },
+        "wakeup.retry.5s": {
+          "ready": 0,
+          "unacked": 0
+        }
+      }
+    },
+    "drain": {
+      "read": 0,
+      "published": 0,
+      "marked": 0,
+      "retries": 0
+    }
+  }
+}

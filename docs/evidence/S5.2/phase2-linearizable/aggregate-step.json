@@ -1,0 +1,101 @@
+{
+  "figures": {
+    "match.matched": {
+      "median": 4276,
+      "min": 4276,
+      "max": 4276,
+      "n": 3
+    },
+    "match.p50Ms": {
+      "median": 21113.5,
+      "min": 19955.5,
+      "max": 22351,
+      "n": 3
+    },
+    "match.p99Ms": {
+      "median": 516193,
+      "min": 509060.75,
+      "max": 516566.5,
+      "n": 3
+    },
+    "match.waiting": {
+      "median": 2253,
+      "min": 2252,
+      "max": 2253,
+      "n": 3
+    },
+    "results.classes.list.p50Ms": {
+      "median": 49.39,
+      "min": 48.71,
+      "max": 52.58,
+      "n": 3
+    },
+    "results.classes.list.p95Ms": {
+      "median": 140.02,
+      "min": 135.1,
+      "max": 142.94,
+      "n": 3
+    },
+    "results.classes.list.p99Ms": {
+      "median": 200.82,
+      "min": 187.51,
+      "max": 203.89,
+      "n": 3
+    },
+    "results.classes.read.p50Ms": {
+      "median": 8.16,
+      "min": 7.87,
+      "max": 8.46,
+      "n": 3
+    },
+    "results.classes.read.p95Ms": {
+      "median": 46.3,
+      "min": 45.18,
+      "max": 49.6,
+      "n": 3
+    },
+    "results.classes.read.p99Ms": {
+      "median": 67.33,
+      "min": 65.49,
+      "max": 68.38,
+      "n": 3
+    },
+    "results.classes.write.p50Ms": {
+      "median": 62.69,
+      "min": 61.01,
+      "max": 63.92,
+      "n": 3
+    },
+    "results.classes.write.p95Ms": {
+      "median": 155.45,
+      "min": 152.95,
+      "max": 155.82,
+      "n": 3
+    },
+    "results.classes.write.p99Ms": {
+      "median": 282.42,
+      "min": 276.31,
+      "max": 291.57,
+      "n": 3
+    },
+    "results.errors.rate": {
+      "median": 0.001093,
+      "min": 0.000617,
+      "max": 0.00121,
+      "n": 3
+    },
+    "results.throughputRps": {
+      "median": 43.9,
+      "min": 43.86,
+      "max": 43.91,
+      "n": 3
+    }
+  },
+  "payloadSha256": "26f41071d5bb8450e9e5aac088a2b6974aa0f7c566990f40123597db3faafda2",
+  "runs": [
+    "S5.2-step-20261112T170848Z",
+    "S5.2-step-20261112T173017Z",
+    "S5.2-step-20261112T175029Z"
+  ],
+  "scenario": "step"
+}

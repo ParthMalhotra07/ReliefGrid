@@ -1,0 +1,13 @@
+Timeout: 60.0 seconds ...
+Listing queues for vhost / ...
+name	messages	messages_ready	messages_unacknowledged
+retry.120s	5149	1838	0
+matching.wakeups	0	0	0
+matching.dead	0	0	0
+amq.gen-qJiUvMkgRsK2iuHDdJ_mcA	0	0	0
+matching.requests	7302	7286	16
+retry.30s	8145	163	0
+retry.5s	3534	0	0
+amq.gen-TVRvwQg-QfaEKeOeunybjQ	0	0	0
+wakeup.retry.5s	0	0	0
+2026-11-13T06:26:03Z
