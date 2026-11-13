@@ -169,5 +169,87 @@ class Check(unittest.TestCase):
         self.assertEqual(d['retry.5s'], {'messages': 10001, 'ready': 0, 'unacked': 0, 'returning': 0, 'depth': 10001})
 
 
+
+MISSING = object()
+# Every malformed count a sample can carry: absent, null, negative, a float,
+# a boolean (an int subclass in Python), a numeric string and a word.
+MALFORMED = [MISSING, None, -1000, 1.5, True, False, '12', 'many']
+
+
+class UnboundedTier(unittest.TestCase):
+    """#170 review: a retry tier with no max-length of its own is not in the
+    limits, but its messages still return to a limited queue. Its counts must
+    be exact non-negative integers like any other; an unknown backlog is never
+    counted as zero."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        d = Path(self.tmp.name)
+        self.limits, self.routes = d / 'queue-limits.json', d / 'queue-routes.json'
+        self.limits.write_text(json.dumps({'matching.requests': 10000}))
+        self.routes.write_text(json.dumps({'retry.unbounded': ['matching.requests']}))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    @staticmethod
+    def row(name, counts):
+        out = {'name': name}
+        for k, v in zip(('messages', 'messages_ready', 'messages_unacknowledged'), counts):
+            if v is not MISSING:
+                out[k] = v
+        return out
+
+    def check(self, tier, requests=(7999, 7999, 0)):
+        sample = [self.row('matching.requests', requests), self.row('retry.unbounded', tier)]
+        return run('check', '--limits', str(self.limits), '--routes', str(self.routes), '--pct', '80',
+                   stdin=json.dumps(sample))
+
+    def test_valid_unbounded_tier_counts_toward_its_target(self):
+        r = self.check((1, 0, 0))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = self.check((2, 0, 0))
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn('matching.requests 8001 > 8000 (80% of 10000; 7999 queued + 2 returning from retry.unbounded)', r.stdout)
+
+    def test_malformed_unbounded_tier_total_fails(self):
+        for v in MALFORMED:
+            with self.subTest(messages=v):
+                r = self.check((v, 0, 0))
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn('retry.unbounded: counts missing or malformed', r.stdout)
+
+    def test_malformed_unbounded_tier_ready_or_unacked_fails(self):
+        for v in MALFORMED:
+            for tier in ((0, v, 0), (0, 0, v)):
+                with self.subTest(tier=tier):
+                    r = self.check(tier)
+                    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                    self.assertIn('retry.unbounded: counts missing or malformed', r.stdout)
+
+    def test_torn_unbounded_tier_fails(self):
+        r = self.check((0, 5, 0))
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('retry.unbounded: messages 0 < ready+unacked 5', r.stdout)
+
+    def test_malformed_limited_queue_fails(self):
+        for v in MALFORMED:
+            with self.subTest(messages=v):
+                r = self.check((0, 0, 0), requests=(v, 0, 0))
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                self.assertIn('matching.requests: counts missing or malformed', r.stdout)
+
+    def test_depths_never_count_an_unknown_tier_as_zero(self):
+        for v in MALFORMED:
+            with self.subTest(messages=v):
+                row = {'name': 'retry.unbounded', 'messages_ready': 0, 'messages_unacknowledged': 0}
+                if v is not MISSING:
+                    row['messages'] = v
+                r = run('depths', '--routes', str(self.routes), stdin=json.dumps(depths(**{'matching.requests': (7999, 7999, 0)}) + [row]))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                d = json.loads(r.stdout)['matching.requests']
+                self.assertIsNone(d['returning'])
+                self.assertIsNone(d['depth'])
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

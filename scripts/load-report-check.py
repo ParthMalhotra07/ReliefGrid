@@ -202,6 +202,19 @@ def check_headroom(doc):
     for tier, targets in (routes or {}).items():
         for target in targets:
             back.setdefault(target, []).append(tier)
+    if full:
+        # Every queue the arithmetic uses (each limited queue, each retry tier,
+        # bounded or not, and each queue a tier returns to) needs exact
+        # non-negative counts with messages >= ready+unacked; an unknown
+        # backlog is never counted as zero (loadtest/headroom.py, the same rule).
+        for q in sorted(set(limits) | set(back) | {x for v in back.values() for x in v}):
+            d = depths.get(q)
+            if not isinstance(d, dict) or not all(is_int(d.get(k)) and d[k] >= 0 for k in ("messages", "ready", "unacked")):
+                bad(f"audit.headroom.depthsAtPause.{q}: counts missing or malformed")
+                return False
+            if d["messages"] < d["ready"] + d["unacked"]:
+                bad(f"audit.headroom.depthsAtPause.{q}: messages {d['messages']} < ready+unacked {d['ready'] + d['unacked']}")
+                return False
     for q, limit in limits.items():
         d = depths.get(q)
         if not isinstance(d, dict) or not is_int(d.get("ready")) or not is_int(d.get("unacked")):

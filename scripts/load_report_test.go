@@ -285,6 +285,51 @@ func TestLoadReportCheckHeadroomCountsReturningRetries(t *testing.T) {
 			"retry.120s": q(0, 0, 0, 0), "retry.30s": q(0, 0, 0, 0), "retry.5s": parked, "wakeup.retry.5s": q(0, 0, 0, 0),
 		}
 	}
+	unbounded := func(t *testing.T, m map[string]any, tier map[string]any) {
+		h, _ := at(t, m, "audit.headroom.pct")
+		h["routes"].(map[string]any)["retry.unbounded"] = []any{"matching.requests"}
+		if tier != nil {
+			h["depthsAtPause"].(map[string]any)["retry.unbounded"] = tier
+		}
+	}
+	type mutation = func(*testing.T, map[string]any)
+	malformed := map[string]any{"missing": nil, "null": nil, "negative": -1000, "float": 1.5, "true": true, "false": false, "string": "12", "word": "many"}
+	var extra []struct {
+		name   string
+		mutate mutation
+		want   string
+	}
+	for label, v := range malformed {
+		for _, field := range []string{"messages", "ready", "unacked"} {
+			for _, where := range []string{"retry.unbounded", "matching.requests", "retry.5s"} {
+				extra = append(extra, struct {
+					name   string
+					mutate mutation
+					want   string
+				}{fmt.Sprintf("%s %s %s", where, field, label), func(t *testing.T, m map[string]any) {
+					headroom(t, m, q(7999, 7999, 0, 0), q(0, 0, 0, 0))
+					unbounded(t, m, q(0, 0, 0, 0))
+					h, _ := at(t, m, "audit.headroom.pct")
+					d := h["depthsAtPause"].(map[string]any)[where].(map[string]any)
+					if label == "missing" {
+						delete(d, field)
+					} else {
+						d[field] = v
+					}
+				}, "audit.headroom.depthsAtPause." + where + ": counts missing or malformed"})
+			}
+		}
+	}
+	for _, c := range extra {
+		t.Run(c.name, func(t *testing.T) {
+			m := loadReport(t)
+			c.mutate(t, m)
+			code, out := runLoadCheck(t, writeReport(t, m))
+			if code != 1 || !strings.Contains(out, "FAIL") || !strings.Contains(out, c.want) {
+				t.Fatalf("want exit 1 with a FAIL naming %q, got exit %d:\n%s", c.want, code, out)
+			}
+		})
+	}
 	for _, c := range []struct {
 		name   string
 		mutate func(*testing.T, map[string]any)
@@ -311,6 +356,25 @@ func TestLoadReportCheckHeadroomCountsReturningRetries(t *testing.T) {
 			h, _ := at(t, m, "audit.headroom.pct")
 			delete(h, "routes")
 		}, "audit.headroom.routes"},
+		// #170 review: a tier with no max-length of its own (not in limits)
+		// still returns to a limited queue; its counts are checked like any
+		// other, and an unknown backlog is never counted as zero.
+		{"valid unbounded tier", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(7999, 7999, 0, 1), q(0, 0, 0, 0))
+			unbounded(t, m, q(1, 0, 0, 0))
+		}, ""},
+		{"unbounded tier over the limit", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(7999, 7999, 0, 2), q(0, 0, 0, 0))
+			unbounded(t, m, q(2, 0, 0, 0))
+		}, "audit.headroom.depthsAtPause.matching.requests: 8001 over 80% of 10000"},
+		{"torn unbounded tier", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(7999, 7999, 0, 0), q(0, 0, 0, 0))
+			unbounded(t, m, q(0, 5, 0, 0))
+		}, "audit.headroom.depthsAtPause.retry.unbounded: messages 0 < ready+unacked 5"},
+		{"unbounded tier not recorded", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(7999, 7999, 0, 0), q(0, 0, 0, 0))
+			unbounded(t, m, nil)
+		}, "audit.headroom.depthsAtPause.retry.unbounded: counts missing or malformed"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			m := loadReport(t)

@@ -131,8 +131,15 @@ def table(sample):
     return out
 
 
+def count(v):
+    """An exact non-negative integer count: never a bool, float, string or null."""
+    return type(v) is int and v >= 0
+
+
 def depth_of(t, rts):
-    """Per sampled queue: its messages plus those of the tiers returning to it."""
+    """Per sampled queue: its messages plus those of the tiers returning to it.
+    An unsampled tier or a malformed count makes returning and depth null: an
+    unknown backlog is never counted as zero."""
     back = {}
     for tier, targets in rts.items():
         for q in targets:
@@ -140,9 +147,10 @@ def depth_of(t, rts):
     out = {}
     for name, (m, r, u) in t.items():
         tiers = sorted(back.get(name, []))
-        returning = sum(t[x][0] for x in tiers if x in t and isinstance(t[x][0], int))
+        known = all(x in t and count(t[x][0]) for x in tiers)
+        returning = sum(t[x][0] for x in tiers) if known else None
         out[name] = {'messages': m, 'ready': r, 'unacked': u, 'returning': returning,
-                     'depth': m + returning if isinstance(m, int) else None, 'tiers': tiers}
+                     'depth': m + returning if count(m) and returning is not None else None, 'tiers': tiers}
     return out
 
 
@@ -150,21 +158,25 @@ def check(sample, lim, rts, pct):
     t = table(sample)
     if t is None:
         return ['no sample: ' + str(sample.get('error', 'not a queue list') if isinstance(sample, dict) else 'not a queue list')]
+    # Every queue the arithmetic uses: each limited queue, each retry tier
+    # (bounded or not) and each queue a tier returns to. All must be sampled
+    # with exact non-negative counts and messages >= ready+unacked before any
+    # depth is computed; otherwise the check fails, never passes.
     over = []
     for name in sorted(set(lim) | {x for tg in rts.values() for x in tg} | set(rts)):
         if name not in t:
             over.append(f'{name} not sampled')
+            continue
+        m, r, u = t[name]
+        if not (count(m) and count(r) and count(u)):
+            over.append(f'{name}: counts missing or malformed (messages {m!r}, ready {r!r}, unacked {u!r})')
+        elif m < r + u:
+            over.append(f'{name}: messages {m} < ready+unacked {r + u}')
     if over:
         return over
     d = depth_of(t, rts)
     for name, limit in sorted(lim.items()):
         q = d[name]
-        if not all(isinstance(q[k], int) and q[k] >= 0 for k in ('messages', 'ready', 'unacked')):
-            over.append(f'{name}: counts missing')
-            continue
-        if q['messages'] < q['ready'] + q['unacked']:
-            over.append(f"{name}: messages {q['messages']} < ready+unacked {q['ready'] + q['unacked']}")
-            continue
         allowed = limit * pct // 100
         if q['depth'] > allowed:
             held = [x for x in q['tiers'] if t[x][0]]
