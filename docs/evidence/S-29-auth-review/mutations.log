@@ -1,0 +1,155 @@
+
+CHECK 1 — reject receiver overlap — baseline GREEN, mutation RED
+--- FAIL: TestReceiverOverlapStrictHeadersAndFailClosed (0.00s)
+    auth_test.go:54: rotation credential rejected
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/auth	0.003s
+FAIL
+
+CHECK 2 — accept empty header — baseline GREEN, mutation RED
+--- FAIL: TestReceiverEmptyHeaderWithoutPrevious (0.00s)
+    auth_test.go:242: empty header matched absent previous credential
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/auth	0.003s
+FAIL
+
+CHECK 3 — skip receiver config validation — baseline GREEN, mutation RED
+--- FAIL: TestReceiverOverlapStrictHeadersAndFailClosed (0.00s)
+    auth_test.go:82: unvalidated config failed open
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/auth	0.006s
+FAIL
+
+CHECK 4 — protect only data prefix — baseline GREEN, mutation RED
+--- FAIL: TestCoordinatorSeparatesAppAndNodeCredentials (0.00s)
+    auth_test.go:64: /internal/ring token="": 200 {"checksum":"sha256:670e1eca690b168c83fd910b2bdf1e2fbf81f4cd8de91994d8d5ac2989de6360","hash":"xxhash64","ringVersion":1,"shards":3,"vnodesPerShard":128}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	0.006s
+FAIL
+
+CHECK 5 — app prefix before node prefix — baseline GREEN, mutation RED
+--- FAIL: TestCoordinatorSeparatesAppAndNodeCredentials (0.00s)
+    auth_test.go:64: /internal/nodes/register token="app": 400 {"code":"INVALID","message":"registration: EOF","outcomeUnknown":false,"retryable":false}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	0.004s
+FAIL
+
+CHECK 6 — bypass storage receiver — baseline GREEN, mutation RED
+--- FAIL: TestDataAuthRunsBeforeHandlerWithIdentity (0.00s)
+    auth_test.go:33: status = 400 ({"code":"INVALID","message":"exactly one of If-None-Match: * or If-Match is required","outcomeUnknown":false,"retryable":false}
+        ), want 401 UNAUTHORIZED
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	0.008s
+FAIL
+
+CHECK 7 — erase earlier forwarding uncertainty — baseline GREEN, mutation RED
+--- FAIL: TestAuthRefusalAfterUnknownRemainsUnknown (0.00s)
+    auth_test.go:31: erased unknown: 401 {Code:UNAUTHORIZED LeaderHint:<nil> Message:UNAUTHORIZED OutcomeUnknown:false Result:<nil> Retryable:true RingVersion:<nil>}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	0.006s
+FAIL
+
+CHECK 8 — malformed refusal loses uncertainty — baseline GREEN, mutation RED
+2026/11/12 21:23:53 WARN routing budget exhausted method=PUT path=/internal/data/kv:malformed-auth-2 shard=0 unknown=false last="unrecognized authentication response"
+--- FAIL: TestMalformedStorageAuthRefusalRemainsUnknown (0.00s)
+    auth_test.go:87: malformed refusal erased uncertainty: 503 {Code:NO_LEADER LeaderHint:<nil> Message:shard 0: no leader answered within 1s (last: unrecognized authentication response) OutcomeUnknown:false Result:<nil> Retryable:true RingVersion:<nil>}
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	0.005s
+FAIL
+
+CHECK 9 — forget earlier client uncertainty — baseline GREEN, mutation RED
+--- FAIL: TestAuthRefusalKeepsEarlierUnknownOperation (0.00s)
+    auth_test.go:63: lost unknown: coordclient: 401 UNAUTHORIZED: refused before handler
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	0.005s
+FAIL
+
+CHECK 10 — never resolve committed operation — baseline GREEN, mutation RED
+--- FAIL: TestMalformedAuthRefusalCannotProveRejection (0.00s)
+    auth_test.go:152: committed answer did not resolve uncertainty: coordclient: 0 OUTCOME_UNKNOWN: earlier attempt unresolved; retry the same operationId: coordclient: 401 UNAUTHORIZED:
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	0.004s
+FAIL
+
+CHECK 11 — drop DELETE operation identity — baseline GREEN, mutation RED
+--- FAIL: TestDeleteAuthRefusalKeepsUnknown (0.00s)
+    auth_test.go:175: lost DELETE uncertainty: coordclient: 403 UNAUTHORIZED:
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	0.006s
+FAIL
+
+CHECK 12 — accept 401 carrying result or unknown — baseline GREEN, mutation RED
+--- FAIL: TestStructured401WithOutcomeCannotProveRejection (0.00s)
+    auth_test.go:193: 401 with outcome treated as rejection: coordclient: 401 UNAUTHORIZED:
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	0.006s
+FAIL
+
+CHECK 13 — ignore unreadable previous file — baseline GREEN, mutation RED
+--- FAIL: TestUnreadablePreviousIsNotAbsent (0.00s)
+    wiring_test.go:123: unreadable previous accepted
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/internalauth	0.003s
+FAIL
+
+CHECK 14-coordinator — ignore node receiver load error — baseline GREEN, mutation RED
+--- FAIL: TestEachCredentialFailsBeforeAnyListener (0.00s)
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/node (0.00s)
+        auth_test.go:80: did not report the failed credential read /missing-node-token: internal auth: invalid current credential
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/previous (0.00s)
+        auth_test.go:80: did not report the failed credential read /tmp/TestEachCredentialFailsBeforeAnyListenerprevious2092725487/004: internal auth: invalid current credential
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	0.005s
+FAIL
+
+CHECK 14-storagenode — ignore node receiver load error — baseline GREEN, mutation RED
+2026/11/12 21:23:59 WARN !!! ADMISSION=off: M7 admission is DISABLED; an empty or wiped disk opens Raft at once. Tests and local runs only, never a cluster. !!!
+2026/11/12 21:23:59 WARN !!! ADMISSION=off: M7 admission is DISABLED; an empty or wiped disk opens Raft at once. Tests and local runs only, never a cluster. !!!
+--- FAIL: TestEachCredentialFailsBeforeAnyListener (0.01s)
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/node (0.00s)
+        auth_test.go:70: node load bypassed: raftstore: listen 127.0.0.1:50701: unexpected listen
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/previous (0.00s)
+        auth_test.go:70: previous load bypassed: raftstore: listen 127.0.0.1:49719: unexpected listen
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	0.009s
+FAIL
+
+CHECK 15 — force sender to receiver current — baseline GREEN, mutation RED
+--- FAIL: TestInternalAuthChartSecretsAndMounts (0.05s)
+    internal_auth_chart_test.go:56: rotation staging incorrect: map[previous-token:bm9kZS1vbGQ= sender-token:bm9kZS1uZXc= token:bm9kZS1uZXc=]
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.049s
+FAIL
+
+CHECK 16-coordinator — load auth after Listen — baseline GREEN, mutation RED
+2026/11/12 21:24:00 WARN OPERATOR_TOKEN is not set; /admin is disabled
+2026/11/12 21:24:00 WARN OPERATOR_TOKEN is not set; /admin is disabled
+2026/11/12 21:24:00 WARN OPERATOR_TOKEN is not set; /admin is disabled
+2026/11/12 21:24:00 WARN OPERATOR_TOKEN is not set; /admin is disabled
+--- FAIL: TestEachCredentialFailsBeforeAnyListener (0.00s)
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/node (0.00s)
+        auth_test.go:67: node load bypassed: unexpected listen
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/previous (0.00s)
+        auth_test.go:67: previous load bypassed: unexpected listen
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/sender (0.00s)
+        auth_test.go:67: sender load bypassed: unexpected listen
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/app (0.00s)
+        auth_test.go:67: app load bypassed: unexpected listen
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	0.009s
+FAIL
+
+CHECK 16-storagenode — load auth after Listen — baseline GREEN, mutation RED
+2026/11/12 21:24:01 WARN !!! ADMISSION=off: M7 admission is DISABLED; an empty or wiped disk opens Raft at once. Tests and local runs only, never a cluster. !!!
+2026/11/12 21:24:01 WARN !!! ADMISSION=off: M7 admission is DISABLED; an empty or wiped disk opens Raft at once. Tests and local runs only, never a cluster. !!!
+2026/11/12 21:24:01 WARN !!! ADMISSION=off: M7 admission is DISABLED; an empty or wiped disk opens Raft at once. Tests and local runs only, never a cluster. !!!
+--- FAIL: TestEachCredentialFailsBeforeAnyListener (0.01s)
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/node (0.00s)
+        auth_test.go:70: node load bypassed: raftstore: listen 127.0.0.1:48463: unexpected listen
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/previous (0.00s)
+        auth_test.go:70: previous load bypassed: raftstore: listen 127.0.0.1:42429: unexpected listen
+    --- FAIL: TestEachCredentialFailsBeforeAnyListener/sender (0.00s)
+        auth_test.go:70: sender load bypassed: raftstore: listen 127.0.0.1:52083: unexpected listen
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	0.012s
+FAIL

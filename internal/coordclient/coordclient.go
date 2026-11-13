@@ -44,6 +44,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -54,6 +55,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -71,9 +73,12 @@ const maxBody = 16 << 20
 // Client is a store.Store backed by the coordinator. It is safe for
 // concurrent use.
 type Client struct {
-	base    string
-	http    *http.Client
-	timeout time.Duration
+	internalAuth     *auth.SenderConfig
+	internalAuthFile string
+	unknown          map[string]bool // unresolved operations; never evict an unknown outcome
+	base             string
+	http             *http.Client
+	timeout          time.Duration
 	// readMode is WithReadConsistency's mode; "" means none was set.
 	readMode store.Consistency
 	// tracerProvider records client spans (S4.4); nil uses the global one.
@@ -86,6 +91,20 @@ type Client struct {
 var _ store.Store = (*Client)(nil)
 
 type Option func(*Client)
+
+// WithInternalAuth validates and wraps the final raw HTTP client before the
+// initial ring request, regardless of option order. Never pass an already
+// authenticated client; app and node clients must each wrap the raw transport.
+func WithInternalAuth(cfg auth.SenderConfig) Option {
+	return func(c *Client) { c.internalAuth = &cfg }
+}
+
+// WithInternalAuthFile loads a sender credential once in New, before any I/O.
+// An empty path leaves authentication unchanged for callers of disabled clusters.
+// When set, this file supplies the credential instead of WithInternalAuth.
+func WithInternalAuthFile(path string) Option {
+	return func(c *Client) { c.internalAuthFile = path }
+}
 
 // WithHTTPClient sets the HTTP client (default: a fresh http.Client).
 func WithHTTPClient(c *http.Client) Option { return func(cl *Client) { cl.http = c } }
@@ -124,6 +143,20 @@ func New(ctx context.Context, baseURL string, opts ...Option) (*Client, error) {
 	c := &Client{base: strings.TrimRight(baseURL, "/"), http: &http.Client{}, timeout: DefaultTimeout}
 	for _, o := range opts {
 		o(c)
+	}
+	if c.internalAuthFile != "" {
+		token, err := os.ReadFile(c.internalAuthFile)
+		if err != nil {
+			return nil, fmt.Errorf("coordclient: read sender token: %w", err)
+		}
+		c.internalAuth = &auth.SenderConfig{Token: string(token)}
+	}
+	if c.internalAuth != nil {
+		client, err := auth.NewClient(c.http, *c.internalAuth)
+		if err != nil {
+			return nil, fmt.Errorf("coordclient: %w", err)
+		}
+		c.http = client
 	}
 	if c.readMode != "" {
 		if _, err := consistency(c.readMode); err != nil {
@@ -273,6 +306,38 @@ type mutation struct {
 // retries once with the same command and the new ringVersion. The client's
 // timeout caps all of it.
 func (c *Client) mutate(ctx context.Context, m mutation) (res store.Result, err error) {
+	// Keep uncertainty across retries on this client. Durable callers must also
+	// retain their intent across process/client replacement (invariant 5).
+	operationID := m.query.Get("operationId")
+	if m.body != nil {
+		raw, _ := json.Marshal(m.body)
+		var meta struct {
+			OperationID string `json:"operationId"`
+		}
+		_ = json.Unmarshal(raw, &meta)
+		operationID = meta.OperationID
+	}
+	identity := m.path + "\x00" + operationID
+	defer func() {
+		if operationID == "" {
+			return
+		}
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if err == nil {
+			delete(c.unknown, identity)
+			return
+		}
+		if c.unknown[identity] && !errors.Is(err, store.ErrUnknownOutcome) {
+			err = &Error{Code: internalapi.OUTCOMEUNKNOWN, Message: "earlier attempt unresolved; retry the same operationId: " + err.Error(), Retryable: true, OutcomeUnknown: true}
+		}
+		if errors.Is(err, store.ErrUnknownOutcome) {
+			if c.unknown == nil {
+				c.unknown = make(map[string]bool)
+			}
+			c.unknown[identity] = true
+		}
+	}()
 	ctx, end := c.span(ctx, m.op)
 	defer func() { end(err) }()
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
@@ -324,6 +389,12 @@ func (c *Client) mutateOnce(ctx context.Context, m mutation, rv uint64) (store.R
 	decoded := json.Unmarshal(a.body, &e) == nil
 	out := &Error{Status: a.status, Code: e.Code, Message: e.Message}
 	switch {
+	case a.status == http.StatusUnauthorized:
+		if !decoded || e.Code != internalapi.UNAUTHORIZED || e.Result != nil || e.OutcomeUnknown {
+			out.Code = internalapi.OUTCOMEUNKNOWN
+			out.Retryable = true
+			out.OutcomeUnknown = true
+		}
 	case a.status >= 400 && a.status < 500 && decoded && e.Result != nil:
 		return *e.Result, nil // a committed rejection
 	case a.status == http.StatusConflict && e.Code == internalapi.RINGVERSIONMISMATCH:

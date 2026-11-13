@@ -37,7 +37,7 @@ const (
 )
 
 func drain(ctx context.Context) (err error) {
-	client, err := coordclient.New(ctx, os.Getenv("COORDINATOR_URL"))
+	client, err := coordclient.New(ctx, os.Getenv("COORDINATOR_URL"), coordclient.WithInternalAuthFile(os.Getenv("INTERNAL_AUTH_TOKEN_FILE")))
 	if err != nil {
 		return fmt.Errorf("drain coordinator: %w", err)
 	}
