@@ -1,0 +1,137 @@
+FFFFFFEEEE/usr/lib/python3.14/tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 401: 'Unauthorized'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+F
+======================================================================
+ERROR: test_demo_audit_job_mounts_only_app_sender (__main__.OperationalAuthTest.test_demo_audit_job_mounts_only_app_sender)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 72, in test_demo_audit_job_mounts_only_app_sender
+    self.check_pod(captured[0]['spec']['template'])
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 74, in check_pod
+    spec=pod['spec'];self.assertEqual(spec['securityContext']['fsGroup'],65532)
+                                      ~~~~^^^^^^^^^^^^^^^^^^^
+KeyError: 'securityContext'
+
+======================================================================
+ERROR: test_demo_coordinator_only (__main__.OperationalAuthTest.test_demo_coordinator_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 52, in test_demo_coordinator_only
+    Client(origin,out,internal=True).call('GET','/internal/outbox',{200})
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Client.__init__() got an unexpected keyword argument 'internal'
+
+======================================================================
+ERROR: test_disabled_demo_audit_has_no_auth_mount (__main__.OperationalAuthTest.test_disabled_demo_audit_has_no_auth_mount)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 84, in test_disabled_demo_audit_has_no_auth_mount
+    from internal_auth import mount_app_sender
+ModuleNotFoundError: No module named 'internal_auth'
+
+======================================================================
+ERROR: test_metrics_scratch_uses_app_sender (__main__.OperationalAuthTest.test_metrics_scratch_uses_app_sender)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/metrics_fault.py", line 80, in command
+    with OPENER.open(request, timeout=3) as response:
+         ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 493, in open
+    response = meth(req, response)
+  File "/usr/lib/python3.14/urllib/request.py", line 602, in http_response
+    response = self.parent.error(
+        'http', request, response, code, msg, hdrs)
+  File "/usr/lib/python3.14/urllib/request.py", line 531, in error
+    return self._call_chain(*args)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/usr/lib/python3.14/urllib/request.py", line 611, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 401: Unauthorized
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 41, in test_metrics_scratch_uses_app_sender
+    try: self.assertEqual(traffic.command('scratch',0),1)
+                          ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/metrics_fault.py", line 91, in command
+    raise RuntimeError('scratch command: HTTP'+str(error.code)+' '+str(failure)) from error
+RuntimeError: scratch command: HTTP401 {'code': 'UNAUTHORIZED'}
+
+======================================================================
+FAIL: test_configured_invalid_file_fails_before_scratch_io (__main__.OperationalAuthTest.test_configured_invalid_file_fails_before_scratch_io) (size=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 58, in test_configured_invalid_file_fails_before_scratch_io
+    with self.assertRaisesRegex(ValueError,'internal auth'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_configured_invalid_file_fails_before_scratch_io (__main__.OperationalAuthTest.test_configured_invalid_file_fails_before_scratch_io) (size=4)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 58, in test_configured_invalid_file_fails_before_scratch_io
+    with self.assertRaisesRegex(ValueError,'internal auth'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_configured_invalid_file_fails_before_scratch_io (__main__.OperationalAuthTest.test_configured_invalid_file_fails_before_scratch_io) (size=9)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 58, in test_configured_invalid_file_fails_before_scratch_io
+    with self.assertRaisesRegex(ValueError,'internal auth'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_configured_invalid_file_fails_before_scratch_io (__main__.OperationalAuthTest.test_configured_invalid_file_fails_before_scratch_io) (size=4097)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 58, in test_configured_invalid_file_fails_before_scratch_io
+    with self.assertRaisesRegex(ValueError,'internal auth'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_configured_invalid_file_fails_before_scratch_io (__main__.OperationalAuthTest.test_configured_invalid_file_fails_before_scratch_io) (size=9)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 58, in test_configured_invalid_file_fails_before_scratch_io
+    with self.assertRaisesRegex(ValueError,'internal auth'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_configured_invalid_file_fails_before_scratch_io (__main__.OperationalAuthTest.test_configured_invalid_file_fails_before_scratch_io) (size=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 58, in test_configured_invalid_file_fails_before_scratch_io
+    with self.assertRaisesRegex(ValueError,'internal auth'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_reconciler_coordinator_only (__main__.OperationalAuthTest.test_reconciler_coordinator_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 49, in test_reconciler_coordinator_only
+    self.assertEqual([row[1] for row in seen],['fixture-app-token',None])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [None, None] != ['fixture-app-token', None]
+
+First differing element 0:
+None
+'fixture-app-token'
+
+- [None, None]
++ ['fixture-app-token', None]
+
+----------------------------------------------------------------------
+Ran 6 tests in 5.038s
+
+FAILED (failures=7, errors=4)
