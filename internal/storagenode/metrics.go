@@ -158,7 +158,7 @@ var (
 	descCommit         = newDesc("storage_raft_commit_index", "Commit index as this replica knows it.")
 	descApplied        = newDesc("storage_raft_applied_index", "FSM's completed index.")
 	descLastLog        = newDesc("storage_raft_last_log_index", "Last index in the local log.")
-	descLag            = newDesc("storage_replication_lag_entries", "leaderCommitIndex - appliedIndex on this replica (never negative).")
+	descLag            = newDesc("storage_replication_lag_entries", "leaderCommitIndex - raftAppliedIndex on this replica (never negative).")
 	descLastSnap       = newDesc("storage_raft_last_snapshot_index", "Raft index of the newest local snapshot; 0 if none.")
 	descLogBytes       = newDesc("storage_raft_log_bytes", "Size of raft.db (log and stable store) on the PVC.")
 	descSnapBytes      = newDesc("storage_snapshot_bytes", "Size of the snapshot directory on the PVC.")
@@ -198,9 +198,16 @@ func (c *nodeCollector) Collect(ch chan<- prometheus.Metric) {
 	g(descCommit, float64(st.CommitIndex))
 	g(descApplied, float64(st.AppliedIndex))
 	g(descLastLog, float64(st.LastLogIndex))
+	// Lag is in Raft log entries on both sides. AppliedIndex is the FSM's
+	// last command; barriers (one per strong read), no-ops and configuration
+	// entries never reach the FSM, so leaderCommit - AppliedIndex counted
+	// every one since the last write as lag on a replica missing nothing.
+	// RaftAppliedIndex moves over them too, and only once this replica holds
+	// an entry and knows it committed, so a replica that stops receiving
+	// entries still shows its gap.
 	lag := 0.0
-	if st.LeaderCommitIndex > st.AppliedIndex {
-		lag = float64(st.LeaderCommitIndex - st.AppliedIndex)
+	if st.LeaderCommitIndex > st.RaftAppliedIndex {
+		lag = float64(st.LeaderCommitIndex - st.RaftAppliedIndex)
 	}
 	g(descLag, lag)
 
