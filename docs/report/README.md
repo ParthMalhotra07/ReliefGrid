@@ -47,3 +47,14 @@ Run `python3 scripts/verify-report.py` for source/evidence link checks. Passing
 links cannot prove scientific claims or page count. The public repository link,
 mandatory live demo and deployment-from-scratch backup recording are required;
 public visibility alone does not establish actual submission or playback.
+
+## Assembled review draft
+
+The [assembled Markdown](submission-draft.md) and
+[nine-page PDF](reliefgrid-submission-draft.pdf) integrate the A text with
+[Hrishabh's supplied contribution](contributions/README.md). See
+[assembly/build instructions](ASSEMBLY.md) and [editable figures](figures/README.md).
+The rendered draft is under ten pages including references. It remains a
+review draft with Phase 2 publication, final source pin and final evidence
+acceptance outstanding; archival editorial placeholders are not accepted
+submission references.

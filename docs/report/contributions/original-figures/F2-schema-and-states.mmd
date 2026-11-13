@@ -1,0 +1,44 @@
+flowchart TB
+  accTitle: F2 — Physical schema and logical states
+  accDescr: Historical operation success records a past command; it does not establish current ownership.
+  subgraph transaction["One committed apply transaction"]
+    subgraph physical["Physical SQLite tables"]
+      direction LR
+      subgraph tableRow1[" "]
+        direction LR
+      records["records<br/>key · kind · version<br/>JSON body · tombstone"]
+      results["operation_results<br/>operationId · payload hash<br/>historical result"]
+        records ~~~ results
+      end
+      subgraph tableRow2[" "]
+        direction LR
+      closures["attempt_closures<br/>resource + attempt fence"]
+      outbox["outbox<br/>ordered publication work"]
+      meta["meta<br/>schema + completed-<br/>command index"]
+        closures ~~~ outbox ~~~ meta
+      end
+      tableRow1 ~~~ tableRow2
+    end
+  end
+  subgraph logical["Logical entity states"]
+    direction TB
+    subgraph request["Request"]
+      direction LR
+      waiting["WAITING"] --> matched["MATCHED"] --> progress["IN_PROGRESS"] --> terminal["Terminal states<br/>no live claim"]
+      matched --> retrying
+      progress -->|Resolve / close| retrying["RETRYING"]
+      retrying -->|"Closure<br/>before retarget"| waiting
+    end
+    subgraph resource["Resource"]
+      direction LR
+      available["Available"] -->|TryClaim| claim["Attempt-bound claim"]
+      claim -->|Exact-attempt release| available
+    end
+  end
+  physical -. JSON state .-> request
+  physical -. JSON state .-> resource
+  request <-. "Reciprocal ownership" .-> resource
+  style tableRow1 fill:transparent,stroke:none
+  style tableRow2 fill:transparent,stroke:none
+  classDef state fill:#e8f1fa,stroke:#335b7e,color:#142c40;
+  class waiting,matched,progress,terminal,retrying,available,claim state;

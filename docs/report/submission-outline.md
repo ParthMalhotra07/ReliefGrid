@@ -14,8 +14,8 @@ accepted final revision before export.
 
 ## Allocations and writing split
 
-S = Hrishabh; A = Parth. Accept S's proposed **5.5 pages**, including his figures,
-captions and table share, leaving **3.5 pages** for A. These are editing envelopes
+S = Hrishabh; A = Parth. Use S's supplied **5.55 pages**, including his figures,
+captions and table share, leaving **3.45 pages** for A. These are editing envelopes
 within the shared nine pages, not additional author sections. Joint content must
 be counted once. A leads public/worker interfaces, workflow/messaging and the
 reference index; S leads storage/consistency, deployment topology and measured
@@ -35,8 +35,9 @@ storage/load results. Both check cross-boundary claims.
 | **Total** | **9.00** | | **4.10** | **4.90** |
 
 One workable A allocation is mapping 1.00, workflow 1.00, references 0.75,
-title 0.25, deployment 0.15, validation 0.15, M6 integration 0.10 and scope 0.10:
-3.50 pages. S's complementary share is 5.50. Revise paragraph lengths jointly if
+title 0.25, deployment 0.10, validation 0.15, M6 integration 0.10 and scope 0.10:
+3.45 pages. S's complementary share is 5.55. Earlier 3.5/5.5 values were rounded
+editing envelopes; the supplied v3 allocation gives these exact complements. Revise paragraph lengths jointly if
 rendering needs it, while keeping the section totals unchanged. S drafts F1-F4;
 A checks F2 domain states and F3 handoff/ack ordering before publication.
 

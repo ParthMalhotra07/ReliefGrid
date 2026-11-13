@@ -1,13 +1,14 @@
 # A-owned submission text: integration draft
 
 Editing metadata, excluded from submission: Parth's contribution to the agreed
-[nine-page outline](submission-outline.md), targeting the 3.5-page A share,
-including allocated tables/references. Hrishabh supplies the complementary 5.5
+[nine-page outline](submission-outline.md), targeting the 3.45-page A share,
+including allocated tables/references. Hrishabh supplies the complementary 5.55
 pages. These fragments use the existing section numbers; they are not additional
 sections or an exported/page-counted report. Source baseline `7fa4a7d0093d92477aa90a9a23fe1d3e942083b6`.
 Preserve each measurement's historical revision; update implementation claims
-against the accepted final source before export. S's text and F1-F4 drawings
-are still needed for the assembled document.
+against the accepted final source before export. S's supplied text and F1-F4 drawings are preserved in
+[contributions](contributions/README.md); the [assembled draft](submission-draft.md)
+combines these sources without treating unpublished Phase 2 numbers as accepted.
 
 ## 1. Title, abstract and problem statement — joint opening
 
