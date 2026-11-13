@@ -523,6 +523,8 @@ exit $DRAIN_EXIT
 				t.Fatal(err)
 			}
 			out, err := runFuncs(t, []string{"drain_handoffs"}, `
+. ../scripts/internal-auth-env.sh
+INTERNAL_AUTH_ON=false # internal auth off (#29): the drain runs exactly as before
 kn() {
 	echo "$*" >> "$ARGV"
 	case "$*" in

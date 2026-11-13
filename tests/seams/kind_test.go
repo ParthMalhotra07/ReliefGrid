@@ -95,7 +95,13 @@ func newKindCluster(t *testing.T) *kindCluster {
 	c.token = string(dec)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if c.client, err = coordclient.New(ctx, url); err != nil {
+	// internalAuth.enabled (#29): scripts/verify-S4.6b.sh exports the app sender
+	// token's file; unset (auth off) the client sends no token, as before.
+	var opts []coordclient.Option
+	if f := os.Getenv("INTERNAL_AUTH_TOKEN_FILE"); f != "" {
+		opts = append(opts, coordclient.WithInternalAuthFile(f))
+	}
+	if c.client, err = coordclient.New(ctx, url, opts...); err != nil {
 		t.Fatalf("coordclient: %v", err)
 	}
 	for _, p := range c.pods() {

@@ -57,6 +57,7 @@ exit 0
 
 const s45FakeHelm = `#!/usr/bin/env bash
 case "$*" in
+*"get values storage -a -o json") echo '{"internalAuth":{"enabled":false}}' ;; # internal auth off (#29)
 *"get manifest reliefgrid")
 	cat <<'EOF'
 ---
@@ -120,7 +121,7 @@ func TestVerifyS45KindRestoresAppReplicas(t *testing.T) {
 			s45Write(t, filepath.Join(bin, "kubectl"), s45FakeKubectl, 0o755)
 			s45Write(t, filepath.Join(bin, "helm"), s45FakeHelm, 0o755)
 			s45Write(t, filepath.Join(bin, "kind"), "#!/usr/bin/env bash\necho reliefgrid\n", 0o755)
-			for _, f := range []string{"scripts/verify-S4.5.sh", "chaos/scripts/lib.sh", "chaos/scripts/faults.sh"} {
+			for _, f := range []string{"scripts/verify-S4.5.sh", "chaos/scripts/lib.sh", "chaos/scripts/faults.sh", "scripts/internal-auth-env.sh"} {
 				b, err := os.ReadFile(filepath.Join("..", f))
 				if err != nil {
 					t.Fatal(err)
