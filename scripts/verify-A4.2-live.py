@@ -18,12 +18,14 @@ import urllib.request
 import uuid
 
 from metrics_fault import run_fault
+from internal_auth import Sender
 
 ROOT = Path(__file__).resolve().parents[1]
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def get(origin, path, *, method="GET", data=None, key=None, auth=None):
+    origin = origin.rstrip("/")
     headers = {}
     if data is not None:
         headers["Content-Type"] = "application/json"
@@ -34,7 +36,7 @@ def get(origin, path, *, method="GET", data=None, key=None, auth=None):
         headers["Authorization"] = "Basic " + base64.b64encode(auth.encode()).decode()
     req = urllib.request.Request(origin + path, data=data, headers=headers, method=method)
     try:
-        with OPENER.open(req, timeout=8) as response:
+        with (Sender(origin) if path.startswith("/internal/") else OPENER).open(req, timeout=8) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
         raise RuntimeError(f"HTTP {exc.code}: {method} {path.split('?')[0]}") from None

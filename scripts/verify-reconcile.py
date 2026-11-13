@@ -2,6 +2,8 @@
 """Real-cluster A2.4 assertions; fault hooks exist only in a test worker image."""
 import argparse, datetime as dt, json, os, pathlib, subprocess, time, urllib.error, urllib.parse, urllib.request, uuid
 
+from internal_auth import Sender, mount_app_sender
+
 class Verify:
 
     def __init__(self, out, probe):
@@ -12,7 +14,8 @@ class Verify:
         self.context = 'kind-reliefgrid'
         self.ns = 'reliefgrid'
         self.release = 'reliefgrid'
-        self.coord = os.environ['DEMO_COORD_URL']
+        self.coord = os.environ['DEMO_COORD_URL'].rstrip('/')
+        self.sender = Sender(self.coord)
         self.api = os.environ.get('API_URL', 'http://127.0.0.1:8080/api/v1').rstrip('/')
         self.saved = self.replicas()
         self.cases = []
@@ -37,7 +40,7 @@ class Verify:
         headers = {'Content-Type': 'application/json', 'Connection': 'close'}
         if key:
             headers['Idempotency-Key'] = key
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        opener = Sender(self.coord) if base == self.coord else urllib.request.build_opener(urllib.request.ProxyHandler({}))
         while time.monotonic() < end:
             request = urllib.request.Request(base + path, raw, headers, method=method)
             try:
@@ -107,6 +110,7 @@ class Verify:
         started = time.monotonic()
         self.scale(0)
         pod = {'apiVersion': 'v1', 'kind': 'Pod', 'metadata': {'name': name, 'labels': {'reliefgrid.io/coordinator-client': 'true', 'app.kubernetes.io/component': 'recovery-test'}}, 'spec': {'restartPolicy': 'Never', 'automountServiceAccountToken': False, 'securityContext': {'runAsNonRoot': True, 'runAsUser': 65532, 'runAsGroup': 65532}, 'containers': [{'name': 'test-matcher', 'image': 'reliefgrid/reconcile-crash:a24', 'imagePullPolicy': 'Never', 'args': ['--stage', stage, '--run', self.seed, '--latitude', str(-72 + index * 9)], 'env': [{'name': 'COORDINATOR_URL', 'value': 'http://storage-coordinator:8080'}], 'resources': {'requests': {'cpu': '100m', 'memory': '128Mi'}, 'limits': {'memory': '512Mi'}}}]}}
+        mount_app_sender(pod)
         self.k('create', '-f', '-', stdin=json.dumps(pod))
         checkpoint = None
         try:
@@ -250,6 +254,7 @@ class Verify:
         assert all((not p['events'] for p in pages)), 'outbox not drained'
         name = 'a24-final-invcheck'
         pod = {'metadata': {'labels': {'reliefgrid.io/coordinator-client': 'true'}}, 'spec': {'restartPolicy': 'Never', 'automountServiceAccountToken': False, 'containers': [{'name': 'check', 'image': 'reliefgrid/tools:dev', 'imagePullPolicy': 'Never', 'args': ['check', '--coordinator', 'http://storage-coordinator:8080', '--timeout', '90s', '--max-backlog', '0', '--json'], 'resources': {'requests': {'cpu': '100m', 'memory': '128Mi'}, 'limits': {'memory': '512Mi'}}}]}}
+        mount_app_sender(pod)
         job = {'apiVersion': 'batch/v1', 'kind': 'Job', 'metadata': {'name': name}, 'spec': {'backoffLimit': 0, 'activeDeadlineSeconds': 110, 'template': pod}}
         self.k('delete', 'job', name, '--ignore-not-found', '--wait=true')
         self.k('create', '-f', '-', stdin=json.dumps(job))

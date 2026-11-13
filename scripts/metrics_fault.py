@@ -11,8 +11,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from internal_auth import Sender
 
-OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def mutation_version(payload, operation, key, ring):
@@ -50,7 +50,8 @@ class Traffic:
     requests, resources, claims and outbox rows are never changed.
     """
     def __init__(self, origin, ring, out=None):
-        self.origin, self.ring, self.out = origin, ring, out
+        self.origin, self.ring, self.out = origin.rstrip('/'), ring, out
+        self.sender = Sender(origin)
         self.pending = {}
         self.prefix = 'a42-metrics-' + uuid.uuid4().hex
         self.stop_event = threading.Event()
@@ -77,7 +78,7 @@ class Traffic:
             request = urllib.request.Request(url, data=data, method='DELETE' if delete else 'PUT',
                 headers={'Content-Type':'application/json', 'If-Match':'"'+str(version)+'"'})
             try:
-                with OPENER.open(request, timeout=3) as response:
+                with self.sender.open(request, timeout=3) as response:
                     result = json.load(response)
                     committed_version = mutation_version(result,meta['operationId'],key,self.ring)
                     with self.lock:
@@ -147,7 +148,7 @@ class Traffic:
                 request=urllib.request.Request(url,data=data,method='DELETE' if intent['delete'] else 'PUT',
                     headers={'Content-Type':'application/json','If-Match':'"'+str(intent['expectedVersion'])+'"'})
                 try:
-                    with OPENER.open(request,timeout=3) as response:
+                    with self.sender.open(request,timeout=3) as response:
                         mutation_version(json.load(response),operation,key,self.ring)
                     break
                 except urllib.error.HTTPError as error:
@@ -168,7 +169,7 @@ class Traffic:
             for _ in range(64):
                 query=dict(kind='kv',limit=1000,ringVersion=self.ring,consistency='strong')
                 if cursor:query['cursor']=cursor
-                with OPENER.open(self.origin+'/internal/scan?'+urllib.parse.urlencode(query),timeout=3) as response:
+                with self.sender.open(self.origin+'/internal/scan?'+urllib.parse.urlencode(query),timeout=3) as response:
                     page=json.load(response)
                 assert page.get('partial') is False and page.get('failedShards',[])==[], 'incomplete scratch recovery scan'
                 assert page.get('consistency') in ('strong','linearizable') and page.get('ringVersion')==self.ring, 'weak or wrong-ring recovery read'
