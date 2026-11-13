@@ -55,6 +55,8 @@ The [assembled Markdown](submission-draft.md) and
 [Hrishabh's supplied contribution](contributions/README.md). See
 [assembly/build instructions](ASSEMBLY.md) and [editable figures](figures/README.md).
 The rendered draft is under ten pages including references. It remains a
-review draft with Phase 2 publication, final source pin and final evidence
+review draft with final source pin and final evidence
 acceptance outstanding; archival editorial placeholders are not accepted
 submission references.
+
+The [reviewed Phase 2 comparison](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) is integrated in the flowing draft, with [method/deviation qualifications](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md).

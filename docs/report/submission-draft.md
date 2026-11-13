@@ -2,11 +2,11 @@
 
 Parth Malhotra and Hrishabh Sharrma
 
-Working submission draft. Source baseline: f72715e1b6fdcc8564e81df0fbaf7b08c1f28956. Historical runs retain their own revisions. Phase 2 comparison publication, final gate and final reference pin remain outstanding.
+Working submission draft. Source baseline: b77e5b9761119a73bed8f2d3eede40c863492275. Historical runs retain their own revisions. Phase 2 evidence is reviewed at #176 (25ea8bc); its measured source remains 514bb33. Final gate and final submission reference pin remain outstanding.
 
 ## 1. Abstract and problem statement
 
-An emergency request may remain unmatched until a compatible resource becomes available. ReliefGrid separates durable acceptance from assignment. Two Go application services, an HTTP API and asynchronous matcher, use three storage shards, each replicated by three Raft voters. Durable intents, conditional claims and permanent attempt closures coordinate assignments across shards. A transactional outbox bridges committed changes to RabbitMQ. Evaluation combines acknowledged-write ledgers, authoritative reads, invariant checks, replica audits and controlled local Kubernetes faults. Retained Phase 1 load reports bracket the HTTP threshold at 50 requests/s on one host; background matching and singleton availability are reported separately. Later read-path comparison results await published evidence and are not accepted measurements in this draft.
+An emergency request may remain unmatched until a compatible resource becomes available. ReliefGrid separates durable acceptance from assignment. Two Go application services, an HTTP API and asynchronous matcher, use three storage shards, each replicated by three Raft voters. Durable intents, conditional claims and permanent attempt closures coordinate assignments across shards. A transactional outbox bridges committed changes to RabbitMQ. Evaluation combines acknowledged-write ledgers, authoritative reads, invariant checks, replica audits and controlled local Kubernetes faults. Retained Phase 1 load reports bracket the HTTP threshold at 50 requests/s on one host; background matching and singleton availability are reported separately.
 
 ## 2. Requirement, service and API mapping
 
@@ -26,8 +26,7 @@ T3. PS Table 2 client operations. The canonical base is /api/v1; method/path-spe
 
 PS id fields map to requestId/resourceId, types to requestType/resourceType, creation time to server-persisted createdAt, and availability to windowStart/windowEnd plus status and absence of an active claim. A match 202 is not proof of assignment: clients read current request state. Lists/SSE extend the seven required operations; no bare /events alias is added.
 
-<!-- page -->
-## 2. Internal mapping and client semantics (continued)
+## Internal mapping and client semantics
 
 T4/T2. Internal functions and technology roles. The coordinator selects a fixed logical owner and discovers its leader; committed apply decides legality. [3-4]
 
@@ -48,8 +47,11 @@ Placement uses xxhash64 and 128 virtual nodes per shard, 384 tokens overall. The
 
 F1. The broker schedules work; shard consensus authorizes changes. Every shard has one illustrative leader and two followers, each with its own deterministic FSM/outbox. Management and read-only observability use separate interfaces. Roles change on election; ownership does not. Broker confirms and delivery acknowledgements return opposite to publication/delivery arrows.
 
-<!-- page -->
-## 3. Durable state, schema and reads (continued)
+## Durable state, schema and reads
+
+Raft log/stable state and completed snapshots live on PVCs. SQLite is derived, uses WAL/synchronous=OFF and is rebuilt in emptyDir from durable Raft history. SQLite commit is the local visibility boundary, not the independent durability source. The guarantee depends on retained quorum history and the disk/filesystem failure model; local volumes are not off-machine backup.
+
+Strong reads use a committed Barrier. The optional linearizable fence establishes an own-term commit, captures a read index, requires fresh majority evidence, rechecks term/leadership and waits for SQLite completion. Queued Raft apply and old acknowledgements are insufficient. The first term gate may still append a barrier. Stale reads are separate diagnostics. The integrated source includes #166: application callers default to linearizable and refuse missing/unknown authoritative served labels. Explicit strong calls retain Barrier behavior. The earlier Phase 1 and Phase 2 runs retain their own measured revisions; their results do not certify this assembled source as a newly load-tested deployment. [8]
 
 Each command checks operationId deduplication, expected version, state and attempt rules in one committed SQLite transaction. Entity change, historical result, outbox event and completed-command index are recorded together. Proposers supply identifiers and integer timestamps; apply samples no wall clock/randomness and makes no unordered decisions. Resource and request claims are unique; live assignments require reciprocity and terminal requests hold no live claim. [4]
 
@@ -57,11 +59,7 @@ Each command checks operationId deduplication, expected version, state and attem
 
 F2. Five physical tables participate in committed apply; their layout does not imply foreign keys. Logical request/resource states live in records JSON. The abbreviated state path includes MATCHING before MATCHED, and RETRYING is reached from MATCHING, not MATCHED/IN_PROGRESS. Cleanup reaches the corresponding terminal state only after closure. Some legal edges/dispositions are omitted; the committed FSM transition table is authoritative.
 
-Raft log/stable state and completed snapshots live on PVCs. SQLite is derived, uses WAL/synchronous=OFF and is rebuilt in emptyDir from durable Raft history. SQLite commit is the local visibility boundary, not the independent durability source. The guarantee depends on retained quorum history and the disk/filesystem failure model; local volumes are not off-machine backup.
 
-Strong reads use a committed Barrier. The optional linearizable fence establishes an own-term commit, captures a read index, requires fresh majority evidence, rechecks term/leadership and waits for SQLite completion. Queued Raft apply and old acknowledgements are insufficient. The first term gate may still append a barrier. Stale reads are separate diagnostics. Baseline f72715e retains the strong default; reviewed #166 changes callers to linearizable and hardens refusal of missing/unknown served labels. It must be integrated before claiming that default on a final deployment. [8]
-
-<!-- page -->
 ## 4. Workflow, claims, messaging and recovery
 
 Creation commits state and its outbox event together. Relays read bounded per-shard batches, publish persistent messages with mandatory routing and confirms, then mark only routed confirmations. A crash after confirm and before marking can duplicate publication, so processing is idempotent. This avoids a database/broker dual-write gap without exactly-once transport. [4]
@@ -78,10 +76,26 @@ Consumers use manual ack and prefetch 8, acknowledging only after the required d
 
 #168 preserves an earlier unknown through a later result-less routing 4xx. A verified committed result can resolve it; a pre-handler or malformed authentication refusal cannot. Durable callers preserve intent across process replacement and retry the same command. The deployed broker is a singleton even though its queues use the quorum type, so broker outage remains an availability limit. [4,6]
 
-<!-- page -->
 ## 5. Docker/Kubernetes deployment and reproducibility
 
 The supported target is local kind: one control plane, three data workers and one infra worker. The standalone storage Helm release owns coordinator, nine voters, PVCs, policies and bootstrap/admission tooling. The app release installs API/matcher/UI, RabbitMQ and ingress over it with storage.enabled=false, ensuring one storage owner. Multi-stage images run nonroot binaries. [4,9]
+
+T8. Implementation and deployment pins at the declared report source. Optional observability tools are separate from the measured load profile. modernc names the Go driver, not the embedded SQLite engine release. See go.mod, tools.mk, UI package/lock files and Helm values. [2]
+
+| Component | Technology and version | Role |
+|---|---|---|
+| Services | Go 1.27.2 | API, matcher, coordinator and storage |
+| Consensus/log | hashicorp/raft 1.8.0; raft-boltdb/v2 2.4.2 | Replicated order and durable Raft state |
+| State machine | modernc.org/sqlite 1.60.1 | Transactional, replayable derived state |
+| Messaging | RabbitMQ 4.3.7 | Durable queues, routed confirmed publication |
+| Local cluster | Kubernetes 1.37.0; kind 0.33.0 | Five-node local deployment |
+| Packaging | Helm 3.22.1 | Installation and configuration |
+| Ingress | Traefik 3.7.16; chart 42.1.2 | Public HTTP routing |
+| Metrics | Prometheus 3.16.0; Grafana 13.3.0 | Scraping, dashboards and alerts |
+| Tracing | OpenTelemetry Go 1.47.0; Collector 0.164.0; Jaeger 2.22.0 | Optional distributed traces |
+| Load | k6 2.3.0 | Scripted HTTP load campaigns |
+| Fault injection | Chaos Mesh 2.8.7 | Controlled Kubernetes faults |
+| UI | React/React DOM 19.3.1; Leaflet 1.9.4; esbuild 0.28.2; Node.js 24.16.0 | Interface, maps and build tooling |
 
 ![F4. Placement and persistence](figures/F4-print.svg)
 
@@ -93,7 +107,6 @@ Readiness drains before listener shutdown; consumers finish admitted durable han
 
 Reproducibility requires cached dependencies/images, installation manifests and source/image binding, not just an archive command. Retained offline 9/9 reports certify their original kit, not a new final cohort. Cloud is parked. Final clean-clone/offline execution, swapped-presenter rehearsals and backup recording/playback retain their own acceptance records. [9]
 
-<!-- page -->
 ## 6. Validation: course and scoped gate
 
 The 12 November scoped gate used source 1623c23, fixed API2/matcher2, aging 0s, autoscaling off and auth excluded. It records course 18/18, replacement 63/63 with 1,794 acknowledged writes and none lost, app-quiesced chaos 12/12 runs (22 checks), Merkle 7/7 with 216 acknowledged writes and none lost, and clean/quiescent strict invcheck. These are recorded observations, not universal losslessness. [5]
@@ -125,8 +138,9 @@ T5. Fault behavior and evidence boundaries. Ten chaos faults and two deliberate 
 
 The scoped gate's collector records fixed 2/2 replicas with no HPA/ScaledObject, but runtime build binding is NOT_ESTABLISHED for dev images. Some raw logs/screenshots remain outside the repository, listed in the report. Alias routes were deployed but not exercised by that gate; later forms were not part of its source. Final aliases/forms and excluded enhancements need their own accepted run.
 
-<!-- page -->
-## 6. Independent campaigns and limits (continued)
+Development and evaluation method. We divided the architecture plan into named goals, each implemented on its own branch and reviewed through a pull request. We wrote failing tests before implementing changes and used mutation checks to confirm that selected tests caught deliberately broken safety rules. Each of us reviewed the other's work, with particular attention to ownership boundaries and failure cases. Scripted demonstrations and clean deployment gates checked the required operations, recovery paths and replica counts. Separate chaos and load campaigns exercised faults and performance under recorded configurations, retaining command output, reports and checksums, with hashes and locations for raw files kept outside the repository. We kept incomplete audits, source and image qualifications, and untested combinations visible so that a passing run supported only the claim it actually checked.
+
+## Later campaigns and application checks
 
 The later #167 campaign kept API2/matcher2/UI1 active and passed 22 checks, distinct from the app-quiesced gate. Replication lag is max(0, leaderCommitIndex - followerRaftAppliedIndex), not commit minus last FSM command: barriers/no-ops/configuration entries do not advance that SQL counter. Its idle sample advanced commit 86174 to 86237 with FSM 85904, producing 333 false entries under the old formula and zero Raft-level lag. A real delay reached 51 then settled to zero; the stale-reader control detected 514 stale reads. Neither run establishes chaos safety under measured high load. [6]
 
@@ -134,7 +148,7 @@ Raft progress is not SQLite completion. Settle requires caught-up groups, equal 
 
 Application evidence includes real-FSM adversarial schedules and retained kind/broker/browser tests. A historical scaling run records 637 aggregate CANCELLED/no-assigned-resource checks, not a per-request response ledger. Dirty source/missing immutable build binding limits it to recorded images; its final fixed-profile snapshot was unverified. Newer scoped-gate snapshots do not retroactively fill that gap. UI forms preserve key/body across reentry/unknown replies and require a current read: v3 cannot be confirmed by v2. Saved/offline state is labelled and offline writes disabled. [4-5,9]
 
-## 7. Performance: accepted Phase 1
+## 7. Performance: Phase 1 and Phase 2
 
 Seven retained reports use clean recorded source 7dd1940: three baselines, three step runs and one soak, seed 52, one 8-logical-CPU Core Ultra 7 258V host with 30.4 GiB RAM. kind used CPUs 0-5 and k6 6-7, Guaranteed resources, load Raft profile, fixed 2/2, tracing/autoscaling off. Source pins, recorded image IDs and a fence setting alone are not proof of immutable image binding or actual read-mode use. Phase 1 callers used strong/Barrier. [7]
 
@@ -146,8 +160,7 @@ T6a. Client HTTP p99 milliseconds; repeated-row values are medians of run percen
 | Step, n=3 | 10-80 / 43.86 aggregate | 1049.34 / 102.43 / 367.06 | 0.00095 (0.095%) |
 | Soak, n=1 | 35 / 35 | 838.84 / 93.75 / 330.37 | 0.001275 (0.1275%) |
 
-<!-- page -->
-## 7. Method, M6 and pending comparison (continued)
+## Load method and selected M6 study
 
 Baselines measure 600 s and soak 1800 s after excluding 120 s HTTP warm-up; step runs measure 960 s without that warm-up. The mix is 15% creates, 10% resources, 10% match, 55% ID reads and 10% lists. All three step runs bracket the HTTP threshold at 50 req/s; write p99 crosses 1 s at 60. Other bounds are ID p99 <=250 ms, list p99 <=500 ms, errors <=1% and no dropped iterations. Baseline write p99 spans 665.75-690.92 ms. [7]
 
@@ -164,9 +177,26 @@ Ratios of medians are 3.566 and 4.831, not paired-trial speedups/confidence boun
 
 T6c. Placement simulation moves 24.93% of 10000 keys when extending three to four shards; it is synthetic, not live migration. Direct mod 3 to mod 4 would move an expected 75% under a uniform fixed hash; that is an analytical comparison, not a measured modulo deployment. [3]
 
-The supplied S draft describes a later repeated linearizable comparison and exploratory 110 req/s. Its evidence publication is pending, so the proposed numbers do not enter this draft's accepted-results table or conclusion. The exploratory n=1 audit did not complete; generator pressure above that range also prevents a system-saturation verdict. Integrate the comparison only after reviewing immutable source/images, raw results, errors, achieved rates, audit and deviations.
+## Phase 2 comparison
 
-<!-- page -->
+T6d. Same host and load profile; medians of three runs per phase; baselines offer 25 req/s. Historical revisions are 7dd1940 and 514bb33. Barrier counts cover the step window across all shards; refusal counts are global broker nacks, not lost acknowledged writes. [10]
+
+| Measurement | Phase 1: strong default | Phase 2: linearizable default |
+|---|---|---|
+| HTTP saturation | 50 req/s; write p99 fails at 60 | >80 req/s; no tested step fails |
+| Baseline write p99, ms | 684 | 93.57 |
+| Baseline ID-read p99, ms | 79.94 | 56.43 |
+| Baseline list p99, ms | 291.22 | 90.31 |
+| Write p99 at 80 req/s, ms | 1180.37 | 388.50 |
+| Barriers per step run | 270191 | 0 |
+| Broker refusals per step run | 6324 | 8 |
+
+Phase 1 issued one Raft barrier for each strong read; #166 made the linearizable fence the application default, removing steady-state read entries while retaining committed mutation checks. All three Phase 2 step runs passed through 80 req/s with clean invariant checks, audits and restoration. This establishes an HTTP lower bound above 80 req/s (n=3), not sustained matching capacity. Error rates remain nonzero: baseline median 0.000167 and step median 0.001093. The 29 residual counter differences are applied commands in flight at the end scrape, not barriers. [10]
+
+Two exploratory runs (n=1 each) suggest a request-path limit near 100-110 req/s as list p99 exceeds 500 ms, but neither audit completed: one drain was refused and the other retained too much WAITING retry backlog. Generator memory or the 400-VU cap also limited results above 110 req/s. The coordinator is the next observed pressure point, reaching about 98% of its 250 mCPU allowance from 50 req/s; the request queue remains near capacity at upper steps. These observations do not prove a sole bottleneck or audited capacity at 110. [10]
+
+Phase 2 adds no soak. The slim archive lists omitted raw files with hashes/locations; those off-repo files were not re-read here. The first step run's acceptance tail was completed by hand after the harness returned the documented above-range inconclusive result. The current #176 classifier labels the same threshold-clean range as a lower bound without hiding safety failures. The comparison was independently regenerated from retained request CSVs/report/extras inputs without drift; measurements remain bound to their historical source, not this final assembled artifact. [10]
+
 ## 8. Scope, decisions and conclusion
 
 T7. PS section 12 decision matrix; rationales are not performance proofs. Other service/language, type/location matching and observability choices are covered above.
@@ -179,7 +209,7 @@ T7. PS section 12 decision matrix; rationales are not performance proofs. Other 
 | Transactional outbox | DB/broker dual-write | Atomic state/event; dedupe cost | ADR005 |
 | Quorum queues | Classic/transient | Durable type; deployed broker still singleton | [4] |
 | Fence versus Barrier | Barrier each read | No steady-state read entries; proof complexity | [8] |
-| Linearizable default, reviewed | Stale / strong only | Fresh reads plus committed CAS/TryClaim; final source must include #166 | [3,8] |
+| Linearizable default | Stale / strong only | Fresh reads; committed CAS/TryClaim decide writes; quorum dependency | [3,8] |
 | kind | Managed cloud | Required repeatable local scope; one host | [9] |
 | Open-model load | Closed-loop VUs | Offered/achieved gap and dropped work visible | [7] |
 | Merkle audit | Full dumps/row copying | Equal-index localization; diagnostic only | [9] |
@@ -190,6 +220,8 @@ ReliefGrid demonstrates durable local matching with explicit uncertainty, commit
 
 [1] Course Cloud Computing problem statement: Tables 2/3/8; sections 9, 10 and 12. Local deployment and live demo requirements are authoritative.
 
-[2] [Implementation source baseline](https://github.com/ParthMalhotra07/ReliefGrid/tree/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956). Re-pin final submission; historical measurements retain their own revisions.
+[2] [Implementation source baseline](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275). Re-pin final submission; historical measurements retain their own revisions.
 
-[3] [Public/internal/ring contracts and simulation](https://github.com/ParthMalhotra07/ReliefGrid/tree/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956/contracts). [4] [Architecture, workflow and ADR004/005](https://github.com/ParthMalhotra07/ReliefGrid/blob/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956/docs/report/architecture.md). [5] [12 November scoped gate](https://github.com/ParthMalhotra07/ReliefGrid/blob/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956/docs/evidence/gate-20261112T100532Z/report.md). [6] [Later #167 campaign](https://github.com/ParthMalhotra07/ReliefGrid/tree/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956/docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7). [#168 unknown-outcome fix](https://github.com/ParthMalhotra07/ReliefGrid/pull/168). [7] [S5.2 Phase 1 reports/aggregates and methodology](https://github.com/ParthMalhotra07/ReliefGrid/tree/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956/docs/evidence/S5.2). [8] [ADR006 and retained M6 raw replay](https://github.com/ParthMalhotra07/ReliefGrid/blob/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956/docs/adr/006-read-fence-study.md). [9] [Deployment, Merkle audit and qualified validation/rehearsal records](https://github.com/ParthMalhotra07/ReliefGrid/blob/f72715e1b6fdcc8564e81df0fbaf7b08c1f28956/docs/report/deployment-and-demo.md).
+[3] [Public/internal/ring contracts and simulation](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/contracts). [4] [Architecture, workflow and ADR004/005](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/report/architecture.md). [5] [12 November scoped gate](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/evidence/gate-20261112T100532Z/report.md). [6] [Later #167 campaign](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7). [#168 unknown-outcome fix](https://github.com/ParthMalhotra07/ReliefGrid/pull/168). [7] [S5.2 Phase 1 reports/aggregates and methodology](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/docs/evidence/S5.2). [8] [ADR006 and retained M6 raw replay](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/adr/006-read-fence-study.md). [9] [Deployment, Merkle audit and qualified validation/rehearsal records](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/report/deployment-and-demo.md).
+
+[10] [Phase 2 comparison, reviewed #176](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) and [method/deviations/limits](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md). Raw measurement source 514bb33; evidence publication source 25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3.

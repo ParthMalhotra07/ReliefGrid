@@ -21,3 +21,8 @@ Actual checks:
 The PDF is a review draft with source baseline f72715e, not a final submission.
 Phase 2 published evidence, final gate/source pin and owner acceptance remain.
 No live kind/load/auth/aging run was performed for report assembly.
+
+This directory records the first assembly at b1ab43a, including its original
+PDF hash. The later flowing-layout/Phase 2 update has a separate record under
+../report-followup/; the current PDF must be checked against that newer record.
+The original nine-page PDF remains available in Git history at b1ab43a.

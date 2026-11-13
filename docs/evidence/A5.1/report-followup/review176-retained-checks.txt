@@ -1,0 +1,57 @@
+
+== docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T181041Z
+== docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T181041Z: S5.2-baseline-20261112T181041Z (baseline)
+PASS  results: 25 req/s; write p50/p95/p99 31.91/75.12/93.57 ms; read p50/p95/p99 2.68/30.83/51.45 ms; list p50/p95/p99 18.29/72.22/91.3 ms; errors 0.00025
+PASS  background: 121 samples (0 gaps), 0 unconfirmed publishes, peak retry.120s 5264, waiting 0->773; after the run 0 unconfirmed, waiting 780 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 0 handoffs (0 retries)
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-baseline-20261112T181041Z
+
+== docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T182431Z
+== docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T182431Z: S5.2-baseline-20261112T182431Z (baseline)
+PASS  results: 25 req/s; write p50/p95/p99 32.37/79.11/99.46 ms; read p50/p95/p99 2.49/39.78/60 ms; list p50/p95/p99 21.12/71.5/85.66 ms; errors 8.3e-05
+PASS  background: 121 samples (0 gaps), 0 unconfirmed publishes, peak retry.120s 5126, waiting 0->772; after the run 1 unconfirmed, waiting 780 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 0 handoffs (0 retries)
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-baseline-20261112T182431Z
+
+== docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T183824Z
+== docs/evidence/S5.2/phase2-linearizable/S5.2-baseline-20261112T183824Z: S5.2-baseline-20261112T183824Z (baseline)
+PASS  results: 25 req/s; write p50/p95/p99 31.02/69.73/85.16 ms; read p50/p95/p99 2.35/26.74/56.43 ms; list p50/p95/p99 17.5/66.41/90.31 ms; errors 0.000167
+PASS  background: 121 samples (0 gaps), 0 unconfirmed publishes, peak retry.120s 5559, waiting 0->773; after the run 0 unconfirmed, waiting 780 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 0 handoffs (0 retries)
+PASS  SHA256SUMS: 14 files match, 24 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-baseline-20261112T183824Z
+
+== docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T170848Z
+== docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T170848Z: S5.2-step-20261112T170848Z (step)
+PASS  results: 43.86 req/s; write p50/p95/p99 63.92/155.45/282.42 ms; read p50/p95/p99 8.16/49.6/67.33 ms; list p50/p95/p99 52.58/135.1/187.51 ms; errors 0.001093
+PASS  background: 193 samples (0 gaps), 33 unconfirmed publishes, peak matching.requests 9951, waiting 0->1461; after the run 0 unconfirmed, waiting 1976 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 1 handoffs (0 retries)
+PASS  saturation: > 80 req/s (no step breaks a threshold up to 80 req/s)
+PASS  SHA256SUMS: 14 files match, 23 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261112T170848Z
+
+== docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T173017Z
+== docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T173017Z: S5.2-step-20261112T173017Z (step)
+PASS  results: 43.91 req/s; write p50/p95/p99 62.69/155.82/291.57 ms; read p50/p95/p99 7.87/45.18/65.49 ms; list p50/p95/p99 49.39/140.02/203.89 ms; errors 0.00121
+PASS  background: 193 samples (0 gaps), 8 unconfirmed publishes, peak matching.requests 9922, waiting 0->1424; after the run -2 unconfirmed, waiting 2015 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 0 handoffs (0 retries)
+PASS  saturation: > 80 req/s (no step breaks a threshold up to 80 req/s)
+PASS  SHA256SUMS: 14 files match, 23 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261112T173017Z
+
+== docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T175029Z
+== docs/evidence/S5.2/phase2-linearizable/S5.2-step-20261112T175029Z: S5.2-step-20261112T175029Z (step)
+PASS  results: 43.9 req/s; write p50/p95/p99 61.01/152.95/276.31 ms; read p50/p95/p99 8.46/46.3/68.38 ms; list p50/p95/p99 48.71/142.94/200.82 ms; errors 0.000617
+PASS  background: 193 samples (0 gaps), 6 unconfirmed publishes, peak matching.requests 9960, waiting 0->1639; after the run 2 unconfirmed, waiting 2190 at the pause
+PASS  audit: without admission (matcher 2 -> 0 -> 2), headroom after 0 s, drained 3 handoffs (0 retries)
+PASS  saturation: > 80 req/s (no step breaks a threshold up to 80 req/s)
+PASS  SHA256SUMS: 14 files match, 23 kept off-repo agree with the report
+PASS  raw: 35 files accounted for
+PASS  report S5.2-step-20261112T175029Z

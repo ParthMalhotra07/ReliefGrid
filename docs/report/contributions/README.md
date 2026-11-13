@@ -14,5 +14,7 @@ not certify protocol claims, enable auth, accept a new benchmark or complete the
 final report. Review F2 against actual domain states before final layout.
 
 Working report figures are in ../figures/. F2 is corrected to match the committed
-FSM transition table; originals remain preserved and hashed here. Phase 2 text
-in the supplied draft remains provisional until its raw evidence is published.
+FSM transition table; originals remain preserved and hashed here. The supplied text is historical editorial source. The current assembled
+draft now cites [reviewed Phase 2 evidence](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md); its incomplete
+exploratory audits remain qualified. Original placeholders/wording are not
+submission citations and are not silently changed in this archived handout.

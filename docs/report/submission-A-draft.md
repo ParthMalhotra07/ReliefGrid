@@ -8,7 +8,8 @@ sections or an exported/page-counted report. Source baseline `7fa4a7d0093d92477a
 Preserve each measurement's historical revision; update implementation claims
 against the accepted final source before export. S's supplied text and F1-F4 drawings are preserved in
 [contributions](contributions/README.md); the [assembled draft](submission-draft.md)
-combines these sources without treating unpublished Phase 2 numbers as accepted.
+combines these sources with the independently reviewed Phase 2 evidence at #176.
+Historical source/image and exploratory-audit qualifications remain explicit.
 
 ## 1. Title, abstract and problem statement — joint opening
 

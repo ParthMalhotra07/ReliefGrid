@@ -255,3 +255,36 @@ checks. Autoscaling, if included, needs final-cohort acceptance; otherwise label
 it untested on that cohort while retaining the qualified historical #123 result.
 The final gate must exercise the aliases and forms on its own recorded source.
 No schedule date or merged implementation alone establishes these acceptances.
+
+## Phase 2 read-path comparison: reviewed evidence #176
+
+[#176 comparison](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) binds three baselines and three step runs
+to historical measured source 514bb33e1ffd3c6f8a83591fc82e6347b837d7ac, compared with
+Phase 1 source 7dd19404d6df0f7c098810d4c1ad093355a0cd3a. The current integrated
+source includes merged #166; it was not itself newly load-tested by this review.
+
+| Measurement (medians of three runs) | Phase 1 strong | Phase 2 linearizable |
+|---|---:|---:|
+| HTTP threshold bound | 50 req/s; fails at 60 | >80 req/s; no tested step fails |
+| Baseline write / ID-read / list p99, ms | 684 / 79.94 / 291.22 | 93.57 / 56.43 / 90.31 |
+| Write p99 at offered 80 req/s, ms | 1180.37 | 388.50 |
+| Committed barriers per measured step run | 270191 | 0 |
+| Global broker refusals per measured step run | 6324 | 8 |
+
+All six retained reports/checksums and the request-CSV comparison were replayed
+without drift. Phase 2 audits, invariant checks and restoration pass; the
+above-range classifier preserves safety failures and rejects fabricated
+saturation points. The first acceptance tail was completed by hand as disclosed.
+Phase 2 adds no soak. Error fractions remain nonzero (baseline 0.000167, step
+0.001093). The 29 remaining counter differences are applied commands in flight
+at the end scrape, not committed barriers.
+
+The two exploratory runs near 100-110 req/s are n=1 each with incomplete audits:
+one drain was refused and the other retained a WAITING retry backlog. Generator
+memory or the 400-VU cap constrained higher rates. They are request-path
+indications, not audited capacity or sustainable matching throughput. At upper
+steps the coordinator approaches 98% of 250 mCPU and the request queue is near
+capacity; this is observed pressure, not proof of a sole bottleneck. Retain the
+full [method/deviation/omitted-file qualifications](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md). The
+scoped gate, later chaos campaign, load comparison and final gate remain
+separate evidence sets.

@@ -118,7 +118,8 @@ def figure4():
 STYLES={
     'title':ParagraphStyle('title',fontName='Helvetica-Bold',fontSize=18,leading=21,textColor=INK,spaceAfter=8),
     'h2':ParagraphStyle('h2',fontName='Helvetica-Bold',fontSize=13.5,leading=16,textColor=INK,spaceBefore=7,spaceAfter=7,keepWithNext=True),
-    'body':ParagraphStyle('body',fontName='Times-Roman',fontSize=11,leading=13.5,spaceAfter=6),
+    'body':ParagraphStyle('body',fontName='Times-Roman',fontSize=11.1,leading=14,spaceAfter=6),
+    'tablecaption':ParagraphStyle('tablecaption',fontName='Times-Italic',fontSize=9.5,leading=11.5,spaceAfter=6,keepWithNext=True),
     'caption':ParagraphStyle('caption',fontName='Times-Italic',fontSize=9,leading=11,spaceAfter=7),
     'table':ParagraphStyle('table',fontName='Times-Roman',fontSize=9,leading=11),
     'th':ParagraphStyle('th',fontName='Helvetica-Bold',fontSize=9,leading=11,textColor=INK),
@@ -172,14 +173,21 @@ def build(root,output):
                     i+=1
                 story.extend([table(rows),Spacer(1,7)]);continue
             if line_text.startswith('!['):
-                key=re.search(r'!\[(F\d)',line_text)[1];story.extend([figures[key],Spacer(1,5)]);i+=1;continue
+                key=re.search(r'!\[(F\d)',line_text)[1]
+                i+=1
+                while i<len(lines) and not lines[i].strip():i+=1
+                group=[figures[key],Spacer(1,5)]
+                if i<len(lines) and re.match(r'F\d\.',lines[i].strip()):
+                    group.append(Paragraph(markup(lines[i].strip()),STYLES['caption']))
+                    i+=1
+                story.append(KeepTogether(group));continue
             if line_text.startswith('# '):story.append(Paragraph(markup(line_text[2:]),STYLES['title']));i+=1;continue
             if line_text.startswith('## '):story.append(Paragraph(markup(line_text[3:]),STYLES['h2']));i+=1;continue
             paragraph=[line_text];i+=1
             while i<len(lines) and lines[i].strip() and not lines[i].lstrip().startswith(('#','|','![')):
                 paragraph.append(lines[i].strip());i+=1
             content=' '.join(paragraph)
-            style='caption' if re.match(r'F\d\.',content) else 'ref' if re.match(r'\[\d\]',content) else 'meta' if content.startswith(('Working submission','Parth Malhotra')) else 'body'
+            style='tablecaption' if re.match(r'T\d',content) else 'caption' if re.match(r'F\d\.',content) else 'ref' if re.match(r'\[\d+\]',content) else 'meta' if content.startswith(('Working submission','Parth Malhotra')) else 'body'
             story.append(Paragraph(markup(content),STYLES[style]))
     output.parent.mkdir(parents=True,exist_ok=True)
     doc=BaseDocTemplate(str(output),pagesize=A4,leftMargin=42,rightMargin=42,topMargin=36,bottomMargin=42,title='ReliefGrid submission review draft',author='Parth Malhotra and Hrishabh Sharrma',pageCompression=1)

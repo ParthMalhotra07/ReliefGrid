@@ -5,7 +5,7 @@ order and page budgets below. This is an editorial plan, not an exported or
 page-counted report. Title, figures, captions, whitespace and references all count;
 there is no additional cover, contents page or appendix outside this budget.
 
-Integrated planning baseline: `7fa4a7d0093d92477aa90a9a23fe1d3e942083b6`. The report chapters merged in #137;
+Integrated planning baseline: `b77e5b9761119a73bed8f2d3eede40c863492275`. The report chapters merged in #137;
 Hrishabh's outline-v2 refines their allocations without adding report sections.
 Source links below use that full planning SHA. Historical measurements retain
 their own source/tree/image identities; this baseline does not certify their
@@ -60,7 +60,7 @@ which timestamp the server supplies. Keep exact field wording tied to the
 original problem statement, not inferred from endpoint examples.
 
 Full mappings: [PS compliance](ps-compliance.md). Full schemas:
-[contracts](https://github.com/ParthMalhotra07/ReliefGrid/tree/7fa4a7d0093d92477aa90a9a23fe1d3e942083b6/contracts).
+[contracts](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/contracts).
 
 ## 3. Architecture, sharding, consistency and schemas: 1.50 pages
 
@@ -74,10 +74,10 @@ committed preconditions, deterministic proposer-supplied inputs, PVC Raft histor
 and rebuilt SQLite.
 
 Contrast Barrier with the quorum/term/completed-FSM fence, explicit diagnostic
-stale reads and errors on failed authority. At the planning baseline, default
-app calls still use `strong`/Barrier. #166 proposes the linearizable default;
-describe it as deployed only after the accepted revision/configuration proves
-that. Requested minimum consistency must not be presented as proof of the
+stale reads and errors on failed authority. At the refreshed integrated baseline, #166 is merged and app callers default
+to `linearizable`; explicit strong verification calls retain Barrier behavior.
+Bind each physical run to its own source/configuration rather than treating
+this report integration as a new deployment measurement. Requested minimum consistency must not be presented as proof of the
 executed read algorithm. Details: [architecture](architecture.md).
 
 ## 4. Workflow, claims, messaging and recovery method: 1.00 page
@@ -138,9 +138,10 @@ T6 has three compact blocks: baseline/step/soak offered versus achieved load,
 latency/errors/saturation; M6 Barrier/fence medians and entries/read; synthetic
 ring movement (24.93%, not live migration). #126 Phase 1 is now merged; use its
 accepted raw reports and exact nonzero error rates, not the former draft's
-pending label. Check any later Phase 2 comparison against its own immutable run
-artifacts before adding its numbers. A message reporting results is not the raw
-evidence. The final integrated revision/performance claim remains separately
+pending label. The [reviewed Phase 2 comparison](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) is now integrated as T6d.
+All six retained reports and the raw-CSV comparison were replayed; the
+[method/deviations](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md) retain one-host/seed, no-soak, off-repo-file
+and incomplete exploratory-audit qualifications. The final integrated revision/performance claim remains separately
 qualified.
 
 Keep one-host/seed scope, excluded HTTP warm-up, 503 errors, matched-only latency

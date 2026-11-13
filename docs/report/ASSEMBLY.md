@@ -1,8 +1,9 @@
 # Review draft assembly
 
 submission-draft.md integrates the A fragments and supplied S v3 contribution
-into nine sections. Its explicit page breaks are the review layout, not evidence
-of final scientific acceptance. Build with Python and pdf-requirements.txt:
+into nine sections. Sections now flow naturally; figures remain with their captions and table headers
+repeat on continuation. The page count is verified after rendering, not inferred
+from the nine-page editorial budget. Build with Python and pdf-requirements.txt:
 
     python -m pip install -r docs/report/pdf-requirements.txt
     python scripts/build_submission_pdf.py
@@ -18,9 +19,10 @@ previous 5.5/3.5 figures were rounded editing envelopes. Layout is checked on th
 actual PDF, including references and captions, not inferred from word count.
 No additional cover/contents/appendix is outside the count.
 
-This remains a review draft: Phase 2 evidence must be published/reviewed before
-its numbers are accepted. Supplied provisional numbers remain in the preserved
-editorial contribution but not this draft's accepted table/abstract/conclusion.
+Phase 2 evidence at #176 (25ea8bc) has now been independently replayed/reviewed
+and integrated, retaining the measured source 514bb33 and unaudited exploration
+qualifications. This remains a review draft awaiting final cohort acceptance
+and final source/reference pin.
 Final cohort checks, final source pin and report owner review remain required.
 The current draft has no {FINAL_SHA}/TODO citation placeholders; source links
 use its declared baseline and historical runs retain their own identities.
@@ -30,7 +32,13 @@ text/hash checks used pypdf 6.21.2 and pymupdf 2.1; these are optional review
 dependencies rather than runtime application dependencies. Recheck a rebuilt
 PDF before replacing the retained artifact:
 
-    python docs/evidence/A5.1/assembly-review/assembly-qa.py --root .
+    python docs/evidence/A5.1/report-followup/verify-assembly.py --root .
 
 That replay checks source-file hashes, page count, text bounds and unresolved
 citation placeholders; visual inspection of every rendered page remains manual.
+
+The abstract/problem introduction and conclusion remain for the two human
+authors to rewrite and jointly read through. This update removes only the
+obsolete unpublished-Phase-2 disclaimer from the existing abstract; it does not
+replace those sections with newly written author prose. The supplied methodology
+paragraph and verified technology pins are integrated in the report body.
