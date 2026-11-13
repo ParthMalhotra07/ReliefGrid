@@ -79,3 +79,7 @@ app:
     resources:
       requests: {cpu: 25m, memory: 32Mi}
       limits: {cpu: 250m, memory: 128Mi}
+
+# Enable only after all application and operational callers send tokens.
+internalAuth:
+  enabled: false

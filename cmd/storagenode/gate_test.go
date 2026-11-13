@@ -49,7 +49,8 @@ func testConfig(t *testing.T, raftAddr, dataAddr, mgmtAddr string, listen testne
 	root := t.TempDir()
 	_, raftPort, _ := net.SplitHostPort(raftAddr)
 	_, dataPort, _ := net.SplitHostPort(dataAddr)
-	return config{
+	tokens := mountedAuth(t)
+	return config{NodeAuthFiles: tokens, NodeSenderTokenFile: tokens.Token,
 		Raft: raftstore.Config{PodName: "storage-shard-1-2", GroupID: "shard-1", Shard: 1,
 			DataDir: filepath.Join(root, "pvc"), FSMDir: filepath.Join(root, "fsm"),
 			BindAddr: raftAddr, AdvertiseAddr: "localhost:" + raftPort, Profile: raftstore.ProfileDemo},
