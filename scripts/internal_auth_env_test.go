@@ -106,10 +106,12 @@ func noTokenIn(t *testing.T, where string, b []byte) {
 }
 
 func TestInternalAuthHelperOff(t *testing.T) {
+	// Off: enabled is the boolean false, or (a release from a chart before #163, read
+	// successfully) the internalAuth key is absent or null.
 	for name, values := range map[string]string{
-		"enabled false":     authOff,
-		"no internalAuth":   `{"image":{"tag":"dev"}}`,
-		"internalAuth null": `{"internalAuth":null}`,
+		"enabled false":             authOff,
+		"legacy: no internalAuth":   `{"image":{"tag":"dev"}}`,
+		"legacy: internalAuth null": `{"internalAuth":null}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir, env := authFakes(t, values, bothTokens)
@@ -212,6 +214,19 @@ func TestInternalAuthHelperRefuses(t *testing.T) {
 		{"helm fails", "", bothTokens, "refusing to guess"},
 		{"values not JSON", "not json", bothTokens, "not JSON"},
 		{"enabled not a boolean", `{"internalAuth":{"enabled":"yes"}}`, bothTokens, "not a boolean"},
+		// #174 review: only the JSON booleans true and false choose a mode. A string,
+		// number or null enabled, or an internalAuth object without it, fails closed.
+		{"enabled is the string true", `{"internalAuth":{"enabled":"true"}}`, bothTokens, "internalAuth.enabled is \"true\" (string), not a boolean"},
+		{"enabled is the string false", `{"internalAuth":{"enabled":"false"}}`, bothTokens, "internalAuth.enabled is \"false\" (string), not a boolean"},
+		{"enabled is 1", `{"internalAuth":{"enabled":1}}`, bothTokens, "internalAuth.enabled is 1 (number), not a boolean"},
+		{"enabled is 0", `{"internalAuth":{"enabled":0}}`, bothTokens, "internalAuth.enabled is 0 (number), not a boolean"},
+		{"enabled is null", `{"internalAuth":{"enabled":null}}`, bothTokens, "internalAuth.enabled is null (null), not a boolean"},
+		{"enabled missing", `{"internalAuth":{"token":"x"}}`, bothTokens, "internalAuth has no enabled"},
+		// A non-null internalAuth that is not an object is malformed, not "absent".
+		{"internalAuth is a string", `{"internalAuth":"off"}`, bothTokens, "internalAuth is \"off\" (string), not an object"},
+		{"internalAuth is false", `{"internalAuth":false}`, bothTokens, "internalAuth is false (boolean), not an object"},
+		{"internalAuth is a list", `{"internalAuth":[]}`, bothTokens, "internalAuth is [] (array), not an object"},
+		{"values not an object", `[]`, bothTokens, "values are not a JSON object"},
 		{"node Secret missing", authOn, map[string]string{"reliefgrid-internal-auth": appToken}, "cannot read reliefgrid-node-auth/sender-token"},
 		{"empty token", authOn, map[string]string{"reliefgrid-internal-auth": "", "reliefgrid-node-auth": nodeToken}, "reliefgrid-internal-auth/sender-token is not a valid credential"},
 		{"trailing newline", authOn, map[string]string{"reliefgrid-internal-auth": appToken + "\n", "reliefgrid-node-auth": nodeToken}, "not a valid credential"},

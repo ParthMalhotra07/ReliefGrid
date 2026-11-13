@@ -15,8 +15,10 @@
 #
 #   internal_auth_detect <context> <namespace>
 #       INTERNAL_AUTH_ON=true|false from the storage release's computed values
-#       (helm get values -a; release INTERNAL_AUTH_RELEASE, default storage). Returns 1
-#       if it cannot tell: an unreadable release is never taken as "off".
+#       (helm get values -a; release INTERNAL_AUTH_RELEASE, default storage): only the
+#       JSON booleans internalAuth.enabled true/false; an absent or null internalAuth key
+#       (a chart from before #29) is off. Returns 1 if it cannot tell: an unreadable
+#       release, or a string, number, null or missing enabled, is never taken as "off".
 #   internal_auth_files
 #       On: writes the app and node sender tokens and a curl header file for each,
 #       exports INTERNAL_AUTH_TOKEN_FILE and NODE_AUTH_SENDER_TOKEN_FILE, and sets
@@ -59,15 +61,26 @@ internal_auth_detect() {
 		_internal_auth_err "cannot read the values of release $release in $ns; refusing to guess whether internal auth is on"
 		return 1
 	}
-	enabled="$(jq -r 'if (.internalAuth | type) == "object" then (.internalAuth.enabled // false) else false end | tostring' <<<"$values" 2>/dev/null)" || {
+	# Only the JSON booleans choose a mode. An absent or null internalAuth key (a release of a
+	# chart from before #29, read successfully) is off; anything else malformed fails closed.
+	enabled="$(jq -r '
+		if type != "object" then "error values are not a JSON object"
+		elif .internalAuth == null then "off"
+		elif (.internalAuth | type) != "object" then
+			"error internalAuth is \(.internalAuth | tojson) (\(.internalAuth | type)), not an object"
+		elif (.internalAuth | has("enabled") | not) then "error internalAuth has no enabled"
+		elif .internalAuth.enabled == true then "on"
+		elif .internalAuth.enabled == false then "off"
+		else "error internalAuth.enabled is \(.internalAuth.enabled | tojson) (\(.internalAuth.enabled | type)), not a boolean"
+		end' <<<"$values" 2>/dev/null)" || {
 		_internal_auth_err "release $release: values are not JSON"
 		return 1
 	}
 	case "$enabled" in
-	true) INTERNAL_AUTH_ON=true ;;
-	false) INTERNAL_AUTH_ON=false ;;
+	on) INTERNAL_AUTH_ON=true ;;
+	off) INTERNAL_AUTH_ON=false ;;
 	*)
-		_internal_auth_err "release $release: internalAuth.enabled is $enabled, not a boolean"
+		_internal_auth_err "release $release: ${enabled#error }"
 		return 1
 		;;
 	esac
