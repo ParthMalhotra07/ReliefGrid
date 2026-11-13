@@ -66,21 +66,21 @@ FAIL
 
 CHECK 10 — never resolve committed operation — baseline GREEN, mutation RED
 --- FAIL: TestMalformedAuthRefusalCannotProveRejection (0.00s)
-    auth_test.go:152: committed answer did not resolve uncertainty: coordclient: 0 OUTCOME_UNKNOWN: earlier attempt unresolved; retry the same operationId: coordclient: 401 UNAUTHORIZED: 
+    auth_test.go:152: committed answer did not resolve uncertainty: coordclient: 0 OUTCOME_UNKNOWN: earlier attempt unresolved; retry the same operationId: coordclient: 401 UNAUTHORIZED:
 FAIL
 FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	0.004s
 FAIL
 
 CHECK 11 — drop DELETE operation identity — baseline GREEN, mutation RED
 --- FAIL: TestDeleteAuthRefusalKeepsUnknown (0.00s)
-    auth_test.go:175: lost DELETE uncertainty: coordclient: 403 UNAUTHORIZED: 
+    auth_test.go:175: lost DELETE uncertainty: coordclient: 403 UNAUTHORIZED:
 FAIL
 FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	0.006s
 FAIL
 
 CHECK 12 — accept 401 carrying result or unknown — baseline GREEN, mutation RED
 --- FAIL: TestStructured401WithOutcomeCannotProveRejection (0.00s)
-    auth_test.go:193: 401 with outcome treated as rejection: coordclient: 401 UNAUTHORIZED: 
+    auth_test.go:193: 401 with outcome treated as rejection: coordclient: 401 UNAUTHORIZED:
 FAIL
 FAIL	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	0.006s
 FAIL
