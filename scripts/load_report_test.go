@@ -267,6 +267,68 @@ func TestLoadReportCheckRejects(t *testing.T) {
 	}
 }
 
+// A report whose headroom counted every message (loadtest/headroom.py) is
+// checked the same way: each queue's messages plus those of the retry tiers
+// that return to it (audit.headroom.routes) within pct% of its limit, and the
+// recorded depth equal to that sum. Reports from before (ready+unacked only,
+// no messages) keep the old rule.
+func TestLoadReportCheckHeadroomCountsReturningRetries(t *testing.T) {
+	q := func(messages, ready, unacked, returning int) map[string]any {
+		return map[string]any{"messages": messages, "ready": ready, "unacked": unacked, "returning": returning, "depth": messages + returning}
+	}
+	headroom := func(t *testing.T, m map[string]any, requests, parked map[string]any) {
+		h, _ := at(t, m, "audit.headroom.pct")
+		h["routes"] = map[string]any{"retry.120s": []any{"matching.requests"}, "retry.30s": []any{"matching.requests"},
+			"retry.5s": []any{"matching.requests"}, "wakeup.retry.5s": []any{"matching.wakeups"}}
+		h["depthsAtPause"] = map[string]any{
+			"matching.dead": q(0, 0, 0, 0), "matching.requests": requests, "matching.wakeups": q(2298, 2282, 16, 0),
+			"retry.120s": q(0, 0, 0, 0), "retry.30s": q(0, 0, 0, 0), "retry.5s": parked, "wakeup.retry.5s": q(0, 0, 0, 0),
+		}
+	}
+	for _, c := range []struct {
+		name   string
+		mutate func(*testing.T, map[string]any)
+		want   string // "" passes; otherwise a fragment of the FAIL line
+	}{
+		{"every message within the limit", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(5016, 5000, 16, 2984), q(2984, 0, 0, 0))
+		}, ""},
+		// The exploratory 10->160 run: 7836 in matching.requests passed on
+		// ready+unacked, with 10001 retries parked in retry.5s.
+		{"parked retries at the pause", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(7836, 7820, 16, 10001), q(10001, 0, 0, 0))
+		}, "audit.headroom.depthsAtPause.matching.requests: 17837 over 80% of 10000"},
+		{"recorded depth leaves out the returning retries", func(t *testing.T, m map[string]any) {
+			r := q(5016, 5000, 16, 2984)
+			r["returning"], r["depth"] = 0, 5016
+			headroom(t, m, r, q(2984, 0, 0, 0))
+		}, "audit.headroom.depthsAtPause.matching.requests: returning 0, the tiers hold 2984"},
+		{"total below ready+unacked", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(10, 20, 0, 0), q(0, 0, 0, 0))
+		}, "audit.headroom.depthsAtPause.matching.requests: messages 10 < ready+unacked 20"},
+		{"no routes", func(t *testing.T, m map[string]any) {
+			headroom(t, m, q(5016, 5000, 16, 0), q(0, 0, 0, 0))
+			h, _ := at(t, m, "audit.headroom.pct")
+			delete(h, "routes")
+		}, "audit.headroom.routes"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			m := loadReport(t)
+			c.mutate(t, m)
+			code, out := runLoadCheck(t, writeReport(t, m))
+			if c.want == "" {
+				if code != 0 {
+					t.Fatalf("want exit 0, got %d:\n%s", code, out)
+				}
+				return
+			}
+			if code != 1 || !strings.Contains(out, "FAIL") || !strings.Contains(out, c.want) {
+				t.Fatalf("want exit 1 with a FAIL naming %q, got exit %d:\n%s", c.want, code, out)
+			}
+		})
+	}
+}
+
 func TestLoadReportCheckFiles(t *testing.T) {
 	t.Run("tampered file", func(t *testing.T) {
 		dir := writeReport(t, loadReport(t))
