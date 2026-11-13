@@ -1,8 +1,8 @@
 {
-  "revision": "888469ecae8c11db",
+  "revision": "28110e86fb709ae1",
   "assets": [
+    "/assets/app-A6LNWUV4.js",
     "/assets/app-JHPSCFMW.css",
-    "/assets/app-V57WIVJE.js",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
@@ -20,17 +20,17 @@
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/map-grid.svg": "5f12f8840b5a9c3b97e162b4a95834f16dca1ae0274b8d046703f8f8085968b1",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
-    "src/state.js": "73aa9c3abe8d5e59dca6fc7a253a94686a03a100a7f4768deecb77cdc51cc8e4"
+    "src/state.js": "491bbd90a0f0cd791dc7a3af2dfd6a90ea9f0523516da6a7c1fbfade646003f7"
   },
   "outputs": {
+    "app-A6LNWUV4.js": "54183587a2f38593c746095c131b509485f4ff3f694bc005e996dec80acb3f25",
     "app-JHPSCFMW.css": "c9b9351b87dcd63e15f14d993c7a7f84e5cc93f768d2928670634e934a99181a",
-    "app-V57WIVJE.js": "ab3846d2f6fc84a9f87205bfc12365e3c0350408c34278f5b3780748344a3492",
-    "index.html": "6f85a63729af291b1bc1b62b220e055b9d8bf809a971199cb5f6fd60b5a0f52e",
+    "index.html": "5819e158e991ab59e4e2c983c45f2ffb7c70b1b086e23c609b29a8c687c1f01b",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "map-grid.svg": "5f12f8840b5a9c3b97e162b4a95834f16dca1ae0274b8d046703f8f8085968b1",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "da127df6e5fed594cc6d00fa9dd5e7b649132acc2890f242483811775ea222c2"
+    "sw.js": "1cbf012785e952d2fd57229627260d872790e82a07af96fd3c582e018e1913a8"
   }
 }

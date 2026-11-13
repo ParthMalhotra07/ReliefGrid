@@ -175,7 +175,7 @@ func TestAPIRequiredRoutesAndReciprocalMatch(t *testing.T) {
 	}
 	for _, path := range []string{"/api/v1/requests?type=WATER&status=PENDING&limit=1", "/api/v1/resources?type=WATER&near=0,0&radiusKm=50&limit=1"} {
 		list := object(t, call(ctx, h, http.MethodGet, path, "", ""), http.StatusOK)
-		if list["partial"] != false || list["consistency"] != "strong" {
+		if list["partial"] != false || list["consistency"] != "linearizable" {
 			t.Fatalf("authoritative scan metadata = %#v", list)
 		}
 		for _, field := range []string{"items", "positions", "failedShards"} {

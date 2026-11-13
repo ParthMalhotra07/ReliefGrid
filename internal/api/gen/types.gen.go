@@ -431,7 +431,7 @@ type RegisterResourceBody struct {
 
 // RequestListResponse defines model for RequestListResponse.
 type RequestListResponse struct {
-	// Consistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+	// Consistency Minimum read consistency guaranteed for every shard read on this page; the served mode of each shard is verified to be at least this strong. It is the requested minimum, not an observed value, and does not say whether a shard read used the read fence or a barrier. Public authoritative lists are read linearizable by default; a stale page is never returned as a list.
 	Consistency  RequestListResponseConsistency `json:"consistency"`
 	FailedShards []int                          `json:"failedShards"`
 	Items        []RequestResponse              `json:"items"`
@@ -446,7 +446,7 @@ type RequestListResponse struct {
 	Positions []ShardPosition `json:"positions"`
 }
 
-// RequestListResponseConsistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+// RequestListResponseConsistency Minimum read consistency guaranteed for every shard read on this page; the served mode of each shard is verified to be at least this strong. It is the requested minimum, not an observed value, and does not say whether a shard read used the read fence or a barrier. Public authoritative lists are read linearizable by default; a stale page is never returned as a list.
 type RequestListResponseConsistency string
 
 // RequestResponse Request data follows the stored request model. Requests have no availability window or automatic expiry cancellation.
@@ -525,7 +525,7 @@ type RequestType = ResourceType
 
 // ResourceListResponse defines model for ResourceListResponse.
 type ResourceListResponse struct {
-	// Consistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+	// Consistency Minimum read consistency guaranteed for every shard read on this page; the served mode of each shard is verified to be at least this strong. It is the requested minimum, not an observed value, and does not say whether a shard read used the read fence or a barrier. Public authoritative lists are read linearizable by default; a stale page is never returned as a list.
 	Consistency  ResourceListResponseConsistency `json:"consistency"`
 	FailedShards []int                           `json:"failedShards"`
 	Items        []ResourceResponse              `json:"items"`
@@ -540,7 +540,7 @@ type ResourceListResponse struct {
 	Positions []ShardPosition `json:"positions"`
 }
 
-// ResourceListResponseConsistency Weakest read mode used. Public authoritative lists use strong reads for the core release.
+// ResourceListResponseConsistency Minimum read consistency guaranteed for every shard read on this page; the served mode of each shard is verified to be at least this strong. It is the requested minimum, not an observed value, and does not say whether a shard read used the read fence or a barrier. Public authoritative lists are read linearizable by default; a stale page is never returned as a list.
 type ResourceListResponseConsistency string
 
 // ResourceResponse Example: {"activeClaim":null,"createdAt":"2026-10-21T13:55:00Z","location":{"lat":28.62,"lng":77.21},"locationRevision":0,"name":"Medical supply unit 7","resourceId":"660e8400-e29b-41d4-a716-446655440001","resourceType":"MEDICINE","reusable":true,"status":"AVAILABLE","updatedAt":"2026-10-21T13:55:00Z","version":"v1","windowEnd":"2026-10-22T06:00:00Z","windowStart":"2026-10-21T06:00:00Z"}

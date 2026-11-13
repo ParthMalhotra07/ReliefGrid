@@ -98,8 +98,8 @@ func TestWithReadConsistencySendsTheMode(t *testing.T) {
 // An answer served weaker than asked is a retryable read error, never a
 // result: a stale miss or old version must not stand in for a fenced read.
 // strong is accepted for linearizable (both are linearizable; strong goes
-// through the log). With a mode set, an answer that does not say how it was
-// served proves nothing either.
+// through the log). An answer that does not say how it was served proves
+// nothing either.
 func TestReadServedWeakerThanAskedIsRefused(t *testing.T) {
 	for _, tc := range []struct {
 		ask    store.Consistency
@@ -129,23 +129,34 @@ func TestReadServedWeakerThanAskedIsRefused(t *testing.T) {
 	}
 }
 
-// With no read mode set, nothing changes (the rule above applies only to an
-// explicit WithReadConsistency): point reads send no consistency and accept
-// an answer that does not say how it was served, and scans and outbox pages
-// send strong and accept an unlabelled answer, exactly as before #72.
-func TestNoReadModeIsUnchanged(t *testing.T) {
+// With no read mode set, every read defaults to linearizable (S4.1): point
+// reads, scans and outbox pages all send consistency=linearizable, never
+// leaving the server to default to strong. The default is held to the same
+// rule as an explicit mode: an answer served stale is a retryable read error
+// (unlabelled and unknown answers: TestAuthoritativeReadRequiresAnAuthoritativeServedMode).
+func TestNoReadModeDefaultsToLinearizable(t *testing.T) {
 	f := newFake(t)
 	c := newClient(t, f)
-	f.setAnswer(readAnswer(""))
+	f.setAnswer(readAnswer(internalapi.ReadInfoConsistencyLinearizable))
 	for name, err := range readAll(t, c, "") {
 		if err != nil {
-			t.Errorf("%s, unlabelled answer: %v", name, err)
+			t.Errorf("%s, linearizable answer: %v", name, err)
 		}
 	}
-	want := []string{"", "", "key=kv%3Aa", "consistency=strong&kind=resource&limit=10&ringVersion=1", "consistency=strong&limit=10&shard=2"}
+	want := []string{"consistency=linearizable", "consistency=linearizable", "consistency=linearizable&key=kv%3Aa", "consistency=linearizable&kind=resource&limit=10&ringVersion=1", "consistency=linearizable&limit=10&shard=2"}
 	for i, r := range f.requests() {
 		if r.query != want[i] {
 			t.Errorf("%s sent %q, want %q", r.path, r.query, want[i])
+		}
+	}
+
+	f2 := newFake(t)
+	c2 := newClient(t, f2)
+	f2.setAnswer(readAnswer(internalapi.ReadInfoConsistencyStale))
+	for name, err := range readAll(t, c2, "") {
+		var ce *coordclient.Error
+		if !errors.As(err, &ce) || !ce.Retryable || errors.Is(err, store.ErrUnknownOutcome) || errors.Is(err, store.ErrNotFound) {
+			t.Errorf("%s, default read answered stale: err = %v, want a retryable read error", name, err)
 		}
 	}
 }
