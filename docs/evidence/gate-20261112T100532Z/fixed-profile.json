@@ -1,0 +1,1643 @@
+{
+  "context": "kind-reliefgrid",
+  "finishedAt": "2026-11-12T11:12:16.360549+00:00",
+  "first": {
+    "deployments": [
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 8,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api",
+          "ownerReferences": [],
+          "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 8,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "updatedReplicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 16,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher",
+          "ownerReferences": [],
+          "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 16,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "updatedReplicas": 2
+        }
+      }
+    ],
+    "hpas": [],
+    "pods": [
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44-8945m",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+            }
+          ],
+          "uid": "68a450e0-7a27-477b-bd07-8a1af0961979"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/api:a15-20261112102351",
+              "name": "api"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:4e69cbb8e80d1e9c11871bd3e4033c7f1be5ed36f8b8b92e884f9d1eaed43621",
+              "name": "api",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44-bzdbt",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+            }
+          ],
+          "uid": "d6603e79-f641-46c7-8c60-78642c4af1f2"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/api:a15-20261112102351",
+              "name": "api"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:4e69cbb8e80d1e9c11871bd3e4033c7f1be5ed36f8b8b92e884f9d1eaed43621",
+              "name": "api",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679-pdn8l",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+            }
+          ],
+          "uid": "463034ae-42fa-4a92-be26-af2f3244ab6f"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/matcher:a15-20261112102351",
+              "name": "matcher"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:c6b4d54cbf65c91adb89d4c27392f2bd5a405bd9492d8d2654ccb9306900dee7",
+              "name": "matcher",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679-zxft2",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+            }
+          ],
+          "uid": "41d5f6bf-c080-4376-898f-0fdaae503e00"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/matcher:a15-20261112102351",
+              "name": "matcher"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:c6b4d54cbf65c91adb89d4c27392f2bd5a405bd9492d8d2654ccb9306900dee7",
+              "name": "matcher",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      }
+    ],
+    "replicasets": [
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "generation": 7,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-65888fdcf9",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+            }
+          ],
+          "uid": "70240a5d-41d8-4345-bf75-fa0b4b537cea"
+        },
+        "spec": {
+          "replicas": 0,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "observedGeneration": 7,
+          "replicas": 0
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 4,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+            }
+          ],
+          "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 4,
+          "readyReplicas": 2,
+          "replicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 4,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+            }
+          ],
+          "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 4,
+          "readyReplicas": 2,
+          "replicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "generation": 15,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-76b8ddc66",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+            }
+          ],
+          "uid": "45e166cf-5d46-46e7-808e-1b11d9d97ff4"
+        },
+        "spec": {
+          "replicas": 0,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "observedGeneration": 15,
+          "replicas": 0
+        }
+      }
+    ],
+    "scaledobjects": [],
+    "values": {
+      "app": {
+        "api": {
+          "replicas": 2
+        },
+        "autoscaling": {
+          "enabled": false
+        },
+        "enabled": true,
+        "matcher": {
+          "replicas": 2
+        }
+      },
+      "storage": {
+        "enabled": false
+      }
+    }
+  },
+  "fixedProfile": {
+    "deployments": [
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 8,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api",
+          "ownerReferences": [],
+          "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 8,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "updatedReplicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 16,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher",
+          "ownerReferences": [],
+          "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 16,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "updatedReplicas": 2
+        }
+      }
+    ],
+    "fixedReplicas": {
+      "api": 2,
+      "matcher": 2
+    },
+    "hpas": [],
+    "pods": [
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679-zxft2",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+            }
+          ],
+          "uid": "41d5f6bf-c080-4376-898f-0fdaae503e00"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/matcher:a15-20261112102351",
+              "name": "matcher"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:c6b4d54cbf65c91adb89d4c27392f2bd5a405bd9492d8d2654ccb9306900dee7",
+              "name": "matcher",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679-pdn8l",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+            }
+          ],
+          "uid": "463034ae-42fa-4a92-be26-af2f3244ab6f"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/matcher:a15-20261112102351",
+              "name": "matcher"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:c6b4d54cbf65c91adb89d4c27392f2bd5a405bd9492d8d2654ccb9306900dee7",
+              "name": "matcher",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44-8945m",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+            }
+          ],
+          "uid": "68a450e0-7a27-477b-bd07-8a1af0961979"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/api:a15-20261112102351",
+              "name": "api"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:4e69cbb8e80d1e9c11871bd3e4033c7f1be5ed36f8b8b92e884f9d1eaed43621",
+              "name": "api",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44-bzdbt",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+            }
+          ],
+          "uid": "d6603e79-f641-46c7-8c60-78642c4af1f2"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/api:a15-20261112102351",
+              "name": "api"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:4e69cbb8e80d1e9c11871bd3e4033c7f1be5ed36f8b8b92e884f9d1eaed43621",
+              "name": "api",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      }
+    ],
+    "replicasets": [
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "generation": 7,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-65888fdcf9",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+            }
+          ],
+          "uid": "70240a5d-41d8-4345-bf75-fa0b4b537cea"
+        },
+        "spec": {
+          "replicas": 0,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "observedGeneration": 7,
+          "replicas": 0
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 4,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+            }
+          ],
+          "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 4,
+          "readyReplicas": 2,
+          "replicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 4,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+            }
+          ],
+          "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 4,
+          "readyReplicas": 2,
+          "replicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "generation": 15,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-76b8ddc66",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+            }
+          ],
+          "uid": "45e166cf-5d46-46e7-808e-1b11d9d97ff4"
+        },
+        "spec": {
+          "replicas": 0,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "observedGeneration": 15,
+          "replicas": 0
+        }
+      }
+    ],
+    "scaledobjects": [],
+    "values": {
+      "app": {
+        "api": {
+          "replicas": 2
+        },
+        "autoscaling": {
+          "enabled": false
+        },
+        "enabled": true,
+        "matcher": {
+          "replicas": 2
+        }
+      },
+      "storage": {
+        "enabled": false
+      }
+    }
+  },
+  "namespace": "reliefgrid",
+  "ok": true,
+  "release": "reliefgrid",
+  "scope": "fixed-profile observation only; not a gate or build-source certification",
+  "second": {
+    "deployments": [
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 8,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api",
+          "ownerReferences": [],
+          "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 8,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "updatedReplicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 16,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher",
+          "ownerReferences": [],
+          "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 16,
+          "readyReplicas": 2,
+          "replicas": 2,
+          "updatedReplicas": 2
+        }
+      }
+    ],
+    "hpas": [],
+    "pods": [
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44-8945m",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+            }
+          ],
+          "uid": "68a450e0-7a27-477b-bd07-8a1af0961979"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/api:a15-20261112102351",
+              "name": "api"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:4e69cbb8e80d1e9c11871bd3e4033c7f1be5ed36f8b8b92e884f9d1eaed43621",
+              "name": "api",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44-bzdbt",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+            }
+          ],
+          "uid": "d6603e79-f641-46c7-8c60-78642c4af1f2"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/api:a15-20261112102351",
+              "name": "api"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:4e69cbb8e80d1e9c11871bd3e4033c7f1be5ed36f8b8b92e884f9d1eaed43621",
+              "name": "api",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679-pdn8l",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+            }
+          ],
+          "uid": "463034ae-42fa-4a92-be26-af2f3244ab6f"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/matcher:a15-20261112102351",
+              "name": "matcher"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:c6b4d54cbf65c91adb89d4c27392f2bd5a405bd9492d8d2654ccb9306900dee7",
+              "name": "matcher",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {},
+          "generation": 1,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679-zxft2",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "ReplicaSet",
+              "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+            }
+          ],
+          "uid": "41d5f6bf-c080-4376-898f-0fdaae503e00"
+        },
+        "spec": {
+          "containers": [
+            {
+              "image": "reliefgrid/matcher:a15-20261112102351",
+              "name": "matcher"
+            }
+          ]
+        },
+        "status": {
+          "conditions": [
+            {
+              "status": "True",
+              "type": "PodReadyToStartContainers"
+            },
+            {
+              "status": "True",
+              "type": "Initialized"
+            },
+            {
+              "status": "True",
+              "type": "Ready"
+            },
+            {
+              "status": "True",
+              "type": "ContainersReady"
+            },
+            {
+              "status": "True",
+              "type": "PodScheduled"
+            }
+          ],
+          "containerStatuses": [
+            {
+              "imageID": "docker.io/library/import-2026-11-12@sha256:c6b4d54cbf65c91adb89d4c27392f2bd5a405bd9492d8d2654ccb9306900dee7",
+              "name": "matcher",
+              "ready": true,
+              "restartCount": 0,
+              "state": {
+                "running": {
+                  "startedAt": "2026-11-12T11:12:12Z"
+                }
+              }
+            }
+          ],
+          "phase": "Running"
+        }
+      }
+    ],
+    "replicasets": [
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "generation": 7,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-65888fdcf9",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+            }
+          ],
+          "uid": "70240a5d-41d8-4345-bf75-fa0b4b537cea"
+        },
+        "spec": {
+          "replicas": 0,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "observedGeneration": 7,
+          "replicas": 0
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 4,
+          "labels": {
+            "app.kubernetes.io/component": "api",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-api-778688bd44",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "74608159-411c-4159-b255-8b6c4dfa051d"
+            }
+          ],
+          "uid": "281b01bb-21d3-4212-8896-a8dae5bc24f4"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/api:a15-20261112102351",
+                  "name": "api"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 4,
+          "readyReplicas": 2,
+          "replicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "2"
+          },
+          "generation": 4,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-64d6fd9679",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+            }
+          ],
+          "uid": "9f77bb3c-2398-4797-9165-35ecb1579cf1"
+        },
+        "spec": {
+          "replicas": 2,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "availableReplicas": 2,
+          "observedGeneration": 4,
+          "readyReplicas": 2,
+          "replicas": 2
+        }
+      },
+      {
+        "metadata": {
+          "annotations": {
+            "deployment.kubernetes.io/revision": "1"
+          },
+          "generation": 15,
+          "labels": {
+            "app.kubernetes.io/component": "matcher",
+            "app.kubernetes.io/instance": "reliefgrid"
+          },
+          "name": "reliefgrid-matcher-76b8ddc66",
+          "ownerReferences": [
+            {
+              "controller": true,
+              "kind": "Deployment",
+              "uid": "2a81723a-1582-4ae1-9801-4d63dfbe7da5"
+            }
+          ],
+          "uid": "45e166cf-5d46-46e7-808e-1b11d9d97ff4"
+        },
+        "spec": {
+          "replicas": 0,
+          "template": {
+            "spec": {
+              "containers": [
+                {
+                  "image": "reliefgrid/matcher:a15-20261112102351",
+                  "name": "matcher"
+                }
+              ]
+            }
+          }
+        },
+        "status": {
+          "observedGeneration": 15,
+          "replicas": 0
+        }
+      }
+    ],
+    "scaledobjects": [],
+    "values": {
+      "app": {
+        "api": {
+          "replicas": 2
+        },
+        "autoscaling": {
+          "enabled": false
+        },
+        "enabled": true,
+        "matcher": {
+          "replicas": 2
+        }
+      },
+      "storage": {
+        "enabled": false
+      }
+    }
+  },
+  "source": {
+    "collectorCommit": "1623c23fef7a881990f7470c7ddc3f85cf33c3b6",
+    "collectorDirty": false,
+    "collectorTree": "fabe5acf73ceae7c9892db41ad41c6b00e3a8705",
+    "runtimeBuildBinding": "NOT_ESTABLISHED: observed image IDs do not prove source/build contents"
+  },
+  "startedAt": "2026-11-12T11:12:15.722085+00:00",
+  "tools": {
+    "containers": [
+      {
+        "image": "reliefgrid/tools:dev",
+        "imageID": "docker.io/library/import-2026-11-12@sha256:4d26588343d5e168c43b0e8e5710db313445190ecfc88c888dc43e5bb15bf222",
+        "name": "invcheck"
+      }
+    ],
+    "job": {
+      "metadata": {
+        "name": "s45-check-seed20261112",
+        "uid": "bb0f3350-2a8a-41ee-8975-fcb8a6e9f276"
+      },
+      "status": {
+        "active": 0,
+        "failed": 0,
+        "succeeded": 1
+      }
+    },
+    "pod": {
+      "metadata": {
+        "annotations": {},
+        "generation": 1,
+        "labels": {},
+        "name": "s45-check-seed20261112-2ccs9",
+        "ownerReferences": [
+          {
+            "controller": true,
+            "kind": "Job",
+            "uid": "bb0f3350-2a8a-41ee-8975-fcb8a6e9f276"
+          }
+        ],
+        "uid": "12495a32-041e-497f-8982-153d3eb9d0d8"
+      },
+      "spec": {
+        "containers": [
+          {
+            "image": "reliefgrid/tools:dev",
+            "name": "invcheck"
+          }
+        ]
+      },
+      "status": {
+        "conditions": [
+          {
+            "status": "False",
+            "type": "PodReadyToStartContainers"
+          },
+          {
+            "status": "True",
+            "type": "Initialized"
+          },
+          {
+            "status": "False",
+            "type": "Ready"
+          },
+          {
+            "status": "False",
+            "type": "ContainersReady"
+          },
+          {
+            "status": "True",
+            "type": "PodScheduled"
+          }
+        ],
+        "containerStatuses": [
+          {
+            "imageID": "docker.io/library/import-2026-11-12@sha256:4d26588343d5e168c43b0e8e5710db313445190ecfc88c888dc43e5bb15bf222",
+            "name": "invcheck",
+            "ready": false,
+            "restartCount": 0,
+            "state": {
+              "terminated": {
+                "exitCode": 0,
+                "finishedAt": "2026-11-12T11:11:52Z",
+                "startedAt": "2026-11-12T11:11:51Z"
+              }
+            }
+          }
+        ],
+        "phase": "Succeeded"
+      }
+    }
+  },
+  "toolsJob": "s45-check-seed20261112"
+}

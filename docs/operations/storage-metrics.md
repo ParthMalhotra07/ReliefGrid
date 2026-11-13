@@ -50,7 +50,7 @@ Histograms use these buckets (seconds): 0.001, 0.0025, 0.005, 0.01, 0.025,
 | `storage_raft_applied_index` | gauge | | index | FSM's completed index (`/mgmt/status` `appliedIndex`). |
 | `storage_raft_last_log_index` | gauge | | index | Last index in the local log. |
 | `storage_raft_last_snapshot_index` | gauge | | index | Index of the newest local snapshot (0: none). |
-| `storage_replication_lag_entries` | gauge | | entries | `leaderCommitIndex - appliedIndex` on this replica, as it last learned the leader's commit (0 on the leader once applied). |
+| `storage_replication_lag_entries` | gauge | | entries | `leaderCommitIndex - raftAppliedIndex` on this replica, as it last learned the leader's commit (0 on the leader once applied). Both are Raft log indexes, so barrier entries from strong reads, which never reach the FSM, are not counted as lag. |
 | `storage_raft_log_bytes` | gauge | | bytes | Size of `raft.db` (log + stable store) on the PVC. |
 | `storage_snapshot_bytes` | gauge | | bytes | Size of the snapshot directory on the PVC. |
 | `relief_outbox_pending` | gauge | | events | Exact count of unpublished outbox rows in this replica's FSM (`COUNT(*) WHERE published = 0`), not a capped batch. |

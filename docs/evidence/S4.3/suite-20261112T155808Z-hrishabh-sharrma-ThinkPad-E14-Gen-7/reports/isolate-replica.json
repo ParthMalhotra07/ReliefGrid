@@ -1,0 +1,362 @@
+{
+  "experiment": "isolate-replica",
+  "seed": 434,
+  "runId": "isolate-replica-s434-1794499578",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "isolate-replica",
+    "seed": 434,
+    "shard": 0,
+    "role": "leader",
+    "pick": 0,
+    "faultDelayMs": 8054,
+    "loadSeconds": 104,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-isolate-replica-s434",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 0,
+    "pod": "storage-shard-0-0",
+    "serverId": "storage-shard-0-0/51710485-b745-44c2-864c-f8c23e694c07",
+    "role": "leader",
+    "term": 2
+  },
+  "fault": {
+    "kind": "raft-isolation",
+    "mechanism": "label reliefgrid.io/chaos-isolated=true, excluded by NetworkPolicy storage-shard-0-raft",
+    "startedAt": 1794499588247,
+    "healedAt": 1794499609630
+  },
+  "recovery": {
+    "leader": "storage-shard-0-2",
+    "term": 3,
+    "seconds": 14.3
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1794499688658,
+    "seconds": 0.5,
+    "ok": true,
+    "detail": "shard 0 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1794499580000,
+    "faultStartedAt": 1794499588247,
+    "faultHealedAt": 1794499609630,
+    "settledAt": 1794499689124,
+    "loadFinishedAt": 1794499685000
+  },
+  "load": {
+    "job": "chaos-load-isolate-replica-s434-1794499578",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 7214,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 1257
+  },
+  "errorsObserved": [
+    {
+      "at": 1794499596691,
+      "source": "harness",
+      "message": "the NetworkPolicy cut did not take within 8s; clearing storage-shard-0-0's conntrack entries"
+    },
+    {
+      "at": 1794499601228,
+      "source": "load",
+      "message": "chaos-isolate-replica-s434-1794499579-w1-op291 chaos-isolate-replica-s434-1794499579-w1-c143 attempt 0: coordclient: 503 OUTCOME_UNKNOWN: shard 0: no leader answered within 4s (last: storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:8080: Put \"http://storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:8080/internal/data/chaos-isolate-replica-s434-1794499579-w1-c143\": context deadline exceeded)"
+    },
+    {
+      "at": 1794499601232,
+      "source": "load",
+      "message": "chaos-isolate-replica-s434-1794499579-w0-op291 chaos-isolate-replica-s434-1794499579-w0-c143 attempt 0: coordclient: 503 OUTCOME_UNKNOWN: shard 0: no leader answered within 4s (last: storage-shard-0-2.storage-shard-0.reliefgrid.svc.cluster.local:8080: 503 NO_LEADER shard 0 has no leader: raftstore: not the leader (leader \"\" at \"\"))"
+    }
+  ],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/isolate-replica-s434-1794499578.json",
+    "job": "chaos-verify-isolate-replica-s434-1794499578",
+    "exitCode": 0,
+    "checked": 7214,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-isolate-replica-s434-1794499578",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 0 is one caught-up group",
+    "recovery": {
+      "seconds": 14.3,
+      "term": 3,
+      "termBefore": 2,
+      "leader": "storage-shard-0-2"
+    },
+    "isolation": null,
+    "delay": null,
+    "worker": null,
+    "coordinator": null
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "linearizable",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [
+      "0=http://storage-shard-0-0.storage-shard-0.reliefgrid.svc.cluster.local:8080"
+    ],
+    "verdict": {
+      "total": 5776,
+      "checked": 4061,
+      "unchecked": 3,
+      "failed": 1712,
+      "served": {
+        "linearizable": 4061
+      }
+    },
+    "staleCount": 0,
+    "stale": []
+  },
+  "availability": {
+    "fromMs": 1794499588247,
+    "toMs": 1794499609630,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 240,
+        "acksDuring": 577,
+        "acksAfter": 2526,
+        "acksInsideFault": 514,
+        "readsDuring": 774,
+        "readsServedDuring": 538,
+        "readsServedInsideFault": 459,
+        "probeReadsDuring": {
+          "storage-shard-0-0": 406
+        },
+        "probeServedInsideFault": {
+          "storage-shard-0-0": 134
+        },
+        "writeAttemptsInsideFault": 516,
+        "readsInsideFault": 695,
+        "probeReadsInsideFault": {
+          "storage-shard-0-0": 368
+        },
+        "firstAckAfterFaultMs": 42,
+        "firstAckAfterHealMs": 3,
+        "writeLatencyMs": {
+          "n": 577,
+          "p50": 4.413993,
+          "p99": 20.533033,
+          "max": 4024.52232
+        },
+        "readLatencyMs": {
+          "n": 774,
+          "p50": 1.291935,
+          "p99": 9.903207,
+          "max": 4002.734985
+        },
+        "errorsDuring": 2
+      },
+      {
+        "shard": 1,
+        "acksBefore": 99,
+        "acksDuring": 276,
+        "acksAfter": 1136,
+        "acksInsideFault": 242,
+        "readsDuring": 82,
+        "readsServedDuring": 82,
+        "readsServedInsideFault": 72,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 242,
+        "readsInsideFault": 72,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 49,
+        "firstAckAfterHealMs": 23,
+        "writeLatencyMs": {
+          "n": 276,
+          "p50": 4.389798,
+          "p99": 15.730324,
+          "max": 16.966342
+        },
+        "readLatencyMs": {
+          "n": 82,
+          "p50": 2.03073,
+          "p99": 8.459525,
+          "max": 8.459525
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 2,
+        "acksBefore": 172,
+        "acksDuring": 404,
+        "acksAfter": 1784,
+        "acksInsideFault": 356,
+        "readsDuring": 204,
+        "readsServedDuring": 204,
+        "readsServedInsideFault": 180,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 356,
+        "readsInsideFault": 180,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 5,
+        "firstAckAfterHealMs": 74,
+        "writeLatencyMs": {
+          "n": 404,
+          "p50": 4.469368,
+          "p99": 14.501768,
+          "max": 30.679738
+        },
+        "readLatencyMs": {
+          "n": 204,
+          "p50": 1.828411,
+          "p99": 9.806496,
+          "max": 12.9682
+        },
+        "errorsDuring": 0
+      }
+    ]
+  },
+  "judge": {
+    "pass": true,
+    "noVerdict": false,
+    "failures": [],
+    "summary": {
+      "acked": 7214,
+      "unknownRaw": 0,
+      "resolved": 0,
+      "notApplied": 0,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 0,
+      "readsTotal": 5776,
+      "readsChecked": 4061,
+      "readsFailed": 1712,
+      "errorCount": 2,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 240,
+          "acksDuring": 577,
+          "acksAfter": 2526,
+          "acksInsideFault": 514,
+          "readsDuring": 774,
+          "readsServedDuring": 538,
+          "readsServedInsideFault": 459,
+          "probeReadsDuring": {
+            "storage-shard-0-0": 406
+          },
+          "probeServedInsideFault": {
+            "storage-shard-0-0": 134
+          },
+          "writeAttemptsInsideFault": 516,
+          "readsInsideFault": 695,
+          "probeReadsInsideFault": {
+            "storage-shard-0-0": 368
+          },
+          "firstAckAfterFaultMs": 42,
+          "firstAckAfterHealMs": 3,
+          "writeLatencyMs": {
+            "n": 577,
+            "p50": 4.413993,
+            "p99": 20.533033,
+            "max": 4024.52232
+          },
+          "readLatencyMs": {
+            "n": 774,
+            "p50": 1.291935,
+            "p99": 9.903207,
+            "max": 4002.734985
+          },
+          "errorsDuring": 2
+        },
+        {
+          "shard": 1,
+          "acksBefore": 99,
+          "acksDuring": 276,
+          "acksAfter": 1136,
+          "acksInsideFault": 242,
+          "readsDuring": 82,
+          "readsServedDuring": 82,
+          "readsServedInsideFault": 72,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 242,
+          "readsInsideFault": 72,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 49,
+          "firstAckAfterHealMs": 23,
+          "writeLatencyMs": {
+            "n": 276,
+            "p50": 4.389798,
+            "p99": 15.730324,
+            "max": 16.966342
+          },
+          "readLatencyMs": {
+            "n": 82,
+            "p50": 2.03073,
+            "p99": 8.459525,
+            "max": 8.459525
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 2,
+          "acksBefore": 172,
+          "acksDuring": 404,
+          "acksAfter": 1784,
+          "acksInsideFault": 356,
+          "readsDuring": 204,
+          "readsServedDuring": 204,
+          "readsServedInsideFault": 180,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 356,
+          "readsInsideFault": 180,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 5,
+          "firstAckAfterHealMs": 74,
+          "writeLatencyMs": {
+            "n": 404,
+            "p50": 4.469368,
+            "p99": 14.501768,
+            "max": 30.679738
+          },
+          "readLatencyMs": {
+            "n": 204,
+            "p50": 1.828411,
+            "p99": 9.806496,
+            "max": 12.9682
+          },
+          "errorsDuring": 0
+        }
+      ]
+    }
+  },
+  "isolation": {
+    "peerToTargetRaft": false,
+    "targetToPeerRaft": false,
+    "peerToTargetData": true,
+    "targetCommitAdvanced": false,
+    "majorityCommitAdvanced": true,
+    "method": "networkpolicy+conntrack"
+  }
+}

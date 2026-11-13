@@ -1,0 +1,11 @@
+# Shard 2 storagectl status, read-only, after the suite, app running (api 2, matcher 2, ui 1), no chaos load.
+# Raft commitIndex/raftAppliedIndex advance with the app's strong-read barriers; FSM appliedIndex (last command) does not.
+# Old lag (leader commitIndex - follower appliedIndex): 333 at 16:31:20. Raft-level lag (leader commitIndex - follower raftAppliedIndex): 0.
+16:31:10Z
+{"p":"storage-shard-2-0","state":"Follower","commitIndex":86174,"raftAppliedIndex":86174,"appliedIndex":85904}
+{"p":"storage-shard-2-1","state":"Leader","commitIndex":86174,"raftAppliedIndex":86174,"appliedIndex":85904}
+{"p":"storage-shard-2-2","state":"Follower","commitIndex":86175,"raftAppliedIndex":86175,"appliedIndex":85904}
+16:31:20Z
+{"p":"storage-shard-2-0","state":"Follower","commitIndex":86237,"raftAppliedIndex":86237,"appliedIndex":85904}
+{"p":"storage-shard-2-1","state":"Leader","commitIndex":86237,"raftAppliedIndex":86237,"appliedIndex":85904}
+{"p":"storage-shard-2-2","state":"Follower","commitIndex":86237,"raftAppliedIndex":86237,"appliedIndex":85904}
