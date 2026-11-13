@@ -33,10 +33,13 @@ type listQuery struct {
 	after  string
 }
 
-// listConsistency is the read mode of every public list scan, named
-// explicitly so the response reports the mode the scan was read in rather
-// than a fixed label: linearizable, the read fence (S4.1). The store refuses
-// an answer served weaker than asked, and strong also satisfies it.
+// listConsistency is the read mode every public list scan asks for:
+// linearizable, the read fence (S4.1). A list response's "consistency" is
+// this requested minimum, the read consistency guaranteed for every shard
+// read on the page, not an observed value: the store verifies each shard's
+// served mode is at least this strong (strong also satisfies it) and refuses
+// the page otherwise. It says nothing about how a shard executed the read
+// (fence or barrier); runtime metrics show that.
 const listConsistency = store.ConsistencyLinearizable
 
 // Same accepted coordinate text as the frozen public near parameter.

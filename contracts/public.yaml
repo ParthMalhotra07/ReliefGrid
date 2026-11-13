@@ -845,7 +845,7 @@ components:
           - strong
           - linearizable
           - stale
-          description: Weakest read mode used. Public authoritative lists are read linearizable (the read fence) by default; a strong answer also satisfies them, and a stale one is never returned as a list.
+          description: Minimum read consistency guaranteed for every shard read on this page; the served mode of each shard is verified to be at least this strong. It is the requested minimum, not an observed value, and does not say whether a shard read used the read fence or a barrier. Public authoritative lists are read linearizable by default; a stale page is never returned as a list.
         nextCursor:
           type: string
           minLength: 1
@@ -1042,7 +1042,7 @@ components:
           - strong
           - linearizable
           - stale
-          description: Weakest read mode used. Public authoritative lists are read linearizable (the read fence) by default; a strong answer also satisfies them, and a stale one is never returned as a list.
+          description: Minimum read consistency guaranteed for every shard read on this page; the served mode of each shard is verified to be at least this strong. It is the requested minimum, not an observed value, and does not say whether a shard read used the read fence or a barrier. Public authoritative lists are read linearizable by default; a stale page is never returned as a list.
         nextCursor:
           type: string
           minLength: 1
