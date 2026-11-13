@@ -63,7 +63,7 @@ func (e *Engine) WakeResource(ctx context.Context, id, eventID string, at int64)
 	if err != nil {
 		return err
 	}
-	q := store.ScanQuery{Kind: store.KindRequest, Type: r.Type, Statuses: []string{string(store.RequestWaiting)}, GeohashPrefixes: prefixes, Limit: e.cfg.PageSize, Consistency: store.ConsistencyStrong}
+	q := store.ScanQuery{Kind: store.KindRequest, Type: r.Type, Statuses: []string{string(store.RequestWaiting)}, GeohashPrefixes: prefixes, Limit: e.cfg.PageSize, Consistency: store.ConsistencyLinearizable}
 	expected, seen := e.allShards(), make(map[string]bool)
 	scheduled := 0
 	for range 1024 {

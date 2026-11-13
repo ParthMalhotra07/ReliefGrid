@@ -162,7 +162,8 @@ def check_audit(doc):
 
 def check_headroom(doc):
     """The pause followed a sample with every queue at most pct% of its
-    max-length, taken within the bound; anything else is a failed audit."""
+    max-length (every message in it plus those of the retry tiers returning
+    to it), taken within the bound; anything else is a failed audit."""
     h = get(doc, "audit.headroom")
     if not isinstance(h, dict):
         bad("audit.headroom: missing; the pause must follow a headroom check")
@@ -187,13 +188,58 @@ def check_headroom(doc):
     if not isinstance(depths, dict):
         bad("audit.headroom.depthsAtPause: missing")
         return False
+    # Since the headroom check counts every message (loadtest/headroom.py),
+    # each depth records messages and the retries returning to the queue
+    # through audit.headroom.routes; a report from before records only
+    # ready+unacked and keeps that rule.
+    full = any(isinstance(d, dict) and "messages" in d for d in depths.values())
+    routes = h.get("routes")
+    if full and (not isinstance(routes, dict) or not all(
+            isinstance(v, list) and all(isinstance(x, str) for x in v) for v in routes.values())):
+        bad("audit.headroom.routes: want each retry tier's return queues beside depths that count messages")
+        return False
+    back = {}
+    for tier, targets in (routes or {}).items():
+        for target in targets:
+            back.setdefault(target, []).append(tier)
+    if full:
+        # Every queue the arithmetic uses (each limited queue, each retry tier,
+        # bounded or not, and each queue a tier returns to) needs exact
+        # non-negative counts with messages >= ready+unacked; an unknown
+        # backlog is never counted as zero (loadtest/headroom.py, the same rule).
+        for q in sorted(set(limits) | set(back) | {x for v in back.values() for x in v}):
+            d = depths.get(q)
+            if not isinstance(d, dict) or not all(is_int(d.get(k)) and d[k] >= 0 for k in ("messages", "ready", "unacked")):
+                bad(f"audit.headroom.depthsAtPause.{q}: counts missing or malformed")
+                return False
+            if d["messages"] < d["ready"] + d["unacked"]:
+                bad(f"audit.headroom.depthsAtPause.{q}: messages {d['messages']} < ready+unacked {d['ready'] + d['unacked']}")
+                return False
     for q, limit in limits.items():
         d = depths.get(q)
         if not isinstance(d, dict) or not is_int(d.get("ready")) or not is_int(d.get("unacked")):
             bad(f"audit.headroom.depthsAtPause.{q}: not sampled")
             return False
-        if d["ready"] + d["unacked"] > limit * h["pct"] // 100:
-            bad(f"audit.headroom.depthsAtPause.{q}: {d['ready'] + d['unacked']} over {h['pct']}% of {limit}")
+        n = d["ready"] + d["unacked"]
+        if full:
+            if not all(is_int(d.get(k)) and d[k] >= 0 for k in ("messages", "returning", "depth")):
+                bad(f"audit.headroom.depthsAtPause.{q}: want messages, returning and depth")
+                return False
+            if d["messages"] < n:
+                bad(f"audit.headroom.depthsAtPause.{q}: messages {d['messages']} < ready+unacked {n}")
+                return False
+            tiers = back.get(q, [])
+            if any(not (isinstance(depths.get(x), dict) and is_int(depths[x].get("messages"))) for x in tiers):
+                bad(f"audit.headroom.depthsAtPause.{q}: a retry tier returning to it was not sampled")
+                return False
+            held = sum(depths[x]["messages"] for x in tiers)
+            if d["returning"] != held or d["depth"] != d["messages"] + held:
+                bad(f"audit.headroom.depthsAtPause.{q}: returning {d['returning']}, the tiers hold {held}; "
+                    f"depth {d['depth']}, want {d['messages'] + held}")
+                return False
+            n = d["depth"]
+        if n > limit * h["pct"] // 100:
+            bad(f"audit.headroom.depthsAtPause.{q}: {n} over {h['pct']}% of {limit}")
             return False
     return True
 

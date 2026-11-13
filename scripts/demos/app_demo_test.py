@@ -46,9 +46,19 @@ class ClientTests(unittest.TestCase):
     def test_partial_or_truncated_list_is_never_complete(self):
         good = dict(partial=False, failedShards=[], consistency='strong', positions=[dict(shard=n, hasMore=False) for n in range(3)])
         app.require_complete(good)
-        for bad in [dict(good, partial=True), dict(good, failedShards=[1]), dict(good, positions=good['positions'][:2]), dict(good, positions=[dict(shard=n, hasMore=(n == 1)) for n in range(3)])]:
+        app.require_complete(dict(good, consistency='linearizable'))
+        for bad in [dict(good, consistency='stale'), dict(good, partial=True), dict(good, failedShards=[1]), dict(good, positions=good['positions'][:2]), dict(good, positions=[dict(shard=n, hasMore=(n == 1)) for n in range(3)])]:
             with self.assertRaises(AssertionError):
                 app.require_complete(bad)
+
+    def test_point_read_or_outbox_page_needs_an_authoritative_served_mode(self):
+        for served in ('strong', 'linearizable'):
+            answer = dict(record={}, read=dict(consistency=served, servedBy='storage-0-0', appliedIndex=1, stalePossible=False))
+            self.assertIs(app.require_served(answer), answer)
+        unlabelled = dict(record={}, read=dict(servedBy='storage-0-0', appliedIndex=1, stalePossible=False))
+        for bad in [unlabelled, dict(record={}), dict(record={}, read=None)] + [dict(record={}, read=dict(consistency=c)) for c in ('', None, 'eventual', 'stale')]:
+            with self.assertRaises(AssertionError):
+                app.require_served(bad)
 
     def test_burst_audit_restores_admission_workers_after_failure(self):
         demo = app.Demo.__new__(app.Demo)

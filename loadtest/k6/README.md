@@ -26,6 +26,13 @@ registrations, 10% `POST /match/{id}`, 65% reads (55% `GET /requests/{id}`,
 inside the matcher's 50 km radius. The run name changes only the
 Idempotency-Keys: `payloadSha256` is equal across runs of one seed.
 
+`lib.js` reads and parses the dataset once, inside a `SharedArray` callback
+(element 0 the metadata, then the operations), so every VU shares one copy.
+Parsed in the module's init code it ran once per VU: a 15 MB dataset grew k6
+to 22.4 GB at 116 VUs in the exploratory 10->160 run. `scripts/k6_dataset_test.go`
+keeps the parse inside the callback and, with `K6=<k6 binary>` set, measures
+peak RSS per extra VU (0.29 MB on a 15 MB dataset, against 346 MB before).
+
 ## Deploy and run
 
 ```sh
@@ -58,14 +65,22 @@ long as the matcher runs, each round a `RetryWorkflow` and an outbox mark, so
 empties no queue, and the drain publishes into the same reject-publish queues,
 so `run.sh` first lets the matcher keep consuming until every queue is at most
 80% of its max-length (`HEADROOM_PCT`, limits read from the live broker),
-for at most 600 s (`HEADROOM_WAIT_S`); past that bound the audit fails. It
+for at most 600 s (`HEADROOM_WAIT_S`); past that bound the audit fails. A
+queue's depth there is every message it holds (`rabbitmqctl` `messages`:
+ready, unacked and any held for at-least-once dead-lettering) plus every
+message in the retry tiers that return to it (`raw/queue-routes.json`: each
+queue with a message TTL, routed through its dead-letter exchange and the
+broker's bindings). Ready and unacked alone once passed an audit with 10001
+expired retries parked in `retry.5s` behind a full `matching.requests`; paused,
+they returned and the drain was refused. It
 then scales the matcher (which also runs the reconciler and the outbox relay)
 to 0, publishes the handoffs already committed with
 `scripts/demos/drain-outbox` (a refused publish is retried for up to 20 s),
 runs `invcheck check` as a Job, and scales the matcher back. Hints left in
 RabbitMQ stay there. The report's `audit` states the replicas before and
 after, the headroom wait (`headroom`: threshold, bound, seconds waited, each
-queue's limit and its depth when the pause began) and what was drained, with
+queue's limit, the retry routes, and each queue's messages, ready, unacked,
+returning and depth when the pause began) and what was drained, with
 the retries; a matcher that cannot be put back is a safety failure (exit 4).
 
 `loadtest/background.py` samples the load k6 cannot see every 5 s, from before

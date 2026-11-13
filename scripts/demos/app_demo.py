@@ -26,9 +26,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from internal_auth import Sender, mount_app_sender
 
 
+def require_served(answer):
+    # A strong read is authoritative only if the answer says it was served
+    # strong or linearizable; a missing, unknown or stale label is refused.
+    assert (answer.get('read') or {}).get('consistency') in ('strong', 'linearizable'), answer
+    return answer
+
+
 def require_complete(page):
     assert page['partial'] is False and page['failedShards'] == [], page
-    assert page['consistency'] == 'strong', page
+    assert page['consistency'] in ('strong', 'linearizable'), page
     assert len(page['positions']) == 3 and {p['shard'] for p in page['positions']} == {0, 1, 2}, page
     assert all(p.get('hasMore') is False for p in page['positions']), 'bounded listing is truncated'
 
@@ -163,7 +170,7 @@ class Demo:
         return self.create('requests', name, self.request_body(name, **options))[0]
 
     def record(self, prefix, entity_id):
-        result = self.coordinator.call('GET', '/internal/data/' + prefix + ':' + entity_id + '?consistency=strong', {200})[0]
+        result = require_served(self.coordinator.call('GET', '/internal/data/' + prefix + ':' + entity_id + '?consistency=strong', {200})[0])
         record = result['record']
         assert not record.get('deleted'), record
         return record
@@ -220,7 +227,7 @@ class Demo:
         deadline = min(self.coordinator.deadline, time.monotonic() + 30)
         pages = []
         while time.monotonic() < deadline:
-            pages = [self.coordinator.call('GET', f'/internal/outbox?shard={shard}&limit=100&consistency=strong', {200}, deadline=deadline)[0] for shard in range(3)]
+            pages = [require_served(self.coordinator.call('GET', f'/internal/outbox?shard={shard}&limit=100&consistency=strong', {200}, deadline=deadline)[0]) for shard in range(3)]
             assert all(page['shard'] == shard and isinstance(page['events'], list) for shard, page in enumerate(pages)), pages
             if all(not page['events'] for page in pages):
                 return
@@ -398,7 +405,7 @@ class Demo:
         self.check(not thread.is_alive() and not errors, 'all broker samples completed without hidden observation errors: ' + repr(errors))
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
-            pages = [self.coordinator.call('GET', f'/internal/outbox?shard={shard}&limit=100&consistency=strong', {200})[0] for shard in range(3)]
+            pages = [require_served(self.coordinator.call('GET', f'/internal/outbox?shard={shard}&limit=100&consistency=strong', {200})[0]) for shard in range(3)]
             assert all(page['shard'] == shard and isinstance(page['events'], list) for shard, page in enumerate(pages)), pages
             if all(not page['events'] for page in pages):
                 break

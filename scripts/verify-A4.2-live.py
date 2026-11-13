@@ -97,7 +97,7 @@ def cancel_fixtures(origin, identifiers):
 
 def vacant_location(origin, resource_type):
     page = get(origin, "/api/v1/resources?" + urllib.parse.urlencode({"type": resource_type, "limit": 100}))
-    assert page["consistency"] == "strong" and not page["partial"] and not page["failedShards"]
+    assert page["consistency"] in ("strong", "linearizable") and not page["partial"] and not page["failedShards"]
     assert len(page["positions"]) == 3 and {x["shard"] for x in page["positions"]} == {0, 1, 2} and not any(x["hasMore"] for x in page["positions"]), "fixture placement needs a complete resource list; use a clean demo namespace"
     def distance(a, b):
         lat1, lat2 = math.radians(a["lat"]), math.radians(b["lat"])
