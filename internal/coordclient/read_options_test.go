@@ -36,14 +36,16 @@ func scanAnswer(c internalapi.ScanResponseConsistency, recs ...store.Record) fun
 }
 
 // #41: ScanQuery.Consistency goes on the wire; the zero value is sent as an
-// explicit strong, never left for the server to default. An unknown mode is
+// explicit linearizable (the S4.1 read fence), never left for the server to
+// default, and strong is still sent when asked for. An unknown mode is
 // INVALID and nothing is sent.
 func TestScanSendsConsistency(t *testing.T) {
 	for _, tc := range []struct {
 		in   store.Consistency
 		want string
 	}{
-		{"", "strong"},
+		{"", "linearizable"},
+		{store.ConsistencyLinearizable, "linearizable"},
 		{store.ConsistencyStrong, "strong"},
 		{store.ConsistencyStale, "stale"},
 	} {
@@ -71,10 +73,11 @@ func TestScanSendsConsistency(t *testing.T) {
 }
 
 // A1.2's shape: a stale candidate scan that finds nothing is only a hint, so
-// the caller falls back to a fresh strong walk before NO_CANDIDATE. The
-// fallback goes out as strong with no cursor, and an answer that says it
-// was served stale is not accepted as the authoritative miss.
-func TestStrongFallbackAfterStaleMiss(t *testing.T) {
+// the caller falls back to a fresh fenced walk before NO_CANDIDATE. The
+// fallback names no mode, so it goes out as linearizable with no cursor; a
+// strong answer satisfies it, and an answer that says it was served stale is
+// not accepted as the authoritative miss.
+func TestFencedFallbackAfterStaleMiss(t *testing.T) {
 	f := newFake(t)
 	c := newClient(t, f)
 	want := store.Record{Key: "res:s7", Kind: store.KindResource}
@@ -93,27 +96,28 @@ func TestStrongFallbackAfterStaleMiss(t *testing.T) {
 	q.Consistency = ""
 	got, err := c.Scan(testCtx(t), q)
 	if err != nil || len(got.Records) != 1 || got.Records[0].Key != want.Key {
-		t.Fatalf("strong fallback = %+v, %v; want %s", got, err, want.Key)
+		t.Fatalf("fenced fallback = %+v, %v; want %s", got, err, want.Key)
 	}
 	if s := sentQuery(t, f, 0).Get("consistency"); s != "stale" {
 		t.Errorf("first scan consistency=%q, want stale", s)
 	}
 	fallback := sentQuery(t, f, 1)
-	if s := fallback.Get("consistency"); s != "strong" {
-		t.Errorf("fallback consistency=%q, want strong", s)
+	if s := fallback.Get("consistency"); s != "linearizable" {
+		t.Errorf("fallback consistency=%q, want linearizable", s)
 	}
 	if fallback.Has("cursor") {
 		t.Errorf("fallback sent cursor %q, want a fresh walk", fallback.Get("cursor"))
 	}
 
-	// Asked strong, answered stale: a retryable error, never an empty result.
+	// Asked the default (linearizable), answered stale: a retryable error,
+	// never an empty result.
 	f2 := newFake(t)
 	c2 := newClient(t, f2)
 	f2.setAnswer(scanAnswer(internalapi.ScanResponseConsistencyStale))
 	res, err := c2.Scan(testCtx(t), store.ScanQuery{Kind: store.KindResource, Limit: 10})
 	var ce *coordclient.Error
 	if !errors.As(err, &ce) || !ce.Retryable || errors.Is(err, store.ErrUnknownOutcome) {
-		t.Fatalf("strong scan answered stale = %+v, %v; want a retryable read error", res, err)
+		t.Fatalf("default scan answered stale = %+v, %v; want a retryable read error", res, err)
 	}
 }
 
@@ -155,21 +159,25 @@ func TestCallerCancelCapsTheWholeRead(t *testing.T) {
 	}
 }
 
-// A1.4's relay call: GET /internal/outbox?shard=N&wait=1&consistency=strong.
+// A1.4's relay call: GET /internal/outbox?shard=N&wait=1&consistency=linearizable.
 // Wait is whole seconds, 0 to 1 (the contract's maxOutboxWait); anything
-// else is INVALID and nothing is sent. Zero values send strong and no wait.
+// else is INVALID and nothing is sent. Zero values send linearizable and no
+// wait; an explicit strong is still sent as strong.
 func TestPendingOutboxLongPoll(t *testing.T) {
 	f := newFake(t)
 	c := newClient(t, f)
-	f.setAnswer(answerWith(http.StatusOK, internalapi.OutboxPage{Shard: 2, Events: []store.OutboxEvent{{EventID: "e1"}}, RingVersion: 1}))
+	f.setAnswer(readAnswer(internalapi.ReadInfoConsistencyLinearizable))
 	ctx := testCtx(t)
-	if _, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50, Wait: time.Second, Consistency: store.ConsistencyStrong}); err != nil {
+	if _, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50, Wait: time.Second, Consistency: store.ConsistencyLinearizable}); err != nil {
 		t.Fatalf("long poll: %v", err)
 	}
 	if _, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50}); err != nil {
 		t.Fatalf("zero options: %v", err)
 	}
-	for i, want := range []string{"consistency=strong&limit=50&shard=2&wait=1", "consistency=strong&limit=50&shard=2"} {
+	if _, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50, Consistency: store.ConsistencyStrong}); err != nil {
+		t.Fatalf("explicit strong: %v", err)
+	}
+	for i, want := range []string{"consistency=linearizable&limit=50&shard=2&wait=1", "consistency=linearizable&limit=50&shard=2", "consistency=strong&limit=50&shard=2"} {
 		if got := f.requests()[i].query; got != want {
 			t.Errorf("outbox %d sent %s, want %s", i, got, want)
 		}

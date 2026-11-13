@@ -54,7 +54,7 @@ func (p *Process) walk(ctx context.Context) (observation, map[int]bool, error) {
 	cursor := ""
 	at := p.now().UnixMilli()
 	for pages := 0; pages < 100; pages++ {
-		page, err := p.source.Scan(ctx, store.ScanQuery{Kind: store.KindRequest, Statuses: states, Limit: 100, Cursor: cursor, Consistency: store.ConsistencyStrong})
+		page, err := p.source.Scan(ctx, store.ScanQuery{Kind: store.KindRequest, Statuses: states, Limit: 100, Cursor: cursor, Consistency: store.ConsistencyLinearizable})
 		if err != nil {
 			return out, answered, fmt.Errorf("workflow metrics scan: %w", err)
 		}
@@ -112,7 +112,7 @@ func (p *Process) walk(ctx context.Context) (observation, map[int]bool, error) {
 }
 func (p *Process) sampleOutbox(ctx context.Context, shard int) {
 	label := strconv.Itoa(shard)
-	rows, err := p.source.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: 100, Consistency: store.ConsistencyStrong})
+	rows, err := p.source.PendingOutbox(ctx, store.OutboxQuery{Shard: shard, Limit: 100, Consistency: store.ConsistencyLinearizable})
 	if err != nil || len(rows) > 100 {
 		p.batchValid.WithLabelValues(label).Set(0)
 		return

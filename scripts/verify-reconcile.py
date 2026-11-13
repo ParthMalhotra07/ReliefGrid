@@ -55,8 +55,14 @@ class Verify:
             time.sleep(0.2)
         raise TimeoutError(f'{method} {path}: fixed HTTP retry deadline expired')
 
+    def served(self, answer):
+        # Authoritative only if served strong or linearizable; a missing, unknown
+        # or stale label is refused.
+        assert (answer.get('read') or {}).get('consistency') in ('strong', 'linearizable'), answer
+        return answer
+
     def record(self, prefix, entity):
-        return self.call(self.coord, 'GET', f'/internal/data/{prefix}:{entity}?consistency=strong')['record']
+        return self.served(self.call(self.coord, 'GET', f'/internal/data/{prefix}:{entity}?consistency=strong'))['record']
 
     def replicas(self):
         return json.loads(self.k('get', 'deployment', self.release + '-matcher', '-o', 'json'))['spec']['replicas']
@@ -141,7 +147,7 @@ class Verify:
             assert resource['resource']['status'] == ('CONSUMED' if target == 'FULFILLED' else 'AVAILABLE'), resource
         if stage.startswith(('cancel-', 'fulfil-', 'retry-')) or stage == 'old-claim':
             aid = checkpoint['attemptId']
-            closure = self.call(self.coord, 'GET', f"/internal/resources/{checkpoint['resourceId']}/closures/{aid}?consistency=strong")['closure']
+            closure = self.served(self.call(self.coord, 'GET', f"/internal/resources/{checkpoint['resourceId']}/closures/{aid}?consistency=strong"))['closure']
             assert closure['requestId'] == checkpoint['requestId'] and closure['attemptId'] == aid
             self.save(stage + '/closure', closure)
             proof = self.host_probe('--probe', str(self.out / stage / 'checkpoint.json'))
@@ -237,7 +243,7 @@ class Verify:
         assert not bad, 'workflow exceeds bounded age threshold'
         end = time.monotonic() + 30
         while time.monotonic() < end:
-            pages = [self.call(self.coord, 'GET', f'/internal/outbox?shard={s}&limit=100&consistency=strong') for s in range(3)]
+            pages = [self.served(self.call(self.coord, 'GET', f'/internal/outbox?shard={s}&limit=100&consistency=strong')) for s in range(3)]
             if all((not p['events'] for p in pages)):
                 break
             time.sleep(0.2)

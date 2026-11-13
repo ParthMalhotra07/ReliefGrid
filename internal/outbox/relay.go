@@ -97,7 +97,7 @@ func (r *Relay) Step(ctx context.Context, shard int, p Publisher) (Report, error
 		return report, err
 	}
 	readCtx, readCancel := context.WithTimeout(ctx, 2*time.Second)
-	rows, err := r.config.Store.PendingOutbox(readCtx, store.OutboxQuery{Shard: shard, Limit: r.config.BatchSize, Wait: time.Second, Consistency: store.ConsistencyStrong})
+	rows, err := r.config.Store.PendingOutbox(readCtx, store.OutboxQuery{Shard: shard, Limit: r.config.BatchSize, Wait: time.Second, Consistency: store.ConsistencyLinearizable})
 	readCancel()
 	if err != nil {
 		return report, fmt.Errorf("pending outbox shard %d: %w", shard, err)
