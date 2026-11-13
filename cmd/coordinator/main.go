@@ -30,7 +30,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/coordinator"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/internalauth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
 )
@@ -53,10 +55,15 @@ func main() {
 
 // config is read from the environment the Deployment sets.
 type config struct {
-	HTTPAddr    string
-	MetricsAddr string // METRICS_ADDR, default :9090: GET /metrics only (docs/operations/storage-metrics.md); "" serves none
-	RingPath    string
-	Coordinator coordinator.Config // without Ring; run loads it from RingPath
+	InternalAuthEnabled bool
+	Listen              func(context.Context, string, string) (net.Listener, error)
+	NodeAuthFiles       internalauth.Files
+	NodeSenderTokenFile string
+	AppAuthFiles        internalauth.Files
+	HTTPAddr            string
+	MetricsAddr         string // METRICS_ADDR, default :9090: GET /metrics only (docs/operations/storage-metrics.md); "" serves none
+	RingPath            string
+	Coordinator         coordinator.Config // without Ring; run loads it from RingPath
 }
 
 func loadConfig(getenv func(string) string) (config, error) {
@@ -77,6 +84,16 @@ func loadConfig(getenv func(string) string) (config, error) {
 	if _, _, err := net.SplitHostPort(cfg.HTTPAddr); err != nil {
 		return config{}, fmt.Errorf("HTTP_ADDR %q: %w", cfg.HTTPAddr, err)
 	}
+	cfg.AppAuthFiles = internalauth.Files{Token: get("INTERNAL_AUTH_TOKEN_FILE", "/var/run/reliefgrid/internal-auth/token"), PreviousToken: get("INTERNAL_AUTH_PREVIOUS_TOKEN_FILE", "/var/run/reliefgrid/internal-auth/previous-token")}
+	if value := getenv("INTERNAL_AUTH_ENABLED"); value != "" {
+		enabled, err := strconv.ParseBool(value)
+		if err != nil {
+			return config{}, fmt.Errorf("INTERNAL_AUTH_ENABLED: %w", err)
+		}
+		cfg.InternalAuthEnabled = enabled
+	}
+	cfg.NodeSenderTokenFile = get("NODE_AUTH_SENDER_TOKEN_FILE", "/var/run/reliefgrid/node-auth/sender-token")
+	cfg.NodeAuthFiles = internalauth.Files{Token: get("NODE_AUTH_TOKEN_FILE", "/var/run/reliefgrid/node-auth/token"), PreviousToken: get("NODE_AUTH_PREVIOUS_TOKEN_FILE", "/var/run/reliefgrid/node-auth/previous-token")}
 	c := &cfg.Coordinator
 	c.OperatorToken = getenv("OPERATOR_TOKEN")
 	var err error
@@ -114,6 +131,26 @@ func run(ctx context.Context, cfg config, ready chan<- string) error {
 		return fmt.Errorf("refusing to start: %w", err)
 	}
 	cc := cfg.Coordinator
+	if cfg.InternalAuthEnabled {
+		appAuth, err := cfg.AppAuthFiles.Load()
+		if err != nil {
+			return err
+		}
+		nodeAuth, err := cfg.NodeAuthFiles.Load()
+		if err != nil {
+			return err
+		}
+		nodeSender, err := internalauth.LoadSender(cfg.NodeSenderTokenFile)
+		if err != nil {
+			return err
+		}
+		cc.AppAuth, cc.NodeAuth = &appAuth, &nodeAuth
+		// Wrap the raw node client directly, never an app-authenticated client.
+		cc.Client, err = auth.NewClient(cc.Client, nodeSender)
+		if err != nil {
+			return err
+		}
+	}
 	cc.Ring = rg
 	c, err := coordinator.New(cc)
 	if err != nil {
@@ -122,7 +159,11 @@ func run(ctx context.Context, cfg config, ready chan<- string) error {
 	if cc.OperatorToken == "" {
 		slog.Warn("OPERATOR_TOKEN is not set; /admin is disabled")
 	}
-	ln, err := (&net.ListenConfig{}).Listen(ctx, "tcp", cfg.HTTPAddr)
+	listen := cfg.Listen
+	if listen == nil {
+		listen = (&net.ListenConfig{}).Listen
+	}
+	ln, err := listen(ctx, "tcp", cfg.HTTPAddr)
 	if err != nil {
 		return err
 	}

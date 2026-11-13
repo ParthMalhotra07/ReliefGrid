@@ -12,15 +12,17 @@ import (
 	"github.com/hashicorp/raft"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
 )
 
 // Config is one replica's server configuration.
 type Config struct {
-	Ring    *ring.Ring
-	Shard   int
-	PodName string
+	InternalAuth *auth.ReceiverConfig
+	Ring         *ring.Ring
+	Shard        int
+	PodName      string
 	// Timeout is the deadline on every Apply and read (plan §14: 3 s storage).
 	Timeout time.Duration
 	// LeaderHTTP turns the Raft leader's address into the address of its
@@ -49,7 +51,7 @@ func New(n *raftstore.Node, cfg Config) *Server {
 	}
 	cfg.Metrics.m.attach(n)
 	return &Server{s: &server{
-		node: n, ring: cfg.Ring, shard: cfg.Shard, podName: cfg.PodName, serverID: string(n.Identity().ServerID()), timeout: cfg.Timeout,
+		internalAuth: cfg.InternalAuth, node: n, ring: cfg.Ring, shard: cfg.Shard, podName: cfg.PodName, serverID: string(n.Identity().ServerID()), timeout: cfg.Timeout,
 		leaderHTTP: cfg.LeaderHTTP, operatorToken: cfg.OperatorToken, tracerProvider: cfg.TracerProvider, metrics: cfg.Metrics.m,
 	}}
 }

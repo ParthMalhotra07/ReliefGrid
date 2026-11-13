@@ -262,6 +262,20 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 			why = fmt.Sprintf("%s: %v", addr, err)
 			continue
 		}
+		// Only a verified, structured pre-handler refusal is definite for this
+		// attempt. It cannot resolve an earlier proposal's unknown outcome.
+		if a.status == http.StatusUnauthorized {
+			var e internalapi.Error
+			if json.Unmarshal(a.body, &e) == nil && e.Code == internalapi.UNAUTHORIZED && e.Result == nil && !e.OutcomeUnknown {
+				if unknown {
+					return nil, true, "authentication refused after an unresolved attempt; retry the same operationId"
+				}
+				outcome = outcomeAnswered
+				return a, false, ""
+			}
+			unknown = unknown || mutation
+			return nil, unknown, "unrecognized authentication response"
+		}
 		if a.status >= 400 && a.status < 500 && unknown {
 			// A refusal before proposing says nothing about an earlier
 			// attempt that may have been proposed: keep the unknown, so the
@@ -272,6 +286,7 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 				outcome = outcomeAnswered
 				return nil, true, fmt.Sprintf("%s: %d %s after an attempt with an unknown outcome; retry the same operationId", addr, a.status, e.Code)
 			}
+
 		}
 		if a.status < 500 {
 			outcome = outcomeAnswered

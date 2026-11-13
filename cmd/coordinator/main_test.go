@@ -92,10 +92,12 @@ func TestRunRefusesRingChecksumMismatch(t *testing.T) {
 
 func TestRunServesTheLoadedRing(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	tokens := mountedAuth(t)
 	ready := make(chan string, 1)
 	errc := make(chan error, 1)
 	go func() {
-		errc <- run(ctx, config{HTTPAddr: "127.0.0.1:0", RingPath: "../../contracts/ring.yaml", Coordinator: coordinator.Config{OperatorToken: "t"}}, ready)
+		errc <- run(ctx, config{InternalAuthEnabled: true, AppAuthFiles: tokens, NodeAuthFiles: tokens, NodeSenderTokenFile: tokens.Token, HTTPAddr: "127.0.0.1:0", RingPath: "../../contracts/ring.yaml", Coordinator: coordinator.Config{OperatorToken: "t"}}, ready)
 	}()
 	var addr string
 	select {
@@ -106,6 +108,7 @@ func TestRunServesTheLoadedRing(t *testing.T) {
 		t.Fatal("not serving after 5s")
 	}
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+addr+"/internal/ring", nil)
+	req.Header.Set("X-ReliefGrid-Internal-Token", "test-token")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -113,6 +116,20 @@ func TestRunServesTheLoadedRing(t *testing.T) {
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET /internal/ring = %d", resp.StatusCode)
+	}
+	for _, tc := range []struct {
+		path   string
+		status int
+	}{{"/healthz", 200}, {"/internal/ring", 401}} {
+		req, _ := http.NewRequestWithContext(ctx, "GET", "http://"+addr+tc.path, nil)
+		response, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = response.Body.Close()
+		if response.StatusCode != tc.status {
+			t.Fatalf("%s=%d", tc.path, response.StatusCode)
+		}
 	}
 	cancel()
 	if err := <-errc; err != nil {

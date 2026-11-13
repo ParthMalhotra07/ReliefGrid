@@ -49,7 +49,7 @@ while IFS= read -r f; do
 		;;
 	esac
 	case "$f" in
-	tests/workflow/* | internal/api/* | internal/coordclient/* | internal/fsm/* | internal/geo/* | internal/internalapi/* | \
+	tests/workflow/* | internal/auth/* | internal/api/* | internal/coordclient/* | internal/fsm/* | internal/geo/* | internal/internalapi/* | \
 		internal/mq/* | internal/obs/* | internal/outbox/* | internal/ring/* | internal/store/* | internal/testseam/* | \
 		internal/workflow/* | contracts/* | deploy/helm/reliefgrid/values.yaml | \
 		go.mod | go.sum | Makefile | tools.mk | .github/* | scripts/ci-changes.sh | scripts/ci-schedules.sh)

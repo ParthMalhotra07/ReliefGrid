@@ -1,0 +1,128 @@
+[
+  {
+    "id": "1",
+    "label": "reject receiver overlap",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "2",
+    "label": "accept empty header",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "3",
+    "label": "skip receiver config validation",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "4",
+    "label": "protect only data prefix",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "5",
+    "label": "app prefix before node prefix",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "6",
+    "label": "bypass storage receiver",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "7",
+    "label": "erase earlier forwarding uncertainty",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "8",
+    "label": "malformed refusal loses uncertainty",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "9",
+    "label": "forget earlier client uncertainty",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "10",
+    "label": "never resolve committed operation",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "11",
+    "label": "drop DELETE operation identity",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "12",
+    "label": "accept 401 carrying result or unknown",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "13",
+    "label": "ignore unreadable previous file",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "14-coordinator",
+    "label": "ignore node receiver load error",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "14-storagenode",
+    "label": "ignore node receiver load error",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "15",
+    "label": "force sender to receiver current",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "16-coordinator",
+    "label": "load auth after Listen",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  },
+  {
+    "id": "16-storagenode",
+    "label": "load auth after Listen",
+    "baseline": "GREEN",
+    "status": "RED",
+    "exit": 1
+  }
+]
