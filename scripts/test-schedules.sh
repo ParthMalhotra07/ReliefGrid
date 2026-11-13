@@ -15,6 +15,8 @@ out="$ROOT/docs/evidence/A2.3/$SCHEDULE_RUN_ID"
 mkdir -p "$out"
 if [ -n "${SCHEDULE_IDS:-}" ];then echo "SUBSET $SCHEDULE_IDS: not complete A2.3 acceptance";fi
 broker="" proxy="" replicas="" shard_replicas="" storage_tag=""
+schedule_auth_loaded=false
+INTERNAL_AUTH_CURL=()
 cleanup(){
  local status=$? cleanup_status=0
  trap - EXIT
@@ -32,6 +34,7 @@ cleanup(){
  fi
  if [ -n "$replicas" ];then kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas="$replicas" >/dev/null || cleanup_status=1;fi
  if [ -n "$broker" ];then docker rm -f "$broker" >/dev/null || cleanup_status=1;fi
+ if [ "$schedule_auth_loaded" = true ];then internal_auth_cleanup || cleanup_status=1;fi
  if [ "$status" = 0 ];then status=$cleanup_status;fi
  exit "$status"
 }
@@ -57,11 +60,17 @@ run_backend(){
 }
 if [ "$backend" != cluster ];then run_backend m8;fi
 if [ "$backend" != m8 ];then
+ # Shared Secret staging is supplied by #174. Load it only for the cluster
+ # backend; the local M8 FSM has no internal HTTP identity or Helm dependency.
+ # shellcheck source=scripts/internal-auth-env.sh
+ source scripts/internal-auth-env.sh
+ schedule_auth_loaded=true
  # A clean dev fixture deployment ensures no unrelated pending outbox events
  # can be published into this run's isolated broker vhosts.
  if [ "${SCHEDULE_RESET:-1}" = 1 ];then
   A15_EVIDENCE_DIR="$out/deployment" RESET_CONFIRM=reliefgrid make demo-reset > "$out/deploy.log" 2>&1
  fi
+ internal_auth_setup kind-reliefgrid reliefgrid || { echo 'Cannot determine or stage schedule internal auth' >&2;exit 1; }
  needs_seams=false
  if [ -z "${SCHEDULE_IDS:-}" ];then needs_seams=true;else
   case ",${SCHEDULE_IDS}," in *,1,*|*,01,*|*,12,*|*,13,*|*,13a,*|*,13b,*) needs_seams=true;;esac
@@ -83,12 +92,12 @@ if [ "$backend" != m8 ];then
  proxy=$!
  export COORDINATOR_URL="http://127.0.0.1:$port"
  ready=false
- for _ in $(seq 50);do if curl --fail --silent --max-time 1 "$COORDINATOR_URL/internal/ring" >/dev/null;then ready=true;break;fi;sleep .1;done
+ for _ in $(seq 50);do if curl --fail --silent --max-time 1 "${INTERNAL_AUTH_CURL[@]}" "$COORDINATOR_URL/internal/ring" >/dev/null;then ready=true;break;fi;sleep .1;done
  if [ "$ready" != true ];then echo 'Coordinator loopback forward did not become ready' >&2;tail -10 "$out/forward.log" >&2;exit 1;fi
  # Every audited fixture now confirms and drains its own outbox after assertions.
  # Refuse foreign work before any cluster case, including non-relay subsets.
  for shard in 0 1 2;do
-  curl --fail --silent --max-time 5 "$COORDINATOR_URL/internal/outbox?shard=$shard&limit=1&consistency=strong" |
+  curl --fail --silent --max-time 5 "${INTERNAL_AUTH_CURL[@]}" "$COORDINATOR_URL/internal/outbox?shard=$shard&limit=1&consistency=strong" |
    jq -e '(.events|type)=="array" and (.events|length)==0' >/dev/null || { echo 'Cluster must have no foreign pending outbox work before schedule audits' >&2;exit 1; }
  done
  if [ "$hold" = 1 ];then

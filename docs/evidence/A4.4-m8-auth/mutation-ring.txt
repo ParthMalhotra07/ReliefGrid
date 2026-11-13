@@ -1,0 +1,7 @@
+--- FAIL: TestScheduleRingProbeInternalAuth (0.01s)
+    --- FAIL: TestScheduleRingProbeInternalAuth/enabled (0.01s)
+        internal_auth_test.go:93: ring probe has wrong credential class
+        internal_auth_test.go:101: ring HTTP401
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	0.053s
+FAIL

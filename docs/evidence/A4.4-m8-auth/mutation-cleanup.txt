@@ -1,0 +1,6 @@
+--- FAIL: TestSchedulesInternalAuthOnAndUnreadable (0.06s)
+    --- FAIL: TestSchedulesInternalAuthOnAndUnreadable/on (0.06s)
+        schedules_harness_test.go:35: runner did not call shared credential cleanup
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.068s
+FAIL

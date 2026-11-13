@@ -1,0 +1,7 @@
+--- FAIL: TestScheduleClusterStartupInternalAuth (0.01s)
+    --- FAIL: TestScheduleClusterStartupInternalAuth/enabled (0.01s)
+        internal_auth_test.go:57: cluster startup sent the wrong credential class
+        internal_auth_test.go:74: coordclient: load ring: 401 "" is not a ring
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	0.043s
+FAIL
