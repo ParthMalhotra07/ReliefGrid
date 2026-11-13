@@ -1,0 +1,5 @@
+21:29:13 kill-leader: plan {"experiment":"kill-leader","seed":431,"shard":1,"role":"leader","pick":1,"faultDelayMs":14761,"loadSeconds":90,"settleMaxSeconds":120,"prefix":"chaos-kill-leader-s431","workers":4,"keys":4,"intervalMs":50}
+21:29:15 target storage-shard-1-0 (leader, term 2)
+21:29:20 load running since 2026-11-12T15:59:19Z; fault in 14761ms
+21:29:38 fault pod-delete on storage-shard-1-0: 4s; recovery storage-shard-1-1 term 3
+21:31:14 PASSED: report docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/kill-leader.json

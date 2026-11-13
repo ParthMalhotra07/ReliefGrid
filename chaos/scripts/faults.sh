@@ -72,16 +72,24 @@ cleanup_faults() {
 	fi
 }
 
-# lag_sample <follower>: leader commit index minus the follower's applied index, or "" if either
-# can't be read
+# lag_sample <follower>: the leader's commit index minus the follower's Raft applied index (never
+# negative), or "" if either can't be read. Both are Raft log indexes. The FSM's appliedIndex is
+# the last *command* applied, and Raft barriers (one per strong read) never reach the FSM, so
+# commitIndex - appliedIndex counted every barrier since the last write as lag, on a follower
+# with nothing missing. raftAppliedIndex moves over barriers too, and only once the follower holds
+# an entry and knows it committed, so a follower whose replication stalls still shows its gap.
+# The two statuses are read one after the other, so a follower read later can be past the
+# leader's sampled commit: that is no lag, not a negative one.
 lag_sample() {
-	local lead s f
+	local lead s f c a
 	lead="$(group_state "${peers[@]}")"
 	lead="${lead%% *}"
 	[ -n "$lead" ] || return 0
 	s="$(st "$lead")" f="$(st "$1")"
 	[ -n "$s" ] && [ -n "$f" ] || return 0
-	echo $(($(field "$s" .commitIndex) - $(field "$f" .appliedIndex)))
+	c="$(field "$s" .commitIndex)" a="$(field "$f" .raftAppliedIndex)"
+	[ -n "$c" ] && [ -n "$a" ] || return 0
+	echo $((c > a ? c - a : 0))
 }
 
 # isolation_facts <isolated pod> <t_c1> <t_c2> <m_c1> <m_c2>: the judge's isolation object
@@ -155,7 +163,8 @@ fault_delay_follower() {
 	mesh_delete "delay-$run_id" || note "could not delete delay-$run_id"
 	delay_max_lag="$max" delay_samples="$n"
 }
-# delay_final_lag: after the settle (one_group means equal applied indexes, so normally 0)
+# delay_final_lag: after the settle (one_group means caught up at equal applied indexes, so
+# normally 0; trailing barriers no longer keep it above 0)
 delay_final_lag() {
 	local lag
 	lag="$(lag_sample "$target_pod")"

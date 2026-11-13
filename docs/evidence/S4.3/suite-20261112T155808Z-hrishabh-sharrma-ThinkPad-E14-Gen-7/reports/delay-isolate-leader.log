@@ -1,0 +1,6 @@
+21:40:45 delay-isolate-leader: plan {"experiment":"delay-isolate-leader","seed":436,"shard":1,"role":"leader","pick":1,"faultDelayMs":10287,"loadSeconds":111,"settleMaxSeconds":120,"prefix":"chaos-delay-isolate-leader-s436","workers":4,"keys":4,"intervalMs":50}
+21:40:47 target storage-shard-1-0 (leader, term 5)
+21:40:47 load running since 2026-11-12T16:10:47Z; fault in 10287ms
+21:40:57 note: delayed storage-shard-1-2 by 150ms (+-30ms) both ways; isolating in 5s
+21:41:24 fault delay+partition on storage-shard-1-0: 20s; recovery storage-shard-1-1 term 6
+21:43:03 PASSED: report docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/delay-isolate-leader.json

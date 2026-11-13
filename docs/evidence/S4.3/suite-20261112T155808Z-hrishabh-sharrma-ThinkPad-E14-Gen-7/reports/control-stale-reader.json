@@ -1,0 +1,3460 @@
+{
+  "experiment": "delay-follower",
+  "seed": 442,
+  "runId": "delay-follower-s442-1794500914",
+  "pass": false,
+  "failures": [
+    "reads: 514 stale read(s): a read missed a write acknowledged before it began"
+  ],
+  "plan": {
+    "experiment": "delay-follower",
+    "seed": 442,
+    "shard": 2,
+    "role": "follower",
+    "pick": 1,
+    "faultDelayMs": 9151,
+    "loadSeconds": 110,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-delay-follower-s442",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 2,
+    "pod": "storage-shard-2-2",
+    "serverId": "storage-shard-2-2/aa87714c-2682-49a3-97e6-3939d7f1933a",
+    "role": "follower",
+    "term": 3
+  },
+  "fault": {
+    "kind": "delay",
+    "mechanism": "Chaos Mesh NetworkChaos delay 300ms +-50ms, the follower with both peers, both directions",
+    "startedAt": 1794500924268,
+    "healedAt": 1794500949637
+  },
+  "recovery": {
+    "leader": "",
+    "term": 0,
+    "seconds": -1.0
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1794501029819,
+    "seconds": 0.6,
+    "ok": true,
+    "detail": "shard 2 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1794500915000,
+    "faultStartedAt": 1794500924268,
+    "faultHealedAt": 1794500949637,
+    "settledAt": 1794501030445,
+    "loadFinishedAt": 1794501027000
+  },
+  "load": {
+    "job": "chaos-load-delay-follower-s442-1794500914",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 7958,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 1845
+  },
+  "errorsObserved": [],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/delay-follower-s442-1794500914.json",
+    "job": "chaos-verify-delay-follower-s442-1794500914",
+    "exitCode": 1,
+    "checked": 7958,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-delay-follower-s442-1794500914",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 2 is one caught-up group",
+    "recovery": null,
+    "isolation": null,
+    "delay": {
+      "maxLag": 42,
+      "finalLag": 0,
+      "samples": 22,
+      "delay": "300ms+-50ms"
+    },
+    "worker": null,
+    "coordinator": null
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "stale",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [
+      "2=http://storage-shard-2-2.storage-shard-2.reliefgrid.svc.cluster.local:8080"
+    ],
+    "verdict": {
+      "total": 6267,
+      "checked": 6189,
+      "unchecked": 3,
+      "failed": 75,
+      "served": {
+        "stale": 6189
+      }
+    },
+    "staleCount": 514,
+    "stale": [
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 314466391,
+          "endNs": 315559557,
+          "version": 1,
+          "payloadHash": "b2969dbd9e79f605c55d59588060d49f890c2c38dbb04fbb9cda567fea4b85fd",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op10",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 1,
+          "payloadHash": "03aa93a2b2467e08762c8648564058b7dd17159f73ec342b0267567a60246d45",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op10",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 2,
+            "shard": 2,
+            "appliedIndex": 79748
+          },
+          "at": 1794500917340,
+          "ackNs": 310681582,
+          "startNs": 305810408
+        },
+        "reason": "read v1 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 1 at v2 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 1511280653,
+          "endNs": 1511934629,
+          "version": 4,
+          "payloadHash": "74b254730e2507537ad6dfdad6b5ea8e2c988804c8609666f650407cd1852619",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op30",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 4,
+          "payloadHash": "7c88044821227f0190e03eeb9dd3aec6ae386cf4efdeb66b39d880f5884ced78",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op30",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 5,
+            "shard": 2,
+            "appliedIndex": 79805
+          },
+          "at": 1794500918481,
+          "ackNs": 1451983445,
+          "startNs": 1447973320
+        },
+        "reason": "read v4 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 4 at v5 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 4016083810,
+          "endNs": 4018466409,
+          "version": 9,
+          "payloadHash": "1cacb13539877312eb940b5f9747832f4cd03d18fd88c838b5cb60e201405bea",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op76",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 9,
+          "payloadHash": "875bf30739140c28b4c9edf9857f182d7864d7e8d51e9a3d6fa6a16b2c2d8da8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op76",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 10,
+            "shard": 2,
+            "appliedIndex": 79943
+          },
+          "at": 1794500921024,
+          "ackNs": 3995426587,
+          "startNs": 3991147749
+        },
+        "reason": "read v9 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 9 at v10 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 4121031149,
+          "endNs": 4122177471,
+          "version": 10,
+          "payloadHash": "06d6cbd94397ffb11ceaa807e944fec767689f65cff3cf5b91710d1299aea7f6",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op78",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 10,
+          "payloadHash": "1a1f0d306de4e2aedde08188bf75ed577d7cc1879ac9268ff03080d2014a8ecd",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op78",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 11,
+            "shard": 2,
+            "appliedIndex": 79949
+          },
+          "at": 1794500921136,
+          "ackNs": 4107061027,
+          "startNs": 4102162670
+        },
+        "reason": "read v10 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 10 at v11 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 5265419614,
+          "endNs": 5266496916,
+          "version": 12,
+          "payloadHash": "8036e346b10d413ffbb8256e13ef8c21b7a52ac3b4512f984cfee14d4b6f15dc",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op98",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 12,
+          "payloadHash": "d2a088fba9b18894b935c501d1903520c13c1da12ca33cbcdb24f548ad4a2ee0",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op98",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 13,
+            "shard": 2,
+            "appliedIndex": 80019
+          },
+          "at": 1794500922279,
+          "ackNs": 5249692142,
+          "startNs": 5245500916
+        },
+        "reason": "read v12 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 12 at v13 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 5895772709,
+          "endNs": 5896795219,
+          "version": 14,
+          "payloadHash": "106bd686dea7ee1a7bf5fe01ff4c7696e65057b4ebd24ce2abb548bcaa6d6a43",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op110",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 14,
+          "payloadHash": "ba86e112c8331486fc28387319455b7c95020482c99c6f005d51c55c4ba40f29",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op110",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 15,
+            "shard": 2,
+            "appliedIndex": 80056
+          },
+          "at": 1794500922908,
+          "ackNs": 5879208061,
+          "startNs": 5874972652
+        },
+        "reason": "read v14 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 14 at v15 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 7656803480,
+          "endNs": 7658016759,
+          "version": 17,
+          "payloadHash": "ce05aef9c71df415095b201c0cc1217d05179296c97024904f177fa118bdd8fe",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op140",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 17,
+          "payloadHash": "0beed43200fff9804d3ac98ac5720363cd6542138927c979af09429ed4abb975",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op140",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 18,
+            "shard": 2,
+            "appliedIndex": 80148
+          },
+          "at": 1794500924594,
+          "ackNs": 7565292941,
+          "startNs": 7562375983
+        },
+        "reason": "read v17 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 17 at v18 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 7708037447,
+          "endNs": 7708477320,
+          "version": 18,
+          "payloadHash": "c0a0bf55441bd384ac31bc603c1a349fb599c71ef54be6c86822009b6e39a634",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op142",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "ed57dfbebebf29598641404007e16f2276c10fc6467ead9a3f99ea09ec63ee7e",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op142",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80152
+          },
+          "at": 1794500924679,
+          "ackNs": 7649671828,
+          "startNs": 7645913588
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 7759451965,
+          "endNs": 7760238637,
+          "version": 18,
+          "payloadHash": "73821c4cd8ce72a78c6d62bc28014eadda43caa92e911372888e5ae1b0b17dee",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op142",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "ee2f2f2a6a145dd39976777642713aace2ab89e6efa8019302039705ce870dcb",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op142",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80157
+          },
+          "at": 1794500924729,
+          "ackNs": 7700249349,
+          "startNs": 7695425003
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 7810378620,
+          "endNs": 7811311051,
+          "version": 18,
+          "payloadHash": "01fa7607398e2f04701908fc8bb862fa99159727a51d886fba3191a526594d76",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op144",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "764ec181eeea318a637b05b6c9227e43fbf006dca5e61bb2ef2cd9b8661a90e0",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op144",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80160
+          },
+          "at": 1794500924807,
+          "ackNs": 7777879872,
+          "startNs": 7775813442
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 7914055035,
+          "endNs": 7914589816,
+          "version": 17,
+          "payloadHash": "ce05aef9c71df415095b201c0cc1217d05179296c97024904f177fa118bdd8fe",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op140",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 17,
+          "payloadHash": "0beed43200fff9804d3ac98ac5720363cd6542138927c979af09429ed4abb975",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op140",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 18,
+            "shard": 2,
+            "appliedIndex": 80148
+          },
+          "at": 1794500924594,
+          "ackNs": 7565292941,
+          "startNs": 7562375983
+        },
+        "reason": "read v17 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 17 at v18 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 7965615848,
+          "endNs": 7966504068,
+          "version": 18,
+          "payloadHash": "c0a0bf55441bd384ac31bc603c1a349fb599c71ef54be6c86822009b6e39a634",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op142",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "ed57dfbebebf29598641404007e16f2276c10fc6467ead9a3f99ea09ec63ee7e",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op142",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80152
+          },
+          "at": 1794500924679,
+          "ackNs": 7649671828,
+          "startNs": 7645913588
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 8016566881,
+          "endNs": 8018538123,
+          "version": 18,
+          "payloadHash": "73821c4cd8ce72a78c6d62bc28014eadda43caa92e911372888e5ae1b0b17dee",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op142",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "ee2f2f2a6a145dd39976777642713aace2ab89e6efa8019302039705ce870dcb",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op142",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80157
+          },
+          "at": 1794500924729,
+          "ackNs": 7700249349,
+          "startNs": 7695425003
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 8068948938,
+          "endNs": 8069914515,
+          "version": 18,
+          "payloadHash": "01fa7607398e2f04701908fc8bb862fa99159727a51d886fba3191a526594d76",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op144",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "764ec181eeea318a637b05b6c9227e43fbf006dca5e61bb2ef2cd9b8661a90e0",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op144",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80160
+          },
+          "at": 1794500924807,
+          "ackNs": 7777879872,
+          "startNs": 7775813442
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 8120951913,
+          "endNs": 8121536658,
+          "version": 18,
+          "payloadHash": "09e51fd91de18c6a29051001280e523b80aa3753164594da8fdb98d732064d15",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op146",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "381048969879a74cbae2101924a8bca3dd046bac29368def5f234faa2aeb9ce5",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op146",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80167
+          },
+          "at": 1794500924915,
+          "ackNs": 7885946667,
+          "startNs": 7882039200
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 8171944786,
+          "endNs": 8174493053,
+          "version": 18,
+          "payloadHash": "0beed43200fff9804d3ac98ac5720363cd6542138927c979af09429ed4abb975",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op148",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 18,
+          "payloadHash": "b7dcb7d70d70e47534faf96482c141ae8a2c046b8404a3abbb4ff94f7bfe06dd",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op148",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 19,
+            "shard": 2,
+            "appliedIndex": 80173
+          },
+          "at": 1794500925021,
+          "ackNs": 7992490097,
+          "startNs": 7990138158
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 18 at v19 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 8225007082,
+          "endNs": 8225818441,
+          "version": 19,
+          "payloadHash": "ed57dfbebebf29598641404007e16f2276c10fc6467ead9a3f99ea09ec63ee7e",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op150",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "d52c88b152673a5d58945a38e30293f7abd2174d3e259bf1165be101be13752d",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op150",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80176
+          },
+          "at": 1794500925116,
+          "ackNs": 8087013510,
+          "startNs": 8084544790
+        },
+        "reason": "read v19 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 8276878631,
+          "endNs": 8277661149,
+          "version": 19,
+          "payloadHash": "ee2f2f2a6a145dd39976777642713aace2ab89e6efa8019302039705ce870dcb",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op150",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "ea2d90730753938f57720bfbdb871607d5a1be29f7f0bfdb5c932948fe22c879",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op150",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80180
+          },
+          "at": 1794500925165,
+          "ackNs": 8136316867,
+          "startNs": 8133427442
+        },
+        "reason": "read v19 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 8328705234,
+          "endNs": 8329497405,
+          "version": 19,
+          "payloadHash": "764ec181eeea318a637b05b6c9227e43fbf006dca5e61bb2ef2cd9b8661a90e0",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op152",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "afb6be4f7e0f3d9632b90c425da93437bd0de8f3b87461d08f968f5919409663",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op152",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80186
+          },
+          "at": 1794500925239,
+          "ackNs": 8209913762,
+          "startNs": 8203508119
+        },
+        "reason": "read v19 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 8380489769,
+          "endNs": 8381879141,
+          "version": 18,
+          "payloadHash": "09e51fd91de18c6a29051001280e523b80aa3753164594da8fdb98d732064d15",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op154",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "0e8bb52cc91da869f6f75ef39ae2659abb8e935bf9d6dcc30978e42447fff57c",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op154",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80192
+          },
+          "at": 1794500925347,
+          "ackNs": 8317618061,
+          "startNs": 8314039102
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 8432915860,
+          "endNs": 8433938647,
+          "version": 18,
+          "payloadHash": "0beed43200fff9804d3ac98ac5720363cd6542138927c979af09429ed4abb975",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op156",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "83c5ed7705bb91ab96fc6966134548f15ce5450ac18fa1e8e3067290548ad3e8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op156",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80196
+          },
+          "at": 1794500925460,
+          "ackNs": 8430863453,
+          "startNs": 8422003525
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 8484634418,
+          "endNs": 8486018114,
+          "version": 19,
+          "payloadHash": "ed57dfbebebf29598641404007e16f2276c10fc6467ead9a3f99ea09ec63ee7e",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op150",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "d52c88b152673a5d58945a38e30293f7abd2174d3e259bf1165be101be13752d",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op150",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80176
+          },
+          "at": 1794500925116,
+          "ackNs": 8087013510,
+          "startNs": 8084544790
+        },
+        "reason": "read v19 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 8536388512,
+          "endNs": 8537685751,
+          "version": 19,
+          "payloadHash": "ee2f2f2a6a145dd39976777642713aace2ab89e6efa8019302039705ce870dcb",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op150",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "ea2d90730753938f57720bfbdb871607d5a1be29f7f0bfdb5c932948fe22c879",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op150",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80180
+          },
+          "at": 1794500925165,
+          "ackNs": 8136316867,
+          "startNs": 8133427442
+        },
+        "reason": "read v19 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 8588233680,
+          "endNs": 8589355047,
+          "version": 19,
+          "payloadHash": "764ec181eeea318a637b05b6c9227e43fbf006dca5e61bb2ef2cd9b8661a90e0",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op152",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "afb6be4f7e0f3d9632b90c425da93437bd0de8f3b87461d08f968f5919409663",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op152",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80186
+          },
+          "at": 1794500925239,
+          "ackNs": 8209913762,
+          "startNs": 8203508119
+        },
+        "reason": "read v19 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 8640351014,
+          "endNs": 8641614268,
+          "version": 18,
+          "payloadHash": "09e51fd91de18c6a29051001280e523b80aa3753164594da8fdb98d732064d15",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op154",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "0e8bb52cc91da869f6f75ef39ae2659abb8e935bf9d6dcc30978e42447fff57c",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op154",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80192
+          },
+          "at": 1794500925347,
+          "ackNs": 8317618061,
+          "startNs": 8314039102
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 8692110998,
+          "endNs": 8693038561,
+          "version": 18,
+          "payloadHash": "0beed43200fff9804d3ac98ac5720363cd6542138927c979af09429ed4abb975",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op156",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 19,
+          "payloadHash": "83c5ed7705bb91ab96fc6966134548f15ce5450ac18fa1e8e3067290548ad3e8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op156",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 20,
+            "shard": 2,
+            "appliedIndex": 80196
+          },
+          "at": 1794500925460,
+          "ackNs": 8430863453,
+          "startNs": 8422003525
+        },
+        "reason": "read v18 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 19 at v20 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 8744434842,
+          "endNs": 8745418282,
+          "version": 19,
+          "payloadHash": "ed57dfbebebf29598641404007e16f2276c10fc6467ead9a3f99ea09ec63ee7e",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op158",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 20,
+          "payloadHash": "a95a64d9dc08a8283a0f3668b79d26c9cfd1bcf3acee824c1c054c88ed5a3409",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op158",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 21,
+            "shard": 2,
+            "appliedIndex": 80200
+          },
+          "at": 1794500925550,
+          "ackNs": 8521162820,
+          "startNs": 8517785144
+        },
+        "reason": "read v19 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 20 at v21 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 8795593207,
+          "endNs": 8797374683,
+          "version": 20,
+          "payloadHash": "ea2d90730753938f57720bfbdb871607d5a1be29f7f0bfdb5c932948fe22c879",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op158",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 20,
+          "payloadHash": "4168dc73e6595a6c6c12eb0ec53cd0017fcee1b9706739c7270d3132741457a5",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op158",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 21,
+            "shard": 2,
+            "appliedIndex": 80203
+          },
+          "at": 1794500925606,
+          "ackNs": 8576685545,
+          "startNs": 8568615570
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 20 at v21 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 8847441983,
+          "endNs": 8848790298,
+          "version": 20,
+          "payloadHash": "afb6be4f7e0f3d9632b90c425da93437bd0de8f3b87461d08f968f5919409663",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op160",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 20,
+          "payloadHash": "f0d080d5f9a169bd1d6c97eb35b5bdd96ed83728bb5ead3889de148fc4f78065",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op160",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 21,
+            "shard": 2,
+            "appliedIndex": 80207
+          },
+          "at": 1794500925683,
+          "ackNs": 8653668966,
+          "startNs": 8649748222
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 20 at v21 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 8899788064,
+          "endNs": 8900890221,
+          "version": 20,
+          "payloadHash": "0e8bb52cc91da869f6f75ef39ae2659abb8e935bf9d6dcc30978e42447fff57c",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op162",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 20,
+          "payloadHash": "7baabd849be63865ea9f83cf7a2fd4e57db194c9d5a4f73760f14595b34b9f4f",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op162",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 21,
+            "shard": 2,
+            "appliedIndex": 80210
+          },
+          "at": 1794500925794,
+          "ackNs": 8765065798,
+          "startNs": 8761781990
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 20 at v21 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 8951681075,
+          "endNs": 8952706177,
+          "version": 20,
+          "payloadHash": "83c5ed7705bb91ab96fc6966134548f15ce5450ac18fa1e8e3067290548ad3e8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op164",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 20,
+          "payloadHash": "6d6e028eff141982f1929651563ce6f8da2564df691cf706fffe886c897ab338",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op164",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 21,
+            "shard": 2,
+            "appliedIndex": 80216
+          },
+          "at": 1794500925904,
+          "ackNs": 8874664214,
+          "startNs": 8869090679
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 20 at v21 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9003028506,
+          "endNs": 9003740685,
+          "version": 20,
+          "payloadHash": "d52c88b152673a5d58945a38e30293f7abd2174d3e259bf1165be101be13752d",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op166",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "1b97f60ef858083bbbc133ea905e1a60688e9c78e82bef3dfad5a0ceb65683c9",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op166",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80219
+          },
+          "at": 1794500925994,
+          "ackNs": 8965434583,
+          "startNs": 8959858223
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9054757865,
+          "endNs": 9055536017,
+          "version": 20,
+          "payloadHash": "ea2d90730753938f57720bfbdb871607d5a1be29f7f0bfdb5c932948fe22c879",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op166",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "d7b4ce6e6a1c7c934da76baaf13da65f025647c5101c5bccb268aa6923764fe8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op166",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80222
+          },
+          "at": 1794500926052,
+          "ackNs": 9022809316,
+          "startNs": 9020544291
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 9106039156,
+          "endNs": 9106904264,
+          "version": 20,
+          "payloadHash": "afb6be4f7e0f3d9632b90c425da93437bd0de8f3b87461d08f968f5919409663",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op168",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "d6bbeb19648297dd36668b04f28a2579e6a5bd386f0ded55de37fc00e695bf48",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op168",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80225
+          },
+          "at": 1794500926122,
+          "ackNs": 9092850323,
+          "startNs": 9088309372
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 9157271717,
+          "endNs": 9158777648,
+          "version": 20,
+          "payloadHash": "0e8bb52cc91da869f6f75ef39ae2659abb8e935bf9d6dcc30978e42447fff57c",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op162",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 20,
+          "payloadHash": "7baabd849be63865ea9f83cf7a2fd4e57db194c9d5a4f73760f14595b34b9f4f",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op162",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 21,
+            "shard": 2,
+            "appliedIndex": 80210
+          },
+          "at": 1794500925794,
+          "ackNs": 8765065798,
+          "startNs": 8761781990
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 20 at v21 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 9209712677,
+          "endNs": 9210477008,
+          "version": 20,
+          "payloadHash": "83c5ed7705bb91ab96fc6966134548f15ce5450ac18fa1e8e3067290548ad3e8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op164",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 20,
+          "payloadHash": "6d6e028eff141982f1929651563ce6f8da2564df691cf706fffe886c897ab338",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op164",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 21,
+            "shard": 2,
+            "appliedIndex": 80216
+          },
+          "at": 1794500925904,
+          "ackNs": 8874664214,
+          "startNs": 8869090679
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 20 at v21 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9260712615,
+          "endNs": 9261438582,
+          "version": 20,
+          "payloadHash": "d52c88b152673a5d58945a38e30293f7abd2174d3e259bf1165be101be13752d",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op166",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "1b97f60ef858083bbbc133ea905e1a60688e9c78e82bef3dfad5a0ceb65683c9",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op166",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80219
+          },
+          "at": 1794500925994,
+          "ackNs": 8965434583,
+          "startNs": 8959858223
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9311928093,
+          "endNs": 9312466153,
+          "version": 20,
+          "payloadHash": "ea2d90730753938f57720bfbdb871607d5a1be29f7f0bfdb5c932948fe22c879",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op166",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "d7b4ce6e6a1c7c934da76baaf13da65f025647c5101c5bccb268aa6923764fe8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op166",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80222
+          },
+          "at": 1794500926052,
+          "ackNs": 9022809316,
+          "startNs": 9020544291
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 9362487658,
+          "endNs": 9363338070,
+          "version": 20,
+          "payloadHash": "afb6be4f7e0f3d9632b90c425da93437bd0de8f3b87461d08f968f5919409663",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op168",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "d6bbeb19648297dd36668b04f28a2579e6a5bd386f0ded55de37fc00e695bf48",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op168",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80225
+          },
+          "at": 1794500926122,
+          "ackNs": 9092850323,
+          "startNs": 9088309372
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 9413544810,
+          "endNs": 9413978033,
+          "version": 20,
+          "payloadHash": "0e8bb52cc91da869f6f75ef39ae2659abb8e935bf9d6dcc30978e42447fff57c",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op170",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "b27ca2e4eeb2e2511265d9405ec58d2b3262868675880786c1439ca7e0d92971",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op170",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80231
+          },
+          "at": 1794500926229,
+          "ackNs": 9199616693,
+          "startNs": 9196593147
+        },
+        "reason": "read v20 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 9464366616,
+          "endNs": 9465259634,
+          "version": 21,
+          "payloadHash": "6d6e028eff141982f1929651563ce6f8da2564df691cf706fffe886c897ab338",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op172",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "afd123ddc650d8baf054ff88595c7954ea3e0af5de0dfbaecaf827e6bc6baf29",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op172",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80240
+          },
+          "at": 1794500926335,
+          "ackNs": 9305749772,
+          "startNs": 9303478457
+        },
+        "reason": "read v21 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9516072257,
+          "endNs": 9517054661,
+          "version": 22,
+          "payloadHash": "1b97f60ef858083bbbc133ea905e1a60688e9c78e82bef3dfad5a0ceb65683c9",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op174",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "b2266ee435bde14ab1f1408b16334f4e3da65b2687b39620fc49f5e9260a496a",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op174",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80243
+          },
+          "at": 1794500926431,
+          "ackNs": 9402220309,
+          "startNs": 9399207444
+        },
+        "reason": "read v22 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9567696015,
+          "endNs": 9568533862,
+          "version": 22,
+          "payloadHash": "d7b4ce6e6a1c7c934da76baaf13da65f025647c5101c5bccb268aa6923764fe8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op174",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "6aadce12f145df436a825378c1d3167d89e5efaa3736c4be049ac51f408ddd83",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op174",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80247
+          },
+          "at": 1794500926485,
+          "ackNs": 9456325855,
+          "startNs": 9452823904
+        },
+        "reason": "read v22 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 9619361928,
+          "endNs": 9620269680,
+          "version": 22,
+          "payloadHash": "d6bbeb19648297dd36668b04f28a2579e6a5bd386f0ded55de37fc00e695bf48",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op176",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "a05e7caa6f9eb13e94ac365fb1b097fb6376ed0399c7e806ee345b6b3c5418b2",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op176",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80253
+          },
+          "at": 1794500926549,
+          "ackNs": 9520066128,
+          "startNs": 9517089262
+        },
+        "reason": "read v22 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 9671316537,
+          "endNs": 9672607108,
+          "version": 21,
+          "payloadHash": "7baabd849be63865ea9f83cf7a2fd4e57db194c9d5a4f73760f14595b34b9f4f",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op178",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "71db9cbf5a1b2de9eb62164ec39c04a1fbcaaa8765867a74bca8672c090bac64",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op178",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80260
+          },
+          "at": 1794500926660,
+          "ackNs": 9630762268,
+          "startNs": 9624615535
+        },
+        "reason": "read v21 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 9723741611,
+          "endNs": 9725806413,
+          "version": 21,
+          "payloadHash": "6d6e028eff141982f1929651563ce6f8da2564df691cf706fffe886c897ab338",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op172",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 21,
+          "payloadHash": "afd123ddc650d8baf054ff88595c7954ea3e0af5de0dfbaecaf827e6bc6baf29",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op172",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 22,
+            "shard": 2,
+            "appliedIndex": 80240
+          },
+          "at": 1794500926335,
+          "ackNs": 9305749772,
+          "startNs": 9303478457
+        },
+        "reason": "read v21 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 21 at v22 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9776866976,
+          "endNs": 9778248007,
+          "version": 22,
+          "payloadHash": "1b97f60ef858083bbbc133ea905e1a60688e9c78e82bef3dfad5a0ceb65683c9",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op174",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "b2266ee435bde14ab1f1408b16334f4e3da65b2687b39620fc49f5e9260a496a",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op174",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80243
+          },
+          "at": 1794500926431,
+          "ackNs": 9402220309,
+          "startNs": 9399207444
+        },
+        "reason": "read v22 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 9829369900,
+          "endNs": 9830293210,
+          "version": 22,
+          "payloadHash": "d7b4ce6e6a1c7c934da76baaf13da65f025647c5101c5bccb268aa6923764fe8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op174",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "6aadce12f145df436a825378c1d3167d89e5efaa3736c4be049ac51f408ddd83",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op174",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80247
+          },
+          "at": 1794500926485,
+          "ackNs": 9456325855,
+          "startNs": 9452823904
+        },
+        "reason": "read v22 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 9881091372,
+          "endNs": 9882431197,
+          "version": 22,
+          "payloadHash": "d6bbeb19648297dd36668b04f28a2579e6a5bd386f0ded55de37fc00e695bf48",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op176",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "a05e7caa6f9eb13e94ac365fb1b097fb6376ed0399c7e806ee345b6b3c5418b2",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op176",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80253
+          },
+          "at": 1794500926549,
+          "ackNs": 9520066128,
+          "startNs": 9517089262
+        },
+        "reason": "read v22 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 9933117527,
+          "endNs": 9934289214,
+          "version": 21,
+          "payloadHash": "7baabd849be63865ea9f83cf7a2fd4e57db194c9d5a4f73760f14595b34b9f4f",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op178",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "71db9cbf5a1b2de9eb62164ec39c04a1fbcaaa8765867a74bca8672c090bac64",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op178",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80260
+          },
+          "at": 1794500926660,
+          "ackNs": 9630762268,
+          "startNs": 9624615535
+        },
+        "reason": "read v21 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 9984734777,
+          "endNs": 9987616816,
+          "version": 22,
+          "payloadHash": "afd123ddc650d8baf054ff88595c7954ea3e0af5de0dfbaecaf827e6bc6baf29",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op180",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 22,
+          "payloadHash": "aafdf067b0f54be34cf8ce246440ce8bc4e9480db4eccd08a1f6a7136b5bf2d9",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op180",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 23,
+            "shard": 2,
+            "appliedIndex": 80267
+          },
+          "at": 1794500926771,
+          "ackNs": 9741742760,
+          "startNs": 9734859716
+        },
+        "reason": "read v22 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 22 at v23 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10038768594,
+          "endNs": 10040481983,
+          "version": 23,
+          "payloadHash": "b2266ee435bde14ab1f1408b16334f4e3da65b2687b39620fc49f5e9260a496a",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op182",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 23,
+          "payloadHash": "040d3a15d663799b6e43c0b862876160a51604e5a49d30831af242186089720e",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op182",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 24,
+            "shard": 2,
+            "appliedIndex": 80272
+          },
+          "at": 1794500926875,
+          "ackNs": 9846097183,
+          "startNs": 9841618103
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 23 at v24 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10090690966,
+          "endNs": 10091298448,
+          "version": 23,
+          "payloadHash": "6aadce12f145df436a825378c1d3167d89e5efaa3736c4be049ac51f408ddd83",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op182",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 23,
+          "payloadHash": "808fd666f70d7edbce10b1fc1b30a3fb7ce1a6eef527e4694c160911630ed5bd",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op182",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 24,
+            "shard": 2,
+            "appliedIndex": 80281
+          },
+          "at": 1794500926925,
+          "ackNs": 9896108243,
+          "startNs": 9894442237
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 23 at v24 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 10142125763,
+          "endNs": 10142979277,
+          "version": 23,
+          "payloadHash": "a05e7caa6f9eb13e94ac365fb1b097fb6376ed0399c7e806ee345b6b3c5418b2",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op184",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 23,
+          "payloadHash": "693bfa4775efeccc53442a8f291e385ca98d2b10874e90667abb1ecc70aa7e82",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op184",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 24,
+            "shard": 2,
+            "appliedIndex": 80285
+          },
+          "at": 1794500926988,
+          "ackNs": 9958792327,
+          "startNs": 9955882531
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 23 at v24 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 10193605979,
+          "endNs": 10194432599,
+          "version": 23,
+          "payloadHash": "71db9cbf5a1b2de9eb62164ec39c04a1fbcaaa8765867a74bca8672c090bac64",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op186",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 23,
+          "payloadHash": "f03a57bfe11d6d744c89e3474409a89f349d5b8478af11458cb150937d1721c0",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op186",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 24,
+            "shard": 2,
+            "appliedIndex": 80292
+          },
+          "at": 1794500927102,
+          "ackNs": 10073401684,
+          "startNs": 10065649491
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 23 at v24 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 10244632733,
+          "endNs": 10245208989,
+          "version": 23,
+          "payloadHash": "aafdf067b0f54be34cf8ce246440ce8bc4e9480db4eccd08a1f6a7136b5bf2d9",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op188",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 23,
+          "payloadHash": "d4a759b76c543cf44faae5f6387b98df966306085b8fac87225dd40fa32c8b41",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op188",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 24,
+            "shard": 2,
+            "appliedIndex": 80299
+          },
+          "at": 1794500927212,
+          "ackNs": 10183487205,
+          "startNs": 10180457197
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 23 at v24 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10295903753,
+          "endNs": 10296684641,
+          "version": 23,
+          "payloadHash": "b2266ee435bde14ab1f1408b16334f4e3da65b2687b39620fc49f5e9260a496a",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op190",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "0219aa6bfa81a8b4cd39087d0af3af825b587462936188dc3f2d0ca64a221a28",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op190",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80302
+          },
+          "at": 1794500927304,
+          "ackNs": 10275504223,
+          "startNs": 10272865357
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10347750604,
+          "endNs": 10348507630,
+          "version": 23,
+          "payloadHash": "6aadce12f145df436a825378c1d3167d89e5efaa3736c4be049ac51f408ddd83",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op190",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "8e9d2eaa9991d8187e53c68483418c0e09904a50b79d3a12ab5eb3bf6ac725c2",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op190",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80305
+          },
+          "at": 1794500927356,
+          "ackNs": 10326951954,
+          "startNs": 10322911688
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 10398811927,
+          "endNs": 10400498293,
+          "version": 23,
+          "payloadHash": "a05e7caa6f9eb13e94ac365fb1b097fb6376ed0399c7e806ee345b6b3c5418b2",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op192",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "5eac841eeba7c05513a6a6e708e229d18516cf50d15898ab1555d20050ca5988",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op192",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80308
+          },
+          "at": 1794500927425,
+          "ackNs": 10395560307,
+          "startNs": 10393150144
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 10451116822,
+          "endNs": 10451841959,
+          "version": 23,
+          "payloadHash": "71db9cbf5a1b2de9eb62164ec39c04a1fbcaaa8765867a74bca8672c090bac64",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op186",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 23,
+          "payloadHash": "f03a57bfe11d6d744c89e3474409a89f349d5b8478af11458cb150937d1721c0",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op186",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 24,
+            "shard": 2,
+            "appliedIndex": 80292
+          },
+          "at": 1794500927102,
+          "ackNs": 10073401684,
+          "startNs": 10065649491
+        },
+        "reason": "read v23 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 23 at v24 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10553841962,
+          "endNs": 10555592928,
+          "version": 24,
+          "payloadHash": "040d3a15d663799b6e43c0b862876160a51604e5a49d30831af242186089720e",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op190",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "0219aa6bfa81a8b4cd39087d0af3af825b587462936188dc3f2d0ca64a221a28",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op190",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80302
+          },
+          "at": 1794500927304,
+          "ackNs": 10275504223,
+          "startNs": 10272865357
+        },
+        "reason": "read v24 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10605843263,
+          "endNs": 10606667804,
+          "version": 24,
+          "payloadHash": "808fd666f70d7edbce10b1fc1b30a3fb7ce1a6eef527e4694c160911630ed5bd",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op190",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "8e9d2eaa9991d8187e53c68483418c0e09904a50b79d3a12ab5eb3bf6ac725c2",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op190",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80305
+          },
+          "at": 1794500927356,
+          "ackNs": 10326951954,
+          "startNs": 10322911688
+        },
+        "reason": "read v24 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 10657507898,
+          "endNs": 10658544834,
+          "version": 24,
+          "payloadHash": "693bfa4775efeccc53442a8f291e385ca98d2b10874e90667abb1ecc70aa7e82",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op192",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "5eac841eeba7c05513a6a6e708e229d18516cf50d15898ab1555d20050ca5988",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op192",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80308
+          },
+          "at": 1794500927425,
+          "ackNs": 10395560307,
+          "startNs": 10393150144
+        },
+        "reason": "read v24 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 10709358216,
+          "endNs": 10710666202,
+          "version": 24,
+          "payloadHash": "f03a57bfe11d6d744c89e3474409a89f349d5b8478af11458cb150937d1721c0",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op194",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "7277ff77f6e739e0a73ca01861b2089e1340d52685b3ca64f0b2533e9e534c48",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op194",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80315
+          },
+          "at": 1794500927533,
+          "ackNs": 10504483674,
+          "startNs": 10502008287
+        },
+        "reason": "read v24 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 10761129331,
+          "endNs": 10762420240,
+          "version": 24,
+          "payloadHash": "d4a759b76c543cf44faae5f6387b98df966306085b8fac87225dd40fa32c8b41",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op196",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "e6e8190d32f16ca5de656acb8dec1fd605c4f251dab8bc8731c4ca20aa8bd827",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op196",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80322
+          },
+          "at": 1794500927644,
+          "ackNs": 10615423737,
+          "startNs": 10612549182
+        },
+        "reason": "read v24 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10813326299,
+          "endNs": 10813820600,
+          "version": 25,
+          "payloadHash": "0219aa6bfa81a8b4cd39087d0af3af825b587462936188dc3f2d0ca64a221a28",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op198",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "c2804a10cf79d6e22b3a75442c0f1878ad6ed5b0c0453e90c4fab2956fb5612a",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op198",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80326
+          },
+          "at": 1794500927743,
+          "ackNs": 10713799436,
+          "startNs": 10707172003
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 10864832596,
+          "endNs": 10866282038,
+          "version": 25,
+          "payloadHash": "8e9d2eaa9991d8187e53c68483418c0e09904a50b79d3a12ab5eb3bf6ac725c2",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op198",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "f59629eee21b0af1ae6a4c0ab6b7bf6f839cee9a6dfbe5949b5eaa38c8497f48",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op198",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80329
+          },
+          "at": 1794500927797,
+          "ackNs": 10768474112,
+          "startNs": 10764496866
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 10916571056,
+          "endNs": 10917552117,
+          "version": 25,
+          "payloadHash": "5eac841eeba7c05513a6a6e708e229d18516cf50d15898ab1555d20050ca5988",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op200",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "67399038686a41edeee439a5bd1582e23092b10a3af206637d656c51663aeb92",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op200",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80334
+          },
+          "at": 1794500927863,
+          "ackNs": 10834518534,
+          "startNs": 10830317725
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 10968411695,
+          "endNs": 10969493003,
+          "version": 24,
+          "payloadHash": "f03a57bfe11d6d744c89e3474409a89f349d5b8478af11458cb150937d1721c0",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op202",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "fbface1c3437d1fd7b5fcfe992dcc574d920e5c9110ab3863853ebd15ce8a9f8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op202",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80340
+          },
+          "at": 1794500927976,
+          "ackNs": 10947296415,
+          "startNs": 10940113645
+        },
+        "reason": "read v24 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 11020481248,
+          "endNs": 11021612205,
+          "version": 24,
+          "payloadHash": "d4a759b76c543cf44faae5f6387b98df966306085b8fac87225dd40fa32c8b41",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op196",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 24,
+          "payloadHash": "e6e8190d32f16ca5de656acb8dec1fd605c4f251dab8bc8731c4ca20aa8bd827",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op196",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 25,
+            "shard": 2,
+            "appliedIndex": 80322
+          },
+          "at": 1794500927644,
+          "ackNs": 10615423737,
+          "startNs": 10612549182
+        },
+        "reason": "read v24 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 24 at v25 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 11123803549,
+          "endNs": 11124213890,
+          "version": 25,
+          "payloadHash": "8e9d2eaa9991d8187e53c68483418c0e09904a50b79d3a12ab5eb3bf6ac725c2",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op198",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "f59629eee21b0af1ae6a4c0ab6b7bf6f839cee9a6dfbe5949b5eaa38c8497f48",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op198",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80329
+          },
+          "at": 1794500927797,
+          "ackNs": 10768474112,
+          "startNs": 10764496866
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 11174633564,
+          "endNs": 11175602572,
+          "version": 25,
+          "payloadHash": "5eac841eeba7c05513a6a6e708e229d18516cf50d15898ab1555d20050ca5988",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op200",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "67399038686a41edeee439a5bd1582e23092b10a3af206637d656c51663aeb92",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op200",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80334
+          },
+          "at": 1794500927863,
+          "ackNs": 10834518534,
+          "startNs": 10830317725
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 11226537457,
+          "endNs": 11227461465,
+          "version": 25,
+          "payloadHash": "7277ff77f6e739e0a73ca01861b2089e1340d52685b3ca64f0b2533e9e534c48",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op202",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "fbface1c3437d1fd7b5fcfe992dcc574d920e5c9110ab3863853ebd15ce8a9f8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op202",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80340
+          },
+          "at": 1794500927976,
+          "ackNs": 10947296415,
+          "startNs": 10940113645
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 11278251069,
+          "endNs": 11279608040,
+          "version": 25,
+          "payloadHash": "e6e8190d32f16ca5de656acb8dec1fd605c4f251dab8bc8731c4ca20aa8bd827",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op204",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 25,
+          "payloadHash": "71fc2ccdbfde223c33f63c288a6d9553f7781e282f9ab7ada8a0c8aa2d2b6ec8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op204",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 26,
+            "shard": 2,
+            "appliedIndex": 80346
+          },
+          "at": 1794500928087,
+          "ackNs": 11058049852,
+          "startNs": 11051810598
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 25 at v26 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 11329954348,
+          "endNs": 11331139636,
+          "version": 26,
+          "payloadHash": "c2804a10cf79d6e22b3a75442c0f1878ad6ed5b0c0453e90c4fab2956fb5612a",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op206",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "30fdf94cbbc4e63fe23618fc5a0a2567c37bd704c76c33da921da66a518fd078",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op206",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80351
+          },
+          "at": 1794500928186,
+          "ackNs": 11156780821,
+          "startNs": 11152196344
+        },
+        "reason": "read v26 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 11381856098,
+          "endNs": 11382354739,
+          "version": 26,
+          "payloadHash": "f59629eee21b0af1ae6a4c0ab6b7bf6f839cee9a6dfbe5949b5eaa38c8497f48",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op206",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "16c930980e466fc575d3f24db52b632f946b076ba0316be244c3769c97217f6a",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op206",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80355
+          },
+          "at": 1794500928240,
+          "ackNs": 11211504509,
+          "startNs": 11204975144
+        },
+        "reason": "read v26 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 11433470211,
+          "endNs": 11434890752,
+          "version": 26,
+          "payloadHash": "67399038686a41edeee439a5bd1582e23092b10a3af206637d656c51663aeb92",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op208",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "b6ed0e2d248f76c8c01a3cb8075044d685cfef39dd656362dd14967393e55df4",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op208",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80360
+          },
+          "at": 1794500928304,
+          "ackNs": 11275186314,
+          "startNs": 11271340026
+        },
+        "reason": "read v26 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 11485047502,
+          "endNs": 11486451691,
+          "version": 26,
+          "payloadHash": "fbface1c3437d1fd7b5fcfe992dcc574d920e5c9110ab3863853ebd15ce8a9f8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op210",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "bf7b8874a8ba7e2f48210881e83d87be4561603f99f3eea03a2494edc5560a06",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op210",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80367
+          },
+          "at": 1794500928412,
+          "ackNs": 11383265916,
+          "startNs": 11380783483
+        },
+        "reason": "read v26 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 11536530590,
+          "endNs": 11536933876,
+          "version": 25,
+          "payloadHash": "e6e8190d32f16ca5de656acb8dec1fd605c4f251dab8bc8731c4ca20aa8bd827",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op212",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "78c69aeb7c4a1cce4fa60f362322292a272c474f9edebacf4720885e2a6451f9",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op212",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80373
+          },
+          "at": 1794500928522,
+          "ackNs": 11493307778,
+          "startNs": 11488528697
+        },
+        "reason": "read v25 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 11587029257,
+          "endNs": 11587879946,
+          "version": 26,
+          "payloadHash": "c2804a10cf79d6e22b3a75442c0f1878ad6ed5b0c0453e90c4fab2956fb5612a",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op206",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "30fdf94cbbc4e63fe23618fc5a0a2567c37bd704c76c33da921da66a518fd078",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op206",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80351
+          },
+          "at": 1794500928186,
+          "ackNs": 11156780821,
+          "startNs": 11152196344
+        },
+        "reason": "read v26 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 11742066820,
+          "endNs": 11743481934,
+          "version": 26,
+          "payloadHash": "fbface1c3437d1fd7b5fcfe992dcc574d920e5c9110ab3863853ebd15ce8a9f8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op210",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "bf7b8874a8ba7e2f48210881e83d87be4561603f99f3eea03a2494edc5560a06",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op210",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80367
+          },
+          "at": 1794500928412,
+          "ackNs": 11383265916,
+          "startNs": 11380783483
+        },
+        "reason": "read v26 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 11793603659,
+          "endNs": 11795512236,
+          "version": 26,
+          "payloadHash": "71fc2ccdbfde223c33f63c288a6d9553f7781e282f9ab7ada8a0c8aa2d2b6ec8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op212",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 26,
+          "payloadHash": "78c69aeb7c4a1cce4fa60f362322292a272c474f9edebacf4720885e2a6451f9",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op212",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 27,
+            "shard": 2,
+            "appliedIndex": 80373
+          },
+          "at": 1794500928522,
+          "ackNs": 11493307778,
+          "startNs": 11488528697
+        },
+        "reason": "read v26 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 26 at v27 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 11845897894,
+          "endNs": 11847355823,
+          "version": 27,
+          "payloadHash": "30fdf94cbbc4e63fe23618fc5a0a2567c37bd704c76c33da921da66a518fd078",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op214",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 27,
+          "payloadHash": "f66e558f73aefa5a04993352bd91a60949644296f7ecb6345064358b49259c8f",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op214",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 28,
+            "shard": 2,
+            "appliedIndex": 80381
+          },
+          "at": 1794500928632,
+          "ackNs": 11602564007,
+          "startNs": 11599698990
+        },
+        "reason": "read v27 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 27 at v28 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 11898467313,
+          "endNs": 11899846573,
+          "version": 27,
+          "payloadHash": "16c930980e466fc575d3f24db52b632f946b076ba0316be244c3769c97217f6a",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op214",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 27,
+          "payloadHash": "b0a49d89f5a5563723ee697eab9a12e1a834184ff712c65b7546aaaac8b9d6af",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op214",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 28,
+            "shard": 2,
+            "appliedIndex": 80383
+          },
+          "at": 1794500928674,
+          "ackNs": 11644817871,
+          "startNs": 11641959111
+        },
+        "reason": "read v27 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 27 at v28 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 11950142894,
+          "endNs": 11951912586,
+          "version": 27,
+          "payloadHash": "b6ed0e2d248f76c8c01a3cb8075044d685cfef39dd656362dd14967393e55df4",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op216",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 27,
+          "payloadHash": "8be516ee69cddbf9ee43e8ea5d184d6d42af270335ca5cdb061b791c2eb3e67e",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op216",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 28,
+            "shard": 2,
+            "appliedIndex": 80391
+          },
+          "at": 1794500928739,
+          "ackNs": 11709798358,
+          "startNs": 11707009883
+        },
+        "reason": "read v27 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 27 at v28 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 12001948501,
+          "endNs": 12002884573,
+          "version": 27,
+          "payloadHash": "bf7b8874a8ba7e2f48210881e83d87be4561603f99f3eea03a2494edc5560a06",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op218",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 27,
+          "payloadHash": "6f732d82b99a4a262d2f527de70ce6f94c43280f51e17fc48990c6839c399cbb",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op218",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 28,
+            "shard": 2,
+            "appliedIndex": 80395
+          },
+          "at": 1794500928851,
+          "ackNs": 11822065329,
+          "startNs": 11816519731
+        },
+        "reason": "read v27 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 27 at v28 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 12053599072,
+          "endNs": 12054844758,
+          "version": 27,
+          "payloadHash": "78c69aeb7c4a1cce4fa60f362322292a272c474f9edebacf4720885e2a6451f9",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op220",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 27,
+          "payloadHash": "2ff5fc0215e0bd5cbf2291bfe559f5ab73f4dddc277acce5d3e0eeb056c39b0a",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op220",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 28,
+            "shard": 2,
+            "appliedIndex": 80402
+          },
+          "at": 1794500928965,
+          "ackNs": 11936236537,
+          "startNs": 11929759536
+        },
+        "reason": "read v27 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 27 at v28 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 12104997926,
+          "endNs": 12106049805,
+          "version": 27,
+          "payloadHash": "30fdf94cbbc4e63fe23618fc5a0a2567c37bd704c76c33da921da66a518fd078",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op222",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "a79d86e530ff047032acb58bc7c2cd5e0e0794c273ed6ae9d4ddac37b50dbeb8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op222",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80409
+          },
+          "at": 1794500929076,
+          "ackNs": 12047004722,
+          "startNs": 12040342750
+        },
+        "reason": "read v27 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 12156860256,
+          "endNs": 12158482914,
+          "version": 28,
+          "payloadHash": "b0a49d89f5a5563723ee697eab9a12e1a834184ff712c65b7546aaaac8b9d6af",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op222",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "49d3655776bc734ba92e6029af23632251943364f882b62f98698a355f6e7dcd",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op222",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80412
+          },
+          "at": 1794500929115,
+          "ackNs": 12086407607,
+          "startNs": 12081963382
+        },
+        "reason": "read v28 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 12208691941,
+          "endNs": 12210305283,
+          "version": 28,
+          "payloadHash": "8be516ee69cddbf9ee43e8ea5d184d6d42af270335ca5cdb061b791c2eb3e67e",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op224",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "0d2b5423e8d452064131b5f8bfc67bfee7d4bde43cf4be4fd74bd2b1a703d5e1",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op224",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80417
+          },
+          "at": 1794500929190,
+          "ackNs": 12161391801,
+          "startNs": 12154626706
+        },
+        "reason": "read v28 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 12312997484,
+          "endNs": 12313978094,
+          "version": 27,
+          "payloadHash": "78c69aeb7c4a1cce4fa60f362322292a272c474f9edebacf4720885e2a6451f9",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op220",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 27,
+          "payloadHash": "2ff5fc0215e0bd5cbf2291bfe559f5ab73f4dddc277acce5d3e0eeb056c39b0a",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op220",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 28,
+            "shard": 2,
+            "appliedIndex": 80402
+          },
+          "at": 1794500928965,
+          "ackNs": 11936236537,
+          "startNs": 11929759536
+        },
+        "reason": "read v27 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 27 at v28 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 12364353645,
+          "endNs": 12365002120,
+          "version": 28,
+          "payloadHash": "f66e558f73aefa5a04993352bd91a60949644296f7ecb6345064358b49259c8f",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op222",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "a79d86e530ff047032acb58bc7c2cd5e0e0794c273ed6ae9d4ddac37b50dbeb8",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op222",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80409
+          },
+          "at": 1794500929076,
+          "ackNs": 12047004722,
+          "startNs": 12040342750
+        },
+        "reason": "read v28 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 12415921810,
+          "endNs": 12416660392,
+          "version": 28,
+          "payloadHash": "b0a49d89f5a5563723ee697eab9a12e1a834184ff712c65b7546aaaac8b9d6af",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op222",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "49d3655776bc734ba92e6029af23632251943364f882b62f98698a355f6e7dcd",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op222",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80412
+          },
+          "at": 1794500929115,
+          "ackNs": 12086407607,
+          "startNs": 12081963382
+        },
+        "reason": "read v28 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 12467033360,
+          "endNs": 12467874878,
+          "version": 28,
+          "payloadHash": "8be516ee69cddbf9ee43e8ea5d184d6d42af270335ca5cdb061b791c2eb3e67e",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op224",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "0d2b5423e8d452064131b5f8bfc67bfee7d4bde43cf4be4fd74bd2b1a703d5e1",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op224",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80417
+          },
+          "at": 1794500929190,
+          "ackNs": 12161391801,
+          "startNs": 12154626706
+        },
+        "reason": "read v28 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 12517969862,
+          "endNs": 12519757564,
+          "version": 28,
+          "payloadHash": "6f732d82b99a4a262d2f527de70ce6f94c43280f51e17fc48990c6839c399cbb",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op226",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "9f64550f04eaf18cbf593b8f1b39dae69af25864f32187e3c6483ae89533f587",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op226",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80423
+          },
+          "at": 1794500929306,
+          "ackNs": 12277139403,
+          "startNs": 12267331617
+        },
+        "reason": "read v28 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "target": "storage-shard-2-2",
+          "startNs": 12570557052,
+          "endNs": 12571762999,
+          "version": 28,
+          "payloadHash": "2ff5fc0215e0bd5cbf2291bfe559f5ab73f4dddc277acce5d3e0eeb056c39b0a",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op228",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+          "op": "update",
+          "seq": 28,
+          "payloadHash": "a4f9647b40382eed8265c035848c5703acf838b769d685c862bc0bb2a705ed3b",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op228",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k3",
+            "version": 29,
+            "shard": 2,
+            "appliedIndex": 80429
+          },
+          "at": 1794500929415,
+          "ackNs": 12385545192,
+          "startNs": 12381500740
+        },
+        "reason": "read v28 of chaos-delay-follower-s442-1794500915-w1-k3, but seq 28 at v29 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 12622132642,
+          "endNs": 12622916497,
+          "version": 29,
+          "payloadHash": "a79d86e530ff047032acb58bc7c2cd5e0e0794c273ed6ae9d4ddac37b50dbeb8",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w2-op230",
+          "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+          "op": "update",
+          "seq": 29,
+          "payloadHash": "6430449d5c76146140d53ccb21835d03e00e0b45054c2771062dc2f659f75d66",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w2-op230",
+            "key": "chaos-delay-follower-s442-1794500915-w2-k0",
+            "version": 30,
+            "shard": 2,
+            "appliedIndex": 80432
+          },
+          "at": 1794500929516,
+          "ackNs": 12486603365,
+          "startNs": 12484369192
+        },
+        "reason": "read v29 of chaos-delay-follower-s442-1794500915-w2-k0, but seq 29 at v30 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "target": "storage-shard-2-2",
+          "startNs": 12673847446,
+          "endNs": 12674908354,
+          "version": 29,
+          "payloadHash": "49d3655776bc734ba92e6029af23632251943364f882b62f98698a355f6e7dcd",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w3-op230",
+          "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+          "op": "update",
+          "seq": 29,
+          "payloadHash": "9a4e5c6695d458711fc76a12e07de54fe6abdd094e7f3627e39d2e85635ff88d",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w3-op230",
+            "key": "chaos-delay-follower-s442-1794500915-w3-k0",
+            "version": 30,
+            "shard": 2,
+            "appliedIndex": 80435
+          },
+          "at": 1794500929554,
+          "ackNs": 12525461450,
+          "startNs": 12520751715
+        },
+        "reason": "read v29 of chaos-delay-follower-s442-1794500915-w3-k0, but seq 29 at v30 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "target": "storage-shard-2-2",
+          "startNs": 12725833788,
+          "endNs": 12727265947,
+          "version": 29,
+          "payloadHash": "0d2b5423e8d452064131b5f8bfc67bfee7d4bde43cf4be4fd74bd2b1a703d5e1",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op232",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+          "op": "update",
+          "seq": 29,
+          "payloadHash": "5e60f016d0b71410af80e5c30010e94cc5f48782b0b0bb541a7c22eae74141b1",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op232",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k1",
+            "version": 30,
+            "shard": 2,
+            "appliedIndex": 80440
+          },
+          "at": 1794500929628,
+          "ackNs": 12598969129,
+          "startNs": 12596267483
+        },
+        "reason": "read v29 of chaos-delay-follower-s442-1794500915-w1-k1, but seq 29 at v30 was acknowledged before the read began"
+      },
+      {
+        "read": {
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "target": "storage-shard-2-2",
+          "startNs": 12778360320,
+          "endNs": 12779193517,
+          "version": 29,
+          "payloadHash": "9f64550f04eaf18cbf593b8f1b39dae69af25864f32187e3c6483ae89533f587",
+          "served": "stale"
+        },
+        "want": {
+          "operationId": "chaos-delay-follower-s442-1794500915-w1-op234",
+          "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+          "op": "update",
+          "seq": 29,
+          "payloadHash": "1c3dc40dfdade60e5f014997aabb331d87c0e7ad81b69ebe8acd039fe582dcca",
+          "result": {
+            "outcome": "OK",
+            "operationId": "chaos-delay-follower-s442-1794500915-w1-op234",
+            "key": "chaos-delay-follower-s442-1794500915-w1-k2",
+            "version": 30,
+            "shard": 2,
+            "appliedIndex": 80449
+          },
+          "at": 1794500929737,
+          "ackNs": 12707675931,
+          "startNs": 12704225248
+        },
+        "reason": "read v29 of chaos-delay-follower-s442-1794500915-w1-k2, but seq 29 at v30 was acknowledged before the read began"
+      }
+    ]
+  },
+  "availability": {
+    "fromMs": 1794500924268,
+    "toMs": 1794500949637,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 219,
+        "acksDuring": 715,
+        "acksAfter": 2178,
+        "acksInsideFault": 647,
+        "readsDuring": 420,
+        "readsServedDuring": 420,
+        "readsServedInsideFault": 387,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 648,
+        "readsInsideFault": 387,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 35,
+        "firstAckAfterHealMs": 60,
+        "writeLatencyMs": {
+          "n": 715,
+          "p50": 4.033442,
+          "p99": 10.053518,
+          "max": 18.011163
+        },
+        "readLatencyMs": {
+          "n": 420,
+          "p50": 1.802848,
+          "p99": 7.086853,
+          "max": 10.193298
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 1,
+        "acksBefore": 141,
+        "acksDuring": 504,
+        "acksAfter": 1563,
+        "acksInsideFault": 466,
+        "readsDuring": 241,
+        "readsServedDuring": 241,
+        "readsServedInsideFault": 222,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 466,
+        "readsInsideFault": 222,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 40,
+        "firstAckAfterHealMs": 39,
+        "writeLatencyMs": {
+          "n": 504,
+          "p50": 4.009631,
+          "p99": 9.95929,
+          "max": 15.762593
+        },
+        "readLatencyMs": {
+          "n": 241,
+          "p50": 1.912001,
+          "p99": 13.324957,
+          "max": 15.578095
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 2,
+        "acksBefore": 173,
+        "acksDuring": 626,
+        "acksAfter": 1839,
+        "acksInsideFault": 584,
+        "readsDuring": 791,
+        "readsServedDuring": 788,
+        "readsServedInsideFault": 725,
+        "probeReadsDuring": {
+          "storage-shard-2-2": 491
+        },
+        "probeServedInsideFault": {
+          "storage-shard-2-2": 450
+        },
+        "writeAttemptsInsideFault": 584,
+        "readsInsideFault": 727,
+        "probeReadsInsideFault": {
+          "storage-shard-2-2": 452
+        },
+        "firstAckAfterFaultMs": 27,
+        "firstAckAfterHealMs": 50,
+        "writeLatencyMs": {
+          "n": 626,
+          "p50": 4.090969,
+          "p99": 9.932865,
+          "max": 16.13123
+        },
+        "readLatencyMs": {
+          "n": 791,
+          "p50": 1.238145,
+          "p99": 6.636271,
+          "max": 10.924816
+        },
+        "errorsDuring": 0
+      }
+    ]
+  },
+  "judge": {
+    "pass": false,
+    "noVerdict": false,
+    "failures": [
+      "reads: 514 stale read(s): a read missed a write acknowledged before it began"
+    ],
+    "summary": {
+      "acked": 7958,
+      "unknownRaw": 0,
+      "resolved": 0,
+      "notApplied": 0,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 514,
+      "readsTotal": 6267,
+      "readsChecked": 6189,
+      "readsFailed": 75,
+      "errorCount": 0,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 219,
+          "acksDuring": 715,
+          "acksAfter": 2178,
+          "acksInsideFault": 647,
+          "readsDuring": 420,
+          "readsServedDuring": 420,
+          "readsServedInsideFault": 387,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 648,
+          "readsInsideFault": 387,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 35,
+          "firstAckAfterHealMs": 60,
+          "writeLatencyMs": {
+            "n": 715,
+            "p50": 4.033442,
+            "p99": 10.053518,
+            "max": 18.011163
+          },
+          "readLatencyMs": {
+            "n": 420,
+            "p50": 1.802848,
+            "p99": 7.086853,
+            "max": 10.193298
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 1,
+          "acksBefore": 141,
+          "acksDuring": 504,
+          "acksAfter": 1563,
+          "acksInsideFault": 466,
+          "readsDuring": 241,
+          "readsServedDuring": 241,
+          "readsServedInsideFault": 222,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 466,
+          "readsInsideFault": 222,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 40,
+          "firstAckAfterHealMs": 39,
+          "writeLatencyMs": {
+            "n": 504,
+            "p50": 4.009631,
+            "p99": 9.95929,
+            "max": 15.762593
+          },
+          "readLatencyMs": {
+            "n": 241,
+            "p50": 1.912001,
+            "p99": 13.324957,
+            "max": 15.578095
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 2,
+          "acksBefore": 173,
+          "acksDuring": 626,
+          "acksAfter": 1839,
+          "acksInsideFault": 584,
+          "readsDuring": 791,
+          "readsServedDuring": 788,
+          "readsServedInsideFault": 725,
+          "probeReadsDuring": {
+            "storage-shard-2-2": 491
+          },
+          "probeServedInsideFault": {
+            "storage-shard-2-2": 450
+          },
+          "writeAttemptsInsideFault": 584,
+          "readsInsideFault": 727,
+          "probeReadsInsideFault": {
+            "storage-shard-2-2": 452
+          },
+          "firstAckAfterFaultMs": 27,
+          "firstAckAfterHealMs": 50,
+          "writeLatencyMs": {
+            "n": 626,
+            "p50": 4.090969,
+            "p99": 9.932865,
+            "max": 16.13123
+          },
+          "readLatencyMs": {
+            "n": 791,
+            "p50": 1.238145,
+            "p99": 6.636271,
+            "max": 10.924816
+          },
+          "errorsDuring": 0
+        }
+      ]
+    }
+  },
+  "control": {
+    "pass": true,
+    "noVerdict": false,
+    "failures": [],
+    "summary": {
+      "acked": 7958,
+      "unknownRaw": 0,
+      "resolved": 0,
+      "notApplied": 0,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 514,
+      "readsTotal": 6267,
+      "readsChecked": 6189,
+      "readsFailed": 75,
+      "errorCount": 0,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 219,
+          "acksDuring": 715,
+          "acksAfter": 2178,
+          "acksInsideFault": 647,
+          "readsDuring": 420,
+          "readsServedDuring": 420,
+          "readsServedInsideFault": 387,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 648,
+          "readsInsideFault": 387,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 35,
+          "firstAckAfterHealMs": 60,
+          "writeLatencyMs": {
+            "n": 715,
+            "p50": 4.033442,
+            "p99": 10.053518,
+            "max": 18.011163
+          },
+          "readLatencyMs": {
+            "n": 420,
+            "p50": 1.802848,
+            "p99": 7.086853,
+            "max": 10.193298
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 1,
+          "acksBefore": 141,
+          "acksDuring": 504,
+          "acksAfter": 1563,
+          "acksInsideFault": 466,
+          "readsDuring": 241,
+          "readsServedDuring": 241,
+          "readsServedInsideFault": 222,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 466,
+          "readsInsideFault": 222,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 40,
+          "firstAckAfterHealMs": 39,
+          "writeLatencyMs": {
+            "n": 504,
+            "p50": 4.009631,
+            "p99": 9.95929,
+            "max": 15.762593
+          },
+          "readLatencyMs": {
+            "n": 241,
+            "p50": 1.912001,
+            "p99": 13.324957,
+            "max": 15.578095
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 2,
+          "acksBefore": 173,
+          "acksDuring": 626,
+          "acksAfter": 1839,
+          "acksInsideFault": 584,
+          "readsDuring": 791,
+          "readsServedDuring": 788,
+          "readsServedInsideFault": 725,
+          "probeReadsDuring": {
+            "storage-shard-2-2": 491
+          },
+          "probeServedInsideFault": {
+            "storage-shard-2-2": 450
+          },
+          "writeAttemptsInsideFault": 584,
+          "readsInsideFault": 727,
+          "probeReadsInsideFault": {
+            "storage-shard-2-2": 452
+          },
+          "firstAckAfterFaultMs": 27,
+          "firstAckAfterHealMs": 50,
+          "writeLatencyMs": {
+            "n": 626,
+            "p50": 4.090969,
+            "p99": 9.932865,
+            "max": 16.13123
+          },
+          "readLatencyMs": {
+            "n": 791,
+            "p50": 1.238145,
+            "p99": 6.636271,
+            "max": 10.924816
+          },
+          "errorsDuring": 0
+        }
+      ]
+    },
+    "negative": "stale-reader"
+  }
+}

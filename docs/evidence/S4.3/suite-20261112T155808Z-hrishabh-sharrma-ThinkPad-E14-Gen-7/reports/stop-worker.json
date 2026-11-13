@@ -1,0 +1,358 @@
+{
+  "experiment": "stop-worker",
+  "seed": 439,
+  "runId": "stop-worker-s439-1794500274",
+  "pass": true,
+  "failures": [],
+  "plan": {
+    "experiment": "stop-worker",
+    "seed": 439,
+    "shard": 2,
+    "role": "follower",
+    "pick": 0,
+    "faultDelayMs": 11075,
+    "loadSeconds": 312,
+    "settleMaxSeconds": 120,
+    "prefix": "chaos-stop-worker-s439",
+    "workers": 4,
+    "keys": 4,
+    "intervalMs": 50
+  },
+  "target": {
+    "shard": 2,
+    "pod": "storage-shard-2-0",
+    "serverId": "storage-shard-2-0/06c9acc9-8861-46ce-8f9f-044319d680a5",
+    "role": "follower",
+    "term": 3
+  },
+  "fault": {
+    "kind": "node-stop",
+    "mechanism": "docker stop of the data worker's kind node (one replica of every shard), then docker start",
+    "startedAt": 1794500287376,
+    "healedAt": 1794500318116
+  },
+  "recovery": {
+    "leader": "",
+    "term": 0,
+    "seconds": -1.0
+  },
+  "settle": {
+    "maxSeconds": 120,
+    "startedAt": 1794500592906,
+    "seconds": 0.5,
+    "ok": true,
+    "detail": "shard 2 is one caught-up group"
+  },
+  "timings": {
+    "loadStartedAt": 1794500276000,
+    "faultStartedAt": 1794500287376,
+    "faultHealedAt": 1794500318116,
+    "settledAt": 1794500593360,
+    "loadFinishedAt": 1794500589000
+  },
+  "load": {
+    "job": "chaos-load-stop-worker-s439-1794500274",
+    "coordinator": "http://storage-coordinator.reliefgrid.svc.cluster.local:8080",
+    "exitCode": 0,
+    "acked": 22186,
+    "unknown": 0,
+    "rejected": 0,
+    "ackedDuringFault": 1922
+  },
+  "errorsObserved": [
+    {
+      "at": 1794500291504,
+      "source": "load",
+      "message": "chaos-stop-worker-s439-1794500275-w0-op185 chaos-stop-worker-s439-1794500275-w0-c90 attempt 0: coordclient: 503 NO_LEADER: shard 1: no leader answered within 4s (last: storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080: Put \"http://storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080/internal/data/chaos-stop-worker-s439-1794500275-w0-c90\": context deadline exceeded)"
+    },
+    {
+      "at": 1794500291697,
+      "source": "load",
+      "message": "chaos-stop-worker-s439-1794500275-w3-op189 chaos-stop-worker-s439-1794500275-w3-c92 attempt 0: coordclient: 503 NO_LEADER: shard 1: no leader answered within 4s (last: storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080: Put \"http://storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080/internal/data/chaos-stop-worker-s439-1794500275-w3-c92\": context deadline exceeded)"
+    },
+    {
+      "at": 1794500291700,
+      "source": "load",
+      "message": "chaos-stop-worker-s439-1794500275-w1-op188 chaos-stop-worker-s439-1794500275-w1-k3 attempt 0: coordclient: 503 NO_LEADER: shard 1: no leader answered within 4s (last: storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080: Put \"http://storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080/internal/data/chaos-stop-worker-s439-1794500275-w1-k3\": context deadline exceeded)"
+    },
+    {
+      "at": 1794500291762,
+      "source": "load",
+      "message": "chaos-stop-worker-s439-1794500275-w2-op190 chaos-stop-worker-s439-1794500275-w2-k0 attempt 0: coordclient: 503 NO_LEADER: shard 1: no leader answered within 4s (last: storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080: Put \"http://storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:8080/internal/data/chaos-stop-worker-s439-1794500275-w2-k0\": context deadline exceeded)"
+    },
+    {
+      "at": 1794500292627,
+      "source": "harness",
+      "message": "stopped data worker reliefgrid-worker2 (its storage replicas went with it)"
+    }
+  ],
+  "ledger": {
+    "pvc": "chaos-ledger",
+    "path": "/ledger/stop-worker-s439-1794500274.json",
+    "job": "chaos-verify-stop-worker-s439-1794500274",
+    "exitCode": 0,
+    "checked": 22186,
+    "lost": [],
+    "resolution": {
+      "resolved": 0,
+      "notApplied": 0,
+      "stillUnknown": 0
+    },
+    "incomplete": null
+  },
+  "invcheck": {
+    "job": "chaos-check-stop-worker-s439-1794500274",
+    "exitCode": 0,
+    "verdict": "clean",
+    "quiescent": true,
+    "violations": [],
+    "incomplete": null
+  },
+  "harness": {
+    "settleOk": true,
+    "settleDetail": "shard 2 is one caught-up group",
+    "recovery": null,
+    "isolation": null,
+    "delay": null,
+    "worker": {
+      "node": "reliefgrid-worker2",
+      "back": true
+    },
+    "coordinator": null
+  },
+  "reads": {
+    "readers": 2,
+    "consistency": "linearizable",
+    "intervalMs": 50,
+    "graceSeconds": 2,
+    "probes": [
+      "2=http://storage-shard-2-0.storage-shard-2.reliefgrid.svc.cluster.local:8080"
+    ],
+    "verdict": {
+      "total": 16763,
+      "checked": 11519,
+      "unchecked": 2,
+      "failed": 5242,
+      "served": {
+        "linearizable": 11519
+      }
+    },
+    "staleCount": 0,
+    "stale": []
+  },
+  "availability": {
+    "fromMs": 1794500287376,
+    "toMs": 1794500318116,
+    "graceMs": 2000,
+    "shards": [
+      {
+        "shard": 0,
+        "acksBefore": 237,
+        "acksDuring": 663,
+        "acksAfter": 6501,
+        "acksInsideFault": 652,
+        "readsDuring": 313,
+        "readsServedDuring": 313,
+        "readsServedInsideFault": 313,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 652,
+        "readsInsideFault": 313,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 21,
+        "firstAckAfterHealMs": 8,
+        "writeLatencyMs": {
+          "n": 663,
+          "p50": 4.707053,
+          "p99": 10.715241,
+          "max": 32.099948
+        },
+        "readLatencyMs": {
+          "n": 313,
+          "p50": 2.545359,
+          "p99": 8.290111,
+          "max": 10.528609
+        },
+        "errorsDuring": 0
+      },
+      {
+        "shard": 1,
+        "acksBefore": 222,
+        "acksDuring": 525,
+        "acksAfter": 5391,
+        "acksInsideFault": 521,
+        "readsDuring": 251,
+        "readsServedDuring": 249,
+        "readsServedInsideFault": 249,
+        "probeReadsDuring": {},
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 529,
+        "readsInsideFault": 249,
+        "probeReadsInsideFault": {},
+        "firstAckAfterFaultMs": 4151,
+        "firstAckAfterHealMs": 59,
+        "writeLatencyMs": {
+          "n": 525,
+          "p50": 4.744632,
+          "p99": 11.467961,
+          "max": 4029.289258
+        },
+        "readLatencyMs": {
+          "n": 251,
+          "p50": 2.675429,
+          "p99": 10.846248,
+          "max": 4011.302839
+        },
+        "errorsDuring": 4
+      },
+      {
+        "shard": 2,
+        "acksBefore": 271,
+        "acksDuring": 734,
+        "acksAfter": 7642,
+        "acksInsideFault": 727,
+        "readsDuring": 452,
+        "readsServedDuring": 438,
+        "readsServedInsideFault": 436,
+        "probeReadsDuring": {
+          "storage-shard-2-0": 14
+        },
+        "probeServedInsideFault": {},
+        "writeAttemptsInsideFault": 727,
+        "readsInsideFault": 446,
+        "probeReadsInsideFault": {
+          "storage-shard-2-0": 10
+        },
+        "firstAckAfterFaultMs": 25,
+        "firstAckAfterHealMs": 6,
+        "writeLatencyMs": {
+          "n": 734,
+          "p50": 4.831565,
+          "p99": 10.696972,
+          "max": 20.237791
+        },
+        "readLatencyMs": {
+          "n": 452,
+          "p50": 2.604746,
+          "p99": 3000.850976,
+          "max": 3001.899044
+        },
+        "errorsDuring": 0
+      }
+    ]
+  },
+  "judge": {
+    "pass": true,
+    "noVerdict": false,
+    "failures": [],
+    "summary": {
+      "acked": 22186,
+      "unknownRaw": 0,
+      "resolved": 0,
+      "notApplied": 0,
+      "unresolvedUnknown": 0,
+      "lost": 0,
+      "staleReads": 0,
+      "readsTotal": 16763,
+      "readsChecked": 11519,
+      "readsFailed": 5242,
+      "errorCount": 4,
+      "availability": [
+        {
+          "shard": 0,
+          "acksBefore": 237,
+          "acksDuring": 663,
+          "acksAfter": 6501,
+          "acksInsideFault": 652,
+          "readsDuring": 313,
+          "readsServedDuring": 313,
+          "readsServedInsideFault": 313,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 652,
+          "readsInsideFault": 313,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 21,
+          "firstAckAfterHealMs": 8,
+          "writeLatencyMs": {
+            "n": 663,
+            "p50": 4.707053,
+            "p99": 10.715241,
+            "max": 32.099948
+          },
+          "readLatencyMs": {
+            "n": 313,
+            "p50": 2.545359,
+            "p99": 8.290111,
+            "max": 10.528609
+          },
+          "errorsDuring": 0
+        },
+        {
+          "shard": 1,
+          "acksBefore": 222,
+          "acksDuring": 525,
+          "acksAfter": 5391,
+          "acksInsideFault": 521,
+          "readsDuring": 251,
+          "readsServedDuring": 249,
+          "readsServedInsideFault": 249,
+          "probeReadsDuring": {},
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 529,
+          "readsInsideFault": 249,
+          "probeReadsInsideFault": {},
+          "firstAckAfterFaultMs": 4151,
+          "firstAckAfterHealMs": 59,
+          "writeLatencyMs": {
+            "n": 525,
+            "p50": 4.744632,
+            "p99": 11.467961,
+            "max": 4029.289258
+          },
+          "readLatencyMs": {
+            "n": 251,
+            "p50": 2.675429,
+            "p99": 10.846248,
+            "max": 4011.302839
+          },
+          "errorsDuring": 4
+        },
+        {
+          "shard": 2,
+          "acksBefore": 271,
+          "acksDuring": 734,
+          "acksAfter": 7642,
+          "acksInsideFault": 727,
+          "readsDuring": 452,
+          "readsServedDuring": 438,
+          "readsServedInsideFault": 436,
+          "probeReadsDuring": {
+            "storage-shard-2-0": 14
+          },
+          "probeServedInsideFault": {},
+          "writeAttemptsInsideFault": 727,
+          "readsInsideFault": 446,
+          "probeReadsInsideFault": {
+            "storage-shard-2-0": 10
+          },
+          "firstAckAfterFaultMs": 25,
+          "firstAckAfterHealMs": 6,
+          "writeLatencyMs": {
+            "n": 734,
+            "p50": 4.831565,
+            "p99": 10.696972,
+            "max": 20.237791
+          },
+          "readLatencyMs": {
+            "n": 452,
+            "p50": 2.604746,
+            "p99": 3000.850976,
+            "max": 3001.899044
+          },
+          "errorsDuring": 0
+        }
+      ]
+    }
+  }
+}

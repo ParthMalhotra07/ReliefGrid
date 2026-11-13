@@ -1,0 +1,5 @@
+21:53:52 restart-coordinator: plan {"experiment":"restart-coordinator","seed":440,"shard":1,"role":"coordinator","pick":1,"faultDelayMs":14764,"loadSeconds":137,"settleMaxSeconds":120,"prefix":"chaos-restart-coordinator-s440","workers":4,"keys":4,"intervalMs":50}
+21:53:53 target storage-coordinator-54f9758787-hb9k7 (coordinator, term 7)
+21:53:54 load running since 2026-11-12T16:23:54Z; fault in 14764ms
+21:54:57 fault coordinator-restart on storage-coordinator-54f9758787-hb9k7: 32s; recovery none term ?
+21:56:34 PASSED: report docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/reports/restart-coordinator.json
