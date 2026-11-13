@@ -47,6 +47,8 @@ per read. `comparison.md` holds the full tables, and `comparison.json` the same 
 
 ## Results (medians of 3; ranges in `comparison.md`)
 
+**Summary.** Saturation > 80 req/s (validated, n=3). Two exploratory runs (n=1 each) place the limit at about 100–110 req/s, where list p99 first exceeds 500 ms. Neither audit completed: in the first run the drain was refused, and in the second the WAITING-request retry backlog never fell below the headroom threshold. Above 110 req/s the load generator limited both runs (memory in the first, its 400-VU cap in the second). The coordinator is the first component at its CPU limit (≥ 92% from 30–40 req/s), followed by the storage shards at 110–120 req/s.
+
 | | Phase 1 (strong) | Phase 2 (linearizable) |
 |---|---|---|
 | Saturation point | 50 req/s (60 broken by write p99, 3/3) | above 80 req/s (no step broken, 3/3) |
