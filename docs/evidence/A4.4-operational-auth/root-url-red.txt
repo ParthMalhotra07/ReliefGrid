@@ -1,0 +1,19 @@
+E
+======================================================================
+ERROR: test_root_slash_endpoints_remain_compatible (__main__.OperationalAuthTest.test_root_slash_endpoints_remain_compatible)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 150, in test_root_slash_endpoints_remain_compatible
+    try: self.assertEqual(traffic.command('scratch',0),1)
+                          ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/metrics_fault.py", line 81, in command
+    with self.sender.open(request, timeout=3) as response:
+         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/internal_auth.py", line 48, in open
+    raise ValueError('internal auth: request outside coordinator internal routes')
+ValueError: internal auth: request outside coordinator internal routes
+
+----------------------------------------------------------------------
+Ran 1 test in 0.513s
+
+FAILED (errors=1)

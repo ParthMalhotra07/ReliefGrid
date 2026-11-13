@@ -143,4 +143,15 @@ class OperationalAuthTest(unittest.TestCase):
      self.check_pod(pod)
      self.assertNotIn('fixture-app-token',json.dumps(pod))
 
+ def test_root_slash_endpoints_remain_compatible(self):
+  metrics=load('live_metrics_root','verify-A4.2-live.py')
+  with self.fixture() as (origin,out,seen):
+   traffic=Traffic(origin+'/',1,out)
+   try: self.assertEqual(traffic.command('scratch',0),1)
+   finally: traffic.pool.shutdown(wait=True)
+   with patch.dict(os.environ,{'DEMO_COORD_URL':origin+'/','API_URL':origin+'/api/v1'}),patch.object(verify.Verify,'replicas',return_value=2):
+    obj=verify.Verify(out,'unused-probe');obj.call(obj.coord,'GET','/internal/ring')
+   metrics.get(origin+'/', '/internal/ring')
+   self.assertEqual([row[1] for row in seen],['fixture-app-token']*3)
+
 if __name__=='__main__': unittest.main()

@@ -25,6 +25,7 @@ OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
 def get(origin, path, *, method="GET", data=None, key=None, auth=None):
+    origin = origin.rstrip("/")
     headers = {}
     if data is not None:
         headers["Content-Type"] = "application/json"

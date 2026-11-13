@@ -7,7 +7,7 @@ golangci-lint run --build-tags chaos ./cmd/invcheck/...
 go test -race ./...
 ok  	github.com/ParthMalhotra07/ReliefGrid/chaos/judge	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	(cached)
-ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	1.045s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	(cached)
 ?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher/replay	[no test files]
@@ -19,9 +19,9 @@ ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	(cached)
 ?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/auth	(cached)
-ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	11.325s
-ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	30.670s
-ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	17.120s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/merkle	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	(cached)
@@ -46,13 +46,13 @@ ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	(cached)
 ?   	github.com/ParthMalhotra07/ReliefGrid/loadtest/cmd/loadreport	[no test files]
 ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/dataset	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	(cached)
-ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/report	3.910s
-ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	81.966s
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/report	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	(cached)
 ?   	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	[no test files]
 ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	(cached)
 ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
-ok  	github.com/ParthMalhotra07/ReliefGrid/ui	1.046s
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	(cached)
 go test -race -tags chaos ./cmd/invcheck/...
 ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	(cached)

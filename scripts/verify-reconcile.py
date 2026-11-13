@@ -14,7 +14,7 @@ class Verify:
         self.context = 'kind-reliefgrid'
         self.ns = 'reliefgrid'
         self.release = 'reliefgrid'
-        self.coord = os.environ['DEMO_COORD_URL']
+        self.coord = os.environ['DEMO_COORD_URL'].rstrip('/')
         self.sender = Sender(self.coord)
         self.api = os.environ.get('API_URL', 'http://127.0.0.1:8080/api/v1').rstrip('/')
         self.saved = self.replicas()

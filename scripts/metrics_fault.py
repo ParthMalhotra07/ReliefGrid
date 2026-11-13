@@ -50,7 +50,7 @@ class Traffic:
     requests, resources, claims and outbox rows are never changed.
     """
     def __init__(self, origin, ring, out=None):
-        self.origin, self.ring, self.out = origin, ring, out
+        self.origin, self.ring, self.out = origin.rstrip('/'), ring, out
         self.sender = Sender(origin)
         self.pending = {}
         self.prefix = 'a42-metrics-' + uuid.uuid4().hex
