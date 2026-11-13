@@ -1,0 +1,74 @@
+.F.......FF...
+======================================================================
+FAIL: test_demo_audit_job_mounts_only_app_sender (__main__.OperationalAuthTest.test_demo_audit_job_mounts_only_app_sender)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 75, in test_demo_audit_job_mounts_only_app_sender
+    self.check_pod(captured[0]['spec']['template'])
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 86, in check_pod
+    self.assertEqual(mounts,[{'name':'internal-auth','mountPath':'/var/run/reliefgrid/internal-auth','readOnly':True}])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'na[33 chars]: '/var/run/reliefgrid/internal-auth/wrong', 'readOnly': True}] != [{'na[33 chars]: '/var/run/reliefgrid/internal-auth', 'readOnly': True}]
+
+First differing element 0:
+{'nam[31 chars]': '/var/run/reliefgrid/internal-auth/wrong', 'readOnly': True}
+{'nam[31 chars]': '/var/run/reliefgrid/internal-auth', 'readOnly': True}
+
+- [{'mountPath': '/var/run/reliefgrid/internal-auth/wrong',
+?                                                  ------
+
++ [{'mountPath': '/var/run/reliefgrid/internal-auth',
+    'name': 'internal-auth',
+    'readOnly': True}]
+
+======================================================================
+FAIL: test_reconcile_recovery_pod_and_audit_job_mount_app_sender (__main__.OperationalAuthTest.test_reconcile_recovery_pod_and_audit_job_mount_app_sender) (method='crash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 145, in test_reconcile_recovery_pod_and_audit_job_mount_app_sender
+    self.check_pod(pod)
+    ~~~~~~~~~~~~~~^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 86, in check_pod
+    self.assertEqual(mounts,[{'name':'internal-auth','mountPath':'/var/run/reliefgrid/internal-auth','readOnly':True}])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'na[33 chars]: '/var/run/reliefgrid/internal-auth/wrong', 'readOnly': True}] != [{'na[33 chars]: '/var/run/reliefgrid/internal-auth', 'readOnly': True}]
+
+First differing element 0:
+{'nam[31 chars]': '/var/run/reliefgrid/internal-auth/wrong', 'readOnly': True}
+{'nam[31 chars]': '/var/run/reliefgrid/internal-auth', 'readOnly': True}
+
+- [{'mountPath': '/var/run/reliefgrid/internal-auth/wrong',
+?                                                  ------
+
++ [{'mountPath': '/var/run/reliefgrid/internal-auth',
+    'name': 'internal-auth',
+    'readOnly': True}]
+
+======================================================================
+FAIL: test_reconcile_recovery_pod_and_audit_job_mount_app_sender (__main__.OperationalAuthTest.test_reconcile_recovery_pod_and_audit_job_mount_app_sender) (method='audit')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 145, in test_reconcile_recovery_pod_and_audit_job_mount_app_sender
+    self.check_pod(pod)
+    ~~~~~~~~~~~~~~^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 86, in check_pod
+    self.assertEqual(mounts,[{'name':'internal-auth','mountPath':'/var/run/reliefgrid/internal-auth','readOnly':True}])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [{'na[33 chars]: '/var/run/reliefgrid/internal-auth/wrong', 'readOnly': True}] != [{'na[33 chars]: '/var/run/reliefgrid/internal-auth', 'readOnly': True}]
+
+First differing element 0:
+{'nam[31 chars]': '/var/run/reliefgrid/internal-auth/wrong', 'readOnly': True}
+{'nam[31 chars]': '/var/run/reliefgrid/internal-auth', 'readOnly': True}
+
+- [{'mountPath': '/var/run/reliefgrid/internal-auth/wrong',
+?                                                  ------
+
++ [{'mountPath': '/var/run/reliefgrid/internal-auth',
+    'name': 'internal-auth',
+    'readOnly': True}]
+
+----------------------------------------------------------------------
+Ran 13 tests in 8.619s
+
+FAILED (failures=3)

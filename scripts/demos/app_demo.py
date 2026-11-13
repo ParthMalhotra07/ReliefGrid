@@ -21,6 +21,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+from internal_auth import Sender, mount_app_sender
 
 
 def require_served(answer):
@@ -59,11 +62,12 @@ def require_recovered_interruptions(attempts):
 
 
 class Client:
-    def __init__(self, base, out, budget=120, auth=None):
+    def __init__(self, base, out, budget=120, auth=None, internal=False):
         url = urllib.parse.urlsplit(base)
         if url.scheme not in ('http', 'https') or url.hostname not in ('127.0.0.1', 'localhost', '::1') or url.username or url.password or url.query or url.fragment:
             raise ValueError('demo HTTP endpoints must be credential-free loopback URLs')
         self.base, self.out, self.auth = base.rstrip('/'), out, auth
+        self.sender = Sender(base) if internal else None
         self.deadline = time.monotonic() + budget
         self.lock = threading.Lock()
 
@@ -75,7 +79,7 @@ class Client:
             headers['Idempotency-Key'] = key
         if self.auth:
             headers['Authorization'] = self.auth
-        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        opener = self.sender or urllib.request.build_opener(urllib.request.ProxyHandler({}))
         while time.monotonic() < end:
             stamp = time.time()
             request = urllib.request.Request(self.base + path, body, headers, method=method)
@@ -108,7 +112,7 @@ class Demo:
         self.out.mkdir(parents=True, exist_ok=True)
         self.api = Client(os.environ.get('API_URL', 'http://127.0.0.1:8080/api/v1'), out, budget=300)
         self.coordinator = Client(os.environ['DEMO_COORD_URL'], out, budget=300,
-                                  auth='Bearer ' + os.environ['DEMO_OPERATOR_TOKEN'])
+                                  auth='Bearer ' + os.environ['DEMO_OPERATOR_TOKEN'], internal=True)
         self.ctx = os.environ.get('KUBE_CONTEXT', 'kind-' + os.environ.get('CLUSTER', 'reliefgrid'))
         if not self.ctx.startswith('kind-'):
             raise ValueError('app demos operate only on an explicitly selected kind context')
@@ -238,6 +242,7 @@ class Demo:
                              containers=[dict(name='check', image=os.environ.get('TOOLS_IMAGE', 'reliefgrid/tools:dev'), imagePullPolicy='Never',
                                               args=['check', '--coordinator', 'http://storage-coordinator:8080', '--timeout', '90s', '--max-backlog', '0', '--json'],
                                               resources=dict(requests=dict(cpu='100m', memory='128Mi'), limits=dict(memory='512Mi')))]))
+        mount_app_sender(pod)
         manifest = dict(apiVersion='batch/v1', kind='Job', metadata=dict(name=name, namespace=self.namespace),
                         spec=dict(backoffLimit=0, activeDeadlineSeconds=110, template=pod))
         self.kube('create', '-f', '-', stdin=json.dumps(manifest))

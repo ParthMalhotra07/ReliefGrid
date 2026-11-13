@@ -1,0 +1,14 @@
+..........F
+======================================================================
+FAIL: test_sender_rejects_redirect_and_foreign_routes_without_forwarding (__main__.OperationalAuthTest.test_sender_rejects_redirect_and_foreign_routes_without_forwarding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-d2yywzi1/scripts/operational-auth-test.py", line 96, in test_sender_rejects_redirect_and_foreign_routes_without_forwarding
+    with self.assertRaises(urllib.error.HTTPError) as caught:
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: HTTPError not raised
+
+----------------------------------------------------------------------
+Ran 11 tests in 7.584s
+
+FAILED (failures=1)
