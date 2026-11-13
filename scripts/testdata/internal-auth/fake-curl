@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Fake curl: one line per call ($DEMO_TMP shown as $DEMO_TMP); a -H @file also logs the file.
+out="" line="curl"
+args=("$@")
+for ((i = 0; i < ${#args[@]}; i++)); do
+	a="${args[$i]}"
+	[ "$a" = -o ] && out="${args[$((i + 1))]}"
+	if [ "$a" = -H ] && [[ "${args[$((i + 1))]}" == @* ]]; then
+		f="${args[$((i + 1))]#@}"
+		echo "  header file $(basename "$f"): $(cat "$f")" >>"$CURL_LOG.headers"
+	fi
+	line+=" $(printf '%q' "${a//$DEMO_TMP/\$DEMO_TMP}")"
+done
+echo "$line" >>"$CURL_LOG"
+[ -n "$out" ] && echo '{}' >"$out"
+printf 200

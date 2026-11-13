@@ -68,7 +68,7 @@ if [ -z "$POD" ] || ! still_stopped "$POD" "$PENDING_UID"; then
 fi
 
 # Preflight differs from the other demos: one storage pod is expected to be down.
-coord_forward || { fail "preflight: cannot reach the coordinator"; demo_end; }
+coord_forward || { fail "preflight: ${AUTH_WHY:-cannot reach the coordinator}"; demo_end; }
 pass "preflight: coordinator reachable"
 # NODE is read at exit (the stop below may set it): the worker is uncordoned on every exit path.
 restore() { [ -n "$NODE" ] && demo_uncordon "$NODE"; }

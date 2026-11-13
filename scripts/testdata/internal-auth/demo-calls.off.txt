@@ -1,0 +1,7 @@
+curl -s -m 10 -o \$DEMO_TMP/cput.json -w %\{http_code\} -X PUT http://127.0.0.1:7001/internal/data/cfg:demo -H Content-Type:\ application/json -H If-None-Match:\ \* -d \{\"operationId\":\"op-demo-1\"\,\"at\":1792800000000\,\"ringVersion\":1\,\"value\":\{\"a\":1\}\}
+curl -s -m 10 -o \$DEMO_TMP/cget.json -w %\{http_code\} http://127.0.0.1:7001/internal/data/cfg:demo
+curl -s -m 10 -o \$DEMO_TMP/cget.json -w %\{http_code\} http://127.0.0.1:7001/internal/data/cfg:demo\?consistency=strong
+curl -s -m 5 -o \$DEMO_TMP/stale.json -w %\{http_code\} http://127.0.0.1:7100/internal/data/cfg:demo\?consistency=stale
+curl -s -m 5 -o \$DEMO_TMP/stale-storage-shard-1-0.json -w %\{http_code\} http://127.0.0.1:7201/internal/data/req:demo-id\?consistency=stale
+curl -s -m 5 -o \$DEMO_TMP/stale-storage-shard-1-1.json -w %\{http_code\} http://127.0.0.1:7202/internal/data/req:demo-id\?consistency=stale
+curl -s -m 5 -o \$DEMO_TMP/stale-storage-shard-1-2.json -w %\{http_code\} http://127.0.0.1:7203/internal/data/req:demo-id\?consistency=stale
