@@ -1,0 +1,31 @@
+E/usr/lib/python3.14/tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 302: 'Found'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+
+======================================================================
+ERROR: test_disabled_sender_preserves_legacy_redirect_success (__main__.OperationalAuthTest.test_disabled_sender_preserves_legacy_redirect_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/operational-auth-test.py", line 160, in test_disabled_sender_preserves_legacy_redirect_success
+    with Sender(origin).open(origin+'/internal/redirect',timeout=2) as response:
+         ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/parthmalhotra/reliefgrid-ops-auth/scripts/internal_auth.py", line 54, in open
+    return self._opener.open(forwarded, timeout=timeout)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 493, in open
+    response = meth(req, response)
+  File "/usr/lib/python3.14/urllib/request.py", line 602, in http_response
+    response = self.parent.error(
+        'http', request, response, code, msg, hdrs)
+  File "/usr/lib/python3.14/urllib/request.py", line 531, in error
+    return self._call_chain(*args)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/usr/lib/python3.14/urllib/request.py", line 611, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 302: Found
+
+----------------------------------------------------------------------
+Ran 1 test in 0.517s
+
+FAILED (errors=1)

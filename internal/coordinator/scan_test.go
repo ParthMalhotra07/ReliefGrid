@@ -332,8 +332,9 @@ func TestScanRejectsAShardOverTheLimit(t *testing.T) {
 	}
 }
 
-// The merged consistency is the weakest any shard used: stale, then
-// linearizable (the §13 fence), then strong (through the log).
+// The merged consistency is the weakest any shard used: an unlabelled or
+// unknown mode, then stale, then linearizable (the §13 fence), then strong
+// (through the log).
 func TestScanReportsTheWeakestConsistency(t *testing.T) {
 	const (
 		strong = internalapi.ScanResponseConsistencyStrong
@@ -349,6 +350,14 @@ func TestScanReportsTheWeakestConsistency(t *testing.T) {
 		{[3]internalapi.ScanResponseConsistency{strong, lin, strong}, lin},
 		{[3]internalapi.ScanResponseConsistency{strong, lin, stale}, stale},
 		{[3]internalapi.ScanResponseConsistency{stale, strong, lin}, stale},
+		// #166: a shard that does not say how it served its page (missing,
+		// empty or an unknown mode) is weaker than any known mode, wherever
+		// it sits, so the merged page carries its label and every
+		// authoritative reader refuses it; a later shard never masks it.
+		{[3]internalapi.ScanResponseConsistency{"", strong, lin}, ""},
+		{[3]internalapi.ScanResponseConsistency{strong, "", lin}, ""},
+		{[3]internalapi.ScanResponseConsistency{"eventual", strong, strong}, "eventual"},
+		{[3]internalapi.ScanResponseConsistency{stale, "", strong}, ""},
 	} {
 		h := newHarness(t, nil)
 		h.ready()

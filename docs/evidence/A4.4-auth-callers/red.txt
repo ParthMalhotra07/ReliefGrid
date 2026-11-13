@@ -1,0 +1,35 @@
+--- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO (0.01s)
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/valid (0.01s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/missing (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:79: coordinator calls=1, want 0
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/empty (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:79: coordinator calls=1, want 0
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/newline-is-not-trimmed (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:79: coordinator calls=1, want 0
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/malformed (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:79: coordinator calls=1, want 0
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/api	0.065s
+--- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO (0.02s)
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/valid (0.01s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/missing (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:67: coordinator calls=1, want 0
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/empty (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:67: coordinator calls=1, want 0
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/newline-is-not-trimmed (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:67: coordinator calls=1, want 0
+    --- FAIL: TestInternalAuthSenderIsValidatedBeforeCoordinatorIO/malformed (0.00s)
+        internal_auth_test.go:38: initial request credential present/correct=false, want true
+        internal_auth_test.go:67: coordinator calls=1, want 0
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	0.067s
+FAIL

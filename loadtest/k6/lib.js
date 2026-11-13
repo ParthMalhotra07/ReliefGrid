@@ -22,9 +22,18 @@ const API = (__ENV.API_URL || 'http://127.0.0.1:8080') + '/api/v1';
 if (!__ENV.DATASET) {
   throw new Error('DATASET is required: go run ./loadtest/cmd/gendata -run <run> -out <file>');
 }
-const file = JSON.parse(open(__ENV.DATASET));
-export const meta = { seed: file.seed, run: file.run, counts: file.counts, mix: file.mix };
-const ops = new SharedArray('ops', () => file.ops);
+// k6 runs this module's init code once per VU, so the dataset is read and
+// parsed only inside the SharedArray callback, which runs once; every VU then
+// shares it. Element 0 is the dataset's metadata, elements 1..N its
+// operations (a SharedArray decodes one element per access, so each stays
+// small). Parsed at module scope, every VU held its own copy: a 15 MB
+// dataset grew k6 to 22.4 GB at 116 VUs in the exploratory 10->160 run.
+const dataset = new SharedArray('dataset', () => {
+  const file = JSON.parse(open(__ENV.DATASET));
+  return [{ seed: file.seed, run: file.run, counts: file.counts, mix: file.mix }].concat(file.ops);
+});
+export const meta = dataset[0];
+const opCount = dataset.length - 1;
 
 export const createdRequest = new Counter('created_request');
 export const apiErrors = new Counter('api_errors');
@@ -91,11 +100,11 @@ function createRequest(op) {
 // run replays dataset operation i (the scenario's global iteration).
 export function run() {
   const i = exec.scenario.iterationInTest;
-  if (i >= ops.length) {
+  if (i >= opCount) {
     datasetExhausted.add(1);
     return;
   }
-  const op = ops[i];
+  const op = dataset[i + 1];
   switch (op.op) {
     case 'create_request':
       createRequest(op);

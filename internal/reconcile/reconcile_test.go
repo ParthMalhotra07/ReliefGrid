@@ -295,3 +295,38 @@ func TestPeriodicRecoveryFencesOldIntentDespiteFutureRetry(t *testing.T) {
 		t.Fatalf("old intent cleared without closure: %+v %v", closure, err)
 	}
 }
+
+// S4.1: the reconciler's scans (the due-work walk and a resource wake) are
+// read through the read fence, linearizable, not a barrier per page: a stale
+// page could hide due work, and a strong one would commit a log entry per
+// read on every shard.
+func TestReconcilerScansAreLinearizable(t *testing.T) {
+	ctx, s, m := fixture(t)
+	request(t, ctx, s, "fenced-due")
+	observed := &scanObserver{Store: s}
+	e := engine(t, observed, m)
+	if _, err := e.Step(ctx); err != nil {
+		t.Fatal(err)
+	}
+	rid := id("fenced-resource")
+	resource := store.Resource{ID: rid, Type: store.TypeWater, Name: "synthetic", Location: store.Location{}, Geohash: "s000000", Status: store.ResourceAvailable, Reusable: true, AvailableFrom: now.Add(-time.Hour).UnixMilli(), AvailableUntil: now.Add(time.Hour).UnixMilli(), LocationRevision: 1}
+	res, err := s.CreateEntity(ctx, store.CreateEntity{Meta: store.Meta{OperationID: id("create-fenced-resource"), At: now.UnixMilli()}, Key: store.ResourceKey(rid), Resource: &resource})
+	must(t, res, err)
+	if err := e.WakeResource(ctx, rid, "registration", now.Add(time.Second).UnixMilli()); err != nil {
+		t.Fatal(err)
+	}
+	var due, wake int
+	for _, q := range observed.queries {
+		if q.Consistency != store.ConsistencyLinearizable {
+			t.Errorf("reconcile scan read %q, want linearizable: %+v", q.Consistency, q)
+		}
+		if len(q.GeohashPrefixes) > 0 {
+			wake++
+		} else {
+			due++
+		}
+	}
+	if due == 0 || wake == 0 {
+		t.Fatalf("observed %d due-work and %d wake scans, want both", due, wake)
+	}
+}
