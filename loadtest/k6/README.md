@@ -26,6 +26,13 @@ registrations, 10% `POST /match/{id}`, 65% reads (55% `GET /requests/{id}`,
 inside the matcher's 50 km radius. The run name changes only the
 Idempotency-Keys: `payloadSha256` is equal across runs of one seed.
 
+`lib.js` reads and parses the dataset once, inside a `SharedArray` callback
+(element 0 the metadata, then the operations), so every VU shares one copy.
+Parsed in the module's init code it ran once per VU: a 15 MB dataset grew k6
+to 22.4 GB at 116 VUs in the exploratory 10->160 run. `scripts/k6_dataset_test.go`
+keeps the parse inside the callback and, with `K6=<k6 binary>` set, measures
+peak RSS per extra VU (0.29 MB on a 15 MB dataset, against 346 MB before).
+
 ## Deploy and run
 
 ```sh
