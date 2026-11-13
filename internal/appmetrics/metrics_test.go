@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -217,5 +218,47 @@ func TestMatchLatencyIncludesCommittedResponseDelay(t *testing.T) {
 	got := metric(t, p, "relief_match_latency_seconds", map[string]string{"urgency": "HIGH"}).GetHistogram().GetSampleSum()
 	if got != 32 {
 		t.Fatalf("creation-to-committed-response latency=%g, want32 including two-second commit/response delay", got)
+	}
+}
+
+// modeObserver records the read mode of every scan and outbox page (Sample
+// reads the shards' outbox pages concurrently).
+type modeObserver struct {
+	store.Store
+	mu            sync.Mutex
+	scans, outbox []store.Consistency
+}
+
+func (o *modeObserver) Scan(ctx context.Context, q store.ScanQuery) (store.ScanResult, error) {
+	o.mu.Lock()
+	o.scans = append(o.scans, q.Consistency)
+	o.mu.Unlock()
+	return o.Store.Scan(ctx, q)
+}
+
+func (o *modeObserver) PendingOutbox(ctx context.Context, q store.OutboxQuery) ([]store.OutboxEvent, error) {
+	o.mu.Lock()
+	o.outbox = append(o.outbox, q.Consistency)
+	o.mu.Unlock()
+	return o.Store.PendingOutbox(ctx, q)
+}
+
+// S4.1: the metrics walk and its outbox pages are read through the read
+// fence (linearizable): no log entry per page on every shard each sample.
+func TestSampleReadsAreLinearizable(t *testing.T) {
+	s := realStore(t)
+	now := time.Date(2026, 11, 6, 1, 0, 0, 0, time.UTC)
+	seed(t, s, now.Add(-30*time.Second).UnixMilli(), 3)
+	o := &modeObserver{Store: s}
+	if err := process(t, o, now).Sample(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if len(o.scans) == 0 || len(o.outbox) == 0 {
+		t.Fatalf("observed %d scans and %d outbox pages, want both", len(o.scans), len(o.outbox))
+	}
+	for _, m := range append(o.scans, o.outbox...) {
+		if m != store.ConsistencyLinearizable {
+			t.Errorf("sample read %q, want linearizable (scans %v, outbox %v)", m, o.scans, o.outbox)
+		}
 	}
 }

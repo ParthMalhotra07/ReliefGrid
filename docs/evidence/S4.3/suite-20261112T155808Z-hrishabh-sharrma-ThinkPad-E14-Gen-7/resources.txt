@@ -1,0 +1,34 @@
+## before Chaos Mesh (storage only) (2026-11-12T15:58:20Z)
+reliefgrid-worker4 cpu 5.32% mem 370MiB / 30.37GiB
+reliefgrid-control-plane cpu 21.02% mem 764.9MiB / 30.37GiB
+reliefgrid-worker2 cpu 13.92% mem 242.1MiB / 30.37GiB
+reliefgrid-worker3 cpu 11.61% mem 240.8MiB / 30.37GiB
+reliefgrid-worker cpu 13.75% mem 221.7MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094       11026        4395        1362       17488       20067
+
+## after the Chaos Mesh install (idle) (2026-11-12T15:59:11Z)
+reliefgrid-worker4 cpu 9.09% mem 399.5MiB / 30.37GiB
+reliefgrid-control-plane cpu 13.51% mem 972.8MiB / 30.37GiB
+reliefgrid-worker2 cpu 10.22% mem 287.3MiB / 30.37GiB
+reliefgrid-worker3 cpu 10.20% mem 275.3MiB / 30.37GiB
+reliefgrid-worker cpu 8.65% mem 254MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094       11133        1670        1370       20113       19961
+chaos-mesh pod chaos-controller-manager-6fb845fd7f-ldm2p on reliefgrid-worker4: 32 MiB
+chaos-mesh pod chaos-daemon-9bs4l on reliefgrid-worker: 10 MiB
+chaos-mesh pod chaos-daemon-hwjb2 on reliefgrid-worker3: 11 MiB
+chaos-mesh pod chaos-daemon-qvskt on reliefgrid-worker2: 10 MiB
+
+## after the runs (2026-11-12T16:30:51Z)
+reliefgrid-worker4 cpu 5.62% mem 450.4MiB / 30.37GiB
+reliefgrid-control-plane cpu 15.79% mem 1.004GiB / 30.37GiB
+reliefgrid-worker2 cpu 14.77% mem 316MiB / 30.37GiB
+reliefgrid-worker3 cpu 19.03% mem 351.2MiB / 30.37GiB
+reliefgrid-worker cpu 19.43% mem 329.4MiB / 30.37GiB
+               total        used        free      shared  buff/cache   available
+Mem:           31094       10519        1999        1177       20210       20574
+chaos-mesh pod chaos-controller-manager-6fb845fd7f-ldm2p on reliefgrid-worker4: 35 MiB
+chaos-mesh pod chaos-daemon-9bs4l on reliefgrid-worker: 12 MiB
+chaos-mesh pod chaos-daemon-hwjb2 on reliefgrid-worker3: 12 MiB
+chaos-mesh pod chaos-daemon-qvskt on reliefgrid-worker2: 11 MiB

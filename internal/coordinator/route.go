@@ -195,8 +195,12 @@ type answer struct {
 // failed, timed out, the node answered OUTCOME_UNKNOWN or another 5xx, or
 // an answer came from an unverified server of this shard.
 // That stays true whatever later attempts say (CONTRIBUTING.md,
-// Invariants, 5). A read is
-// never unknown.
+// Invariants, 5): a later 4xx without a committed Result was refused before
+// proposing and does not settle the earlier attempt, so it ends the call at
+// once but is not returned (issue #162). A 2xx, or a 4xx carrying a Result
+// (only a committed FSM apply, or its replay for a duplicate operationId,
+// attaches one), is the operation's committed outcome and is returned.
+// A read is never unknown.
 //
 // A shard whose every registered member is DOWN by heartbeat age fails at
 // once, at the start or between rounds, instead of waiting out the budget;
@@ -257,6 +261,32 @@ func (c *Coordinator) forward(ctx context.Context, shard int, r *http.Request, b
 			wrong[addr] = true
 			why = fmt.Sprintf("%s: %v", addr, err)
 			continue
+		}
+		// Only a verified, structured pre-handler refusal is definite for this
+		// attempt. It cannot resolve an earlier proposal's unknown outcome.
+		if a.status == http.StatusUnauthorized {
+			var e internalapi.Error
+			if json.Unmarshal(a.body, &e) == nil && e.Code == internalapi.UNAUTHORIZED && e.Result == nil && !e.OutcomeUnknown {
+				if unknown {
+					return nil, true, "authentication refused after an unresolved attempt; retry the same operationId"
+				}
+				outcome = outcomeAnswered
+				return a, false, ""
+			}
+			unknown = unknown || mutation
+			return nil, unknown, "unrecognized authentication response"
+		}
+		if a.status >= 400 && a.status < 500 && unknown {
+			// A refusal before proposing says nothing about an earlier
+			// attempt that may have been proposed: keep the unknown, so the
+			// caller retries the same operationId (issue #162). A committed
+			// rejection carries its Result and settles the operation.
+			var e internalapi.Error
+			if json.Unmarshal(a.body, &e) != nil || e.Result == nil {
+				outcome = outcomeAnswered
+				return nil, true, fmt.Sprintf("%s: %d %s after an attempt with an unknown outcome; retry the same operationId", addr, a.status, e.Code)
+			}
+
 		}
 		if a.status < 500 {
 			outcome = outcomeAnswered

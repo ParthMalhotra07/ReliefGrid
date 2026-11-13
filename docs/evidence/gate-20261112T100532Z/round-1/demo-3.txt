@@ -1,0 +1,51 @@
+# demo-3: Async and explicit API matching with compatible and incompatible resources
+result:     PASS (2/2 checks)
+runId:      gate-20261112/round-1
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-12T10:19:03Z
+finished:   2026-11-12T10:19:22Z
+duration:   18.8 s
+code tree:  d52c88cc214e (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+
+## versions
+git head: 1623c23fef7a
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:53dfd2140501449e506dbbb7793d74185f94ca05ef382dddd3eb51170a4e6a08
+image reliefgrid/coordinator:dev: sha256:df98cb0e39186a3bd7d14c2828e85b09915dd536cf43f4d9d40484a876d04c88
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  application assertions passed; inputs, interruptions and strong reads retained in /home/hrishabh-sharrma/.cache/reliefgrid/gate-20261112T100532Z/course/gate-20261112/round-1/demo-3-app
+
+## commands
+
+# await strict storage preflight after previous workload
+$ await_app_preflight
+[exit 0, 1.6 s]
+
+# prepare bounded relay-only handoff drainer
+$ bash /home/hrishabh-sharrma/code/ReliefGrid/scripts/prepare-outbox-drainer.sh /tmp/tmp.8BqNyX2Kkj/drain-outbox
+[exit 0, 0.6 s]
+
+# public API assertions and recorded observations
+$ python3 /home/hrishabh-sharrma/code/ReliefGrid/scripts/demos/app_demo.py 3 --out /home/hrishabh-sharrma/.cache/reliefgrid/gate-20261112T100532Z/course/gate-20261112/round-1/demo-3-app
+PASS  no resource assigned to two requests
+PASS  async match respects type, 50 km radius and current availability window
+PASS  async incompatible resources remain unclaimed
+PASS  explicit match completes while matcher Deployment is stopped
+PASS  no resource assigned to two requests
+PASS  explicit match respects type, 50 km radius and current availability window
+PASS  explicit incompatible resources remain unclaimed
+PASS  no resource assigned to two requests
+PASS  two requests competing for one resource produce one match and one waiting request
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+[exit 0, 16.2 s]

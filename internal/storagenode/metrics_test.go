@@ -102,7 +102,7 @@ func TestMetricsEndpoint(t *testing.T) {
 	n := newFakeNode(t)
 	seedOutbox(t, n, "a", "b", "c")
 	n.seed(t, store.MarkOutboxPublished{Meta: meta("op-mark"), Shard: testShard, EventIDs: []string{"ev-a"}})
-	n.status = raftstore.Status{State: "Leader", Term: 3, CommitIndex: 10, LastLogIndex: 11, AppliedIndex: 9, LeaderCommitIndex: 12}
+	n.status = raftstore.Status{State: "Leader", Term: 3, CommitIndex: 10, LastLogIndex: 11, RaftAppliedIndex: 10, AppliedIndex: 9, LeaderCommitIndex: 12}
 	n.storage = raftstore.StorageInfo{LogBytes: 4096, SnapshotBytes: 2048, LastSnapshotIndex: 5}
 	s := newMetricsServer(t, n)
 	h := s.metricsRoutes()
@@ -133,7 +133,7 @@ func TestMetricsEndpoint(t *testing.T) {
 		{"storage_raft_applied_index", 9},
 		{"storage_raft_last_log_index", 11},
 		{"storage_raft_last_snapshot_index", 5},
-		{"storage_replication_lag_entries", 3}, // leader commit 12 - applied 9
+		{"storage_replication_lag_entries", 2}, // leader commit 12 - Raft applied 10 (not the FSM's 9)
 		{"storage_raft_log_bytes", 4096},
 		{"storage_snapshot_bytes", 2048},
 		{"relief_outbox_pending", 2}, // exact: three written, one published
@@ -190,7 +190,7 @@ func TestMetricsOutboxIndexPairedWithCount(t *testing.T) {
 
 func TestMetricsOutboxEmptyAndLag(t *testing.T) {
 	n := newFakeNode(t)
-	n.status = raftstore.Status{State: "Follower", CommitIndex: 7, AppliedIndex: 9, LeaderCommitIndex: 7}
+	n.status = raftstore.Status{State: "Follower", CommitIndex: 7, RaftAppliedIndex: 9, AppliedIndex: 9, LeaderCommitIndex: 7}
 	s := newMetricsServer(t, n)
 	if got := gauge(t, s, "relief_outbox_pending"); got != 0 {
 		t.Errorf("pending = %v, want 0", got)
@@ -203,6 +203,32 @@ func TestMetricsOutboxEmptyAndLag(t *testing.T) {
 	}
 	if got := gauge(t, s, "storage_replication_lag_entries"); got != 0 {
 		t.Errorf("lag = %v with applied ahead of the learned commit, want 0 (never negative)", got)
+	}
+}
+
+// The lag gauge is in Raft log entries: barrier-only progress (Raft applied
+// at the leader's commit, the FSM still at the last command) is no lag; a
+// replica whose Raft log stalled is behind by every entry it lacks.
+func TestMetricsLagIsRaftLevel(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status raftstore.Status
+		want   float64
+	}{
+		// 20 barriers after the last command: the FSM stays at 100.
+		{"barrier-only progress", raftstore.Status{State: "Follower", CommitIndex: 120, LastLogIndex: 120, RaftAppliedIndex: 120, AppliedIndex: 100, LeaderCommitIndex: 120}, 0},
+		{"barrier-only progress on the leader", raftstore.Status{State: "Leader", CommitIndex: 120, LastLogIndex: 120, RaftAppliedIndex: 120, AppliedIndex: 100, LeaderCommitIndex: 120}, 0},
+		{"stalled follower", raftstore.Status{State: "Follower", CommitIndex: 80, LastLogIndex: 80, RaftAppliedIndex: 80, AppliedIndex: 80, LeaderCommitIndex: 120}, 40},
+		{"stalled behind barriers too", raftstore.Status{State: "Follower", CommitIndex: 110, LastLogIndex: 110, RaftAppliedIndex: 110, AppliedIndex: 100, LeaderCommitIndex: 120}, 10},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			n := newFakeNode(t)
+			n.status = tc.status
+			s := newMetricsServer(t, n)
+			if got := gauge(t, s, "storage_replication_lag_entries"); got != tc.want {
+				t.Errorf("lag = %v, want %v (status %+v)", got, tc.want, tc.status)
+			}
+		})
 	}
 }
 

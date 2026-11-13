@@ -115,7 +115,7 @@ type Harness struct {
 		IsolatedStillLed       bool `json:"isolatedStillLed"`
 	} `json:"isolation,omitempty"`
 	Delay *struct {
-		MaxLag   uint64 `json:"maxLag"`   // largest leader commit - delayed follower applied, sampled during
+		MaxLag   uint64 `json:"maxLag"`   // largest leader commit - delayed follower raftApplied, sampled during
 		FinalLag uint64 `json:"finalLag"` // after the settle
 		Samples  int    `json:"samples"`
 	} `json:"delay,omitempty"`

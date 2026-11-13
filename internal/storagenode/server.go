@@ -12,7 +12,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/internalauth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/raftstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
@@ -36,10 +38,11 @@ var _ node = (*raftstore.Node)(nil)
 
 // server serves one shard replica.
 type server struct {
-	node    node
-	ring    *ring.Ring
-	shard   int
-	podName string
+	internalAuth *auth.ReceiverConfig
+	node         node
+	ring         *ring.Ring
+	shard        int
+	podName      string
 	// serverID is this replica's Raft ServerID (podName/incarnation), named
 	// on every data-route answer.
 	serverID string
@@ -88,13 +91,17 @@ func (s *server) dataRoutes() http.Handler {
 	mux.HandleFunc("GET /internal/outbox", s.pendingOutbox)
 	mux.HandleFunc("POST /internal/outbox/published", s.markOutboxPublished)
 	mux.HandleFunc("GET /internal/operations/{operationId}", s.getOperation)
+	handler := http.Handler(mux)
+	if s.internalAuth != nil {
+		handler = internalauth.Receiver(*s.internalAuth, mux)
+	}
 	shard := strconv.Itoa(s.shard)
 	// Each request is a server span continuing the coordinator's attempt
 	// span (S4.4); a proposal under it is raftstore's raft.apply.
 	return obs.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(internalapi.HeaderServerID, s.serverID)
 		w.Header().Set(internalapi.HeaderShard, shard)
-		mux.ServeHTTP(w, r)
+		handler.ServeHTTP(w, r)
 	}), obs.WithTracerProvider(s.tracerProvider), obs.WithAttributes(attribute.Int("reliefgrid.shard", s.shard)))
 }
 

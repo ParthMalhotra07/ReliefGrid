@@ -24,9 +24,10 @@
 // WithReadConsistency makes every read explicit (#72): point reads send the
 // mode, scans and outbox pages that name none use it, and an answer that
 // was served weaker than asked, or does not say how it was served, is a
-// retryable *Error rather than a result. Without it, point reads send no
-// mode and are not checked, and a strong scan or outbox page refuses only
-// an answer served stale.
+// retryable *Error rather than a result. Without it, every read (point
+// reads, and scans and outbox pages that name no mode) is sent as
+// linearizable (the S4.1 read fence) and refuses only an answer served
+// stale. strong stays available to a caller that names it.
 //
 // Mutations and scans carry the client's ringVersion. Every call has a
 // deadline: the caller's, capped at the client's timeout. The cap covers the
@@ -44,6 +45,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -54,6 +56,7 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -71,9 +74,12 @@ const maxBody = 16 << 20
 // Client is a store.Store backed by the coordinator. It is safe for
 // concurrent use.
 type Client struct {
-	base    string
-	http    *http.Client
-	timeout time.Duration
+	internalAuth     *auth.SenderConfig
+	internalAuthFile string
+	unknown          map[string]bool // unresolved operations; never evict an unknown outcome
+	base             string
+	http             *http.Client
+	timeout          time.Duration
 	// readMode is WithReadConsistency's mode; "" means none was set.
 	readMode store.Consistency
 	// tracerProvider records client spans (S4.4); nil uses the global one.
@@ -86,6 +92,20 @@ type Client struct {
 var _ store.Store = (*Client)(nil)
 
 type Option func(*Client)
+
+// WithInternalAuth validates and wraps the final raw HTTP client before the
+// initial ring request, regardless of option order. Never pass an already
+// authenticated client; app and node clients must each wrap the raw transport.
+func WithInternalAuth(cfg auth.SenderConfig) Option {
+	return func(c *Client) { c.internalAuth = &cfg }
+}
+
+// WithInternalAuthFile loads a sender credential once in New, before any I/O.
+// An empty path leaves authentication unchanged for callers of disabled clusters.
+// When set, this file supplies the credential instead of WithInternalAuth.
+func WithInternalAuthFile(path string) Option {
+	return func(c *Client) { c.internalAuthFile = path }
+}
 
 // WithHTTPClient sets the HTTP client (default: a fresh http.Client).
 func WithHTTPClient(c *http.Client) Option { return func(cl *Client) { cl.http = c } }
@@ -124,6 +144,20 @@ func New(ctx context.Context, baseURL string, opts ...Option) (*Client, error) {
 	c := &Client{base: strings.TrimRight(baseURL, "/"), http: &http.Client{}, timeout: DefaultTimeout}
 	for _, o := range opts {
 		o(c)
+	}
+	if c.internalAuthFile != "" {
+		token, err := os.ReadFile(c.internalAuthFile)
+		if err != nil {
+			return nil, fmt.Errorf("coordclient: read sender token: %w", err)
+		}
+		c.internalAuth = &auth.SenderConfig{Token: string(token)}
+	}
+	if c.internalAuth != nil {
+		client, err := auth.NewClient(c.http, *c.internalAuth)
+		if err != nil {
+			return nil, fmt.Errorf("coordclient: %w", err)
+		}
+		c.http = client
 	}
 	if c.readMode != "" {
 		if _, err := consistency(c.readMode); err != nil {
@@ -273,6 +307,38 @@ type mutation struct {
 // retries once with the same command and the new ringVersion. The client's
 // timeout caps all of it.
 func (c *Client) mutate(ctx context.Context, m mutation) (res store.Result, err error) {
+	// Keep uncertainty across retries on this client. Durable callers must also
+	// retain their intent across process/client replacement (invariant 5).
+	operationID := m.query.Get("operationId")
+	if m.body != nil {
+		raw, _ := json.Marshal(m.body)
+		var meta struct {
+			OperationID string `json:"operationId"`
+		}
+		_ = json.Unmarshal(raw, &meta)
+		operationID = meta.OperationID
+	}
+	identity := m.path + "\x00" + operationID
+	defer func() {
+		if operationID == "" {
+			return
+		}
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		if err == nil {
+			delete(c.unknown, identity)
+			return
+		}
+		if c.unknown[identity] && !errors.Is(err, store.ErrUnknownOutcome) {
+			err = &Error{Code: internalapi.OUTCOMEUNKNOWN, Message: "earlier attempt unresolved; retry the same operationId: " + err.Error(), Retryable: true, OutcomeUnknown: true}
+		}
+		if errors.Is(err, store.ErrUnknownOutcome) {
+			if c.unknown == nil {
+				c.unknown = make(map[string]bool)
+			}
+			c.unknown[identity] = true
+		}
+	}()
 	ctx, end := c.span(ctx, m.op)
 	defer func() { end(err) }()
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
@@ -324,6 +390,12 @@ func (c *Client) mutateOnce(ctx context.Context, m mutation, rv uint64) (store.R
 	decoded := json.Unmarshal(a.body, &e) == nil
 	out := &Error{Status: a.status, Code: e.Code, Message: e.Message}
 	switch {
+	case a.status == http.StatusUnauthorized:
+		if !decoded || e.Code != internalapi.UNAUTHORIZED || e.Result != nil || e.OutcomeUnknown {
+			out.Code = internalapi.OUTCOMEUNKNOWN
+			out.Retryable = true
+			out.OutcomeUnknown = true
+		}
 	case a.status >= 400 && a.status < 500 && decoded && e.Result != nil:
 		return *e.Result, nil // a committed rejection
 	case a.status == http.StatusConflict && e.Code == internalapi.RINGVERSIONMISMATCH:
@@ -427,19 +499,27 @@ func entityID(key, prefix string) (string, error) {
 }
 
 // consistency is the wire form of a read mode: the zero value is sent as
-// an explicit strong, so the call never depends on a server default.
+// an explicit linearizable, so the call never depends on a server default
+// (a storage node still treats a missing mode as strong). linearizable is
+// served through the read fence (S4.1): the leader confirms its leadership
+// with a quorum and waits for its FSM to reach the commit index, with no
+// log entry per read; strong commits a barrier entry for every read. Both
+// return only committed state, and neither is a precondition for a write:
+// writes are CAS on version and claims go through TryClaim, each checked
+// inside the FSM apply (invariant 1), so the default only changes what a
+// read costs, not what it may return.
 func consistency(m store.Consistency) (string, error) {
 	switch m {
-	case "", store.ConsistencyStrong:
-		return string(store.ConsistencyStrong), nil
-	case store.ConsistencyLinearizable, store.ConsistencyStale:
+	case "", store.ConsistencyLinearizable:
+		return string(store.ConsistencyLinearizable), nil
+	case store.ConsistencyStrong, store.ConsistencyStale:
 		return string(m), nil
 	}
 	return "", invalid("consistency %q must be strong, linearizable or stale", m)
 }
 
 // queryMode is the mode a scan or outbox page is read in: its own, else the
-// client's, else strong.
+// client's, else linearizable.
 func (c *Client) queryMode(m store.Consistency) (string, error) {
 	if m == "" {
 		m = c.readMode
@@ -448,40 +528,39 @@ func (c *Client) queryMode(m store.Consistency) (string, error) {
 }
 
 // servedAs refuses an answer served weaker than asked: a stale miss is only
-// a hint, so it must never stand in for an authoritative result. strong and
-// linearizable both satisfy either. With a client read mode set, an answer
-// must also say how it was served; without one, only a stale answer is
-// refused (the behaviour before #72).
+// a hint, so it must never stand in for an authoritative result. asked is the
+// mode sent on the wire, so this holds whether it came from
+// WithReadConsistency, the query or the linearizable default. An
+// authoritative read (strong or linearizable) is accepted only if the answer
+// says it was served strong or linearizable (either satisfies either); a
+// missing, empty, unknown or stale label is the same retryable read error.
+// An explicit stale read accepts any answer.
 func (c *Client) servedAs(asked, served string) error {
 	if asked == string(store.ConsistencyStale) {
 		return nil
 	}
-	ok := served != string(store.ConsistencyStale)
-	if c.readMode != "" {
-		ok = served == string(store.ConsistencyStrong) || served == string(store.ConsistencyLinearizable)
-	}
-	if ok {
+	if served == string(store.ConsistencyStrong) || served == string(store.ConsistencyLinearizable) {
 		return nil
 	}
 	return &Error{Status: http.StatusOK, Message: fmt.Sprintf("asked for a %s read, served %q", asked, served), Retryable: true, read: true}
 }
 
-// pointRead is a read of one key, closure or operation. With a client read
-// mode it sends the mode and checks the answer's read info against it.
+// pointRead is a read of one key, closure or operation. It sends the
+// client's read mode, else linearizable (never left for the server to
+// default to strong), and checks the answer's read info against it.
 func (c *Client) pointRead(ctx context.Context, op, path string, query url.Values, resp any, info *internalapi.ReadInfo) error {
-	if c.readMode != "" {
-		if query == nil {
-			query = url.Values{}
-		}
-		query.Set("consistency", string(c.readMode))
+	mode, err := c.queryMode("")
+	if err != nil {
+		return err
 	}
+	if query == nil {
+		query = url.Values{}
+	}
+	query.Set("consistency", mode)
 	if err := c.read(ctx, op, path, query, resp); err != nil {
 		return err
 	}
-	if c.readMode == "" {
-		return nil
-	}
-	return c.servedAs(string(c.readMode), string(info.Consistency))
+	return c.servedAs(mode, string(info.Consistency))
 }
 
 func (c *Client) CreateEntity(ctx context.Context, cmd store.CreateEntity) (store.Result, error) {

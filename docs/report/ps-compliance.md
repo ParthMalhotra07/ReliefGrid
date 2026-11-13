@@ -37,7 +37,7 @@ Location and reads current request state; MATCHED/IN_PROGRESS must have the
 reciprocal durable resource claim. The regression test exercises a committed
 WAITING request with a future retry time, then verifies 202 and its poll URL.
 
-The UI currently has no create forms. Every future create form must freeze its
-body and UUID Idempotency-Key across double-clicks, transport retries and unknown
-outcomes, and must wait for its post-write authoritative refresh before allowing
-another action. No bearer/operator credentials are added by these aliases.
+The UI provides create-request and register-resource forms. They freeze the
+body and UUID Idempotency-Key across double-clicks, transport retries, unknown
+outcomes and same-tab reloads, then require a current record read and successful
+view refresh before allowing another submission. Matching is automatic. No bearer/operator credentials are added by these aliases.

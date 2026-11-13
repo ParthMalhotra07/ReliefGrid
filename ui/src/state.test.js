@@ -23,8 +23,15 @@ test("missing or partial shard observations never become an empty list", () => {
     failedShards: [],
   };
   assert.equal(list(value, "request"), value);
+  const fenced = { ...value, consistency: "linearizable" };
+  assert.equal(list(fenced, "request"), fenced);
+  const { consistency: _served, ...unlabelled } = value;
   for (const bad of [
     { ...value, consistency: "stale" },
+    unlabelled,
+    { ...value, consistency: "" },
+    { ...value, consistency: null },
+    { ...value, consistency: "eventual" },
     { ...value, partial: true },
     { ...value, positions: value.positions.slice(1) },
     {

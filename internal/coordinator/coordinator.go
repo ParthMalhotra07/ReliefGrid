@@ -20,12 +20,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
+	"github.com/ParthMalhotra07/ReliefGrid/internal/internalauth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/obs"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/ring"
 )
@@ -56,6 +59,8 @@ func ValidateBudgets(budget, attempt time.Duration) error {
 // Config configures a Coordinator. Zero durations take the defaults.
 type Config struct {
 	Ring *ring.Ring
+	// Optional for embedded users; production requires both at startup.
+	AppAuth, NodeAuth *auth.ReceiverConfig
 	// SuspectAfter and DownAfter are heartbeat ages that mark a node
 	// SUSPECT and DOWN.
 	SuspectAfter, DownAfter time.Duration
@@ -95,6 +100,13 @@ type Coordinator struct {
 
 // New checks cfg and fills its defaults.
 func New(cfg Config) (*Coordinator, error) {
+	for _, a := range []*auth.ReceiverConfig{cfg.AppAuth, cfg.NodeAuth} {
+		if a != nil {
+			if err := a.Validate(); err != nil {
+				return nil, err
+			}
+		}
+	}
 	if cfg.Ring == nil {
 		return nil, errors.New("coordinator: no ring")
 	}
@@ -156,7 +168,23 @@ func (c *Coordinator) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/locate/{key}", c.operator(c.adminLocate))
 	mux.HandleFunc("GET /admin/distribution", c.operator(c.adminDistribution))
 	mux.HandleFunc("GET /admin/ring/simulate", c.operator(c.adminRingSimulate))
-	return mux
+	appHandler, nodeHandler := http.Handler(mux), http.Handler(mux)
+	if c.cfg.AppAuth != nil {
+		appHandler = internalauth.Receiver(*c.cfg.AppAuth, mux)
+	}
+	if c.cfg.NodeAuth != nil {
+		nodeHandler = internalauth.Receiver(*c.cfg.NodeAuth, mux)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/internal/nodes/"):
+			nodeHandler.ServeHTTP(w, r)
+		case strings.HasPrefix(r.URL.Path, "/internal/"):
+			appHandler.ServeHTTP(w, r)
+		default:
+			mux.ServeHTTP(w, r)
+		}
+	})
 }
 
 // traced wraps a routed handler in a server span. Inside the mux, so the

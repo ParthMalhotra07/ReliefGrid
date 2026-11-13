@@ -1,0 +1,42 @@
+[
+  {
+    "passed": true,
+    "assertion": "500 distinct request creates acknowledged against 50 seeded resources"
+  },
+  {
+    "passed": true,
+    "assertion": "no resource assigned to two requests"
+  },
+  {
+    "passed": true,
+    "assertion": "burst settles to 50 reciprocal matches and 450 waiting requests"
+  },
+  {
+    "passed": true,
+    "assertion": "matching queue ready/unacked returns to zero within bounded quiescence"
+  },
+  {
+    "passed": true,
+    "assertion": "broker observations show asynchronous work in flight"
+  },
+  {
+    "passed": true,
+    "assertion": "all broker samples completed without hidden observation errors: []"
+  },
+  {
+    "passed": true,
+    "assertion": "all shard outboxes drained before retry admission is paused"
+  },
+  {
+    "passed": true,
+    "assertion": "retry admission workers are identified before pausing"
+  },
+  {
+    "passed": true,
+    "assertion": "last committed handoffs drained with routed confirms while admission stays stopped"
+  },
+  {
+    "passed": true,
+    "assertion": "invcheck: complete, reciprocal, no terminal claim and outbox drained"
+  }
+]

@@ -1,0 +1,28 @@
+
+> reliefgrid-dispatch@0.1.0 test
+> node --test src/*.test.js
+
+✔ same-task submit reentry sends once and waits for the current read and view refresh (37.732986ms)
+✔ lost reply then reload retries identical bytes/key and keeps edits locked (1.391027ms)
+✔ a later definite INVALID cannot erase an earlier unknown creation (0.678518ms)
+✔ only a first definite validation refusal permits editing (0.606573ms)
+✔ known creation with a failed reread or view refresh resumes reads without another POST (1.27508ms)
+✔ storage failure prevents the first network write and corrupt saved state fails closed (0.283614ms)
+✔ resource confirmation walks public pages and never infers absence from the first page (1.836558ms)
+✔ stale, partial, failed or missing shard metadata cannot confirm resource creation (6.638548ms)
+✔ cursor loops, missing current identity and older versions keep the saved intent (2.204253ms)
+✔ input is validated before persisting and frozen windows are UTC (0.57346ms)
+✔ an overlapping refresh waits for the requested fresh reread (1.415895ms)
+✔ overlapping callers coalesce into one reread and recover after failure (0.741923ms)
+✔ at-least-once events are deduplicated with bounded memory (1.015869ms)
+✔ missing or partial shard observations never become an empty list (0.475554ms)
+✔ cancelling stays cancelling until a newer authoritative record is observed (1.692006ms)
+✔ an assignment line requires the current reciprocal claim (0.56752ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114.283124

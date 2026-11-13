@@ -126,6 +126,10 @@ func must(r store.Result, err error) error {
 	}
 	return nil
 }
+func coordinatorClient(ctx context.Context) (*coordclient.Client, error) {
+	return coordclient.New(ctx, os.Getenv("COORDINATOR_URL"), coordclient.WithInternalAuthFile(os.Getenv("INTERNAL_AUTH_TOKEN_FILE")))
+}
+
 func run() error {
 	deferID := flag.String("defer-request", "", "test-only future schedule without a delivery hint")
 	probe := flag.String("probe", "", "saved committed-boundary JSON for a late-claim check")
@@ -135,7 +139,7 @@ func run() error {
 	flag.Parse()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	client, err := coordclient.New(ctx, os.Getenv("COORDINATOR_URL"))
+	client, err := coordinatorClient(ctx)
 	if err != nil {
 		return err
 	}
