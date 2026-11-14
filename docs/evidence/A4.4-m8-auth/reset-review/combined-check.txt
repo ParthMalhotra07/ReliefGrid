@@ -1,0 +1,106 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+0 issues.
+golangci-lint run --build-tags chaos ./cmd/invcheck/...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/chaos/judge	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	6.166s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	5.714s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher/replay	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	1.831s
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/admission	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/auth	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	113.551s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/merkle	1.243s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	1.057s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	1.038s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalauth	1.054s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	14.144s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	5.643s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/obs	1.091s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	5.792s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	18.723s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	128.093s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	8.246s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	6.897s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	17.061s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit	4.945s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit/audittest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	1.036s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testnet	1.049s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testseam	1.775s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	21.033s
+?   	github.com/ParthMalhotra07/ReliefGrid/loadtest/cmd/gendata	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/loadtest/cmd/loadreport	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/dataset	12.087s
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	10.771s
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/report	9.263s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	34.189s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	(cached)
+--- FAIL: TestSchedulesFailureRestoresShardAndAdmission (0.04s)
+    --- FAIL: TestSchedulesFailureRestoresShardAndAdmission/test-command-fails (0.01s)
+        schedules_harness_test.go:24: open /tmp/TestSchedulesFailureRestoresShardAndAdmissiontest-command-fails1464398310/001/cluster.log: no such file or directory
+    --- FAIL: TestSchedulesFailureRestoresShardAndAdmission/shard-restore-fails (0.01s)
+        schedules_harness_test.go:24: open /tmp/TestSchedulesFailureRestoresShardAndAdmissionshard-restore-fail1785200026/001/cluster.log: no such file or directory
+    --- FAIL: TestSchedulesFailureRestoresShardAndAdmission/seams-test-command-fails (0.01s)
+        schedules_harness_test.go:24: open /tmp/TestSchedulesFailureRestoresShardAndAdmissionseams-test-command1718940224/001/cluster.log: no such file or directory
+    --- FAIL: TestSchedulesFailureRestoresShardAndAdmission/seams-image-restore-fails (0.01s)
+        schedules_harness_test.go:24: open /tmp/TestSchedulesFailureRestoresShardAndAdmissionseams-image-restor856282901/001/cluster.log: no such file or directory
+--- FAIL: TestSchedulesNonRelaySubsetChecksPendingWorkBeforeStarting (0.01s)
+    schedules_harness_test.go:30: open /tmp/TestSchedulesNonRelaySubsetChecksPendingWorkBeforeStarting3043964570/001/cluster.log: no such file or directory
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	181.877s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	1.253s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	1.144s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	1.082s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	1.230s
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	1.140s
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	1.128s
+FAIL
+make: *** [Makefile:101: test] Error 1
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	90.653s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/merkle	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalauth	1.040s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/obs	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	107.299s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	13.841s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit/audittest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testnet	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testseam	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	(cached)
+?   	github.com/ParthMalhotra07/ReliefGrid/loadtest/cmd/gendata	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/loadtest/cmd/loadreport	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/dataset	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/report	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts	143.557s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	(cached)
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	(cached)
+go test -race -tags chaos ./cmd/invcheck/...
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	3.100s

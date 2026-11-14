@@ -1,0 +1,11 @@
+{
+  "integrationHead": "5e8b2a75a85cfe0c3f3488610d87e379f2fbb229",
+  "ownHeadWhenIntegrated": "453a6f5232514868bdd9b7b0e154614265067609",
+  "main": "803c287713affea62e3556b54e94bb4694a46853",
+  "parent174": "ca5ea77f41955f858650a97281cec13014cdf564",
+  "parent175": "3d7e7ccc63f9d66f604d9badafd2164d9707ab50",
+  "enable179": "8dd5472938ce4d8c3e4d0fb61f36c09ea4d5fc3c",
+  "audit178": "adbc64375cb56f06ea07bc7bfb20afe282696d82",
+  "localFixtureCorrection": "The new S4.5 drain fixture also copies scripts/internal-auth-env.sh; this correction is private and reported on #178.",
+  "scope": "Code integration only; no live kind, rotation or chaos acceptance."
+}
