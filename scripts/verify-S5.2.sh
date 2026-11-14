@@ -71,7 +71,7 @@ if [ "${#step_runs[@]}" -eq 0 ]; then
 else
 	for d in "${step_runs[@]}"; do
 		if python3 -I scripts/load-report-check.py "$d" --require-saturation; then
-			pass "saturation point in $d: $(python3 -I -c 'import json,sys; s=json.load(open(sys.argv[1]))["saturation"]; print("%s req/s; broken at %s by %s" % (s["rps"], s["brokenAt"], ",".join(s["brokenBy"])))' "$d/summary.json")"
+			pass "saturation point in $d: $(python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); s=d.get("saturation"); print("%s req/s; broken at %s by %s" % (s["rps"], s["brokenAt"], ",".join(s["brokenBy"])) if s else "> %s req/s; no step broken in the tested range" % d["steps"][-1]["targetRps"])' "$d/summary.json")"
 		else
 			fail "saturation point in $d"
 		fi

@@ -287,7 +287,7 @@ func stepFigures(pts Points, f Facts, samples []CgroupSample, background []Backg
 			return steps, sat
 		}
 	}
-	return steps, nil // never broken: raise the top step
+	return steps, nil // never broken: saturation lies above the top step
 }
 
 func brokenBy(s Step) []string {

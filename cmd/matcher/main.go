@@ -54,7 +54,7 @@ func run(ctx context.Context, coordinatorURL, amqpURL, healthAddress, metricsAdd
 			return fmt.Errorf("invalid AGING_INTERVAL: expected zero or duration at least 1ms")
 		}
 	}
-	s, err := coordclient.New(ctx, coordinatorURL)
+	s, err := coordclient.New(ctx, coordinatorURL, coordclient.WithInternalAuthFile(os.Getenv("INTERNAL_AUTH_TOKEN_FILE")))
 	if err != nil {
 		return fmt.Errorf("matcher coordinator: %w", err)
 	}

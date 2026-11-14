@@ -1,0 +1,41 @@
+.E......FE..
+======================================================================
+ERROR: test_demo_audit_job_mounts_only_app_sender (__main__.OperationalAuthTest.test_demo_audit_job_mounts_only_app_sender)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-1rvzkf3n/scripts/operational-auth-test.py", line 75, in test_demo_audit_job_mounts_only_app_sender
+    self.check_pod(captured[0]['spec']['template'])
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/rg-ops-auth-mutation-1rvzkf3n/scripts/operational-auth-test.py", line 83, in check_pod
+    self.assertIn({'name':'INTERNAL_AUTH_TOKEN_FILE','value':'/var/run/reliefgrid/internal-auth/sender-token'},container['env'])
+                                                                                                               ~~~~~~~~~^^^^^^^
+KeyError: 'env'
+
+======================================================================
+ERROR: test_reconcile_recovery_pod_and_audit_job_mount_app_sender (__main__.OperationalAuthTest.test_reconcile_recovery_pod_and_audit_job_mount_app_sender) (method='audit')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-1rvzkf3n/scripts/operational-auth-test.py", line 143, in test_reconcile_recovery_pod_and_audit_job_mount_app_sender
+    self.check_pod(pod)
+    ~~~~~~~~~~~~~~^^^^^
+  File "/tmp/rg-ops-auth-mutation-1rvzkf3n/scripts/operational-auth-test.py", line 83, in check_pod
+    self.assertIn({'name':'INTERNAL_AUTH_TOKEN_FILE','value':'/var/run/reliefgrid/internal-auth/sender-token'},container['env'])
+                                                                                                               ~~~~~~~~~^^^^^^^
+KeyError: 'env'
+
+======================================================================
+FAIL: test_reconcile_recovery_pod_and_audit_job_mount_app_sender (__main__.OperationalAuthTest.test_reconcile_recovery_pod_and_audit_job_mount_app_sender) (method='crash')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-1rvzkf3n/scripts/operational-auth-test.py", line 143, in test_reconcile_recovery_pod_and_audit_job_mount_app_sender
+    self.check_pod(pod)
+    ~~~~~~~~~~~~~~^^^^^
+  File "/tmp/rg-ops-auth-mutation-1rvzkf3n/scripts/operational-auth-test.py", line 83, in check_pod
+    self.assertIn({'name':'INTERNAL_AUTH_TOKEN_FILE','value':'/var/run/reliefgrid/internal-auth/sender-token'},container['env'])
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'name': 'INTERNAL_AUTH_TOKEN_FILE', 'value': '/var/run/reliefgrid/internal-auth/sender-token'} not found in [{'name': 'COORDINATOR_URL', 'value': 'http://storage-coordinator:8080'}]
+
+----------------------------------------------------------------------
+Ran 11 tests in 7.578s
+
+FAILED (failures=1, errors=2)

@@ -286,31 +286,59 @@ queue_limits() {
 	kn exec "statefulset/$RELEASE-rabbitmq" -- rabbitmqctl -q list_queues name arguments effective_policy_definition --formatter json |
 		python3 -I "$ROOT/loadtest/headroom.py" limits
 }
-# wait_for_headroom: with the matcher still consuming, sample (as settle)
-# every HEADROOM_POLL_S until every queue in raw/queue-limits.json is at most
-# HEADROOM_PCT% of its limit. Paused, the matcher empties nothing, and the
-# drain publishes into the same queues under reject-publish. Passes only on
-# a sample within HEADROOM_WAIT_S; a gap is never headroom. Writes
-# raw/headroom.json: the bound, the wait and the depths of the last sample
-# (the one the pause follows).
+# queue_routes: which queue each retry tier (a queue with a message TTL)
+# returns its expired messages to, from the live broker's queues, bindings
+# and exchanges (loadtest/headroom.py routes), as JSON.
+queue_routes() {
+	local tmp rc=0
+	tmp="$(mktemp -d)"
+	kn exec "statefulset/$RELEASE-rabbitmq" -- rabbitmqctl -q list_queues name arguments effective_policy_definition --formatter json >"$tmp/q.json" &&
+		kn exec "statefulset/$RELEASE-rabbitmq" -- rabbitmqctl -q list_bindings source_name source_kind destination_name destination_kind routing_key --formatter json >"$tmp/b.json" &&
+		kn exec "statefulset/$RELEASE-rabbitmq" -- rabbitmqctl -q list_exchanges name type --formatter json >"$tmp/e.json" &&
+		python3 -I "$ROOT/loadtest/headroom.py" routes --queues "$tmp/q.json" --bindings "$tmp/b.json" --exchanges "$tmp/e.json" || rc=1
+	rm -rf "$tmp"
+	return "$rc"
+}
+# queue_depths: every named queue's messages (ready, unacked and those held
+# for at-least-once dead-lettering), ready and unacked, as JSON.
+queue_depths() {
+	kn exec "statefulset/$RELEASE-rabbitmq" -- rabbitmqctl -q list_queues name messages messages_ready messages_unacknowledged --formatter json
+}
+# wait_for_headroom: with the matcher still consuming, sample every
+# HEADROOM_POLL_S until every queue in raw/queue-limits.json holds at most
+# HEADROOM_PCT% of its limit, counting every message in it plus every message
+# in the retry tiers that return to it (raw/queue-routes.json). Paused, the
+# matcher empties nothing, the tiers keep returning their messages, and the
+# drain publishes into the same queues under reject-publish. Ready+unacked
+# alone once passed with 10001 expired retries parked in retry.5s behind a
+# full matching.requests, and the drain was refused. Passes only on a sample
+# within HEADROOM_WAIT_S; a gap is never headroom. Each poll also records a
+# background sample (settle). Writes raw/headroom.json: the bound, the wait,
+# the routes and the depths of the last sample (the one the pause follows).
 wait_for_headroom() {
-	local t0="$SECONDS" waited line ok=false
+	local t0="$SECONDS" waited sample depths ok=false
 	while :; do
 		sample_background settle || true
-		line="$(tail -n 1 "$DIR/raw/background.jsonl")"
+		sample="$(queue_depths 2>/dev/null)" || sample='{"error":"rabbitmqctl list_queues failed"}'
 		waited=$((SECONDS - t0))
-		if python3 -I "$ROOT/loadtest/headroom.py" check --limits "$DIR/raw/queue-limits.json" --pct "$HEADROOM_PCT" \
-			<<<"$line" >"$DIR/raw/headroom-check.txt" && ((waited <= HEADROOM_WAIT_S)); then
+		if python3 -I "$ROOT/loadtest/headroom.py" check --limits "$DIR/raw/queue-limits.json" \
+			--routes "$DIR/raw/queue-routes.json" --pct "$HEADROOM_PCT" \
+			<<<"$sample" >"$DIR/raw/headroom-check.txt" && ((waited <= HEADROOM_WAIT_S)); then
 			ok=true
 			break
 		fi
 		((waited < HEADROOM_WAIT_S)) || break
 		sleep "$HEADROOM_POLL_S"
 	done
-	jq -c --argjson pct "$HEADROOM_PCT" --argjson bound "$HEADROOM_WAIT_S" --argjson waited "$waited" \
+	depths="$(mktemp)"
+	python3 -I "$ROOT/loadtest/headroom.py" depths --routes "$DIR/raw/queue-routes.json" <<<"$sample" \
+		>"$depths" 2>/dev/null || echo null >"$depths"
+	jq -nc --argjson pct "$HEADROOM_PCT" --argjson bound "$HEADROOM_WAIT_S" --argjson waited "$waited" \
 		--argjson ok "$ok" --slurpfile limits "$DIR/raw/queue-limits.json" \
-		'{pct: $pct, boundSeconds: $bound, waitedSeconds: $waited, ok: $ok, limits: $limits[0], depthsAtPause: (.queues // null)}' \
-		<<<"$line" >"$DIR/raw/headroom.json"
+		--slurpfile routes "$DIR/raw/queue-routes.json" --slurpfile depths "$depths" \
+		'{pct: $pct, boundSeconds: $bound, waitedSeconds: $waited, ok: $ok, limits: $limits[0], routes: $routes[0], depthsAtPause: $depths[0]}' \
+		>"$DIR/raw/headroom.json"
+	rm -f "$depths"
 	[ "$ok" = true ]
 }
 
@@ -520,7 +548,8 @@ go run ./loadtest/cmd/loadreport statuses -dir "$DIR" -api "$API_URL" | tee "$DI
 # check, then put the matcher back (restore() does too, on any exit).
 stop_bg_sampler
 queue_limits >"$DIR/raw/queue-limits.json" || die "cannot read the broker's queue limits"
-log "audit: waiting for headroom: every queue at most ${HEADROOM_PCT}% of its max-length, for at most ${HEADROOM_WAIT_S}s"
+queue_routes >"$DIR/raw/queue-routes.json" || die "cannot read the broker's retry routes"
+log "audit: waiting for headroom: every queue, with the retries returning to it, at most ${HEADROOM_PCT}% of its max-length, for at most ${HEADROOM_WAIT_S}s"
 wait_for_headroom || die "audit: no queue headroom within ${HEADROOM_WAIT_S}s: $(tr '\n' ';' <"$DIR/raw/headroom-check.txt")"
 log "audit: headroom after $(jq .waitedSeconds "$DIR/raw/headroom.json")s"
 log "audit: stopping retry admission ($MATCHER, $MATCHER_REPLICAS replicas)"

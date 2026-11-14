@@ -1,0 +1,101 @@
+{
+  "figures": {
+    "match.matched": {
+      "median": 1483,
+      "min": 1483,
+      "max": 1483,
+      "n": 3
+    },
+    "match.p50Ms": {
+      "median": 8592,
+      "min": 8043,
+      "max": 8645,
+      "n": 3
+    },
+    "match.p99Ms": {
+      "median": 277052,
+      "min": 275876.18,
+      "max": 325825.48,
+      "n": 3
+    },
+    "match.waiting": {
+      "median": 780,
+      "min": 780,
+      "max": 780,
+      "n": 3
+    },
+    "results.classes.list.p50Ms": {
+      "median": 18.29,
+      "min": 17.5,
+      "max": 21.12,
+      "n": 3
+    },
+    "results.classes.list.p95Ms": {
+      "median": 71.5,
+      "min": 66.41,
+      "max": 72.22,
+      "n": 3
+    },
+    "results.classes.list.p99Ms": {
+      "median": 90.31,
+      "min": 85.66,
+      "max": 91.3,
+      "n": 3
+    },
+    "results.classes.read.p50Ms": {
+      "median": 2.49,
+      "min": 2.35,
+      "max": 2.68,
+      "n": 3
+    },
+    "results.classes.read.p95Ms": {
+      "median": 30.83,
+      "min": 26.74,
+      "max": 39.78,
+      "n": 3
+    },
+    "results.classes.read.p99Ms": {
+      "median": 56.43,
+      "min": 51.45,
+      "max": 60,
+      "n": 3
+    },
+    "results.classes.write.p50Ms": {
+      "median": 31.91,
+      "min": 31.02,
+      "max": 32.37,
+      "n": 3
+    },
+    "results.classes.write.p95Ms": {
+      "median": 75.12,
+      "min": 69.73,
+      "max": 79.11,
+      "n": 3
+    },
+    "results.classes.write.p99Ms": {
+      "median": 93.57,
+      "min": 85.16,
+      "max": 99.46,
+      "n": 3
+    },
+    "results.errors.rate": {
+      "median": 0.000167,
+      "min": 0.000083,
+      "max": 0.00025,
+      "n": 3
+    },
+    "results.throughputRps": {
+      "median": 25,
+      "min": 25,
+      "max": 25,
+      "n": 3
+    }
+  },
+  "payloadSha256": "0afe4e0727eb807ecf6ac82a4d177973ab76b4a851ff823648666b468bf7d18d",
+  "runs": [
+    "S5.2-baseline-20261112T181041Z",
+    "S5.2-baseline-20261112T182431Z",
+    "S5.2-baseline-20261112T183824Z"
+  ],
+  "scenario": "baseline"
+}

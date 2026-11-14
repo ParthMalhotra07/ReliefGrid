@@ -1,0 +1,646 @@
+{
+  "audit": {
+    "drain": {
+      "marked": 0,
+      "published": 0,
+      "read": 0,
+      "retries": 0
+    },
+    "headroom": {
+      "boundSeconds": 600,
+      "depthsAtPause": {
+        "matching.dead": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "matching.requests": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "matching.wakeups": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "retry.120s": {
+          "ready": 4527,
+          "unacked": 0
+        },
+        "retry.30s": {
+          "ready": 50,
+          "unacked": 0
+        },
+        "retry.5s": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "wakeup.retry.5s": {
+          "ready": 0,
+          "unacked": 0
+        }
+      },
+      "limits": {
+        "matching.dead": 10000,
+        "matching.requests": 10000,
+        "matching.wakeups": 10000,
+        "retry.120s": 10000,
+        "retry.30s": 10000,
+        "retry.5s": 10000,
+        "wakeup.retry.5s": 10000
+      },
+      "ok": true,
+      "pct": 80,
+      "waitedSeconds": 0
+    },
+    "matcherReplicas": 2,
+    "matcherReplicasAfter": 2,
+    "mode": "without-admission"
+  },
+  "background": {
+    "afterRun": {
+      "samples": 7,
+      "gaps": 0,
+      "publishesNotConfirmed": 0,
+      "queuePeak": {
+        "matching.dead": 0,
+        "matching.requests": 58,
+        "matching.wakeups": 4,
+        "retry.120s": 5059,
+        "retry.30s": 123,
+        "retry.5s": 216,
+        "wakeup.retry.5s": 0
+      },
+      "waitingFirst": 773,
+      "waitingLast": 780
+    },
+    "atPause": {
+      "tMs": 1794509340111,
+      "phase": "pause",
+      "brokerReceivedConfirm": 63710,
+      "brokerConfirmed": 63710,
+      "queues": {
+        "matching.dead": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "matching.requests": {
+          "ready": 58,
+          "unacked": 0
+        },
+        "matching.wakeups": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "retry.120s": {
+          "ready": 4385,
+          "unacked": 0
+        },
+        "retry.30s": {
+          "ready": 32,
+          "unacked": 0
+        },
+        "retry.5s": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "wakeup.retry.5s": {
+          "ready": 0,
+          "unacked": 0
+        }
+      },
+      "waiting": 780,
+      "waitingValid": true,
+      "waitingObservedAtMs": 1794509337958
+    },
+    "run": {
+      "samples": 121,
+      "gaps": 0,
+      "publishesNotConfirmed": 0,
+      "queuePeak": {
+        "matching.dead": 0,
+        "matching.requests": 60,
+        "matching.wakeups": 28,
+        "retry.120s": 5559,
+        "retry.30s": 123,
+        "retry.5s": 341,
+        "wakeup.retry.5s": 0
+      },
+      "waitingFirst": 0,
+      "waitingLast": 773
+    }
+  },
+  "config": {
+    "autoscaling": "off",
+    "podCpuLimitsMillicores": {
+      "reliefgrid-api-d5678db88-dwqpd": 400,
+      "reliefgrid-api-d5678db88-qlg89": 400,
+      "reliefgrid-matcher-5cff87dbfc-t98dw": 250,
+      "reliefgrid-matcher-5cff87dbfc-wr5vq": 250,
+      "reliefgrid-rabbitmq-0": 750,
+      "reliefgrid-traefik-7cc48c599-g7rgq": 300,
+      "reliefgrid-ui-bc9545879-zd8zt": 50,
+      "storage-coordinator-6c449fd88-xv68l": 250,
+      "storage-shard-0-0": 300,
+      "storage-shard-0-1": 300,
+      "storage-shard-0-2": 300,
+      "storage-shard-1-0": 300,
+      "storage-shard-1-1": 300,
+      "storage-shard-1-2": 300,
+      "storage-shard-2-0": 300,
+      "storage-shard-2-1": 300,
+      "storage-shard-2-2": 300
+    },
+    "podQoS": "Guaranteed",
+    "raftProfile": "load",
+    "readFence": "fence",
+    "replicas": {
+      "api": 2,
+      "matcher": 2
+    },
+    "tracing": "off"
+  },
+  "dataset": {
+    "ops": 15800,
+    "payloadSha256": "0afe4e0727eb807ecf6ac82a4d177973ab76b4a851ff823648666b468bf7d18d",
+    "requests": 2386,
+    "resources": 1545,
+    "seed": 52,
+    "sha256": "ef8f9562c20400e80de54370655699f90823d0e5dd04d7c3474f173a7430884f"
+  },
+  "git": {
+    "dirty": false,
+    "sha": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac"
+  },
+  "goal": "S5.2",
+  "host": {
+    "cpuMHzEnd": 3941,
+    "cpuMHzStart": 2686,
+    "cpuModel": "Intel(R) Core(TM) Ultra 7 258V",
+    "k6Cpus": "6-7",
+    "kernel": "7.0.0-43-generic",
+    "kindCpus": "0-5",
+    "loadAvgStart": 2.03,
+    "logicalCpus": 8,
+    "memTotalGiB": 30.4,
+    "powerProfile": "performance",
+    "powerProfileDegraded": "no",
+    "powerProfileRestored": "balanced",
+    "swapUsedMiB": 243
+  },
+  "invariants": {
+    "acknowledgedCreates": 2263,
+    "invcheck": "PASS",
+    "ledger": "PASS",
+    "unreadable": 0
+  },
+  "load": {
+    "durationSeconds": 600,
+    "executor": "constant-arrival-rate",
+    "maxVUs": 400,
+    "mix": {
+      "create_request": 0.15,
+      "list": 0.1,
+      "match": 0.1,
+      "read": 0.55,
+      "register_resource": 0.1
+    },
+    "warmupSeconds": 120
+  },
+  "match": {
+    "label": "matched only",
+    "matched": 1483,
+    "waiting": 780,
+    "other": {},
+    "p50Ms": 8043,
+    "p95Ms": 155559.3,
+    "p99Ms": 277052
+  },
+  "percentiles": "k6 http_req_duration (request sent to last response byte, measured at the client) of the requests that started in the measured window (after warm-up), per request class (write: creates, registrations and matches; read: one request by ID; list: listings, which scan every shard); p50/p95/p99 by linear interpolation between the closest ranks of the raw samples. Matched latency is server-side (updatedAt - createdAt) for MATCHED requests only.",
+  "pods": [
+    {
+      "name": "reliefgrid-api-d5678db88-dwqpd",
+      "cpuMillicoresMax": 30.19,
+      "cpuMillicoresAvg": 24.58,
+      "memMiBMax": 9.13,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "reliefgrid-api-d5678db88-qlg89",
+      "cpuMillicoresMax": 32.37,
+      "cpuMillicoresAvg": 24.78,
+      "memMiBMax": 8.88,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "reliefgrid-matcher-5cff87dbfc-t98dw",
+      "cpuMillicoresMax": 105.35,
+      "cpuMillicoresAvg": 82.03,
+      "memMiBMax": 10.21,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "reliefgrid-matcher-5cff87dbfc-wr5vq",
+      "cpuMillicoresMax": 101.72,
+      "cpuMillicoresAvg": 82.29,
+      "memMiBMax": 10.32,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "reliefgrid-rabbitmq-0",
+      "cpuMillicoresMax": 140.34,
+      "cpuMillicoresAvg": 103.78,
+      "memMiBMax": 326.08,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "reliefgrid-traefik-7cc48c599-g7rgq",
+      "cpuMillicoresMax": 14.84,
+      "cpuMillicoresAvg": 11.18,
+      "memMiBMax": 36.84,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "reliefgrid-ui-bc9545879-zd8zt",
+      "cpuMillicoresMax": 0.36,
+      "cpuMillicoresAvg": 0.17,
+      "memMiBMax": 3.09,
+      "cpuThrottledPeriods": 0
+    },
+    {
+      "name": "storage-coordinator-6c449fd88-xv68l",
+      "cpuMillicoresMax": 241.72,
+      "cpuMillicoresAvg": 198.73,
+      "memMiBMax": 13.18,
+      "cpuThrottledPeriods": 2634
+    },
+    {
+      "name": "storage-shard-0-0",
+      "cpuMillicoresMax": 193.12,
+      "cpuMillicoresAvg": 136.45,
+      "memMiBMax": 98,
+      "cpuThrottledPeriods": 138
+    },
+    {
+      "name": "storage-shard-0-1",
+      "cpuMillicoresMax": 92.52,
+      "cpuMillicoresAvg": 49.74,
+      "memMiBMax": 113.73,
+      "cpuThrottledPeriods": 4
+    },
+    {
+      "name": "storage-shard-0-2",
+      "cpuMillicoresMax": 76.92,
+      "cpuMillicoresAvg": 49.33,
+      "memMiBMax": 96.52,
+      "cpuThrottledPeriods": 3
+    },
+    {
+      "name": "storage-shard-1-0",
+      "cpuMillicoresMax": 256.28,
+      "cpuMillicoresAvg": 178.55,
+      "memMiBMax": 114.48,
+      "cpuThrottledPeriods": 708
+    },
+    {
+      "name": "storage-shard-1-1",
+      "cpuMillicoresMax": 96.16,
+      "cpuMillicoresAvg": 66.44,
+      "memMiBMax": 134.8,
+      "cpuThrottledPeriods": 6
+    },
+    {
+      "name": "storage-shard-1-2",
+      "cpuMillicoresMax": 99.59,
+      "cpuMillicoresAvg": 66.91,
+      "memMiBMax": 154.62,
+      "cpuThrottledPeriods": 8
+    },
+    {
+      "name": "storage-shard-2-0",
+      "cpuMillicoresMax": 170.88,
+      "cpuMillicoresAvg": 110.4,
+      "memMiBMax": 74.26,
+      "cpuThrottledPeriods": 76
+    },
+    {
+      "name": "storage-shard-2-1",
+      "cpuMillicoresMax": 61.69,
+      "cpuMillicoresAvg": 35.73,
+      "memMiBMax": 71.02,
+      "cpuThrottledPeriods": 2
+    },
+    {
+      "name": "storage-shard-2-2",
+      "cpuMillicoresMax": 66.45,
+      "cpuMillicoresAvg": 36.15,
+      "memMiBMax": 93.78,
+      "cpuThrottledPeriods": 2
+    }
+  ],
+  "raft": {
+    "shards": [
+      {
+        "shard": 0,
+        "commitP50Ms": 12.44,
+        "commitP99Ms": 46.37,
+        "commits": 26870,
+        "snapshots": 4,
+        "logBytesMax": 50339840,
+        "snapshotBytesMax": 30521452
+      },
+      {
+        "shard": 1,
+        "commitP50Ms": 11.26,
+        "commitP99Ms": 45.73,
+        "commits": 38030,
+        "snapshots": 6,
+        "logBytesMax": 50339840,
+        "snapshotBytesMax": 51992684
+      },
+      {
+        "shard": 2,
+        "commitP50Ms": 9.09,
+        "commitP99Ms": 45,
+        "commits": 18272,
+        "snapshots": 4,
+        "logBytesMax": 33558528,
+        "snapshotBytesMax": 22808679
+      }
+    ]
+  },
+  "raw": [
+    {
+      "path": "dataset.json",
+      "committed": false,
+      "bytes": 1369944,
+      "sha256": "ef8f9562c20400e80de54370655699f90823d0e5dd04d7c3474f173a7430884f",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/dataset.json (author's machine)"
+    },
+    {
+      "path": "k6-summary.json",
+      "committed": true
+    },
+    {
+      "path": "raw/background.jsonl",
+      "committed": true
+    },
+    {
+      "path": "raw/cgroup.jsonl",
+      "committed": false,
+      "bytes": 255582,
+      "sha256": "f00a59536e062c7325d36c068b17de5bdea03e19cfcc933f4ece0a2f2958111d",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/cgroup.jsonl (author's machine)"
+    },
+    {
+      "path": "raw/handoff-drain.json",
+      "committed": true
+    },
+    {
+      "path": "raw/handoff-drain.log",
+      "committed": true
+    },
+    {
+      "path": "raw/headroom-check.txt",
+      "committed": true
+    },
+    {
+      "path": "raw/headroom.json",
+      "committed": true
+    },
+    {
+      "path": "raw/invcheck.json",
+      "committed": true
+    },
+    {
+      "path": "raw/k6-points.jsonl.gz",
+      "committed": false,
+      "bytes": 2198577,
+      "sha256": "3ce670360530006a3d62802a6bc9af1313d35f08b8c7df0961978fd808facce4",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/k6-points.jsonl.gz (author's machine)"
+    },
+    {
+      "path": "raw/k6.log",
+      "committed": true
+    },
+    {
+      "path": "raw/metrics-end/storage-coordinator-6c449fd88-xv68l.prom",
+      "committed": false,
+      "bytes": 13614,
+      "sha256": "3854c56767406f0c4f1212001ffffc7cc365acd3222748424bb24ab4221cb2f5",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-coordinator-6c449fd88-xv68l.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-0-0.prom",
+      "committed": false,
+      "bytes": 64993,
+      "sha256": "f72f401f46a05c8751eb9eb0d69202d7d4c257af277917044876bdc86a67720c",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-0-0.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-0-1.prom",
+      "committed": false,
+      "bytes": 64480,
+      "sha256": "92c8f961ef0b5dfe986ff4771eed632768351fc1388ed0ee61dbbf54833e1429",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-0-1.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-0-2.prom",
+      "committed": false,
+      "bytes": 64478,
+      "sha256": "142303c81ff4dfc00c289195e22451393cb8fd27780ca7c70d25e9ffce0c8d5f",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-0-2.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-1-0.prom",
+      "committed": false,
+      "bytes": 65002,
+      "sha256": "a79a5e089f97099dd63e0ba63393ac81933ee34f016c593f946021662006e041",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-1-0.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-1-1.prom",
+      "committed": false,
+      "bytes": 64479,
+      "sha256": "d6094a1d9628287920eb71bdb2a0d180dfddd69911ba6233c62acd9ee680f600",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-1-1.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-1-2.prom",
+      "committed": false,
+      "bytes": 64481,
+      "sha256": "15e4f236134e3f11fd3e60eb96d4e7961a4fae9b312ade22a801ae390e869b0d",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-1-2.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-2-0.prom",
+      "committed": false,
+      "bytes": 64972,
+      "sha256": "8d91ceef72d86424bac0d802c54c1350c8cc33cecda343931a34243d7fa28fe5",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-2-0.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-2-1.prom",
+      "committed": false,
+      "bytes": 64480,
+      "sha256": "6c520cd9bcc6311ebd0cc8c2b163b33f1532f7d6e677493f19a2edeb7f0efabf",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-2-1.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-end/storage-shard-2-2.prom",
+      "committed": false,
+      "bytes": 64479,
+      "sha256": "1d0aed5b81d3a1634e6b6282127e6c3865ff9731d7b09a6aed0afb826fcad091",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-end/storage-shard-2-2.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-coordinator-6c449fd88-xv68l.prom",
+      "committed": false,
+      "bytes": 13500,
+      "sha256": "e76ee7b27fed16d480d1b518d36273948bef17c1683627d8c3c1b66d65434cb9",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-coordinator-6c449fd88-xv68l.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-0-0.prom",
+      "committed": false,
+      "bytes": 64354,
+      "sha256": "b667c6fcaa9fe2ba637cdf82d8a4e14f4d2d79f90b9760e0f7070505f6171b0f",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-0-0.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-0-1.prom",
+      "committed": false,
+      "bytes": 64286,
+      "sha256": "764acfb9b0e4c0cda0691d7260fe6db174fdc0163623b509a5340373a2197e03",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-0-1.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-0-2.prom",
+      "committed": false,
+      "bytes": 64285,
+      "sha256": "206399a09c8c3e6ca2f01d7053a14d3760f24434ac7d160de44ea179331cea31",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-0-2.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-1-0.prom",
+      "committed": false,
+      "bytes": 64345,
+      "sha256": "d6ea7f906f586bcd3601bca3b73a2f82b3b8a20f9168814cb046e19ac323d5e7",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-1-0.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-1-1.prom",
+      "committed": false,
+      "bytes": 64282,
+      "sha256": "dd982148cdbd22fe23422bdecc7b7e2b181754e7fb60e373c88dfae98bb259f9",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-1-1.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-1-2.prom",
+      "committed": false,
+      "bytes": 64288,
+      "sha256": "4afe9cc73fb9e1eb6a178e9e2319d3b97746958c92f7d84021c9611331d58ace",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-1-2.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-2-0.prom",
+      "committed": false,
+      "bytes": 64352,
+      "sha256": "c95db656a3dd3581c0d7df4c9161008bec7a80a2901ddfc8dd8d72c54be7c909",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-2-0.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-2-1.prom",
+      "committed": false,
+      "bytes": 64284,
+      "sha256": "83ab65fc1931163c65b9c473b8d8ba2aa5da2adebca7047d9b93153466972844",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-2-1.prom (author's machine)"
+    },
+    {
+      "path": "raw/metrics-start/storage-shard-2-2.prom",
+      "committed": false,
+      "bytes": 64285,
+      "sha256": "7ce82eed128076fed9ed1ca1a76b02ca7f13aa506408696e0aef4f6743e47ac5",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/metrics-start/storage-shard-2-2.prom (author's machine)"
+    },
+    {
+      "path": "raw/queue-limits.json",
+      "committed": true
+    },
+    {
+      "path": "raw/requests.csv.gz",
+      "committed": true
+    },
+    {
+      "path": "raw/statuses-summary.json",
+      "committed": true
+    },
+    {
+      "path": "raw/statuses.jsonl",
+      "committed": false,
+      "bytes": 361822,
+      "sha256": "c3e118481fae3d03d65aea8038c8f16bb881abbe299b41fa25cfb0673fe35b26",
+      "where": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3/run/raw/statuses.jsonl (author's machine)"
+    }
+  ],
+  "results": {
+    "classes": {
+      "list": {
+        "count": 1180,
+        "p50Ms": 17.5,
+        "p95Ms": 66.41,
+        "p99Ms": 90.31
+      },
+      "read": {
+        "count": 6597,
+        "p50Ms": 2.35,
+        "p95Ms": 26.74,
+        "p99Ms": 56.43
+      },
+      "write": {
+        "count": 4223,
+        "p50Ms": 31.02,
+        "p95Ms": 69.73,
+        "p99Ms": 85.16
+      }
+    },
+    "droppedIterations": 0,
+    "errors": {
+      "byCode": {
+        "STORAGE_UNAVAILABLE": 2
+      },
+      "byStatus": {
+        "503": 2
+      },
+      "rate": 0.000167,
+      "total": 2
+    },
+    "requests": 12000,
+    "skippedOps": 348,
+    "throughputRps": 25
+  },
+  "runId": "S5.2-baseline-20261112T183824Z",
+  "scenario": "baseline",
+  "startedAt": "2026-11-12T18:38:29Z",
+  "thresholds": {
+    "errorRate": 0.01,
+    "listP99Ms": 500,
+    "readP99Ms": 250,
+    "writeP99Ms": 1000
+  },
+  "versions": {
+    "go": "1.27.2",
+    "helm": "v3.22.1",
+    "images": {
+      "api": "sha256:b1af22b2a40df49f84b138e963edcdfeb6be23a17ad5d64fe8624b1ad6fc4bf8",
+      "coordinator": "sha256:ae4667fbdf40ce97a8699e0b622d0beb0e123709e1dca492d44b3d6e85a4d10e",
+      "matcher": "sha256:c0f908ad4c380ef8c2f5a33d3ef54e75744029e49e6419f1d4f7e334ffb2299d",
+      "rabbitmq": "sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e",
+      "storagenode": "sha256:8d045d7b3e888b28b384c266656bcb956a630a3d6cbd94efb03012587ab6b2dc",
+      "traefik": "sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65",
+      "ui": "sha256:b55cd53774e73020e506d11fb495bd015120fe43a3c8d2424a502a03ea48d5f3"
+    },
+    "k6": "v2.3.0",
+    "kind": "v0.33.0",
+    "kindNodeImage": "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5",
+    "kubectl": "v1.37.1"
+  }
+}

@@ -25,7 +25,8 @@ import (
 // A shard whose page is full (it said hasMore, or returned exactly limit
 // records) has hasMore in its position; one that returned more than limit
 // records, or keys out of order, broke the contract and is a failed shard.
-// The merged consistency is the weakest any shard used.
+// The merged consistency is the weakest any shard used; a shard with no
+// or an unknown mode counts as weaker than stale (see rank).
 //
 // Paging (S1.6): a cursor is split per shard, and each shard it lists is
 // asked for keys after its own position; shards it does not list are
@@ -87,6 +88,7 @@ func (c *Coordinator) scan(w http.ResponseWriter, r *http.Request) {
 	out := internalapi.ScanResponse{RingVersion: c.ring.Version(), Records: []store.Record{}, Positions: []store.ShardPosition{}}
 	var whys []string
 	var failedShards []int
+	merged := false // out.Consistency holds an answered shard's mode
 	next := map[int]string{}
 	for _, s := range asked {
 		a := answers[s]
@@ -104,8 +106,9 @@ func (c *Coordinator) scan(w http.ResponseWriter, r *http.Request) {
 			next[s] = recs[len(recs)-1].Key
 		}
 		out.Positions = append(out.Positions, pos)
-		if out.Consistency == "" || consistencyRank[a.resp.Consistency] < consistencyRank[out.Consistency] {
+		if !merged || rank(a.resp.Consistency) < rank(out.Consistency) {
 			out.Consistency = a.resp.Consistency // the weakest read used
+			merged = true
 		}
 	}
 	if len(out.Positions) == 0 {
@@ -178,6 +181,17 @@ var consistencyRank = map[internalapi.ScanResponseConsistency]int{
 	internalapi.ScanResponseConsistencyStale:        0,
 	internalapi.ScanResponseConsistencyLinearizable: 1,
 	internalapi.ScanResponseConsistencyStrong:       2,
+}
+
+// rank is a mode's place in consistencyRank. A shard that did not say how it
+// served its page (missing, empty or unknown) ranks below stale: it proves
+// nothing, so the merged page carries its label, which every authoritative
+// reader refuses, and a later shard's mode never masks it.
+func rank(c internalapi.ScanResponseConsistency) int {
+	if r, ok := consistencyRank[c]; ok {
+		return r
+	}
+	return -1
 }
 
 // shardAnswer is one shard's scan page, or why it failed. rejected is set

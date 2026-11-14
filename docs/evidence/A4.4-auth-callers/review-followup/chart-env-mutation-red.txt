@@ -1,0 +1,8 @@
+--- FAIL: TestAppInternalAuthMountsExcludeUI (1.79s)
+    --- FAIL: TestAppInternalAuthMountsExcludeUI/api (0.00s)
+        internal_auth_app_chart_test.go:57: api sender-file path: got /var/run/reliefgrid/internal-auth/not-mounted want /var/run/reliefgrid/internal-auth/sender-token
+    --- FAIL: TestAppInternalAuthMountsExcludeUI/matcher (0.00s)
+        internal_auth_app_chart_test.go:57: matcher sender-file path: got /var/run/reliefgrid/internal-auth/not-mounted want /var/run/reliefgrid/internal-auth/sender-token
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	2.768s
+FAIL

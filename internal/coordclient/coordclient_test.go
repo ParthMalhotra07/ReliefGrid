@@ -227,16 +227,17 @@ func TestReadShapes(t *testing.T) {
 	c := newClient(t, f)
 	ctx := testCtx(t)
 	rec := store.Record{Key: "kv:a", Kind: store.KindKV, Version: 3, Value: json.RawMessage(`1`)}
+	read := internalapi.ReadInfo{Consistency: internalapi.ReadInfoConsistencyLinearizable}
 	f.setAnswer(func(w http.ResponseWriter, r *http.Request, _ int) {
 		switch r.URL.Path {
 		case "/internal/data/kv:a":
-			writeJSON(w, http.StatusOK, internalapi.RecordResponse{Record: rec, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.RecordResponse{Record: rec, Read: read, RingVersion: 1})
 		case "/internal/resources/s7/closures/a-1":
-			writeJSON(w, http.StatusOK, internalapi.ClosureResponse{Closure: store.Closure{ResourceKey: "res:s7", AttemptID: "a-1"}, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.ClosureResponse{Closure: store.Closure{ResourceKey: "res:s7", AttemptID: "a-1"}, Read: read, RingVersion: 1})
 		case "/internal/operations/op-1":
-			writeJSON(w, http.StatusOK, internalapi.OperationResponse{Result: okResult, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.OperationResponse{Result: okResult, Read: read, RingVersion: 1})
 		case "/internal/outbox":
-			writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: 2, Events: []store.OutboxEvent{{EventID: "e1"}}, RingVersion: 1})
+			writeJSON(w, http.StatusOK, internalapi.OutboxPage{Shard: 2, Events: []store.OutboxEvent{{EventID: "e1"}}, Read: read, RingVersion: 1})
 		default:
 			t.Errorf("unexpected %s %s", r.Method, r.URL)
 		}
@@ -253,7 +254,7 @@ func TestReadShapes(t *testing.T) {
 	if got, err := c.PendingOutbox(ctx, store.OutboxQuery{Shard: 2, Limit: 50}); err != nil || len(got) != 1 || got[0].EventID != "e1" {
 		t.Fatalf("PendingOutbox = %+v, %v", got, err)
 	}
-	want := []string{"/internal/data/kv:a?", "/internal/resources/s7/closures/a-1?", "/internal/operations/op-1?key=kv%3Aa", "/internal/outbox?consistency=strong&limit=50&shard=2"}
+	want := []string{"/internal/data/kv:a?consistency=linearizable", "/internal/resources/s7/closures/a-1?consistency=linearizable", "/internal/operations/op-1?consistency=linearizable&key=kv%3Aa", "/internal/outbox?consistency=linearizable&limit=50&shard=2"}
 	for i, r := range f.requests() {
 		if r.method != http.MethodGet || r.path+"?"+r.query != want[i] {
 			t.Errorf("read %d = %s %s?%s, want GET %s", i, r.method, r.path, r.query, want[i])
@@ -282,7 +283,7 @@ func TestScanShapeAndPartial(t *testing.T) {
 		t.Fatalf("scan = %+v, want the partial result (and hasMore) unchanged", got)
 	}
 	r := f.requests()[0]
-	if r.path != "/internal/scan" || r.query != "consistency=strong&geohashPrefixes=tt+n&geohashPrefixes=ttp&kind=resource&limit=20&ringVersion=1&statuses=AVAILABLE&statuses=OFFLINE&type=WATER" {
+	if r.path != "/internal/scan" || r.query != "consistency=linearizable&geohashPrefixes=tt+n&geohashPrefixes=ttp&kind=resource&limit=20&ringVersion=1&statuses=AVAILABLE&statuses=OFFLINE&type=WATER" {
 		t.Fatalf("scan sent %s?%s", r.path, r.query)
 	}
 

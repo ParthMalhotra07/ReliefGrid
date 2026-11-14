@@ -1,0 +1,105 @@
+..F..FE/usr/lib/python3.14/tempfile.py:484: ResourceWarning: Implicitly cleaning up <HTTPError 401: 'Unauthorized'>
+  _warnings.warn(self.warn_message, ResourceWarning)
+..FF
+======================================================================
+ERROR: test_metrics_scratch_uses_app_sender (__main__.OperationalAuthTest.test_metrics_scratch_uses_app_sender)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/metrics_fault.py", line 81, in command
+    with self.sender.open(request, timeout=3) as response:
+         ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/internal_auth.py", line 54, in open
+    return self._opener.open(forwarded, timeout=timeout)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 493, in open
+    response = meth(req, response)
+  File "/usr/lib/python3.14/urllib/request.py", line 602, in http_response
+    response = self.parent.error(
+        'http', request, response, code, msg, hdrs)
+  File "/usr/lib/python3.14/urllib/request.py", line 531, in error
+    return self._call_chain(*args)
+           ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/usr/lib/python3.14/urllib/request.py", line 464, in _call_chain
+    result = func(*args)
+  File "/usr/lib/python3.14/urllib/request.py", line 611, in http_error_default
+    raise HTTPError(req.full_url, code, msg, hdrs, fp)
+urllib.error.HTTPError: HTTP Error 401: Unauthorized
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/operational-auth-test.py", line 44, in test_metrics_scratch_uses_app_sender
+    try: self.assertEqual(traffic.command('scratch',0),1)
+                          ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/metrics_fault.py", line 92, in command
+    raise RuntimeError('scratch command: HTTP'+str(error.code)+' '+str(failure)) from error
+RuntimeError: scratch command: HTTP401 {'code': 'UNAUTHORIZED'}
+
+======================================================================
+FAIL: test_demo_coordinator_only (__main__.OperationalAuthTest.test_demo_coordinator_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/operational-auth-test.py", line 57, in test_demo_coordinator_only
+    self.assertEqual([row[1] for row in seen],['fixture-app-token',None])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [None, None] != ['fixture-app-token', None]
+
+First differing element 0:
+None
+'fixture-app-token'
+
+- [None, None]
++ ['fixture-app-token', None]
+
+======================================================================
+FAIL: test_metrics_get_does_not_send_internal_token_to_telemetry_or_public_api (__main__.OperationalAuthTest.test_metrics_get_does_not_send_internal_token_to_telemetry_or_public_api)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/operational-auth-test.py", line 127, in test_metrics_get_does_not_send_internal_token_to_telemetry_or_public_api
+    self.assertEqual([row[1] for row in seen],['fixture-app-token',None,None])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [None, None, None] != ['fixture-app-token', None, None]
+
+First differing element 0:
+None
+'fixture-app-token'
+
+- [None, None, None]
++ ['fixture-app-token', None, None]
+
+======================================================================
+FAIL: test_reconciler_coordinator_only (__main__.OperationalAuthTest.test_reconciler_coordinator_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/operational-auth-test.py", line 52, in test_reconciler_coordinator_only
+    self.assertEqual([row[1] for row in seen],['fixture-app-token',None])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [None, None] != ['fixture-app-token', None]
+
+First differing element 0:
+None
+'fixture-app-token'
+
+- [None, None]
++ ['fixture-app-token', None]
+
+======================================================================
+FAIL: test_sender_rejects_redirect_and_foreign_routes_without_forwarding (__main__.OperationalAuthTest.test_sender_rejects_redirect_and_foreign_routes_without_forwarding)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/rg-ops-auth-mutation-_s4r9ynz/scripts/operational-auth-test.py", line 106, in test_sender_rejects_redirect_and_foreign_routes_without_forwarding
+    self.assertEqual(seen[-1][1:],('fixture-app-token',None))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Tuples differ: (None, None) != ('fixture-app-token', None)
+
+First differing element 0:
+None
+'fixture-app-token'
+
+- (None, None)
++ ('fixture-app-token', None)
+
+----------------------------------------------------------------------
+Ran 11 tests in 7.587s
+
+FAILED (failures=4, errors=1)

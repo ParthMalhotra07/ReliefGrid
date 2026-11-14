@@ -349,22 +349,33 @@ echo "after: ${#BG_PFS[@]} left"
 }
 
 // Before the pause the matcher keeps consuming until every queue has
-// headroom (at most HEADROOM_PCT% of its max-length), bounded by
-// HEADROOM_WAIT_S: a paused matcher empties nothing, and the drain publishes
-// into the same queues. An expired bound fails the audit, never passes it.
+// headroom (at most HEADROOM_PCT% of its max-length, counting every message
+// in it and in the retry tiers that return to it), bounded by
+// HEADROOM_WAIT_S: a paused matcher empties nothing, the tiers keep returning
+// their messages, and the drain publishes into the same queues. An expired
+// bound fails the audit, never passes it.
 func TestLoadRunWaitForHeadroom(t *testing.T) {
-	sample := func(wakeups int) string {
-		return fmt.Sprintf(`{"tMs":1,"phase":"settle","queues":{"matching.requests":{"ready":100,"unacked":16},"matching.wakeups":{"ready":%d,"unacked":16}}}`, wakeups)
+	// One rabbitmqctl list_queues sample: requests (messages, ready), and
+	// retry.5s messages with nothing ready (parked behind the target).
+	sample := func(requests, ready, parked int) string {
+		return fmt.Sprintf(`[{"name":"matching.requests","messages":%d,"messages_ready":%d,"messages_unacknowledged":16},`+
+			`{"name":"retry.5s","messages":%d,"messages_ready":0,"messages_unacknowledged":0}]`, requests+16, ready, parked)
 	}
+	ok := sample(5000, 5000, 2984)
 	for _, c := range []struct {
 		name    string
-		depths  []int
+		samples []string
 		bound   string
 		wantErr bool
 		want    string
 	}{
-		{"drops below the threshold", []int{9936, 9100, 7984, 5000}, "5", false, `"ok":true`},
-		{"never drops", []int{9936, 9936, 9936, 9936, 9936, 9936, 9936, 9936, 9936, 9936}, "1", true, `"ok":false`},
+		{"drops below the threshold", []string{sample(9920, 9920, 0), sample(9100, 9100, 0), ok, sample(10, 10, 0)}, "5", false, `"ok":true`},
+		{"never drops", []string{sample(9920, 9920, 0), sample(9920, 9920, 0), sample(9920, 9920, 0), sample(9920, 9920, 0),
+			sample(9920, 9920, 0), sample(9920, 9920, 0), sample(9920, 9920, 0), sample(9920, 9920, 0)}, "1", true, `"ok":false`},
+		// The exploratory 10->160 run's pause: ready+unacked 7836 passed
+		// before; 10001 expired retries parked in retry.5s return to it.
+		{"parked retries are not headroom", []string{sample(7820, 7820, 10001), sample(7820, 7820, 10001), sample(7820, 7820, 10001),
+			sample(7820, 7820, 10001), sample(7820, 7820, 10001), sample(7820, 7820, 10001)}, "1", true, `"ok":false`},
 		{"a gap is not headroom", nil, "1", true, `"ok":false`},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -372,27 +383,33 @@ func TestLoadRunWaitForHeadroom(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(dir, "raw"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			var lines strings.Builder
-			for _, d := range c.depths {
-				lines.WriteString(sample(d) + "\n")
-			}
-			if err := os.WriteFile(filepath.Join(dir, "samples"), []byte(lines.String()), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, "samples"), []byte(strings.Join(c.samples, "\n")+"\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(dir, "raw", "queue-limits.json"), []byte(`{"matching.requests":10000,"matching.wakeups":10000}`), 0o644); err != nil {
-				t.Fatal(err)
+			for f, v := range map[string]string{
+				"queue-limits.json": `{"matching.requests":10000,"retry.5s":10000}`,
+				"queue-routes.json": `{"retry.5s":["matching.requests"]}`,
+			} {
+				if err := os.WriteFile(filepath.Join(dir, "raw", f), []byte(v), 0o644); err != nil {
+					t.Fatal(err)
+				}
 			}
 			out, err := runFuncs(t, []string{"wait_for_headroom"}, `
-n=0
-sample_background() {
-	n=$((n + 1))
+bg=0
+echo 0 > "$DIR/n"
+sample_background() { bg=$((bg + 1)); echo '{"tMs":1,"phase":"settle"}' >> "$DIR/raw/background.jsonl"; }
+# queue_depths runs in a command substitution: count in a file.
+queue_depths() {
+	local n=$(($(cat "$DIR/n") + 1)) line
+	echo "$n" > "$DIR/n"
 	line="$(sed -n "${n}p" "$DIR/samples")"
-	[ -n "$line" ] || line='{"tMs":1,"phase":"settle","error":"broker: down"}'
-	echo "$line" >> "$DIR/raw/background.jsonl"
-	case "$line" in *error*) return 1 ;; esac
+	[ -n "$line" ] || return 1
+	echo "$line"
 }
-if wait_for_headroom; then echo "PASSED after $n samples"; else echo "FAILED after $n samples"; fi
-cat "$DIR/raw/headroom.json"
+if wait_for_headroom; then echo "PASSED after $(cat "$DIR/n") samples"; else echo "FAILED after $(cat "$DIR/n") samples"; fi
+echo "background samples: $bg"
+cat "$DIR/raw/headroom.json"; echo
+cat "$DIR/raw/headroom-check.txt"
 `, "ROOT=..", "DIR="+dir, "HEADROOM_PCT=80", "HEADROOM_WAIT_S="+c.bound, "HEADROOM_POLL_S=0.3")
 			if err != nil {
 				t.Fatalf("%v\n%s", err, out)
@@ -400,11 +417,17 @@ cat "$DIR/raw/headroom.json"
 			if c.wantErr != strings.Contains(out, "FAILED") || !strings.Contains(out, c.want) {
 				t.Fatalf("want failed=%v and %s:\n%s", c.wantErr, c.want, out)
 			}
-			if !c.wantErr && (!strings.Contains(out, "PASSED after 3 samples") ||
-				!strings.Contains(out, `"depthsAtPause":{"matching.requests":{"ready":100,"unacked":16},"matching.wakeups":{"ready":7984,"unacked":16}}`)) {
+			if !c.wantErr && (!strings.Contains(out, "PASSED after 3 samples") || !strings.Contains(out, "background samples: 3") ||
+				!strings.Contains(out, `"depthsAtPause":{"matching.requests":{"messages":5016,"ready":5000,"unacked":16,"returning":2984,"depth":8000},`+
+					`"retry.5s":{"messages":2984,"ready":0,"unacked":0,"returning":0,"depth":2984}}`)) {
 				t.Fatalf("want the pass on the first sample at or under 8000 and its depths recorded:\n%s", out)
 			}
-			for _, k := range []string{`"pct":80`, `"boundSeconds":` + c.bound, `"waitedSeconds":`, `"limits":{"matching.requests":10000,"matching.wakeups":10000}`} {
+			if c.name == "parked retries are not headroom" &&
+				(!strings.Contains(out, "retry.5s 10001 > 8000") || !strings.Contains(out, "matching.requests 17837 > 8000")) {
+				t.Fatalf("want both the parked tier and its target refused:\n%s", out)
+			}
+			for _, k := range []string{`"pct":80`, `"boundSeconds":` + c.bound, `"waitedSeconds":`,
+				`"limits":{"matching.requests":10000,"retry.5s":10000}`, `"routes":{"retry.5s":["matching.requests"]}`} {
 				if !strings.Contains(out, k) {
 					t.Fatalf("headroom.json lacks %s:\n%s", k, out)
 				}
