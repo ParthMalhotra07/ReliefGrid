@@ -70,6 +70,13 @@ func testScheduleRollback(t *testing.T, goExit, failRestore, selection, failImag
 	// helper. The assertions below exercise this runner's actual curl/go/EXIT
 	// orchestration rather than parsing source text for a header substring.
 	helper := `INTERNAL_AUTH_CURL=()
+internal_auth_detect() {
+ echo auth-detect >> "$SCHEDULE_TEST_LOG"
+ if [ "$SCHEDULE_AUTH_CASE" = unreadable ];then return 1;fi
+ INTERNAL_AUTH_ON=false
+ [ "$SCHEDULE_AUTH_CASE" = on ] && INTERNAL_AUTH_ON=true
+ return 0
+}
 internal_auth_setup() {
  echo auth-setup >> "$SCHEDULE_TEST_LOG"
  if [ "$SCHEDULE_AUTH_CASE" = unreadable ];then return 1;fi

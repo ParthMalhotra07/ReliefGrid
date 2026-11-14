@@ -1,0 +1,61 @@
+--- FAIL: TestSchedulesAuthPreflightBeforeReset (0.36s)
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/unreadable-default-reset (0.02s)
+        schedules_auth_preflight_test.go:111: reset=true want=false: make demo-reset
+            helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+
+            SUBSET 4: not complete A2.3 acceptance
+            internal-auth: cannot read the values of release storage in reliefgrid; refusing to guess whether internal auth is on
+            Cannot determine or stage schedule internal auth
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/unreadable-explicit-reset (0.02s)
+        schedules_auth_preflight_test.go:111: reset=true want=false: make demo-reset
+            helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+
+            SUBSET 4: not complete A2.3 acceptance
+            internal-auth: cannot read the values of release storage in reliefgrid; refusing to guess whether internal auth is on
+            Cannot determine or stage schedule internal auth
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/enabled-default-reset-refused (0.02s)
+        schedules_auth_preflight_test.go:111: reset=true want=false: make demo-reset
+            helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+
+            SUBSET 4: not complete A2.3 acceptance
+            internal-auth: cannot read the values of release storage in reliefgrid; refusing to guess whether internal auth is on
+            Cannot determine or stage schedule internal auth
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/disabled-reset-allowed (0.07s)
+        schedules_auth_preflight_test.go:120: reset preceded auth-state read: make demo-reset
+            helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+            kubectl --context kind-reliefgrid -n reliefgrid get deployment reliefgrid-matcher -o jsonpath={.spec.replicas}
+            kubectl --context kind-reliefgrid -n reliefgrid get statefulset storage-shard-1 -o jsonpath={.spec.replicas}
+            kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas=0
+            kubectl --context kind-reliefgrid -n reliefgrid wait --for=delete pods -l app.kubernetes.io/instance=reliefgrid,app.kubernetes.io/component=matcher --timeout=90s
+            kubectl --context kind-reliefgrid -n reliefgrid port-forward --address=127.0.0.1 svc/storage-coordinator 34903:8080
+            go-started
+            kubectl --context kind-reliefgrid -n reliefgrid scale statefulset/storage-shard-1 --replicas=3
+            kubectl --context kind-reliefgrid -n reliefgrid rollout status statefulset/storage-shard-1 --timeout=90s
+            kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas=2
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/post-reset-read-failure (0.01s)
+        schedules_auth_preflight_test.go:120: reset preceded auth-state read: make demo-reset
+            helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/post-reset-auth-reloaded (0.11s)
+        schedules_auth_preflight_test.go:120: reset preceded auth-state read: make demo-reset
+            helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+            kubectl --context kind-reliefgrid -n reliefgrid get secret reliefgrid-internal-auth -o json
+            kubectl --context kind-reliefgrid -n reliefgrid get secret reliefgrid-internal-auth -o json
+            kubectl --context kind-reliefgrid -n reliefgrid get secret reliefgrid-node-auth -o json
+            kubectl --context kind-reliefgrid -n reliefgrid get secret reliefgrid-node-auth -o json
+            kubectl --context kind-reliefgrid -n reliefgrid get deployment reliefgrid-matcher -o jsonpath={.spec.replicas}
+            kubectl --context kind-reliefgrid -n reliefgrid get statefulset storage-shard-1 -o jsonpath={.spec.replicas}
+            kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas=0
+            kubectl --context kind-reliefgrid -n reliefgrid wait --for=delete pods -l app.kubernetes.io/instance=reliefgrid,app.kubernetes.io/component=matcher --timeout=90s
+            kubectl --context kind-reliefgrid -n reliefgrid port-forward --address=127.0.0.1 svc/storage-coordinator 50649:8080
+            sender-header-ok
+            sender-header-ok
+            sender-header-ok
+            sender-header-ok
+            go-started
+            sender-file-ok
+            kubectl --context kind-reliefgrid -n reliefgrid scale statefulset/storage-shard-1 --replicas=3
+            kubectl --context kind-reliefgrid -n reliefgrid rollout status statefulset/storage-shard-1 --timeout=90s
+            kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas=2
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.366s
+FAIL

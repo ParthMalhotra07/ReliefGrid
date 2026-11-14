@@ -1,0 +1,11 @@
+--- FAIL: TestSchedulesAuthPreflightBeforeReset (0.01s)
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/unreadable-default-reset (0.01s)
+        schedules_auth_preflight_test.go:116: reset=true want=false: make demo-reset
+            helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+
+            SUBSET 4: not complete A2.3 acceptance
+            internal-auth: cannot read the values of release storage in reliefgrid; refusing to guess whether internal auth is on
+            Cannot determine existing schedule auth state; refusing to reset or run tests
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.023s
+FAIL

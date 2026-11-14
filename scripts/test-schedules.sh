@@ -39,6 +39,18 @@ cleanup(){
  exit "$status"
 }
 trap cleanup EXIT
+if [ "$backend" != m8 ];then
+ # Read the existing release before any reset, cluster mutation or child test.
+ # Memory-only M8 never needs Helm or cluster credentials.
+ # shellcheck source=scripts/internal-auth-env.sh
+ source scripts/internal-auth-env.sh
+ schedule_auth_loaded=true
+ internal_auth_detect kind-reliefgrid reliefgrid || { echo 'Cannot determine existing schedule auth state; refusing to reset or run tests' >&2;exit 1; }
+ if [ "${SCHEDULE_RESET:-1}" = 1 ] && [ "$INTERNAL_AUTH_ON" = true ];then
+  echo 'Refusing to reset an auth-enabled deployment; prepare any explicit reset separately and use SCHEDULE_RESET=0' >&2
+  exit 1
+ fi
+fi
 if [ -z "${MQ_AMQP_URL:-}" ] && [ -z "${MQ_MANAGEMENT_URL:-}" ];then
  image="$(awk '$1=="image:"{print $2;exit}' deploy/helm/reliefgrid/values.yaml)"
  [[ "$image" =~ ^rabbitmq:4\.3\.[0-9]+-management@sha256:[0-9a-f]{64}$ ]]
@@ -60,16 +72,13 @@ run_backend(){
 }
 if [ "$backend" != cluster ];then run_backend m8;fi
 if [ "$backend" != m8 ];then
- # Shared Secret staging is supplied by #174. Load it only for the cluster
- # backend; the local M8 FSM has no internal HTTP identity or Helm dependency.
- # shellcheck source=scripts/internal-auth-env.sh
- source scripts/internal-auth-env.sh
- schedule_auth_loaded=true
  # A clean dev fixture deployment ensures no unrelated pending outbox events
  # can be published into this run's isolated broker vhosts.
  if [ "${SCHEDULE_RESET:-1}" = 1 ];then
   A15_EVIDENCE_DIR="$out/deployment" RESET_CONFIRM=reliefgrid make demo-reset > "$out/deploy.log" 2>&1
  fi
+ # A permitted reset may recreate the Secrets or change the configured mode.
+ # Reread the actual release and stage its current sender files only afterwards.
  internal_auth_setup kind-reliefgrid reliefgrid || { echo 'Cannot determine or stage schedule internal auth' >&2;exit 1; }
  needs_seams=false
  if [ -z "${SCHEDULE_IDS:-}" ];then needs_seams=true;else
