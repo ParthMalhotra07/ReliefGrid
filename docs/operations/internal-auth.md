@@ -17,6 +17,22 @@ Both charts default to `internalAuth.enabled: false`. When it is off, nothing au
 is rendered (no Secrets, mounts or variables), and every binary and script behaves as it
 did before #29.
 
+## Operator setup (for every example below)
+
+Set the cluster and namespace explicitly, and check them, before running any command in
+this document. Every example uses `k` and `h`, or passes `CLUSTER`/`NAMESPACE` to make, so
+none can reach another cluster or namespace by default:
+
+```sh
+CTX=kind-reliefgrid NS=reliefgrid            # the cluster and namespace you operate on
+k() { kubectl --context "$CTX" -n "$NS" "$@"; }
+h() { helm --kube-context "$CTX" -n "$NS" "$@"; }
+kubectl config get-contexts -o name | grep -qx "$CTX" || { echo "no kube context $CTX"; exit 1; }
+kubectl --context "$CTX" get namespace "$NS" >/dev/null || { echo "no namespace $NS in $CTX"; exit 1; }
+```
+
+(For a fresh `make demo-reset`, the namespace does not exist yet: skip the last check.)
+
 ## Turning it on
 
 Enable it in **both** releases with the same setting. The **storage release owns both
@@ -27,7 +43,7 @@ application release only mounts the app `sender-token`.
 **Fresh deployment (demo/dev):**
 
 ```sh
-make demo-reset INTERNAL_AUTH=true      # or: INTERNAL_AUTH=true make demo-reset
+make demo-reset INTERNAL_AUTH=true CLUSTER="${CTX#kind-}" NAMESPACE="$NS"
 ```
 
 - The storage install gets `-f deploy/helm/storage/values-internal-auth.yaml`.
@@ -41,7 +57,7 @@ make demo-reset INTERNAL_AUTH=true      # or: INTERNAL_AUTH=true make demo-reset
 **App release only:**
 
 ```sh
-INTERNAL_AUTH=true make app-deploy
+make app-deploy INTERNAL_AUTH=true CLUSTER="${CTX#kind-}" NAMESPACE="$NS"
 ```
 
 - `app-deploy` refuses to run unless the storage release has the same setting.
@@ -49,25 +65,29 @@ INTERNAL_AUTH=true make app-deploy
   pass the setting to its storage subchart.
 
 **Existing deployment:** turn it on with the app quiesced.
-1. Scale `reliefgrid-api` and `reliefgrid-matcher` to 0.
+1. Scale the app senders to 0:
+   `k scale deployment/reliefgrid-api deployment/reliefgrid-matcher --replicas=0`.
 2. Upgrade the storage release:
    ```sh
-   helm --kube-context "$CTX" -n "$NS" upgrade storage deploy/helm/storage --reuse-values \
+   h upgrade storage deploy/helm/storage --reuse-values \
      -f deploy/helm/storage/values-internal-auth.yaml --wait --wait-for-jobs
    ```
    This creates the Secrets and changes the pod templates, so the coordinator and storage
    pods roll.
 3. Wait for nine nodes UP and one leader per shard (see "Restarting receivers and senders").
-4. Run `INTERNAL_AUTH=true make app-deploy`.
-5. Scale the app back.
+4. Run `make app-deploy INTERNAL_AUTH=true CLUSTER="${CTX#kind-}" NAMESPACE="$NS"`.
+5. Scale the app back to its release's replicas, for example
+   `k scale deployment/reliefgrid-api deployment/reliefgrid-matcher --replicas=2`.
 
 Senders that start before the receivers enforce are harmless: a receiver that is off
 ignores the header. Receivers that enforce before the app sends refuse it, which is why the
 app is quiesced first.
 
 **After enabling,** check:
-- both releases' `helm get values <release> -a` show `internalAuth.enabled: true`;
-- both Secrets exist with `token` and `sender-token`;
+- `h get values storage -a -o json` and `h get values reliefgrid -a -o json` both show
+  `internalAuth.enabled: true`;
+- `k get secret reliefgrid-internal-auth reliefgrid-node-auth` lists both Secrets, each
+  with `token` and `sender-token`;
 - a request without a token gets 401, and the same request with the right class's
   `sender-token` gets 200.
 
@@ -129,8 +149,8 @@ the header's presence, count and syntax. During a rotation, these lines are how 
 still using a credential that is no longer accepted shows up:
 
 ```sh
-kubectl --context "$CTX" -n "$NS" logs deployment/storage-coordinator --since=10m | grep 'internal auth refused'
-kubectl --context "$CTX" -n "$NS" logs storage-shard-0-0 -c storagenode --since=10m | grep 'internal auth refused'
+k logs deployment/storage-coordinator --since=10m | grep 'internal auth refused'
+k logs storage-shard-0-0 -c storagenode --since=10m | grep 'internal auth refused'
 ```
 
 A 401 describes **this attempt**. The coordinator never replaces an earlier unknown outcome
@@ -145,15 +165,10 @@ Values are `internalAuth.{token,previousToken,senderToken}` (app) and
 
 ### Setup, before any other command
 
-Set the cluster and namespace explicitly and check them first. Every command below goes
-through `k` and `h`, so none can reach another cluster or namespace by default:
+Run the operator setup at the top of this document first (`CTX`, `NS`, `k`, `h` and their
+checks). Then check that this is the deployment to rotate:
 
 ```sh
-CTX=kind-reliefgrid NS=reliefgrid            # the cluster and namespace being rotated
-k() { kubectl --context "$CTX" -n "$NS" "$@"; }
-h() { helm --kube-context "$CTX" -n "$NS" "$@"; }
-kubectl config get-contexts -o name | grep -qx "$CTX" || { echo "no kube context $CTX"; exit 1; }
-kubectl --context "$CTX" get namespace "$NS" >/dev/null || { echo "no namespace $NS in $CTX"; exit 1; }
 h status storage >/dev/null || { echo "no storage release in $NS"; exit 1; }
 h get values storage -a -o json | jq -e '.internalAuth.enabled == true' >/dev/null || { echo "internal auth is not on in $NS"; exit 1; }
 k get secret reliefgrid-internal-auth reliefgrid-node-auth >/dev/null || { echo "the auth Secrets are missing in $NS"; exit 1; }
@@ -175,18 +190,21 @@ stat -c '%a %n' "$TMP" "$TMP"/*              # expect 700 for the directory, 600
 ```
 
 The values file for each phase is written from those files by a program, not by shell
-interpolation, so no token passes through a shell variable or a command line. The
-arguments are the token file names for the app token, previous and sender, then the node
-token, previous and sender; `-` means empty:
+interpolation, so no token passes through a shell variable or a command line. It is JSON
+(which Helm reads as YAML), so every valid credential, including one with quotes or
+backslashes, reaches the chart byte for byte. The arguments are the token file names for
+the app token, previous and sender, then the node token, previous and sender; `-` means
+empty:
 
 ```sh
 values() {
   python3 - "$TMP" "$@" > "$TMP/rotation.yaml" <<'EOF'
-import sys
+import json, sys
 d, ta, pa, sa, tn, pn, sn = sys.argv[1:]
 r = lambda n: '' if n == '-' else open(f'{d}/{n}').read()
-for key, (t, p, s) in {'internalAuth': (ta, pa, sa), 'nodeAuth': (tn, pn, sn)}.items():
-    print(f'{key}:\n  token: "{r(t)}"\n  previousToken: "{r(p)}"\n  senderToken: "{r(s)}"')
+json.dump({key: {'token': r(t), 'previousToken': r(p), 'senderToken': r(s)}
+           for key, (t, p, s) in {'internalAuth': (ta, pa, sa), 'nodeAuth': (tn, pn, sn)}.items()},
+          sys.stdout, indent=2)
 EOF
 }
 # phase 1: values new-app-token old-app-token old-app-token new-node-token old-node-token old-node-token
