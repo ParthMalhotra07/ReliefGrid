@@ -1,54 +1,62 @@
 # ReliefGrid — report core
 
 ReliefGrid matches emergency requests to geographically suitable resources using
-Raft-backed sharded storage and asynchronous workflows. This report describes the
-implemented core, refreshed against main
-`82cc664828b2dec1bea5f95f3661fbdb2f185054`. It distinguishes measured evidence
-from planned enhancements. The professor has confirmed **under 10 pages** for the
-submission; this repository document set retains detailed material. The proposed
-[nine-page submission outline](submission-outline.md) still needs joint agreement
-and actual export/page-count verification. Owner review remains pending.
+Raft-backed sharded storage and asynchronous workflows. The detailed report core
+was reviewed and merged through #137. This update reconciles its publication
+state against main `7fa4a7d0093d92477aa90a9a23fe1d3e942083b6`; each historical run keeps its own source/tree/
+image qualifications rather than becoming acceptance of that baseline.
+
+The professor requires **under 10 pages**. The agreed
+[nine-page outline](submission-outline.md) allocates S 5.5 and A 3.5 pages,
+including figures/captions/shared tables. The
+[A-owned submission fragments](submission-A-draft.md) are ready for editorial
+integration with S's text and F1-F4. They are not an exported/page-counted report.
+Both owners still need to review the assembled submission and rendered layout.
 
 ## Reading order
 
 1. [Architecture, services, APIs and schemas](architecture.md)
-2. [Workflow and messaging methodology](workflow-and-messaging.md)
+2. [Workflow and messaging](workflow-and-messaging.md)
 3. [Requirements and measured results](requirements-and-results.md)
 4. [Deployment and live demonstration](deployment-and-demo.md)
-5. [ADR004: attempt closure](../adr/004-attempt-closure.md) and
-   [ADR005: outbox handoff](../adr/005-outbox-handoff.md)
+5. [ADR004](../adr/004-attempt-closure.md),
+   [ADR005](../adr/005-outbox-handoff.md) and [ADR006](../adr/006-read-fence-study.md)
+6. [Additional validation and limits](validation-addendum.md)
 
-6. [Additional engineering validation and limits](validation-addendum.md)
+## Ownership and current evidence
 
-## Scope and attribution
+Parth owns application/workflow/messaging/UI/app chart/dashboards; Hrishabh owns
+storage/coordinator/Raft/chaos/tracing/CI. Storage/reliability material is integrated
+through the shared chapters. The PS requires **2–3 microservices**, not 23:
+API and matcher are separate application services, with coordinator/storage as
+the distributed data service. kind is allowed by PS9.2; cloud remains parked.
 
-Parth owns the application, matching workflows, messaging, UI, app chart and
-dashboards. Hrishabh owns storage, coordinator, Raft integration, chaos, tracing
-and CI. Hrishabh's supplied storage/reliability contribution is integrated across
-architecture,
-consistency/schema, workflow storage boundaries, evidence and deployment chapters.
-Source references were refreshed from his e50685d contribution to integrated
-main82cc664, while historical evidence keeps its original qualifications. Both
-owners still review the integrated report; #126 measurements and final enhanced
-gate results remain PENDING, with no benchmark invented here.
+Accepted #126 Phase 1 results are retained under [S5.2](../evidence/S5.2).
+The [12 November scoped gate](../evidence/gate-20261112T100532Z/README.md), merged
+through #165, records 18/18 course reports, chaos 12/12 runs (10 faults plus two
+controls), Merkle 7/7 and clean invcheck/fixed-profile collection. Its source is
+1623c23, aging is 0s, autoscaling off and auth excluded. The report retains the
+app-quiesced chaos, omitted raw artifacts and NOT_ESTABLISHED runtime build binding.
+It does not certify later forms/auth/read changes or every enhanced goal.
 
-The problem statement requires **2–3 microservices**, one coordinator, three
-shards, RabbitMQ, Docker and Kubernetes; it does not require 23 microservices.
-API and matcher are separate application services, with coordinator and storage
-providing the distributed data service. kind is explicitly permitted by PS9.2.
-Cloud is optional and parked following the instructor's direction.
+Later comparison measurements need their own accepted run links. The final gate
+with alias/form checks, enabled auth/aging evidence, any final autoscaling option,
+rehearsals, recording and final-package checks remain separately identified work.
 
-## Reproducibility and claim boundary
+Run `python3 scripts/verify-report.py` for source/evidence link checks. Passing
+links cannot prove scientific claims or page count. The public repository link,
+mandatory live demo and deployment-from-scratch backup recording are required;
+public visibility alone does not establish actual submission or playback.
 
-The [recorded course gate](../evidence/gate-20261104T144814Z-hrishabh-sharrma-ThinkPad-E14-Gen-7/gate.txt)
-reports18/18 demo passes across two clean deployments on4 November. That evidence
-belongs to the recorded code tree, not automatically to every later commit.
-See the [UI evidence](../evidence/A4.1) for the merged dispatch interface.
-Metrics, autoscaling and API refinements have their own PR/evidence lifecycle;
-they are not retrospectively claimed as part of that gate.
+## Assembled review draft
 
-Run `python3 scripts/verify-report.py` to check local source/evidence links. The
-checker verifies references, not scientific correctness; both owners still review
-the narrative and final live demonstration. The repository must be public before
-submission, the live demo is mandatory, and a recording is a backup. A separate
-final-package check must confirm these external deliverables actually exist.
+The [assembled Markdown](submission-draft.md) and
+[nine-page PDF](reliefgrid-submission-draft.pdf) integrate the A text with
+[Hrishabh's supplied contribution](contributions/README.md). See
+[assembly/build instructions](ASSEMBLY.md) and [editable figures](figures/README.md).
+The rendered draft is under ten pages including references. It remains a
+review draft with final source pin and final evidence
+acceptance outstanding; archival editorial placeholders are not accepted
+submission references.
+
+The [reviewed Phase 2 comparison](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) is integrated in the flowing draft, with [method/deviation qualifications](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md).

@@ -83,7 +83,9 @@ requests until the quorum delivery limit treats them as poison.
 Broker delivery priority and business workflow retry count are separate concepts.
 The pinned RabbitMQ quorum queue behavior is tested, not inferred from another
 version. Priority aging needs a durable committed scheduler update and event;
-it is not provided automatically by the broker and remains a separate A4.4 seam.
+it is not provided automatically by the broker. The transactional seam and
+reconciler are merged, but positive-interval aging remains disabled pending its
+separate rollout/policy/behavior acceptance.
 
 ## Reconciliation and validation method
 

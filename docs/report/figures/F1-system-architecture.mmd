@@ -1,0 +1,27 @@
+flowchart LR
+  accTitle: F1 — System architecture
+  accDescr: The broker schedules work; shard consensus authorizes state changes. Management and read-only observability use separate interfaces.
+  subgraph application["Application"]
+    browser["Browser"] -->|HTTP| api["API"]
+    matcher["Matcher /<br/>reconcilers"]
+  end
+  subgraph routing["Routing / discovery"]
+    coord["Coordinator<br/>fixed ring owner<br/>leader discovery"]
+  end
+  subgraph authority["Per-shard consensus authority"]
+    s0["Shard 0<br/>Leader + 2 followers<br/>Raft → SQLite FSM<br/>outbox"]
+    s1["Shard 1<br/>Leader + 2 followers<br/>Raft → SQLite FSM<br/>outbox"]
+    s2["Shard 2<br/>Leader + 2 followers<br/>Raft → SQLite FSM<br/>outbox"]
+  end
+  subgraph brokerhandoff["Broker handoff"]
+    relay["Outbox relay"] -->|"Mandatory publish<br/>+ confirm"| broker["RabbitMQ"]
+  end
+  api -->|Internal HTTP| coord
+  matcher -->|Claims / transitions| coord
+  coord --> s0 & s1 & s2
+  s0 & s1 & s2 -->|Events| relay
+  broker -->|Delivery / manual ack| matcher
+  classDef authorityNode fill:#e8f1fa,stroke:#335b7e,color:#142c40;
+  class s0,s1,s2 authorityNode;
+  %% Each shard box contains three voters with replicated deterministic FSMs
+  %% and logical outbox data; roles are illustrative, not fixed placement.

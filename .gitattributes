@@ -18,3 +18,6 @@ Makefile    text eol=lf
 *.jpeg      binary
 *.gif       binary
 *.svg       binary
+
+# Preserve the supplied editorial handout exactly; hashes bind its original whitespace.
+docs/report/contributions/S-sections-v3.md whitespace=-blank-at-eol,-blank-at-eof

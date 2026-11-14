@@ -1,0 +1,35 @@
+flowchart TB
+  accTitle: F4 — Placement and persistence
+  accDescr: Worker separation supports local node-fault experiments; all workers still share one physical host.
+  subgraph host["One local host"]
+    subgraph cluster["Five-node kind cluster<br/>Three replicas per shard · distinct data workers"]
+      direction TB
+      subgraph nodes["Nodes"]
+        direction LR
+        control["Control plane"]
+        data1["Data worker 1<br/>S0 · S1 · S2 voters"]
+        data2["Data worker 2<br/>S0 · S1 · S2 voters"]
+        data3["Data worker 3<br/>S0 · S1 · S2 voters"]
+        infra["Infra worker<br/>Coordinator<br/>RabbitMQ / infra"]
+      end
+      subgraph workloads["Workloads · chart-controlled placement"]
+        app["API / matcher Deployments"]
+      end
+      subgraph storage["Per-voter persistence / admission"]
+        direction LR
+        pvc["PVC<br/>Raft log · stable store<br/>snapshots"] -->|Intact history| fsm["emptyDir SQLite<br/>rebuild at startup"]
+        pvc -->|Empty disk| unadmitted["Unadmitted<br/>no self-bootstrap"]
+        unadmitted --> replacement["Guarded replacement<br/>membership admission"]
+        replacement -->|Admitted| listeners["Admitted listeners<br/>Raft · data HTTP<br/>operator mgmt<br/>restricted metrics"]
+        fsm -->|Catch-up + admission| listeners
+      end
+      tracing["Optional<br/>Collector / Jaeger"]
+      workloads -. traces .-> tracing
+      workloads -->|Data HTTP| nodes
+      nodes ~~~ storage
+      data1 <-->|Raft| data2
+      data2 <-->|Raft| data3
+    end
+  end
+  classDef persistent fill:#e8f1fa,stroke:#335b7e,color:#142c40;
+  class pvc,fsm,unadmitted,replacement,listeners persistent;

@@ -1,0 +1,66 @@
+{
+  "sourceCommit": "ca0fd99a6080d26f1d44512d605a1a46fb83b9e4",
+  "originalBranch": "handouts/s-report",
+  "files": {
+    "handouts/s-report/S-sections-v3.md": {
+      "target": "docs/report/contributions/S-sections-v3.md",
+      "sha256": "ea962539dc5c7454cb50809a25681bf037a4ed18b2069c1818525d83729ae678"
+    },
+    "handouts/s-report/figures/F1-system-architecture.mmd": {
+      "target": "docs/report/contributions/original-figures/F1-system-architecture.mmd",
+      "sha256": "f22412971cfe38fb7acd31c8ee68d3872daa99b40a98423baa89743c34c85c4d"
+    },
+    "handouts/s-report/figures/F1-system-architecture.png": {
+      "target": "docs/report/contributions/original-figures/F1-system-architecture.png",
+      "sha256": "40bb81de628943b3a198146334f18b88f959c24448f61582d890adbf73d57bf0"
+    },
+    "handouts/s-report/figures/F1-system-architecture.svg": {
+      "target": "docs/report/contributions/original-figures/F1-system-architecture.svg",
+      "sha256": "02892f3d2247cd2e1b82f74345f6d9824efc6f79f0ab6151286370717d58f03e"
+    },
+    "handouts/s-report/figures/F2-schema-and-states.mmd": {
+      "target": "docs/report/contributions/original-figures/F2-schema-and-states.mmd",
+      "sha256": "4ecaef7d2cad698dfe1bfc431fa3281484e1ca7e281c8e9f683c6ffc575252cb"
+    },
+    "handouts/s-report/figures/F2-schema-and-states.png": {
+      "target": "docs/report/contributions/original-figures/F2-schema-and-states.png",
+      "sha256": "94cf9a62c5e25a743db7e904a5fbb9fca06597b13ba2df05872aa15c93ac0494"
+    },
+    "handouts/s-report/figures/F2-schema-and-states.svg": {
+      "target": "docs/report/contributions/original-figures/F2-schema-and-states.svg",
+      "sha256": "78f3aa697cc68e23ce9414639d2743e43cf98b0862618833e66160550423b9ec"
+    },
+    "handouts/s-report/figures/F3-commit-publish-claim-ack.mmd": {
+      "target": "docs/report/contributions/original-figures/F3-commit-publish-claim-ack.mmd",
+      "sha256": "15499aca6fda95ba3745b4daec8d7c74fa6cbd7884bd92b1354c77a124573a95"
+    },
+    "handouts/s-report/figures/F3-commit-publish-claim-ack.png": {
+      "target": "docs/report/contributions/original-figures/F3-commit-publish-claim-ack.png",
+      "sha256": "2f42b49a763759196e2d8bca97a1d089aa49af68f71514c82a9a4f9bb5697e17"
+    },
+    "handouts/s-report/figures/F3-commit-publish-claim-ack.svg": {
+      "target": "docs/report/contributions/original-figures/F3-commit-publish-claim-ack.svg",
+      "sha256": "cf67d1ec42e3a0536c0ee24e9cfa349d9fb9072a669cee46a69fd48fbe58cbd9"
+    },
+    "handouts/s-report/figures/F4-placement-and-persistence.mmd": {
+      "target": "docs/report/contributions/original-figures/F4-placement-and-persistence.mmd",
+      "sha256": "514975d3b0a2bba905589e3a52677b091fa74f24430d99ee4aa388594062ffa2"
+    },
+    "handouts/s-report/figures/F4-placement-and-persistence.png": {
+      "target": "docs/report/contributions/original-figures/F4-placement-and-persistence.png",
+      "sha256": "13dcd030fa836d831df3b2dc3bcee9aa8ed2b9f5687288f6414c14965743e522"
+    },
+    "handouts/s-report/figures/F4-placement-and-persistence.svg": {
+      "target": "docs/report/contributions/original-figures/F4-placement-and-persistence.svg",
+      "sha256": "418892463a36698e2346b97276e469668f295a2770cf52e9a9eb23d00453a87d"
+    },
+    "handouts/s-report/figures/README.md": {
+      "target": "docs/report/contributions/original-figures/README.md",
+      "sha256": "6b9f566b73af9f251e6425bd56d1c9a3f60cfb5d3d7ef23c151189f23f79ac3a"
+    },
+    "handouts/s-report/figures/mermaid-config.json": {
+      "target": "docs/report/contributions/original-figures/mermaid-config.json",
+      "sha256": "176647901205eee5a46e1b1067bbbaa76c73aed67835c540952c767249a18053"
+    }
+  }
+}
