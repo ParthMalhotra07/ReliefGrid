@@ -52,7 +52,7 @@ INTERNAL_AUTH=true make app-deploy
 1. Scale `reliefgrid-api` and `reliefgrid-matcher` to 0.
 2. Upgrade the storage release:
    ```sh
-   helm upgrade storage deploy/helm/storage --reuse-values \
+   helm --kube-context "$CTX" -n "$NS" upgrade storage deploy/helm/storage --reuse-values \
      -f deploy/helm/storage/values-internal-auth.yaml --wait --wait-for-jobs
    ```
    This creates the Secrets and changes the pod templates, so the coordinator and storage
@@ -129,8 +129,8 @@ the header's presence, count and syntax. During a rotation, these lines are how 
 still using a credential that is no longer accepted shows up:
 
 ```sh
-kubectl -n "$NS" logs deployment/storage-coordinator --since=10m | grep 'internal auth refused'
-kubectl -n "$NS" logs storage-shard-0-0 -c storagenode --since=10m | grep 'internal auth refused'
+kubectl --context "$CTX" -n "$NS" logs deployment/storage-coordinator --since=10m | grep 'internal auth refused'
+kubectl --context "$CTX" -n "$NS" logs storage-shard-0-0 -c storagenode --since=10m | grep 'internal auth refused'
 ```
 
 A 401 describes **this attempt**. The coordinator never replaces an earlier unknown outcome
@@ -143,21 +143,72 @@ retry the **same operationId and payload**; never clear an intent merely because
 Values are `internalAuth.{token,previousToken,senderToken}` (app) and
 `nodeAuth.{token,previousToken,senderToken}` (node), in the **storage** chart.
 
+### Setup, before any other command
+
+Set the cluster and namespace explicitly and check them first. Every command below goes
+through `k` and `h`, so none can reach another cluster or namespace by default:
+
+```sh
+CTX=kind-reliefgrid NS=reliefgrid            # the cluster and namespace being rotated
+k() { kubectl --context "$CTX" -n "$NS" "$@"; }
+h() { helm --kube-context "$CTX" -n "$NS" "$@"; }
+kubectl config get-contexts -o name | grep -qx "$CTX" || { echo "no kube context $CTX"; exit 1; }
+kubectl --context "$CTX" get namespace "$NS" >/dev/null || { echo "no namespace $NS in $CTX"; exit 1; }
+h status storage >/dev/null || { echo "no storage release in $NS"; exit 1; }
+h get values storage -a -o json | jq -e '.internalAuth.enabled == true' >/dev/null || { echo "internal auth is not on in $NS"; exit 1; }
+k get secret reliefgrid-internal-auth reliefgrid-node-auth >/dev/null || { echo "the auth Secrets are missing in $NS"; exit 1; }
+```
+
+**Token files.** Every token file is created private, in a private directory. Write each
+token straight into its file; never echo it and never pass it as an argument:
+
+```sh
+umask 077                                    # every file and directory below is private
+TMP="$(mktemp -d)"                           # 0700
+for f in new-app-token new-node-token; do
+  python3 -c 'import secrets, sys; sys.stdout.write(secrets.token_hex(24))' > "$TMP/$f"
+done
+# The current tokens (the next previousToken), from the Secrets into files:
+k get secret reliefgrid-internal-auth -o jsonpath='{.data.token}' | base64 -d > "$TMP/old-app-token"
+k get secret reliefgrid-node-auth -o jsonpath='{.data.token}' | base64 -d > "$TMP/old-node-token"
+stat -c '%a %n' "$TMP" "$TMP"/*              # expect 700 for the directory, 600 for each file
+```
+
+The values file for each phase is written from those files by a program, not by shell
+interpolation, so no token passes through a shell variable or a command line. The
+arguments are the token file names for the app token, previous and sender, then the node
+token, previous and sender; `-` means empty:
+
+```sh
+values() {
+  python3 - "$TMP" "$@" > "$TMP/rotation.yaml" <<'EOF'
+import sys
+d, ta, pa, sa, tn, pn, sn = sys.argv[1:]
+r = lambda n: '' if n == '-' else open(f'{d}/{n}').read()
+for key, (t, p, s) in {'internalAuth': (ta, pa, sa), 'nodeAuth': (tn, pn, sn)}.items():
+    print(f'{key}:\n  token: "{r(t)}"\n  previousToken: "{r(p)}"\n  senderToken: "{r(s)}"')
+EOF
+}
+# phase 1: values new-app-token old-app-token old-app-token new-node-token old-node-token old-node-token
+# phase 2: values new-app-token old-app-token new-app-token new-node-token old-node-token new-node-token
+# phase 3: values new-app-token - new-app-token new-node-token - new-node-token
+```
+
+Remove `$TMP` (`rm -rf "$TMP"`) once phase 3 is verified.
+
 - **Rotating both classes:** both may be rotated together. Each phase then applies to both,
   and the restarts are the union of what each class needs.
-- **Fresh tokens:** generate fresh random ones, for example
-  `python3 -c 'import secrets; print(secrets.token_hex(24), end="")' > new-app-token`. Keep
-  them in 0600 files.
+- **Fresh tokens:** generate fresh random ones, as files in the private directory from
+  "Setup" above.
 - **Rendering rule:** rendering fails if a `previousToken` is set while its `senderToken`
   is empty. Set `senderToken` explicitly in both overlap phases.
 - **Passing tokens to Helm:**
   - Never use `--set`: the value would be on the command line and in shell history.
-  - Write a 0600 values file in a temporary 0700 directory and pass it with `-f`, keeping
+  - Write the values file with `values` (above) and pass it with `-f`, keeping
     `--reuse-values` so `internalAuth.enabled` stays on:
     ```sh
-    helm upgrade storage deploy/helm/storage -n "$NS" --reuse-values -f "$TMP/rotation.yaml" --wait --wait-for-jobs
+    h upgrade storage deploy/helm/storage --reuse-values -f "$TMP/rotation.yaml" --wait --wait-for-jobs
     ```
-  - Remove the file afterwards.
   - Values supplied this way are kept in the Helm release history. `helm get values storage
     --revision N` shows them for as long as that revision exists. After phase 3 the old
     token is no longer accepted anywhere, but the current one is in the latest revisions as
@@ -180,18 +231,18 @@ No checksum rollout is automatic; it would mix the receiver and sender phases.
 ### Restarting receivers and senders
 
 - **Coordinator:**
-  `kubectl rollout restart deployment/storage-coordinator && kubectl rollout status …`.
+  `k rollout restart deployment/storage-coordinator && k rollout status deployment/storage-coordinator`.
 - **Storage:** one StatefulSet at a time, so no shard loses quorum:
   ```sh
   for s in 0 1 2; do
-    kubectl -n "$NS" rollout restart statefulset/storage-shard-$s
-    kubectl -n "$NS" rollout status statefulset/storage-shard-$s --timeout=600s
+    k rollout restart statefulset/storage-shard-$s
+    k rollout status statefulset/storage-shard-$s --timeout=600s
   done
   ```
   Then wait until `/admin/nodes` (operator token) reports nine nodes UP, and every shard
   has exactly one leader (`storagectl status` in each pod).
-- **API and matcher:** `kubectl rollout restart deployment/reliefgrid-{api,matcher}`, then
-  `rollout status`.
+- **API and matcher:** `k rollout restart deployment/reliefgrid-api deployment/reliefgrid-matcher`,
+  then `k rollout status` for each.
 
 ### Before advancing each phase
 
@@ -218,10 +269,10 @@ digest.
 
 ```sh
 DEBUG_IMAGE=gcr.io/distroless/static-debian12@sha256:d5563cc7f2f44313f332e91138cc8c6a158899afeeeab2fce3b0f9ccdb3cf9ee
-expected=$(kubectl -n "$NS" get secret "$SECRET" -o jsonpath='{.data.token}' | base64 -d | sha256sum | cut -d' ' -f1)
-kubectl -n "$NS" debug "pod/$POD" -c authcheck-$RANDOM --target="$CONTAINER" --image="$DEBUG_IMAGE" --profile=general -- \
+expected=$(k get secret "$SECRET" -o jsonpath='{.data.token}' | base64 -d | sha256sum | cut -d' ' -f1)   # a digest only
+k debug "pod/$POD" -c authcheck-$RANDOM --target="$CONTAINER" --image="$DEBUG_IMAGE" --profile=general -- \
   sh -c 'for f in /proc/1/root/var/run/reliefgrid/*-auth/*; do [ -f "$f" ] && sha256sum "$f"; done'
-kubectl -n "$NS" logs "$POD" -c authcheck-<n>   # compare each digest; never print raw token contents
+k logs "$POD" -c authcheck-<n>   # compare each digest; never print raw token contents
 ```
 
 **Where the files are:**
