@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" helm "$@"
+case "$*" in
+*" list -n "*) echo '[]' ;;
+*"get values storage"*) printf "%s" "${FAKE_STORAGE_VALUES:-}"; [ -n "${FAKE_STORAGE_VALUES:-}" ] || exit 1 ;;
+*"upgrade --install"*) exit 3 ;;
+esac
+exit 0

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" curl "$@"
+printf '{"nodes":['; for i in 1 2 3 4 5 6 7 8; do printf '{"state":"UP"},'; done; printf '{"state":"UP"}]}'

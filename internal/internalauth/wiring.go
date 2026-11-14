@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/auth"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/internalapi"
@@ -39,10 +41,23 @@ func (f Files) Load() (auth.ReceiverConfig, error) {
 // Receiver refuses before calling next. The response is the shared contract's
 // UNAUTHORIZED shape: this attempt never entered a handler or proposed a write.
 // Install only on internal routes; probes, metrics and operator bearer routes
-// are separate handlers and retain their own access policy.
+// are separate handlers and retain their own access policy. Each refusal is
+// logged (see ReceiverFor) under the credential class "internal".
 func Receiver(cfg auth.ReceiverConfig, next http.Handler) http.Handler {
+	return ReceiverFor("internal", cfg, next)
+}
+
+// ReceiverFor is Receiver for a named credential class ("app" or "node"). Every
+// refused request is logged once at WARN as "internal auth refused" with the
+// class, method, route (path only), peer and reason, so a rotation phase can see
+// a sender still using a credential the receiver no longer accepts. The presented
+// value and the configured tokens are never logged: the reason comes from the
+// header's presence, count and syntax alone.
+func ReceiverFor(class string, cfg auth.ReceiverConfig, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !cfg.Authorize(r) {
+			slog.Warn("internal auth refused", "credential", class, "method", r.Method,
+				"route", r.URL.Path, "peer", r.RemoteAddr, "reason", refusalReason(cfg, r))
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			_ = json.NewEncoder(w).Encode(internalapi.Error{Code: internalapi.UNAUTHORIZED, Message: "internal authentication required"})
@@ -64,4 +79,36 @@ func LoadSender(path string) (auth.SenderConfig, error) {
 		return auth.SenderConfig{}, err
 	}
 	return cfg, nil
+}
+
+// refusalReason says why Authorize refused r, from the receiver configuration and
+// the header's presence, count and syntax only; it never reads the value into a
+// message. Syntax follows the receiver's rule: 1-4096 printable ASCII bytes, no
+// comma.
+func refusalReason(cfg auth.ReceiverConfig, r *http.Request) string {
+	if cfg.Validate() != nil {
+		return "receiver misconfigured"
+	}
+	var values []string
+	for key, v := range r.Header {
+		if strings.EqualFold(key, auth.Header) {
+			values = append(values, v...)
+		}
+	}
+	switch {
+	case len(values) == 0:
+		return "missing"
+	case len(values) > 1:
+		return "repeated header"
+	}
+	v := values[0]
+	if len(v) == 0 || len(v) > 4096 {
+		return "malformed"
+	}
+	for i := range len(v) {
+		if v[i] < '!' || v[i] > '~' || v[i] == ',' {
+			return "malformed"
+		}
+	}
+	return "unknown credential"
 }
