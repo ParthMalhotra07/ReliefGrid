@@ -35,10 +35,15 @@
 #   2. invcheck verify: nothing acknowledged was lost.
 #   3. quiesce: the load has finished; every Deployment except the
 #      coordinator (the app's API and matcher, which hosts the relay) is scaled
-#      to 0 and its pods are gone; then invcheck check
-#      (claim invariants, and no write committed during its walk). On any
-#      exit, including a failure, Ctrl-C or SIGTERM, an EXIT trap scales those
-#      Deployments back to their replicas in their Helm release.
+#      to 0 and its pods are gone. A handoff the relay committed but had not
+#      published when it stopped is still pending, so the outbox is drained
+#      next with the relay-only scripts/demos/drain-outbox (it publishes and
+#      marks committed handoffs, consumes nothing and changes no workflow
+#      state; DRAIN_BIN overrides the binary). Then the strict invcheck check:
+#      claim invariants, no write committed during its walk, and outbox
+#      pending 0 on every shard. On any exit, including a failure, Ctrl-C or
+#      SIGTERM, an EXIT trap scales those Deployments back to their replicas
+#      in their Helm release and stops the drain's port-forwards.
 #   4. storagectl audit per shard, as an operator Job (audit_job) against the
 #      three replicas' management endpoints: verdict equal, exit 0, three pods
 #      at one appliedIndex with one root, and that index past the load.
@@ -92,6 +97,63 @@ helm_replicas() {
 		END { emit() }'
 }
 
+# drain_forward <target> <remote port>: a kubectl port-forward to it on a free local port,
+# printed once it accepts connections; its pid goes to $kind_tmp/forwards.
+drain_forward() {
+	local port
+	port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')" || return 1
+	kubectl --context "$CTX" -n "$NS" port-forward "$1" "$port:$2" >/dev/null 2>&1 &
+	echo "$!" >>"$kind_tmp/forwards"
+	for _ in $(seq 100); do (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null && { echo "$port"; return 0; }; sleep 0.1; done
+	return 1
+}
+stop_drain_forwards() {
+	[ -s "${kind_tmp:-}/forwards" ] || return 0
+	# shellcheck disable=SC2046
+	kill $(cat "$kind_tmp/forwards") 2>/dev/null
+	: >"$kind_tmp/forwards"
+}
+
+# drain_outbox: with the app at 0, publish the handoffs its relay committed but had not yet
+# published (scripts/demos/drain-outbox, the production routed-confirm relay; it consumes
+# nothing and changes no workflow state). The broker credentials go only into the drainer's
+# environment and are redacted from what it printed. Prints the drain report as JSON; returns
+# the drainer's exit code (3: the broker or coordinator could not be reached).
+drain_outbox() {
+	local rel="${APP_RELEASE:-reliefgrid}" bin="${DRAIN_BIN:-}" user pass cport bport amqp rc=0
+	if [ -z "$bin" ]; then
+		bin="$kind_tmp/drain-outbox"
+		go build -o "$bin" ./scripts/demos/drain-outbox >"$kind_tmp/drain-build.log" 2>&1 || { cat "$kind_tmp/drain-build.log" >&2; return 3; }
+	fi
+	user="$(kn get secret "$rel-rabbitmq" -o jsonpath='{.data.username}' | base64 -d)" &&
+		pass="$(kn get secret "$rel-rabbitmq" -o jsonpath='{.data.password}' | base64 -d)" || { echo "no broker credentials ($rel-rabbitmq)" >&2; return 3; }
+	cport="$(drain_forward svc/storage-coordinator 8080)" || { echo "no forward to the coordinator" >&2; return 3; }
+	bport="$(drain_forward "svc/$rel-rabbitmq" 5672)" || { echo "no forward to the broker" >&2; return 3; }
+	amqp="$(RG_USER="$user" RG_PASS="$pass" RG_HOST="127.0.0.1:$bport" python3 -c 'import os, urllib.parse as u
+q = lambda k: u.quote(os.environ[k], safe="")
+print("amqp://" + q("RG_USER") + ":" + q("RG_PASS") + "@" + os.environ["RG_HOST"] + "/")')" || return 3
+	# Internal auth (#29): once scripts/internal-auth-env.sh is loaded (through
+	# chaos/scripts/lib.sh), the drainer gets the app sender token as a 0600 file
+	# (INTERNAL_AUTH_TOKEN_FILE), removed after the drain; without it, or with auth off,
+	# nothing changes.
+	if declare -F internal_auth_files >/dev/null; then
+		{ [ -n "${INTERNAL_AUTH_ON:-}" ] || internal_auth_detect "$CTX" "$NS"; } && internal_auth_files || { stop_drain_forwards; return 3; }
+	fi
+	COORDINATOR_URL="http://127.0.0.1:$cport" AMQP_URL="$amqp" timeout 60 "$bin" >"$kind_tmp/drain.out" 2>"$kind_tmp/drain.err" || rc=$?
+	if declare -F internal_auth_cleanup >/dev/null; then internal_auth_cleanup; fi
+	stop_drain_forwards
+	RG_PASS="$pass" python3 -c 'import os, sys, urllib.parse as u
+p = os.environ["RG_PASS"]
+for f in sys.argv[1:]:
+    text = open(f).read()
+    for secret in sorted({p, u.quote(p, safe=""), u.quote(p)}, key=len, reverse=True):
+        text = text.replace(secret, "[redacted]")
+    open(f, "w").write(text)' "$kind_tmp/drain.out" "$kind_tmp/drain.err"
+	cat "$kind_tmp/drain.err" >&2
+	jq -c '{read: .Read, published: .Published, marked: .Marked, retries: .Retries}' "$kind_tmp/drain.out" 2>/dev/null
+	return "$rc"
+}
+
 # restore_app: the EXIT trap of the kind part. Scales every Deployment the quiesce planned to
 # stop ($kind_tmp/scaled: "<deployment> <replicas>", written before the first scale-down) back
 # to its replicas in its Helm release, so a failed, interrupted or killed run never leaves the
@@ -99,6 +161,7 @@ helm_replicas() {
 restore_app() {
 	local d n
 	[ -n "${kind_tmp:-}" ] || return 0
+	stop_drain_forwards
 	if [ -s "$kind_tmp/scaled" ]; then
 		while read -r d n; do
 			if kn scale "$d" --replicas "$n" >/dev/null 2>&1; then
@@ -185,10 +248,26 @@ kind_part() {
 	[ "$quiet" = yes ] && pass "quiesced: load finished; $(wc -l <"$tmp/scaled") app Deployment(s) at 0 replicas ($(awk '{sub("deployment.apps/", "", $1); printf "%s%s", s, $1; s=", "}' "$tmp/scaled"))" ||
 		fail "quiesce: app pods still running"
 
+	drain_outbox >"$tmp/drain.json" 2>"$tmp/drain.log"
+	code=$?
+	if [ "$code" -eq 0 ]; then
+		pass "drained the outbox with the app at 0 ($(jq -r '"read \(.read), published \(.published), marked \(.marked), retries \(.retries)"' "$tmp/drain.json" 2>/dev/null))"
+	else
+		fail "drain the outbox with the app at 0" "exit $code: $(tail -3 "$tmp/drain.log" | tr '\n' ' ')"
+	fi
+
 	run_job "s45-check-seed$SEED" check --coordinator "$COORD_URL" --json >"$tmp/out"
 	code=$? out="$(cat "$tmp/out")"
 	echo "$out" >"$tmp/check.json"
-	[ "$code" -eq 0 ] && pass "invcheck check: claim invariants clean, no write during the walk (outbox pending per shard $(jq -c "[.report.outbox[]?.pending]" <<<"$out" 2>/dev/null))" || fail "invcheck check" "exit $code: $(head -c 400 <<<"$out")"
+	local pending
+	pending="$(jq -c '[.report.outbox[]?.pending]' <<<"$out" 2>/dev/null)"
+	if [ "$code" -ne 0 ]; then
+		fail "invcheck check" "exit $code: $(head -c 400 <<<"$out")"
+	elif jq -e '(.report.outbox | length) == 3 and all(.report.outbox[]; .pending == 0)' <<<"$out" >/dev/null 2>&1; then
+		pass "invcheck check (strict): claim invariants clean, no write during the walk, outbox pending 0 on every shard"
+	else
+		fail "invcheck check (strict): outbox pending ${pending:-unknown}" "a committed handoff was still unpublished after the drain"
+	fi
 
 	echo "== 3. storagectl audit per shard"
 	local pods addrs verdict nidx nroot
@@ -229,6 +308,10 @@ kind_part() {
 		echo
 		echo "## checks"
 		cat "$tmp/results"
+		echo
+		echo "## outbox drain (JSON report, then its log)"
+		cat "$tmp/drain.json" 2>/dev/null
+		cat "$tmp/drain.log" 2>/dev/null
 		echo
 		echo "## invcheck load (log), verify and check (JSON)"
 		cat "$tmp/load.log"
