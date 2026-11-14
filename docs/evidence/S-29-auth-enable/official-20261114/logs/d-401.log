@@ -1,0 +1,18 @@
+PASS  coordinator GET /internal/ring, no token: 401
+PASS  coordinator PUT /internal/data, no token: 401
+PASS  coordinator GET /internal/data, no token: 401
+PASS  coordinator GET /internal/ring, node token (wrong class): 401
+PASS  coordinator GET /internal/ring, app token: 200
+PASS  coordinator PUT /internal/data, app token: 200
+PASS  coordinator GET /internal/data, app token: 200
+PASS  coordinator read-back returns the write
+PASS  storage storage-shard-2-0 GET /internal/data, no token: 401
+PASS  storage storage-shard-2-0 GET /internal/data, app token (wrong class): 401
+PASS  storage storage-shard-2-0 GET /internal/data, node token: 200
+PASS  storage read returns the write
+PASS  six refusal log lines, one per refused request
+PASS  a refusal logged with reason missing
+PASS  a refusal logged with reason unknown credential
+PASS  refusals name the credential class (app and node)
+PASS  no sender token appears in any pod log
+PASS  no in-cluster sender refused

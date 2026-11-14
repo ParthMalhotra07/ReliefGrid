@@ -1,0 +1,14 @@
+PASS  release storage: internalAuth.enabled=true (computed values)
+PASS  release reliefgrid: internalAuth.enabled=true (computed values)
+PASS  Secret reliefgrid-internal-auth: token and sender-token, no previous-token
+PASS  Secret reliefgrid-node-auth: token and sender-token, no previous-token
+PASS  coordinator: INTERNAL_AUTH_ENABLED=true
+PASS  storage-shard-0: INTERNAL_AUTH_ENABLED=true
+PASS  storage-shard-1: INTERNAL_AUTH_ENABLED=true
+PASS  storage-shard-2: INTERNAL_AUTH_ENABLED=true
+PASS  api: INTERNAL_AUTH_TOKEN_FILE set
+PASS  matcher: INTERNAL_AUTH_TOKEN_FILE set
+PASS  coordinator GET /internal/ring without a token: 401
+PASS  the refusal is logged: route /internal/ring, reason missing
+PASS  no in-cluster sender refused since the reset began (2026-11-14T13:45:38Z)
+13:48:18 debug image not preloaded; the mount checks will pull it by digest

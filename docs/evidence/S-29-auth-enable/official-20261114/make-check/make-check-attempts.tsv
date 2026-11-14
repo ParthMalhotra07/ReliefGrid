@@ -1,0 +1,3 @@
+attempt	start	end	exit	class
+0	2026-11-14T11:27:34Z	2026-11-14T11:29:24Z	2	KNOWN-FLAKE TestDeployInternalAuthTrue: only the coordinator port-forward line moved | TestDeployInternalAuthUnsetIsUnchanged: only the coordinator port-forward line moved
+1	2026-11-14T12:06:14Z	2026-11-14T12:07:34Z	0	PASS

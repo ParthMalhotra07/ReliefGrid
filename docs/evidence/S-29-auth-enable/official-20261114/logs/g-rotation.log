@@ -1,0 +1,45 @@
+16:17:04 tokens: old app fbe149b2ff30…, old node a16f73a1f116…, new app 155678010b0e…, new node 9cce62283184… (sha256 prefixes)
+PASS  setup checks; token directory 700, every token file 600
+16:17:04 phase 0: the starting state
+PASS  before phase 1: Secrets and mounted files in 14 pods as intended (coordinator, storage, api, matcher)
+PASS  before phase 1: coordinator with app token A0: 200
+PASS  before phase 1: storage storage-shard-0-2 with node token N0: 404
+PASS  before phase 1: coordinator with app token A1: 401
+PASS  before phase 1: storage storage-shard-0-2 with node token N1: 401
+16:17:49 phase 1: token=new, previous=old, sender=old; restart receivers
+PASS  helm upgrade storage (phase1)
+PASS  restarted receivers: coordinator, storage-shard-0..2; nine nodes UP, a leader per shard
+PASS  after phase 1: Secrets and mounted files in 14 pods as intended (coordinator, storage, api, matcher)
+PASS  after phase 1: coordinator with app token A0: 200
+PASS  after phase 1: storage storage-shard-0-1 with node token N0: 404
+PASS  after phase 1: coordinator with app token A1: 200
+PASS  after phase 1: storage storage-shard-0-1 with node token N1: 404
+PASS  phase1: demo-1 PASS (7 checks)
+PASS  phase1: write cfg:rotation-phase1-1794673166 and read it back through the coordinator with the current sender token
+PASS  after phase 1: no in-cluster sender refused (refusal log)
+16:19:26 phase 2: sender=new; restart senders (api, matcher, coordinator, storage)
+PASS  helm upgrade storage (phase2)
+PASS  restarted app senders: api, matcher
+PASS  restarted receivers: coordinator, storage-shard-0..2; nine nodes UP, a leader per shard
+PASS  after phase 2: Secrets and mounted files in 14 pods as intended (coordinator, storage, api, matcher)
+PASS  after phase 2: coordinator with app token A0: 200
+PASS  after phase 2: storage storage-shard-0-2 with node token N0: 404
+PASS  after phase 2: coordinator with app token A1: 200
+PASS  after phase 2: storage storage-shard-0-2 with node token N1: 404
+PASS  phase2: demo-1 PASS (7 checks)
+PASS  phase2: write cfg:rotation-phase2-1794673286 and read it back through the coordinator with the current sender token
+PASS  after phase 2: no in-cluster sender refused (refusal log)
+16:21:26 phase 3: clear previous; restart receivers
+PASS  helm upgrade storage (phase3)
+PASS  restarted receivers: coordinator, storage-shard-0..2; nine nodes UP, a leader per shard
+PASS  after phase 3: Secrets and mounted files in 14 pods as intended (coordinator, storage, api, matcher)
+PASS  after phase 3: coordinator with app token A0: 401
+PASS  after phase 3: storage storage-shard-0-2 with node token N0: 401
+PASS  after phase 3: coordinator with app token A1: 200
+PASS  after phase 3: storage storage-shard-0-2 with node token N1: 404
+PASS  phase3: demo-1 PASS (7 checks)
+PASS  phase3: write cfg:rotation-phase3-1794673368 and read it back through the coordinator with the current sender token
+PASS  after phase 3: no in-cluster sender refused (refusal log)
+PASS  after phase 3: the old tokens' 401s are logged as unknown credential
+PASS  no old or new token appears in any pod log
+PASS  rotation complete

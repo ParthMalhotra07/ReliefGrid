@@ -1,0 +1,22 @@
+# gate auth-official
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-14T16:10:09Z
+finished:   2026-11-14T16:14:13Z
+code tree:  a9c466fbd3a2 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no
+
+demo    round 1
+demo-1  PASS
+demo-2  PASS
+demo-3  PASS
+demo-4  PASS
+demo-5  PASS
+demo-6  PASS
+demo-7  PASS
+demo-8  PASS
+demo-9  PASS
+reset   OK (0 s)
+cordons none
+
+result: PASS (9/9 passed)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/
