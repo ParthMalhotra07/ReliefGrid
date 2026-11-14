@@ -46,11 +46,16 @@ INTERNAL_AUTH_APP_SECRET=reliefgrid-internal-auth
 INTERNAL_AUTH_NODE_SECRET=reliefgrid-node-auth
 INTERNAL_AUTH_APP_MOUNT=/var/run/reliefgrid/internal-auth
 INTERNAL_AUTH_NODE_MOUNT=/var/run/reliefgrid/node-auth
-INTERNAL_AUTH_ON="${INTERNAL_AUTH_ON:-}"
-INTERNAL_AUTH_DIR=""
-INTERNAL_AUTH_CURL=()
-NODE_AUTH_CURL=()
-_internal_auth_exported=false
+# State is set once per shell: sourcing this file again (demo 6 loads it through both
+# chaos/scripts/lib.sh and scripts/demos/kube.sh) must not forget files already written.
+if [ -z "${_internal_auth_loaded:-}" ]; then
+	_internal_auth_loaded=1
+	INTERNAL_AUTH_ON="${INTERNAL_AUTH_ON:-}"
+	INTERNAL_AUTH_DIR=""
+	INTERNAL_AUTH_CURL=()
+	NODE_AUTH_CURL=()
+	_internal_auth_exported=false
+fi
 
 _internal_auth_err() { printf 'internal-auth: %s\n' "$*" >&2; }
 
