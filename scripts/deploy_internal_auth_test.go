@@ -32,7 +32,28 @@ func runDeploy(t *testing.T, env ...string) (calls, resetOut, appOut string) {
 		t.Fatalf("harness: %v\n%s", err, out)
 	}
 	read := func(f string) string { b, _ := os.ReadFile(filepath.Join(work, f)); return string(b) }
-	return read("calls"), read("reset.out"), read("app.out")
+	return canonical(t, read("calls")), read("reset.out"), read("app.out")
+}
+
+// canonical orders a call log deterministically. reset.sh starts the coordinator
+// port-forward in the background and polls through it at once, so the fake kubectl's
+// port-forward line and the fake curl's first line are logged in either order. The
+// port-forward line (exactly one) is moved to the end, after a marker; every other line keeps
+// its order.
+func canonical(t *testing.T, calls string) string {
+	t.Helper()
+	var rest, background []string
+	for _, l := range strings.SplitAfter(calls, "\n") {
+		if strings.Contains(l, " port-forward svc/storage-coordinator ") {
+			background = append(background, l)
+		} else if l != "" {
+			rest = append(rest, l)
+		}
+	}
+	if len(background) > 1 {
+		t.Fatalf("want at most one coordinator port-forward, got %d:\n%s", len(background), calls)
+	}
+	return strings.Join(rest, "") + "-- background --\n" + strings.Join(background, "")
 }
 
 func golden(t *testing.T) string {
@@ -41,7 +62,7 @@ func golden(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return string(b)
+	return canonical(t, string(b))
 }
 
 const (
@@ -97,7 +118,7 @@ func TestDeployInternalAuthRefuses(t *testing.T) {
 		msg   string
 	}{
 		{"not a boolean", []string{"INTERNAL_AUTH=yes"},
-			"reset exit 2\napp-deploy exit 2\n", "INTERNAL_AUTH must be true or false, not 'yes'"},
+			"reset exit 2\napp-deploy exit 2\n-- background --\n", "INTERNAL_AUTH must be true or false, not 'yes'"},
 		{"storage release has auth off", []string{"INTERNAL_AUTH=true", "FAKE_STORAGE_VALUES=" + storageOff},
 			"", "INTERNAL_AUTH=true but the storage release has internalAuth.enabled=false"},
 		{"storage release value is a string", []string{"INTERNAL_AUTH=true", `FAKE_STORAGE_VALUES={"internalAuth":{"enabled":"true"}}`},
