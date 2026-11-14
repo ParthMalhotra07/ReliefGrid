@@ -47,6 +47,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 # shellcheck source=scripts/port-forwards.sh
 source scripts/port-forwards.sh
+# shellcheck source=scripts/internal-auth-env.sh
+source scripts/internal-auth-env.sh
 
 SCENARIO="${1:?usage: loadtest/run.sh <scenario: smoke>}"
 SCRIPT="loadtest/k6/$SCENARIO.js"
@@ -157,6 +159,10 @@ trap 'log "FAILED: line $LINENO: $BASH_COMMAND (exit $?)"' ERR
 # --- preflight -------------------------------------------------------------------------------
 [ "$(kubectl config get-contexts -o name | grep -cx "$CTX")" = 1 ] || die "no kube context $CTX"
 kc get nodes >/dev/null || die "cluster $CLUSTER does not answer"
+# internalAuth.enabled (#29): on, the invcheck Job mounts the app sender token and the
+# host-side drain gets it through a 0600 temp file; off, both run exactly as before.
+internal_auth_detect "$CTX" "$NS" || die "cannot tell whether internal auth is on"
+log "internal auth: $([ "$INTERNAL_AUTH_ON" = true ] && echo on || echo off)"
 got="$("$K6" version | awk '{print $2; exit}')"
 [ "$got" = "$K6_VERSION" ] || die "k6 is $got, the pin is $K6_VERSION"
 command -v taskset >/dev/null || die "taskset is not installed"
@@ -243,8 +249,10 @@ drain_handoffs() {
 q = lambda k: u.quote(os.environ[k], safe="")
 print("amqp://" + q("RG_USER") + ":" + q("RG_PASS") + "@" + os.environ["RG_HOST"] + "/")')" || return 1
 	rc=0
+	internal_auth_files || return 1
 	COORDINATOR_URL="$1" AMQP_URL="$amqp" timeout 45 "$DRAIN_BIN" \
 		>"$DIR/raw/handoff-drain.out.tmp" 2>"$DIR/raw/handoff-drain.err.tmp" || rc=$?
+	internal_auth_cleanup
 	RG_PASS="$pass" python3 -c 'import os, sys, urllib.parse as u
 p = os.environ["RG_PASS"]
 text = open(sys.argv[1]).read() + open(sys.argv[2]).read()
@@ -256,6 +264,20 @@ open(sys.argv[3], "w").write(text)' "$DIR/raw/handoff-drain.err.tmp" /dev/null "
 	fi
 	rm -f "$DIR/raw/handoff-drain.out.tmp" "$DIR/raw/handoff-drain.err.tmp"
 	return "$rc"
+}
+
+# invcheck_job <name>: the audit's invcheck check Job, as JSON. With internal auth on it also
+# mounts the app sender token (#29); off, it is the Job as before.
+invcheck_job() {
+	jq -n --arg name "$1" --arg image "$TOOLS_IMAGE" '{apiVersion: "batch/v1", kind: "Job",
+		metadata: {name: $name}, spec: {backoffLimit: 0, activeDeadlineSeconds: 110, template: {
+		metadata: {labels: {"reliefgrid.io/coordinator-client": "true"}},
+		spec: {restartPolicy: "Never", automountServiceAccountToken: false,
+			nodeSelector: {role: "infra"}, tolerations: [{key: "role", operator: "Equal", value: "infra", effect: "NoSchedule"}],
+			containers: [{name: "check", image: $image, imagePullPolicy: "Never",
+				args: ["check", "--coordinator", "http://storage-coordinator:8080", "--timeout", "90s", "--max-backlog", "0", "--json"],
+				resources: {requests: {cpu: "100m", memory: "128Mi"}, limits: {memory: "512Mi"}}}]}}}}' |
+		internal_auth_patch_job
 }
 
 # queue_limits: each named queue's max-length on the live broker (the lower
@@ -331,6 +353,7 @@ restore() {
 	if [ -n "${pf:-}" ]; then kill "$pf" 2>/dev/null; fi
 	stop_forwards
 	if [ -n "${DRAIN_DIR:-}" ]; then rm -rf "$DRAIN_DIR"; fi
+	internal_auth_cleanup
 	if ! resume_matcher; then
 		safety_failure=true
 		log "WARNING: could not restore the matcher to ${MATCHER_REPLICAS:-?} Ready replicas"
@@ -541,14 +564,7 @@ sample_background pause || true
 job="s52-invcheck-$(date +%s)"
 inv_exit=97
 for attempt in 1 2 3 4 5 6; do
-	jq -n --arg name "$job-$attempt" --arg image "$TOOLS_IMAGE" '{apiVersion: "batch/v1", kind: "Job",
-		metadata: {name: $name}, spec: {backoffLimit: 0, activeDeadlineSeconds: 110, template: {
-		metadata: {labels: {"reliefgrid.io/coordinator-client": "true"}},
-		spec: {restartPolicy: "Never", automountServiceAccountToken: false,
-			nodeSelector: {role: "infra"}, tolerations: [{key: "role", operator: "Equal", value: "infra", effect: "NoSchedule"}],
-			containers: [{name: "check", image: $image, imagePullPolicy: "Never",
-				args: ["check", "--coordinator", "http://storage-coordinator:8080", "--timeout", "90s", "--max-backlog", "0", "--json"],
-				resources: {requests: {cpu: "100m", memory: "128Mi"}, limits: {memory: "512Mi"}}}]}}}}' | kn create -f - >/dev/null
+	invcheck_job "$job-$attempt" | kn create -f - >/dev/null
 	kn wait --for=condition=complete --timeout=115s "job/$job-$attempt" >/dev/null 2>&1 ||
 		kn wait --for=condition=failed --timeout=5s "job/$job-$attempt" >/dev/null 2>&1 || true
 	kn logs "job/$job-$attempt" > "$DIR/raw/invcheck.json" 2>/dev/null || true
