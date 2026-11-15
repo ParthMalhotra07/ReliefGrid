@@ -60,13 +60,16 @@ INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-5m}"
 UNADMITTED_HOLD="${UNADMITTED_HOLD:-20}" # seconds the wiped pod is watched before replace
 LEADER_WAIT="${LEADER_WAIT:-60}"         # seconds to wait for a shard leader before a dial
 EVIDENCE="docs/evidence/S4.2/admission-replace-$(hostname -s).txt"
+# The harness files, in the evidence's code tree hash and dirty flag: this script and every
+# file it sources, directly or through a sourced file (scripts/verify_s42_lib_test.go checks).
+HARNESS="scripts/verify-S4.2.sh scripts/verify-S4.2-lib.sh chaos/scripts/lib.sh chaos/scripts/faults.sh scripts/internal-auth-env.sh"
 
 # The S2.3 harness's Job helpers (start_job, run_job, ensure_pvc). Sourced first, so that the
 # helpers below, which share some of its names, override its versions.
 EXPERIMENT=s42 seed=0 run_id="s42"
 # shellcheck source=chaos/scripts/lib.sh
 . chaos/scripts/lib.sh
-# Shard-state helpers (pods, st, leader_pod, group_ok, ...), tested offline by
+# Shard-state helpers (pods, st, leader_pod, group_ok, step_off, ...) and bounded waits, tested offline by
 # scripts/verify_s42_lib_test.go.
 # shellcheck source=scripts/verify-S4.2-lib.sh
 . scripts/verify-S4.2-lib.sh
@@ -116,8 +119,8 @@ finish() {
 		echo "result:     $result"
 		echo "host:       $(hostname -s)"
 		echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-		echo "code tree:  $(git ls-tree -r HEAD -- go.mod go.sum cmd internal deploy/helm/storage contracts scripts/verify-S4.2.sh | git hash-object --stdin | cut -c1-12)"
-		echo "code dirty: $(git status --porcelain -- cmd internal deploy/helm/storage contracts scripts/verify-S4.2.sh | grep -q . && echo yes || echo no)"
+		echo "code tree:  $(git ls-tree -r HEAD -- go.mod go.sum cmd internal deploy/helm/storage contracts $HARNESS | git hash-object --stdin | cut -c1-12)"
+		echo "code dirty: $(git status --porcelain -- cmd internal deploy/helm/storage contracts $HARNESS | grep -q . && echo yes || echo no)"
 		echo "shard/pod:  $SHARD/$POD"
 		echo
 		echo "## checks"
@@ -207,9 +210,11 @@ echo "== 3. wipe $POD: the empty disk stays unadmitted"
 old_id="$(field "$(st "$POD")" .serverId)"
 # "No election while the wiped pod waits" (below) checks that the unadmitted pod leaves the
 # group alone. Deleting a leading target would force an election by itself, so hand its
-# leadership to another member first; the term window then starts with the target a follower.
-off="$(step_off "$POD" "$LEADER_WAIT")" || abort "wipe: $POD is a follower before the wipe (leadership handed off within ${LEADER_WAIT}s)" "$(for p in $(pods); do printf '%s %s\n' "$p" "$(st "$p" | jq -c '{state, leaderId, term}' 2>/dev/null)"; done)"
-pass "wipe: $POD is a follower before the wipe (leader ${off% *}, leadership ${off#* })"
+# leadership to another member first; the term window then starts with the target a follower
+# of a settled group (all admitted and caught up, one agreed leader, two samples alike).
+off="$(step_off "$POD" "$LEADER_WAIT")" ||
+	abort "wipe: $POD is a follower of a settled group before the wipe (within ${LEADER_WAIT}s)" "$(for p in $(pods); do printf '%s %s\n' "$p" "$(st "$p" | jq -c '{state, leaderId, term, admitted, caughtUp, commitIndex, raftAppliedIndex}' 2>/dev/null)"; done)"
+pass "wipe: $POD is a follower of a settled group before the wipe (leader ${off% *}, leadership ${off#* })"
 # Positive control: the same dial helper reaches the admitted pod, so its failures below mean
 # closed ports, not a broken check. Restarting the leader leaves the shard leaderless for a few
 # seconds; wait for one, bounded, and never dial from an empty name.

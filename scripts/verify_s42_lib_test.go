@@ -27,6 +27,7 @@ type s42Fake struct {
 	pod           map[string][]s42At
 	afterTransfer map[string][]s42At
 	transferRC    int
+	delay         string // every kubectl call takes this long (sleep(1) syntax) before answering
 }
 
 type s42At struct {
@@ -44,9 +45,22 @@ func s42StatusTerm(state, leader string, term int) string {
 	if leader != "" {
 		l = id(leader)
 	}
-	return fmt.Sprintf(`{"state":%q,"leaderId":%q,"term":%d,"caughtUp":true,"configuration":{"committed":true,"servers":[`+
+	self := "" // a leader's own serverId is the leaderId its followers name
+	if state == "Leader" {
+		self = l
+	}
+	return fmt.Sprintf(`{"state":%q,"serverId":%q,"leaderId":%q,"term":%d,"admitted":true,"caughtUp":true,`+
+		`"commitIndex":120,"raftAppliedIndex":120,"appliedIndex":118,"configuration":{"committed":true,"servers":[`+
 		`{"id":%q,"suffrage":"Voter"},{"id":%q,"suffrage":"Voter"},{"id":%q,"suffrage":"Voter"}]}}`,
-		state, l, term, id("0"), id("1"), id("2"))
+		state, self, l, term, id("0"), id("1"), id("2"))
+}
+
+// s42Unsettled is a status body with one field changed, e.g. `"caughtUp":false`.
+func s42Unsettled(body, from, to string) string {
+	if !strings.Contains(body, from) {
+		panic("s42Unsettled: " + from + " not in " + body)
+	}
+	return strings.Replace(body, from, to, 1)
 }
 
 func s42Pod(uid string, ready, terminating bool) string {
@@ -92,6 +106,9 @@ func (f s42Fake) run(t *testing.T, snippet string) (string, int, time.Duration) 
 	if err := os.WriteFile(filepath.Join(fk, "transfer-rc"), []byte(fmt.Sprint(f.transferRC)), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(fk, "delay"), []byte(f.delay), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	for p, tl := range f.pod {
 		write(filepath.Join(fk, "pod", p), tl)
 	}
@@ -111,6 +128,8 @@ for a in "$@"; do
 	esac
 done
 t0="$FAKE/t0"
+d="$(cat "$FAKE/delay")"
+[ -n "$d" ] && sleep "$d"
 if [ "$verb" = exec ] && [[ " $* " == *" transfer-leader "* ]]; then
 	echo "transfer-leader $pod" >> "$FAKE/calls"
 	rc="$(cat "$FAKE/transfer-rc")"
@@ -211,6 +230,9 @@ await_leader 1 >/dev/null; echo "await rc=$?"`)
 	}
 	if took < 3*time.Second {
 		t.Errorf("gave up after %v, before the 2 s + 1 s bounds", took)
+	}
+	if took > 3800*time.Millisecond {
+		t.Errorf("gave up after %v, well past the 2 s + 1 s bounds", took)
 	}
 }
 
@@ -406,6 +428,184 @@ func TestS42WipeStepsOffBeforeTheTermWindow(t *testing.T) {
 	for _, later := range []string{`peer0="$(dial_peer`, `term0=`, `kn delete pvc`} {
 		if i := strings.Index(wipe, later); i < off {
 			t.Errorf("%q comes before step_off", later)
+		}
+	}
+}
+
+// A bound is elapsed time from the start of the wait, including the time spent inside each
+// status, get and transfer call, not a count of polls: with slow calls a count of 2*N polls
+// runs several times past N seconds, and with unresponsive ones each poll costs a full call
+// timeout. Every wait, given 1 s against a shard with no leader and an old pod that never
+// goes, must give up (exit 1) within the second, plus a little for process start-up.
+func TestS42WaitsStopAtTheDeadline(t *testing.T) {
+	leaderless := map[string][]s42At{
+		s42Shard + "0": {s42Follower("")}, s42Shard + "1": {s42Follower("")}, s42Shard + "2": {s42Follower("")},
+	}
+	old := map[string][]s42At{s42Shard + "2": {{body: s42Pod("uid-old", true, true)}}}
+	for name, delay := range map[string]string{"slow calls": "0.4", "unresponsive calls": "30"} {
+		t.Run(name, func(t *testing.T) {
+			f := s42Fake{status: leaderless, pod: old, delay: delay}
+			out, code, _ := f.run(t, `took() { local t0=$EPOCHREALTIME; "$@" >/dev/null 2>&1; local rc=$?
+	printf '%s rc=%d ms=%d\n' "$1" "$rc" $(( (${EPOCHREALTIME//[!0-9]/} - ${t0//[!0-9]/}) / 1000 )); }
+took await_leader 1
+took dial_peer storage-shard-1-2 1
+took step_off storage-shard-1-2 1
+took wait_for 1 group_ok
+took wait_for 1 pod_replaced storage-shard-1-2 uid-old`)
+			if code != 0 {
+				t.Fatalf("exit %d: %s", code, out)
+			}
+			lines := strings.Split(out, "\n")
+			if len(lines) != 5 {
+				t.Fatalf("want five timings, got:\n%s", out)
+			}
+			for _, l := range lines {
+				var fn string
+				var rc, ms int
+				if _, err := fmt.Sscanf(l, "%s rc=%d ms=%d", &fn, &rc, &ms); err != nil {
+					t.Fatalf("%q: %v", l, err)
+				}
+				if rc != 1 {
+					t.Errorf("%s: exit %d, want 1 (nothing to find)", fn, rc)
+				}
+				if ms > 1300 {
+					t.Errorf("%s: gave up after %d ms, past its 1 s deadline", fn, ms)
+				}
+			}
+		})
+	}
+}
+
+// A follower target also waits for a settled group before the wipe: every member admitted
+// and caught up, Raft applied up to its commit index, one Leader whose serverId is the leader
+// every member names, three committed voters, and the same leader and term in two
+// consecutive samples. The target was a follower, so no transfer is asked for.
+func TestS42StepOffFollowerNeedsSettledGroup(t *testing.T) {
+	healthy := func(p string) string {
+		if p == "1" {
+			return s42Status("Leader", "1")
+		}
+		return s42Status("Follower", "1")
+	}
+	group := func(target string) map[string][]s42At {
+		return map[string][]s42At{
+			s42Shard + "0": {{body: healthy("0")}}, s42Shard + "1": {{body: healthy("1")}}, s42Shard + "2": {{body: target}},
+		}
+	}
+	// The review's case: 1-1 leads, 1-0 follows it, the target names no leader and lags.
+	lost := s42Unsettled(s42Status("Follower", ""), `"caughtUp":true`, `"caughtUp":false`)
+	never := map[string]map[string][]s42At{
+		"target knows no leader, not caught up": group(lost),
+		"target not admitted":                   group(s42Unsettled(healthy("2"), `"admitted":true`, `"admitted":false`)),
+		"target not caught up":                  group(s42Unsettled(healthy("2"), `"caughtUp":true`, `"caughtUp":false`)),
+		"target applied behind commit":          group(s42Unsettled(healthy("2"), `"raftAppliedIndex":120`, `"raftAppliedIndex":117`)),
+		"target names another leader":           group(s42Status("Follower", "0")),
+		"two members report Leader":             group(s42Status("Leader", "1")),
+		"terms differ":                          group(s42StatusTerm("Follower", "1", 4)),
+		"settled for one sample only": {
+			s42Shard + "0": {{body: healthy("0")}}, s42Shard + "1": {{body: healthy("1")}},
+			s42Shard + "2": {{body: healthy("2")}, {after: 300 * time.Millisecond, body: lost}},
+		},
+	}
+	for name, st := range never {
+		t.Run("never settles: "+name, func(t *testing.T) {
+			out, _, _ := s42Fake{status: st}.run(t, `r="$(step_off storage-shard-1-2 2)"; echo "rc=$? r=[$r]"
+[ -e "$FAKE/calls" ] && echo "transfer called" || echo "no transfer"`)
+			if out != "rc=1 r=[]\nno transfer" {
+				t.Fatalf("got:\n%s\nwant rc=1 r=[] and no transfer: the wipe must be refused", out)
+			}
+		})
+	}
+	t.Run("unsettled, then recovers", func(t *testing.T) {
+		st := group(lost)
+		st[s42Shard+"2"] = append(st[s42Shard+"2"], s42At{after: 1500 * time.Millisecond, body: healthy("2")})
+		out, _, took := s42Fake{status: st}.run(t, `r="$(step_off storage-shard-1-2 10)"; echo "rc=$? r=[$r]"
+[ -e "$FAKE/calls" ] && echo "transfer called" || echo "no transfer"`)
+		if out != "rc=0 r=[storage-shard-1-1 unchanged]\nno transfer" {
+			t.Fatalf("got:\n%s", out)
+		}
+		if took < 1500*time.Millisecond {
+			t.Errorf("authorised the wipe after %v, before the target recovered (1.5 s)", took)
+		}
+	})
+}
+
+// The evidence file's "code tree" hash and "code dirty" flag name the harness files they
+// cover. Every file the verifier sources, directly or through a sourced file, decides what
+// the checks accept, so each must be in both lists: otherwise changing it leaves the recorded
+// fingerprint and dirty flag unchanged.
+func TestS42FingerprintCoversSourcedFiles(t *testing.T) {
+	b, err := os.ReadFile("verify-S4.2.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(b)
+	paths := func(prefix string) map[string]bool {
+		t.Helper()
+		i := strings.Index(src, prefix)
+		if i < 0 {
+			t.Fatalf("verify-S4.2.sh has no %q line", prefix)
+		}
+		line := src[i : i+strings.Index(src[i:], "\n")]
+		set := map[string]bool{}
+		for _, w := range strings.Fields(line) {
+			set[strings.Trim(w, `")|`)] = true
+		}
+		// The lists may name a variable that holds the harness files.
+		if strings.Contains(line, "$HARNESS") {
+			j := strings.Index(src, "\nHARNESS=\"")
+			if j < 0 {
+				t.Fatal("verify-S4.2.sh uses $HARNESS but does not set it")
+			}
+			def := src[j+len("\nHARNESS=\""):]
+			for _, w := range strings.Fields(def[:strings.Index(def, `"`)]) {
+				set[w] = true
+			}
+		}
+		return set
+	}
+	tree, dirty := paths(`echo "code tree:`), paths(`echo "code dirty:`)
+
+	// The sourced files, followed through each sourced file, resolved from the repo root.
+	sourced := []string{}
+	seen := map[string]bool{}
+	var follow func(file string)
+	follow = func(file string) {
+		if seen[file] {
+			return
+		}
+		seen[file] = true
+		sourced = append(sourced, file)
+		b, err := os.ReadFile(filepath.Join("..", file))
+		if err != nil {
+			t.Fatalf("%s: %v", file, err)
+		}
+		for _, l := range strings.Split(string(b), "\n") {
+			l = strings.TrimSpace(l)
+			if !strings.HasPrefix(l, ". ") && !strings.HasPrefix(l, "source ") {
+				continue
+			}
+			arg, _, _ := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(l, "source "), ". "), " ||")
+			arg = strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(arg), `"`), `"`)
+			switch {
+			case strings.HasPrefix(arg, `$(dirname "${BASH_SOURCE[0]}")/`):
+				arg = filepath.Join(filepath.Dir(file), strings.TrimPrefix(arg, `$(dirname "${BASH_SOURCE[0]}")/`))
+			case strings.Contains(arg, "$"):
+				t.Fatalf("%s sources %q, a path this test cannot resolve", file, arg)
+			}
+			follow(filepath.Clean(arg))
+		}
+	}
+	follow("scripts/verify-S4.2.sh")
+	if len(sourced) < 3 {
+		t.Fatalf("found only %v sourced", sourced)
+	}
+	for _, f := range sourced {
+		if !tree[f] {
+			t.Errorf("the code tree hash omits %s", f)
+		}
+		if !dirty[f] {
+			t.Errorf("the code dirty flag omits %s", f)
 		}
 	}
 }
