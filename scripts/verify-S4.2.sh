@@ -58,13 +58,21 @@ POD="${POD:-storage-shard-$SHARD-2}"
 STEPS=(planned removed recorded-removed admitted nonvoter recorded-nonvoter voter recorded-voter)
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-5m}"
 UNADMITTED_HOLD="${UNADMITTED_HOLD:-20}" # seconds the wiped pod is watched before replace
+LEADER_WAIT="${LEADER_WAIT:-60}"         # seconds to wait for a shard leader before a dial
 EVIDENCE="docs/evidence/S4.2/admission-replace-$(hostname -s).txt"
+# The harness files, in the evidence's code tree hash and dirty flag: this script and every
+# file it sources, directly or through a sourced file (scripts/verify_s42_lib_test.go checks).
+HARNESS="scripts/verify-S4.2.sh scripts/verify-S4.2-lib.sh chaos/scripts/lib.sh chaos/scripts/faults.sh scripts/internal-auth-env.sh"
 
 # The S2.3 harness's Job helpers (start_job, run_job, ensure_pvc). Sourced first, so that the
 # helpers below, which share some of its names, override its versions.
 EXPERIMENT=s42 seed=0 run_id="s42"
 # shellcheck source=chaos/scripts/lib.sh
 . chaos/scripts/lib.sh
+# Shard-state helpers (pods, st, leader_pod, group_ok, step_off, ...) and bounded waits, tested offline by
+# scripts/verify_s42_lib_test.go.
+# shellcheck source=scripts/verify-S4.2-lib.sh
+. scripts/verify-S4.2-lib.sh
 
 failures=0 passes=0
 tmp="$(mktemp -d)"
@@ -93,20 +101,14 @@ check() {
 }
 k() { kubectl --context "$CTX" "$@"; }
 kn() { k -n "$NS" "$@"; }
-pods() { printf 'storage-shard-%s-0 storage-shard-%s-1 storage-shard-%s-2' "$SHARD" "$SHARD" "$SHARD"; }
-st() { timeout 5 kubectl --context "$CTX" -n "$NS" exec "$1" -c storagenode -- /storagectl status 2>/dev/null; }
-field() { jq -r "$2 // empty" <<<"$1" 2>/dev/null; }
-bfield() { jq -r "$2" <<<"$1" 2>/dev/null; } # a boolean: jq's // would turn false into empty
 raft_addr() { printf '%s.storage-shard-%s.%s.svc.cluster.local:%s' "$1" "$SHARD" "$NS" "$2"; }
 dial() { kn exec "$1" -c storagenode -- /storagectl dial --addr "$2" --timeout 3s >/dev/null 2>&1; }
 manifest() { kn get configmap "storage-shard-$SHARD-manifest" -o json | jq -c .data; }
 mfield() { jq -r "$1 // empty" <<<"$(manifest)"; }
-leader_pod() { local p; for p in $(pods); do [ "$(field "$(st "$p")" .state)" = Leader ] && echo "$p" && return; done; }
 # committed_voters <pod>: the committed configuration's voters as that pod reports it, sorted
 committed_voters() {
 	jq -r 'select(.configuration.committed == true) | [.configuration.servers[] | select(.suffrage == "Voter") | .id] | sort | join(" ")' <<<"$(st "$1")" 2>/dev/null
 }
-voter_count() { jq -r '[.configuration.servers[]? | select(.suffrage == "Voter")] | length' <<<"$(st "$(leader_pod)")" 2>/dev/null; }
 
 finish() {
 	local result
@@ -117,8 +119,8 @@ finish() {
 		echo "result:     $result"
 		echo "host:       $(hostname -s)"
 		echo "date:       $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-		echo "code tree:  $(git ls-tree -r HEAD -- go.mod go.sum cmd internal deploy/helm/storage contracts scripts/verify-S4.2.sh | git hash-object --stdin | cut -c1-12)"
-		echo "code dirty: $(git status --porcelain -- cmd internal deploy/helm/storage contracts scripts/verify-S4.2.sh | grep -q . && echo yes || echo no)"
+		echo "code tree:  $(git ls-tree -r HEAD -- go.mod go.sum cmd internal deploy/helm/storage contracts $HARNESS | git hash-object --stdin | cut -c1-12)"
+		echo "code dirty: $(git status --porcelain -- cmd internal deploy/helm/storage contracts $HARNESS | grep -q . && echo yes || echo no)"
 		echo "shard/pod:  $SHARD/$POD"
 		echo
 		echo "## checks"
@@ -140,23 +142,6 @@ abort() {
 	finish
 }
 
-# wait_for <seconds> <command...>: until it succeeds
-wait_for() {
-	local i n=$(($1 * 2))
-	shift
-	for ((i = 0; i < n; i++)); do "$@" >/dev/null 2>&1 && return 0; sleep 0.5; done
-	return 1
-}
-group_ok() { # three committed voters every member names, all caught up
-	local p s lead=""
-	for p in $(pods); do
-		s="$(st "$p")"
-		[ "$(field "$s" .caughtUp)" = true ] || return 1
-		[ -z "$lead" ] && lead="$(field "$s" .leaderId)"
-		[ "$(field "$s" .leaderId)" = "$lead" ] || return 1
-	done
-	[ "$(voter_count)" = 3 ]
-}
 replace_job() { # replace_job <crash step or ""> -> exit code of the Job
 	local name="storage-replace-$POD" code
 	kn delete job "$name" --ignore-not-found --wait >/dev/null 2>&1
@@ -204,8 +189,13 @@ jq -e '.rules | length == 1 and .[0].resources == ["configmaps"] and .[0].verbs 
 
 echo "== 1. an ordinary restart (intact disk) needs no admission"
 before="$(field "$(st "$POD")" .serverId)"
+uid0="$(pod_uid "$POD")"
 admitted0="$(mfield '.admitted')"
 kn delete pod "$POD" --wait=false >/dev/null
+# The old pod answers (old UID, old serverId) until it has terminated: wait for the new pod
+# object to be Ready before judging the group, or the checks below see the pod being deleted.
+wait_for 180 pod_replaced "$POD" "$uid0" && pass "restart: $POD replaced by a new pod (UID ${uid0:-unknown} gone), Ready" ||
+	fail "restart: $POD replaced by a new pod, Ready" "$(kn get pod "$POD" -o wide 2>&1)"
 wait_for 120 group_ok && [ "$(field "$(st "$POD")" .serverId)" = "$before" ] &&
 	pass "restart: $POD back as $before without any manifest change" || fail "restart: $POD back as $before without any manifest change"
 [ "$(mfield '.admitted')" = "$admitted0" ] && pass "restart: admitted unchanged (${admitted0:-none})" || fail "restart: admitted unchanged" "$(manifest)"
@@ -218,10 +208,17 @@ start_job "$load_job" load --coordinator "$COORD_URL" --ledger "/ledger/$load_jo
 
 echo "== 3. wipe $POD: the empty disk stays unadmitted"
 old_id="$(field "$(st "$POD")" .serverId)"
+# "No election while the wiped pod waits" (below) checks that the unadmitted pod leaves the
+# group alone. Deleting a leading target would force an election by itself, so hand its
+# leadership to another member first; the term window then starts with the target a follower
+# of a settled group (all admitted and caught up, one agreed leader, two samples alike).
+off="$(step_off "$POD" "$LEADER_WAIT")" ||
+	abort "wipe: $POD is a follower of a settled group before the wipe (within ${LEADER_WAIT}s)" "$(for p in $(pods); do printf '%s %s\n' "$p" "$(st "$p" | jq -c '{state, leaderId, term, admitted, caughtUp, commitIndex, raftAppliedIndex}' 2>/dev/null)"; done)"
+pass "wipe: $POD is a follower of a settled group before the wipe (leader ${off% *}, leadership ${off#* })"
 # Positive control: the same dial helper reaches the admitted pod, so its failures below mean
-# closed ports, not a broken check.
-peer0="$(leader_pod)"
-[ "$peer0" = "$POD" ] && peer0="$(for p in $(pods); do [ "$p" != "$POD" ] && echo "$p" && break; done)"
+# closed ports, not a broken check. Restarting the leader leaves the shard leaderless for a few
+# seconds; wait for one, bounded, and never dial from an empty name.
+peer0="$(dial_peer "$POD" "$LEADER_WAIT")" || abort "control: shard-$SHARD has a leader to dial $POD from within ${LEADER_WAIT}s"
 dial "$peer0" "$(raft_addr "$POD" 7000)" && dial "$peer0" "$(raft_addr "$POD" 8080)" &&
 	pass "control: $peer0 reaches $POD:7000 and :8080 before the wipe" || abort "control: $peer0 reaches $POD:7000 and :8080 before the wipe"
 term0="$(field "$(st "$(leader_pod)")" .term)"
@@ -235,7 +232,7 @@ new_id="$(field "$s" .serverId)"
 [ "$new_id" != "$old_id" ] && [ "$(bfield "$s" .hasState)" = false ] && [ "$(bfield "$s" .admitted)" = false ] &&
 	pass "wipe: new incarnation $new_id, no Raft state, not admitted ($(field "$s" .admissionReason))" ||
 	fail "wipe: new incarnation, no Raft state, not admitted" "$s"
-peer="$(leader_pod)"
+peer="$(dial_peer "$POD" "$LEADER_WAIT")" || abort "wipe: shard-$SHARD has a leader to dial $POD from within ${LEADER_WAIT}s"
 for i in $(seq 1 "$UNADMITTED_HOLD"); do
 	dial "$peer" "$(raft_addr "$POD" 7000)" && { fail "wipe: $peer reached $POD:7000 before admission (after ${i}s)"; break; }
 	dial "$peer" "$(raft_addr "$POD" 8080)" && { fail "wipe: $peer reached $POD:8080 before admission (after ${i}s)"; break; }
