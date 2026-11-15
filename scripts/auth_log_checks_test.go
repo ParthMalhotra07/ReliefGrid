@@ -18,7 +18,8 @@ const plantedToken = "planted-sender-token-Qm9ndXNUb2tlbkZvclRlc3RzT25seQ"
 
 // logFake is one fake cluster: the pod list (or its failure) and each pod's logs.
 type logFake struct {
-	pods     string            // stdout of get pods
+	pods     string            // stdout of get pods: "<pod>\t<container>=<restarts> ...\n" lines
+	previous map[string]string // "<pod>/<container>" -> stdout of logs --previous; absent: unavailable
 	listErr  string            // non-empty: get pods prints this to stderr and exits 1
 	logs     map[string]string // pod -> stdout of logs
 	logErr   map[string]string // pod -> stderr; the logs call exits 1
@@ -59,21 +60,33 @@ func (f logFake) setup(t *testing.T) (string, []string) {
 	for p, e := range f.logErr {
 		write(filepath.Join(fk, "logs", p+".err"), e, 0o644)
 	}
+	for pc, l := range f.previous {
+		write(filepath.Join(fk, "logs", strings.ReplaceAll(pc, "/", ".prev.")), l, 0o644)
+	}
 	for p := range f.logSleep {
 		write(filepath.Join(fk, "logs", p+".sleep"), "", 0o644)
 	}
 	// The fake reads what the old (#181) and new helpers send: get pods ... and
-	// logs [flags] <pod> [flags]; the pod is the argument after "logs" that is no flag.
+	// logs [flags] <pod> [-c <container>] [--previous]; the pod is the argument after
+	// "logs" that is no flag or flag value.
 	write(filepath.Join(bin, "kubectl"), `#!/bin/sh
 echo "kubectl $*" >> "$ARGV"
-verb=""; pod=""
+verb=""; pod=""; container=""; previous=false; prev=""
 for a in "$@"; do
+	if [ "$prev" = -c ]; then container="$a"; prev=""; continue; fi
+	prev="$a"
 	case "$a" in
 	get|logs) [ -z "$verb" ] && verb="$a" ;;
+	--previous) previous=true ;;
 	-*) ;;
 	*) [ "$verb" = logs ] && [ -z "$pod" ] && pod="$a" ;;
 	esac
 done
+if [ "$verb" = logs ] && $previous; then
+	f="$FAKE/logs/$pod.prev.$container"
+	[ -f "$f" ] || { echo "Error from server (BadRequest): previous terminated container \"$container\" in pod \"$pod\" not found" >&2; exit 1; }
+	cat "$f"; exit 0
+fi
 case "$verb" in
 get)
 	if [ -f "$FAKE/list.err" ]; then cat "$FAKE/list.err" >&2; exit 1; fi
@@ -313,7 +326,7 @@ func TestAuthLogChecksResults(t *testing.T) {
 	})
 	t.Run("planted token fails without printing it", func(t *testing.T) {
 		r := runLogCheck(t, twoPods("ok\n", "x-token: "+plantedToken+" leaked\n"), noToken)
-		r.expect(t, 1, "FAIL", "tokens_found_in=1\n", "failure=pod storage-shard-0-0: a token from ")
+		r.expect(t, 1, "FAIL", "tokens_found_in=1\n", "failure=pod storage-shard-0-0: logs: a token from ")
 	})
 	t.Run("token found beats an unread pod", func(t *testing.T) {
 		f := twoPods(plantedToken+"\n", "")
@@ -373,6 +386,66 @@ func TestAuthLogChecksResults(t *testing.T) {
 		if string(b) != "storage-shard-0-0 "+refusalCluster+"\n" {
 			t.Fatalf("in-cluster refusals %q", b)
 		}
+	})
+}
+
+// A container that restarted has its previous instance's log read too (--previous).
+func TestAuthLogChecksRestartedContainers(t *testing.T) {
+	restartedPods := func(prev map[string]string) logFake {
+		return logFake{
+			pods: "storage-coordinator-abc\tcoordinator=0 \nstorage-shard-0-0\tinit-perms=0 storagenode=2 \n",
+			logs: map[string]string{"storage-coordinator-abc": "ok\n", "storage-shard-0-0": "ok\n"}, previous: prev,
+		}
+	}
+	t.Run("restarted pod clean", func(t *testing.T) {
+		r := runLogCheck(t, restartedPods(map[string]string{"storage-shard-0-0/storagenode": "before the restart\n"}), noToken)
+		r.expect(t, 0, "PASS", "logs_read=2\n", "containers_restarted=1\n", "previous_logs_read=1\n", "previous_logs_failed=0\n")
+		argv, _ := os.ReadFile(filepath.Join(r.dir, "argv"))
+		if !strings.Contains(string(argv), "logs storage-shard-0-0 -c storagenode --previous") {
+			t.Fatalf("no previous-log read of the restarted container:\n%s", argv)
+		}
+		if strings.Contains(string(argv), "-c coordinator") || strings.Contains(string(argv), "-c init-perms") {
+			t.Fatalf("previous logs read for a container that never restarted:\n%s", argv)
+		}
+	})
+	t.Run("planted token in the previous log fails", func(t *testing.T) {
+		r := runLogCheck(t, restartedPods(map[string]string{"storage-shard-0-0/storagenode": "leak " + plantedToken + "\n"}), noToken)
+		r.expect(t, 1, "FAIL", "tokens_found_in=1\n", "previous_logs_read=1\n",
+			"failure=pod storage-shard-0-0 container storagenode: previous logs: a token from ")
+	})
+	for _, check := range []struct {
+		name string
+		args argsFn
+	}{{"no-token", noToken}, {"refusals", func(t *testing.T, dir string) []string {
+		return []string{"refusals", "--since", "2026-11-15T00:00:00Z", "--out", filepath.Join(dir, "refusals.txt")}
+	}}, {"in-cluster-refusals", func(t *testing.T, dir string) []string {
+		return []string{"in-cluster-refusals", "--out", filepath.Join(dir, "in-cluster.txt")}
+	}}} {
+		t.Run("previous log unavailable/"+check.name, func(t *testing.T) {
+			r := runLogCheck(t, restartedPods(nil), check.args)
+			r.expect(t, 2, "INCOMPLETE", "logs_read=2\n", "containers_restarted=1\n", "previous_logs_read=0\n", "previous_logs_failed=1\n",
+				"failure=pod storage-shard-0-0 container storagenode: previous logs not found (kubectl exit 1)\n")
+			for _, out := range []string{"refusals.txt", "in-cluster.txt"} {
+				if _, err := os.Stat(filepath.Join(r.dir, out)); err == nil {
+					t.Fatalf("%s written after an incomplete collection", out)
+				}
+			}
+		})
+	}
+	t.Run("previous refusals are collected", func(t *testing.T) {
+		r := runLogCheck(t, restartedPods(map[string]string{"storage-shard-0-0/storagenode": refusalCluster + "\n"}),
+			func(t *testing.T, dir string) []string {
+				return []string{"in-cluster-refusals", "--out", filepath.Join(dir, "ic.txt")}
+			})
+		r.expect(t, 1, "FAIL", "previous_logs_read=1\n")
+		b, _ := os.ReadFile(filepath.Join(r.dir, "ic.txt"))
+		if string(b) != "storage-shard-0-0/storagenode:previous "+refusalCluster+"\n" {
+			t.Fatalf("in-cluster refusals %q", b)
+		}
+	})
+	t.Run("unreadable container status", func(t *testing.T) {
+		r := runLogCheck(t, logFake{pods: "storage-shard-0-0\tstoragenode=<nil> \n"}, noToken)
+		r.expect(t, 2, "INCOMPLETE", "failure=pod list: pod storage-shard-0-0 has an unreadable container status\n")
 	})
 }
 

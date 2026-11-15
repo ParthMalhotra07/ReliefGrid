@@ -14,8 +14,9 @@
 #
 #   Any collection failure is INCOMPLETE (exit 2), never PASS: the pod list cannot be read,
 #   is empty, has an unexpected name or count (--expect-pods), a pod's logs cannot be read
-#   (RBAC, missing pod, timeout), a token file is missing, unreadable, empty or has a blank
-#   line, or grep itself fails (exit >1). A token found anywhere is FAIL even if other
+#   (RBAC, missing pod, timeout), the previous log of a restarted container (restartCount
+#   > 0, read with --previous) is unavailable or unreadable, a token file is missing,
+#   unreadable, empty or has a blank line, or grep itself fails (exit >1). A token found anywhere is FAIL even if other
 #   reads failed. For refusals, O exists only after a complete collection; partial lines
 #   go to O.partial. Usage errors exit 64.
 #
@@ -26,7 +27,9 @@
 #   AUTH_LOG_KUBECTL (default kubectl), AUTH_LOG_TIMEOUT (seconds per kubectl call, default 30).
 #
 # Every run writes a collection-completeness summary (key=value lines) to F and stderr:
-# check, result, pods listed and expected, logs read, log failures and each failure.
+# check, result, pods listed and expected, logs read, log failures, restarted containers,
+# previous logs read and failed, and each failure. Refusal lines from a previous log are
+# prefixed "<pod>/<container>:previous".
 # Logs are held in a 0700 temp dir only while scanned. Diagnostics name a pod and the kind
 # of failure; they never include log content, kubectl stderr or token bytes.
 set -uo pipefail
@@ -70,6 +73,7 @@ limit="${AUTH_LOG_TIMEOUT:-30}"
 [[ "$limit" =~ ^[1-9][0-9]*$ ]] || usage
 
 pods_listed=0 logs_read=0 log_failures=0 found_in=0
+containers_restarted=0 previous_read=0 previous_failed=0
 failures=()
 fail() { failures+=("$1"); }
 
@@ -81,6 +85,8 @@ write_summary() { # write_summary <result>
 		printf 'since=%s\n' "${since:-(all)}"
 		printf 'pods_expected=%s\npods_listed=%s\n' "${expect:-any}" "$pods_listed"
 		printf 'logs_read=%s\nlog_failures=%s\n' "$logs_read" "$log_failures"
+		printf 'containers_restarted=%s\nprevious_logs_read=%s\nprevious_logs_failed=%s\n' \
+			"$containers_restarted" "$previous_read" "$previous_failed"
 		[ "$check" != no-token ] || printf 'token_files=%s\ntokens_found_in=%s\n' "${#tokens[@]}" "$found_in"
 		local f
 		for f in ${failures[@]+"${failures[@]}"}; do printf 'failure=%s\n' "$f"; done
@@ -133,8 +139,9 @@ chmod 700 "$work"
 trap 'rm -rf "$work"' EXIT
 k=("$kubectl_bin" --context "$KUBE_CONTEXT" -n "$NAMESPACE" --request-timeout="${limit}s")
 
-# Pod inventory: the list call must succeed, and yield valid, distinct names.
-list=(get pods -o 'jsonpath={range .items[*]}{.metadata.name}{"\n"}{end}')
+# Pod inventory: the list call must succeed, and yield valid, distinct names. Each line is
+# "<pod>\t<container>=<restartCount> ..." over its init and app containers.
+list=(get pods -o 'jsonpath={range .items[*]}{.metadata.name}{"\t"}{range .status.initContainerStatuses[*]}{.name}={.restartCount}{" "}{end}{range .status.containerStatuses[*]}{.name}={.restartCount}{" "}{end}{"\n"}{end}')
 [ -z "$selector" ] || list+=(-l "$selector")
 timeout -k 5 "$limit" "${k[@]}" "${list[@]}" > "$work/pods" 2> "$work/err"
 rc=$?
@@ -143,13 +150,21 @@ if [ "$rc" -ne 0 ]; then
 	finish INCOMPLETE "the pod list could not be read"
 fi
 pods=()
-while IFS= read -r p || [ -n "$p" ]; do
-	[ -n "$p" ] || continue
+declare -A restarted=() # pod -> its containers with restartCount > 0
+while IFS=$'\t' read -r p rs || [ -n "$p" ]; do
+	[ -n "$p$rs" ] || continue
 	if [[ ! "$p" =~ ^[a-z0-9]([-a-z0-9.]{0,251}[a-z0-9])?$ ]]; then
 		fail "pod list: an entry is not a pod name"
 		finish INCOMPLETE "unexpected pod inventory"
 	fi
 	pods+=("$p")
+	for e in $rs; do
+		if [[ ! "$e" =~ ^([a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?)=([0-9]+)$ ]]; then
+			fail "pod list: pod $p has an unreadable container status"
+			finish INCOMPLETE "unexpected pod inventory"
+		fi
+		[ "${BASH_REMATCH[3]}" -eq 0 ] || restarted[$p]+="${BASH_REMATCH[1]} "
+	done
 done < "$work/pods"
 pods_listed=${#pods[@]}
 if [ "$pods_listed" -eq 0 ]; then
@@ -166,43 +181,62 @@ if [ -n "$expect" ] && [ "$pods_listed" -ne "$expect" ]; then
 fi
 
 # Per-pod reads: each one must succeed on its own; grep's status is judged separately.
-logs=(logs --all-containers)
+# A container that restarted also has its previous instance's log read (--previous); a
+# previous log that is unavailable or unreadable is a failure like any other read.
+logs=(logs)
 [ -z "$since" ] || logs+=(--since-time="$since")
 lines="$work/refusals"
 : > "$lines"
-for p in "${pods[@]}"; do
-	timeout -k 5 "$limit" "${k[@]}" "${logs[@]}" "$p" > "$work/log" 2> "$work/err"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		log_failures=$((log_failures + 1))
-		fail "pod $p: logs $(why "$rc" "$work/err")"
-		continue
-	fi
-	logs_read=$((logs_read + 1))
+# scan <prefix for refusal lines> <description>: judges $work/log, the read just made.
+scan() {
+	local f rc
 	if [ "$check" = no-token ]; then
 		for f in "${tokens[@]}"; do
 			grep -a -F -f "$f" "$work/log" > /dev/null
 			rc=$?
 			case "$rc" in
-			0) found_in=$((found_in + 1)); fail "pod $p: a token from $f appears in its logs"; break ;;
+			0) found_in=$((found_in + 1)); fail "$2: a token from $f appears in it"; break ;;
 			1) ;;
-			*) fail "pod $p: token scan failed (grep exit $rc)" ;;
+			*) fail "$2: token scan failed (grep exit $rc)" ;;
 			esac
 		done
 	else
 		grep -a -F 'internal auth refused' "$work/log" > "$work/hit"
 		rc=$?
 		case "$rc" in
-		0) awk -v p="$p" '{ print p " " $0 }' "$work/hit" >> "$lines" || fail "pod $p: cannot record refusal lines" ;;
+		0) awk -v p="$1" '{ print p " " $0 }' "$work/hit" >> "$lines" || fail "$2: cannot record refusal lines" ;;
 		1) ;;
-		*) fail "pod $p: refusal scan failed (grep exit $rc)" ;;
+		*) fail "$2: refusal scan failed (grep exit $rc)" ;;
 		esac
 	fi
 	: > "$work/log"
+}
+for p in "${pods[@]}"; do
+	timeout -k 5 "$limit" "${k[@]}" "${logs[@]}" "$p" --all-containers > "$work/log" 2> "$work/err"
+	rc=$?
+	if [ "$rc" -ne 0 ]; then
+		log_failures=$((log_failures + 1))
+		fail "pod $p: logs $(why "$rc" "$work/err")"
+	else
+		logs_read=$((logs_read + 1))
+		scan "$p" "pod $p: logs"
+	fi
+	for c in ${restarted[$p]:-}; do
+		containers_restarted=$((containers_restarted + 1))
+		timeout -k 5 "$limit" "${k[@]}" "${logs[@]}" "$p" -c "$c" --previous > "$work/log" 2> "$work/err"
+		rc=$?
+		if [ "$rc" -ne 0 ]; then
+			previous_failed=$((previous_failed + 1))
+			fail "pod $p container $c: previous logs $(why "$rc" "$work/err")"
+			continue
+		fi
+		previous_read=$((previous_read + 1))
+		scan "$p/$c:previous" "pod $p container $c: previous logs"
+	done
 done
 
 if [ "$check" = no-token ]; then
-	[ "$found_in" -eq 0 ] || finish FAIL "a token appears in the logs of $found_in pod(s); logs withheld"
+	[ "$found_in" -eq 0 ] || finish FAIL "a token appears in $found_in log(s); logs withheld"
 	[ "${#failures[@]}" -eq 0 ] || finish INCOMPLETE "$logs_read of $pods_listed pod logs scanned; not proof that no token is logged"
 	finish PASS "no token in the logs of all $pods_listed pods"
 fi
