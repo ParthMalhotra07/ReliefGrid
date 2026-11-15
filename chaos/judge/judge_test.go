@@ -341,6 +341,25 @@ func TestCoordinatorCoverage(t *testing.T) {
 	if r := Judge(in); r.Pass || !strings.Contains(strings.Join(r.Failures, "\n"), "coverage: shard 1 had 2 read(s) after the grace, want at least 3") {
 		t.Errorf("shard 1 with 2 reads: pass %v, failures %q, want a coverage failure", r.Pass, r.Failures)
 	}
+	// The retained runs (#181): restart-coordinator's per-shard reads after the grace, with two
+	// readers. 12 Nov passed at exactly the minimum on shard 2; 14 Nov failed on shard 1. The
+	// per-shard read rule stays at MinCoverage; enough readers (chaos/scripts/lib.sh) make it
+	// reliable rather than a lower bar.
+	for _, run := range []struct {
+		name  string
+		reads [3]int
+		pass  bool
+	}{{"12 Nov", [3]int{6, 11, 3}, true}, {"14 Nov", [3]int{9, 2, 7}, false}} {
+		in = clean("restart-coordinator")
+		writes(&in, [3]int{8, 26, 10})
+		for id, n := range run.reads {
+			shardOf(&in, id).ReadsInsideFault = n
+		}
+		r := Judge(in)
+		if r.Pass != run.pass || (!run.pass && !strings.Contains(strings.Join(r.Failures, "\n"), "coverage: shard 1 had 2 read(s) after the grace, want at least 3")) {
+			t.Errorf("%s reads %v: pass %v, failures %q, want pass %v", run.name, run.reads, r.Pass, r.Failures, run.pass)
+		}
+	}
 	// Other experiments keep the per-shard write minimum.
 	in = clean("stop-worker")
 	writes(&in, [3]int{0, 0, 41})

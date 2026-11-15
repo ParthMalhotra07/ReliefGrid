@@ -255,6 +255,36 @@ func TestChaosExperimentPlans(t *testing.T) {
 	}
 }
 
+// restart-coordinator runs more readers than the other experiments, so its per-shard read
+// coverage after the grace (at least 3 reads on every shard, chaos/judge MinCoverage) is
+// reliable: with two, 2 of 2 retained runs were at or below the minimum on one shard (#181).
+// An explicit READERS still wins.
+func TestChaosReadersPerExperiment(t *testing.T) {
+	readers := func(e string, env ...string) string {
+		t.Helper()
+		cmd := exec.CommandContext(t.Context(), "bash", "-c", `EXPERIMENT="$1" DESCRIPTION=x; . ../chaos/scripts/lib.sh; printf %s "$READERS"`, "readers", e)
+		cmd.Env = append(os.Environ(), env...)
+		out, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("%s: %v", e, err)
+		}
+		return string(out)
+	}
+	for _, e := range []string{"kill-leader", "kill-follower", "restart-shard", "isolate-replica", "isolate-leader",
+		"lose-quorum", "delay-follower", "delay-isolate-leader", "stop-worker", "restart-coordinator"} {
+		want := "2"
+		if e == "restart-coordinator" {
+			want = "10"
+		}
+		if got := readers(e); got != want {
+			t.Errorf("%s: READERS %s, want %s", e, got, want)
+		}
+	}
+	if got := readers("restart-coordinator", "READERS=4"); got != "4" {
+		t.Errorf("an explicit READERS: got %s, want 4", got)
+	}
+}
+
 // suite.sh --summarize builds the suite's verdict from its reports: every
 // experiment must pass, and each control must have caught its fault with no
 // other failure; a missing report is a failure, never a skip.
