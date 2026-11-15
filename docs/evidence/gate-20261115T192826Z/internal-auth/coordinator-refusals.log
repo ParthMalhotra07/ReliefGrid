@@ -1,0 +1,3 @@
+2026/11/15 20:39:41 WARN internal auth refused credential=app method=GET route=/internal/ring peer=127.0.0.1:48454 reason=missing
+2026/11/15 20:39:41 WARN internal auth refused credential=app method=PUT route=/internal/data/cfg:gate-auth-71736efd2cb3404eb14dfb85d9f269cd peer=127.0.0.1:48458 reason=missing
+2026/11/15 20:39:41 WARN internal auth refused credential=app method=GET route=/internal/ring peer=127.0.0.1:48484 reason="unknown credential"

@@ -1,0 +1,161 @@
+{
+  "result": "PASS",
+  "operations": [
+    {
+      "method": "POST",
+      "path": "/resources",
+      "status": 201,
+      "contentType": "application/json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/resources",
+      "status": 201,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/resources?type=FOOD&near=83,-168&radiusKm=1&limit=100",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/resources?type=FOOD&near=83,-168&radiusKm=1&limit=100",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "PUT",
+      "path": "/resources/b37500b2-5c97-506f-a09c-4e759000ed12/status",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/resources/b37500b2-5c97-506f-a09c-4e759000ed12/status",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/resources/b37500b2-5c97-506f-a09c-4e759000ed12/status",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "POST",
+      "path": "/requests",
+      "status": 201,
+      "contentType": "application/json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests",
+      "status": 201,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "POST",
+      "path": "/match/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "POST",
+      "path": "/match/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/match/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "PUT",
+      "path": "/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6/status",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6/status",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8"
+    },
+    {
+      "method": "GET",
+      "path": "/requests/new",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "method": "GET",
+      "path": "/resources/register",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "method": "GET",
+      "path": "/match/board",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "method": "GET",
+      "path": "/events",
+      "status": 404,
+      "contentType": "text/plain; charset=utf-8"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6/status",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/b00300d1-94dd-5d07-8030-26d0da4d23c6",
+      "status": 200,
+      "contentType": "application/json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/resources/b37500b2-5c97-506f-a09c-4e759000ed12/status",
+      "status": 200,
+      "contentType": "application/json"
+    }
+  ]
+}

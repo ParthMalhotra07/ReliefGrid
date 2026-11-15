@@ -1,0 +1,22 @@
+# gate gate-20261115
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-15T19:44:45Z
+finished:   2026-11-15T19:56:29Z
+code tree:  3c5d007d397b (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no
+
+demo    round 1                round 2
+demo-1  PASS                   PASS
+demo-2  PASS                   PASS
+demo-3  PASS                   PASS
+demo-4  PASS                   PASS
+demo-5  PASS                   PASS
+demo-6  PASS                   PASS
+demo-7  PASS                   PASS
+demo-8  PASS                   PASS
+demo-9  PASS                   PASS
+reset   OK (106 s)             OK (109 s)
+cordons none                   none
+
+result: PASS (18/18 passed)
+evidence: /home/hrishabh-sharrma/.cache/reliefgrid/gate-20261115T192826Z/course/gate-20261115/round-1/ /home/hrishabh-sharrma/.cache/reliefgrid/gate-20261115T192826Z/course/gate-20261115/round-2/

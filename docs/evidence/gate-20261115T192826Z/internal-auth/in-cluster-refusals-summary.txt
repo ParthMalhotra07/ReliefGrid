@@ -1,0 +1,13 @@
+check=in-cluster-refusals
+result=PASS
+context=kind-reliefgrid
+namespace=reliefgrid
+selector=app.kubernetes.io/component in (coordinator,storagenode)
+since=(all)
+pods_expected=10
+pods_listed=10
+logs_read=10
+log_failures=0
+containers_restarted=0
+previous_logs_read=0
+previous_logs_failed=0
