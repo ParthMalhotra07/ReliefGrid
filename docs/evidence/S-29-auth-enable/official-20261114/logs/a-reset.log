@@ -1,0 +1,441 @@
+bash scripts/demos/reset.sh
+reset: delete the kind cluster
+Deleting cluster "reliefgrid" ...
+reset: create the kind cluster
+Creating cluster "reliefgrid" ...
+ • Ensuring node image (kindest/node:v1.37.0) 🖼️  ...
+ ✓ Ensuring node image (kindest/node:v1.37.0) 🖼️
+ • Preparing nodes 📦 📦 📦 📦 📦   ...
+ ✓ Preparing nodes 📦 📦 📦 📦 📦
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Joining worker nodes 🚜  ...
+ ✓ Joining worker nodes 🚜
+ • Waiting ≤ 3m0s for control-plane = Ready ⏳  ...
+ ✓ Waiting ≤ 3m0s for control-plane = Ready ⏳
+ • Ready after 10s 💚
+Set kubectl context to "kind-reliefgrid"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-reliefgrid
+
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+Switched to context "kind-reliefgrid".
+reset: build and load the storage image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.35kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 0.0s
+
+#4 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#4 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#4 DONE 0.0s
+
+#5 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 926.96kB 0.0s done
+#6 DONE 0.1s
+
+#7 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#7 CACHED
+
+#8 [build 5/7] COPY cmd/ cmd/
+#8 CACHED
+
+#9 [build 6/7] COPY internal/ internal/
+#9 CACHED
+
+#10 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -tags "" -o /out/ ./cmd/storagenode ./cmd/storagectl
+#10 CACHED
+
+#11 [build 2/7] WORKDIR /src
+#11 CACHED
+
+#12 [build 3/7] COPY go.mod go.sum ./
+#12 CACHED
+
+#13 [stage-1 2/2] COPY --from=build /out/storagenode /out/storagectl /
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 exporting manifest sha256:7ca18b85b0b0b4519cbb42d0745075b90e0db5a4e819a43c346e575472a89373 done
+#14 exporting config sha256:57f26544d4861af5a288ab62192deb37b005270dc1dbc090d1a41a0ecd9f60c1 done
+#14 exporting attestation manifest sha256:8491bdedfc445eaab26a94c4c978257a843d3641c07c725a6d00fc88189aefc5 done
+#14 exporting manifest list sha256:75d05f0601465023b3af5f91bd8f6f8cbb5af189325051ae403b3d4e7147692f done
+#14 naming to docker.io/reliefgrid/storagenode:dev done
+#14 unpacking to docker.io/reliefgrid/storagenode:dev done
+#14 DONE 0.1s
+Image: "reliefgrid/storagenode:dev" with ID "sha256:75d05f0601465023b3af5f91bd8f6f8cbb5af189325051ae403b3d4e7147692f" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:75d05f0601465023b3af5f91bd8f6f8cbb5af189325051ae403b3d4e7147692f" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:75d05f0601465023b3af5f91bd8f6f8cbb5af189325051ae403b3d4e7147692f" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:75d05f0601465023b3af5f91bd8f6f8cbb5af189325051ae403b3d4e7147692f" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/storagenode:dev" with ID "sha256:75d05f0601465023b3af5f91bd8f6f8cbb5af189325051ae403b3d4e7147692f" not yet present on node "reliefgrid-worker4", loading...
+reset: build and load the coordinator image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.06kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 0.0s
+
+#4 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#4 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 14.45kB done
+#6 DONE 0.0s
+
+#7 [build 3/7] COPY go.mod go.sum ./
+#7 CACHED
+
+#8 [build 2/7] WORKDIR /src
+#8 CACHED
+
+#9 [build 5/7] COPY cmd/ cmd/
+#9 CACHED
+
+#10 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -o /out/ ./cmd/coordinator
+#10 CACHED
+
+#11 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#11 CACHED
+
+#12 [build 6/7] COPY internal/ internal/
+#12 CACHED
+
+#13 [stage-1 2/2] COPY --from=build /out/coordinator /
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 exporting manifest sha256:827d4685862ffcbbe1c9fa2839a69e60f6276bf0760bdd7d8eecac1d1ff3756f done
+#14 exporting config sha256:df4832a008f76f798b86eb82c101064f2b0cdc675284107a2395cd2b7413560b done
+#14 exporting attestation manifest sha256:f7aef73b0b5169a0a95d194f016e665b2d5652df877650c35f9399f77b43a8f5 done
+#14 exporting manifest list sha256:963a3875d0251704abf08d0157ce17a4bb462090eb9439b577ef75c2f2c30587 done
+#14 naming to docker.io/reliefgrid/coordinator:dev done
+#14 unpacking to docker.io/reliefgrid/coordinator:dev done
+#14 DONE 0.0s
+Image: "reliefgrid/coordinator:dev" with ID "sha256:963a3875d0251704abf08d0157ce17a4bb462090eb9439b577ef75c2f2c30587" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:963a3875d0251704abf08d0157ce17a4bb462090eb9439b577ef75c2f2c30587" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:963a3875d0251704abf08d0157ce17a4bb462090eb9439b577ef75c2f2c30587" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:963a3875d0251704abf08d0157ce17a4bb462090eb9439b577ef75c2f2c30587" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/coordinator:dev" with ID "sha256:963a3875d0251704abf08d0157ce17a4bb462090eb9439b577ef75c2f2c30587" not yet present on node "reliefgrid-worker4", loading...
+reset: build and load the tools image
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.04kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 242B done
+#4 DONE 0.0s
+
+#5 [build 1/9] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#6 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 399.13kB done
+#7 DONE 0.0s
+
+#8 [build 4/9] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#8 CACHED
+
+#9 [build 2/9] WORKDIR /src
+#9 CACHED
+
+#10 [build 6/9] COPY internal/ internal/
+#10 CACHED
+
+#11 [build 8/9] COPY chaos/judge/ chaos/judge/
+#11 CACHED
+
+#12 [build 7/9] COPY loadtest/ loadtest/
+#12 CACHED
+
+#13 [build 5/9] COPY cmd/ cmd/
+#13 CACHED
+
+#14 [build 9/9] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -tags chaos -o /out/ ./cmd/invcheck
+#14 CACHED
+
+#15 [build 3/9] COPY go.mod go.sum ./
+#15 CACHED
+
+#16 [stage-1 2/2] COPY --from=build /out/invcheck /
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers done
+#17 exporting manifest sha256:dfb4c66ffb228c8c0b051225ea2b304e84c1d3d74d0ada4270374714cba82ee6 done
+#17 exporting config sha256:f7cad31ab01746a8bac11d03a041af7844138c3c7a7dffe4f4c7de85fee67979 done
+#17 exporting attestation manifest sha256:8887ec3dd46b8ca219be3d3cc5e177c8dd37704fd9334ade017f3d2baa37d261 done
+#17 exporting manifest list sha256:c23e0177159e8e84751a0f55fa6b5576af4f68d3b2a49bcc66b3f6bfff01ad70 done
+#17 naming to docker.io/reliefgrid/tools:dev done
+#17 unpacking to docker.io/reliefgrid/tools:dev done
+#17 DONE 0.1s
+Image: "reliefgrid/tools:dev" with ID "sha256:c23e0177159e8e84751a0f55fa6b5576af4f68d3b2a49bcc66b3f6bfff01ad70" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:c23e0177159e8e84751a0f55fa6b5576af4f68d3b2a49bcc66b3f6bfff01ad70" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:c23e0177159e8e84751a0f55fa6b5576af4f68d3b2a49bcc66b3f6bfff01ad70" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:c23e0177159e8e84751a0f55fa6b5576af4f68d3b2a49bcc66b3f6bfff01ad70" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/tools:dev" with ID "sha256:c23e0177159e8e84751a0f55fa6b5576af4f68d3b2a49bcc66b3f6bfff01ad70" not yet present on node "reliefgrid-worker4", loading...
+reset: install deploy/helm/storage
+walk.go:75: found symbolic link in path: ~/code/ReliefGrid-auth-official/deploy/helm/storage/files/ring.yaml resolves to ~/code/ReliefGrid-auth-official/contracts/ring.yaml. Contents of linked file included and used
+NAME: storage
+LAST DEPLOYED: Sat Nov 14 21:38:43 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+reset: wait until the coordinator reports nine storage nodes UP
+reset: install app against existing storage (including chart dependencies)
+cluster-up: reliefgrid already exists
+Switched to context "kind-reliefgrid".
+application deployment evidence: ~/.cache/reliefgrid/evidence/a15-20261114T160909Z-hixnlcm0
+kind placement inputs: three Ready data workers and one Ready infra worker
+application image evidence: ~/.cache/reliefgrid/evidence/a15-20261114T160909Z-hixnlcm0
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 624B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 242B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#6 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 8.66kB 0.0s done
+#7 DONE 0.0s
+
+#8 [build 2/7] WORKDIR /src
+#8 CACHED
+
+#9 [build 6/7] COPY internal/ internal/
+#9 CACHED
+
+#10 [build 3/7] COPY go.mod go.sum ./
+#10 CACHED
+
+#11 [build 5/7] COPY cmd/ cmd/
+#11 CACHED
+
+#12 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#12 CACHED
+
+#13 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/api ./cmd/api
+#13 CACHED
+
+#14 [stage-1 2/2] COPY --from=build /out/api /api
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:3450519ac63f386e953be9f60db2ef7ffe246938721fa00d36d9a676c4e8810c done
+#15 exporting config sha256:6b4bbd3bccc8bea1735757b6aa81b3401a4f5db077f1306b9ab2b8524cd64b1b done
+#15 naming to docker.io/reliefgrid/api:a15-20261114160909 done
+#15 unpacking to docker.io/reliefgrid/api:a15-20261114160909 done
+#15 DONE 0.0s
+verified image: reliefgrid/api:a15-20261114160909 sha256:3450519ac63f386e953be9f60db2ef7ffe246938721fa00d36d9a676c4e8810c user=65532:65532
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 644B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 242B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#6 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 8.66kB done
+#7 DONE 0.0s
+
+#8 [build 6/7] COPY internal/ internal/
+#8 CACHED
+
+#9 [build 3/7] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#10 CACHED
+
+#11 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/matcher ./cmd/matcher
+#11 CACHED
+
+#12 [build 5/7] COPY cmd/ cmd/
+#12 CACHED
+
+#13 [build 2/7] WORKDIR /src
+#13 CACHED
+
+#14 [stage-1 2/2] COPY --from=build /out/matcher /matcher
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers done
+#15 exporting manifest sha256:b148668f4f3c2ffdc38ea6857a013ccfbc36f0335215becc68e2e96339b6d83f done
+#15 exporting config sha256:31e301737a3fc0669f0bb3aad915149e858c673e1c32fcbbbdd9ac262073cb96 done
+#15 naming to docker.io/reliefgrid/matcher:a15-20261114160909 done
+#15 unpacking to docker.io/reliefgrid/matcher:a15-20261114160909 done
+#15 DONE 0.0s
+verified image: reliefgrid/matcher:a15-20261114160909 sha256:b148668f4f3c2ffdc38ea6857a013ccfbc36f0335215becc68e2e96339b6d83f user=65532:65532
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 492B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#2 DONE 0.0s
+
+#3 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 242B done
+#4 DONE 0.0s
+
+#5 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#5 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#5 DONE 0.0s
+
+#6 [build 1/5] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#6 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#6 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 591.57kB 0.0s done
+#7 DONE 0.0s
+
+#8 [build 2/5] WORKDIR /src
+#8 CACHED
+
+#9 [build 3/5] COPY go.mod go.sum ./
+#9 CACHED
+
+#10 [build 4/5] COPY ui/ ui/
+#10 CACHED
+
+#11 [build 5/5] RUN --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 go build -trimpath -o /out/ui ./ui
+#11 CACHED
+
+#12 [stage-1 2/2] COPY --from=build /out/ui /ui
+#12 CACHED
+
+#13 exporting to image
+#13 exporting layers done
+#13 exporting manifest sha256:d3d1751497bcf9b91a361e6171f091ddf8dade1e28aa6fd046c65033108d889b done
+#13 exporting config sha256:f90d0c052a635c20fdc0885eb42c34d60084b6e756f0d17dd3edc093fd9341d7 done
+#13 naming to docker.io/reliefgrid/ui:a15-20261114160909 done
+#13 unpacking to docker.io/reliefgrid/ui:a15-20261114160909 done
+#13 DONE 0.0s
+verified image: reliefgrid/ui:a15-20261114160909 sha256:d3d1751497bcf9b91a361e6171f091ddf8dade1e28aa6fd046c65033108d889b user=65532:65532
+A1.5 APPLICATION IMAGES: PASS
+Image: "reliefgrid/api:a15-20261114160909" with ID "sha256:3450519ac63f386e953be9f60db2ef7ffe246938721fa00d36d9a676c4e8810c" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/api:a15-20261114160909" with ID "sha256:3450519ac63f386e953be9f60db2ef7ffe246938721fa00d36d9a676c4e8810c" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/api:a15-20261114160909" with ID "sha256:3450519ac63f386e953be9f60db2ef7ffe246938721fa00d36d9a676c4e8810c" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/api:a15-20261114160909" with ID "sha256:3450519ac63f386e953be9f60db2ef7ffe246938721fa00d36d9a676c4e8810c" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/api:a15-20261114160909" with ID "sha256:3450519ac63f386e953be9f60db2ef7ffe246938721fa00d36d9a676c4e8810c" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/matcher:a15-20261114160909" with ID "sha256:b148668f4f3c2ffdc38ea6857a013ccfbc36f0335215becc68e2e96339b6d83f" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/matcher:a15-20261114160909" with ID "sha256:b148668f4f3c2ffdc38ea6857a013ccfbc36f0335215becc68e2e96339b6d83f" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/matcher:a15-20261114160909" with ID "sha256:b148668f4f3c2ffdc38ea6857a013ccfbc36f0335215becc68e2e96339b6d83f" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/matcher:a15-20261114160909" with ID "sha256:b148668f4f3c2ffdc38ea6857a013ccfbc36f0335215becc68e2e96339b6d83f" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/matcher:a15-20261114160909" with ID "sha256:b148668f4f3c2ffdc38ea6857a013ccfbc36f0335215becc68e2e96339b6d83f" not yet present on node "reliefgrid-worker4", loading...
+Image: "reliefgrid/ui:a15-20261114160909" with ID "sha256:d3d1751497bcf9b91a361e6171f091ddf8dade1e28aa6fd046c65033108d889b" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/ui:a15-20261114160909" with ID "sha256:d3d1751497bcf9b91a361e6171f091ddf8dade1e28aa6fd046c65033108d889b" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/ui:a15-20261114160909" with ID "sha256:d3d1751497bcf9b91a361e6171f091ddf8dade1e28aa6fd046c65033108d889b" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/ui:a15-20261114160909" with ID "sha256:d3d1751497bcf9b91a361e6171f091ddf8dade1e28aa6fd046c65033108d889b" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/ui:a15-20261114160909" with ID "sha256:d3d1751497bcf9b91a361e6171f091ddf8dade1e28aa6fd046c65033108d889b" not yet present on node "reliefgrid-worker4", loading...
+"reliefgrid-traefik" already exists with the same configuration, skipping
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "reliefgrid-traefik" chart repository
+Update Complete. ⎈Happy Helming!⎈
+Saving 2 charts
+walk.go:75: found symbolic link in path: ~/code/ReliefGrid-auth-official/deploy/helm/storage/files/ring.yaml resolves to ~/code/ReliefGrid-auth-official/contracts/ring.yaml. Contents of linked file included and used
+Downloading traefik from repo https://traefik.github.io/charts
+Deleting outdated charts
+Release "reliefgrid" does not exist. Installing it now.
+NAME: reliefgrid
+LAST DEPLOYED: Sat Nov 14 21:39:16 2026
+NAMESPACE: reliefgrid
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+broker_pvc_uid=4f35f2de-672e-4a9e-9e73-c336c3e00f5c preserved=new
+shard 0: OK storage-shard-0-0@reliefgrid-worker3 storage-shard-0-1@reliefgrid-worker2 storage-shard-0-2@reliefgrid-worker
+shard 1: OK storage-shard-1-0@reliefgrid-worker2 storage-shard-1-1@reliefgrid-worker3 storage-shard-1-2@reliefgrid-worker
+shard 2: OK storage-shard-2-0@reliefgrid-worker storage-shard-2-1@reliefgrid-worker2 storage-shard-2-2@reliefgrid-worker3
+placement-check: every shard has 3 replicas on distinct data workers
+shard 0: three replicas, one agreed leader
+shard 1: three replicas, one agreed leader
+shard 2: three replicas, one agreed leader
+A1.5 APP DEPLOY: PASS
+reset: check that no worker is cordoned
+reset: clean deployment in 115 s

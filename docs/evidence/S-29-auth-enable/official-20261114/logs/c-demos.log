@@ -1,0 +1,310 @@
+== gate round 1 of 1: clean deployment
+reset: done in stage a-reset (fresh demo-reset with internalAuth.enabled=true)
+== gate round 1: demo-1
+== demo-1: Create a request, retrieve it, inspect its shard and replicas (run auth-official/round-1)
+seed/reset: clean deployment; one new request (seed 1: MEDICINE at 28.6010,77.2010, 4 people, HIGH), Idempotency-Key ca06bfea-3466-4595-8ddb-03eda55d58cc, API http://localhost:8080/api/v1
+PASS  api: GET http://localhost:8080/api/v1/requests answers 200
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+201
+201 body: {"createdAt":"2026-11-14T16:10:11.291Z","details":"demo-1 seed 1: medical supplies at the north entrance","location":{"lat":28.601,"lng":77.201},"peopleAffected":4,"requestId":"6aa5c39a-9361-532f-b6d4-57002bafcd55","requestType":"MEDICINE","status":"PENDING","updatedAt":"2026-11-14T16:10:11.291Z","urgency":"HIGH","version":"v1","assignedResourceId":null,"nextAttemptAt":null,"retryCount":0,"lastError":""}
+Location: /api/v1/requests/6aa5c39a-9361-532f-b6d4-57002bafcd55
+PASS  create: 201, Location /api/v1/requests/6aa5c39a-9361-532f-b6d4-57002bafcd55, the submitted fields, status PENDING, version v1
+200
+PASS  retrieve: 200 with the same requestId, type, location, details, peopleAffected, urgency and createdAt (status now WAITING)
+{
+  "hash": "987792f3966a304a",
+  "key": "req:6aa5c39a-9361-532f-b6d4-57002bafcd55",
+  "leaderId": "storage-shard-2-0/1ef09132-238d-4770-a83f-a82397c3b634",
+  "replicas": [
+    "storage-shard-2-0",
+    "storage-shard-2-1",
+    "storage-shard-2-2"
+  ],
+  "ringVersion": 1,
+  "shard": 2
+}
+PASS  shard: req:6aa5c39a-9361-532f-b6d4-57002bafcd55 is on shard 2, replicas storage-shard-2-0 storage-shard-2-1 storage-shard-2-2, leader storage-shard-2-0/1ef09132-238d-4770-a83f-a82397c3b634
+{
+  "read": {
+    "appliedIndex": 9,
+    "consistency": "strong",
+    "servedBy": "storage-shard-2-0",
+    "stalePossible": false
+  },
+  "record": {
+    "key": "req:6aa5c39a-9361-532f-b6d4-57002bafcd55",
+    "kind": "request",
+    "version": 2,
+    "request": {
+      "id": "6aa5c39a-9361-532f-b6d4-57002bafcd55",
+      "type": "MEDICINE",
+      "location": {
+        "lat": 28.601,
+        "lng": 77.201
+      },
+      "geohash": "ttnfsy8",
+      "peopleAffected": 4,
+      "urgency": 2,
+      "details": "demo-1 seed 1: medical supplies at the north entrance",
+      "status": "WAITING",
+      "workflowGeneration": 0,
+      "nextAttemptAt": 1794672616321,
+      "retryCount": 1,
+      "lastError": "NO_CANDIDATE",
+      "createdAt": 1794672611291,
+      "updatedAt": 1794672611321
+    },
+    "updatedAt": 1794672611321
+  },
+  "ringVersion": 1
+}
+PASS  stored: req:6aa5c39a-9361-532f-b6d4-57002bafcd55 holds the same ID, location and peopleAffected at version 2
+
+# stale reads of req:6aa5c39a-9361-532f-b6d4-57002bafcd55 on each replica (attempts retried: 0; last: all 3 replicas hold the same record at version 2)
+storage-shard-2-0: 200 {"version":2,"status":"WAITING","servedBy":"storage-shard-2-0","appliedIndex":9}
+storage-shard-2-1: 200 {"version":2,"status":"WAITING","servedBy":"storage-shard-2-1","appliedIndex":9}
+storage-shard-2-2: 200 {"version":2,"status":"WAITING","servedBy":"storage-shard-2-2","appliedIndex":9}
+PASS  replicas: shard 2's replicas serve req:6aa5c39a-9361-532f-b6d4-57002bafcd55 from their own FSM: all 3 replicas hold the same record at version 2 (strong read: 2)
+== demo-1: PASS (7/7 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-1.txt
+== gate round 1: demo-2
+== demo-2: Register a resource, list it, update its availability and status (run auth-official/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  201 resource retains validated type, location, availability and unclaimed state
+PASS  creation timestamps are UTC
+PASS  complete authoritative resource list contains the created resource exactly once
+PASS  invalid registration 0 is a definite 400 refusal
+PASS  invalid registration 1 is a definite 400 refusal
+PASS  invalid registration 2 is a definite 400 refusal
+PASS  invalid registrations create no resources
+PASS  status update persists at a different opaque version
+PASS  partial availability update persists
+PASS  public claim-managed status is a definite 409 refusal
+PASS  public claim-managed status is a definite 409 refusal
+PASS  all refused updates preserve the complete stored record and version
+PASS  strong stored record preserves location and refuses public claim mutations
+PASS  resource create replay retains original body and Location after updates
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-2-app
+== demo-2: PASS (2/2 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-2.txt
+== gate round 1: demo-3
+== demo-3: Async and explicit API matching with compatible and incompatible resources (run auth-official/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  no resource assigned to two requests
+PASS  async match respects type, 50 km radius and current availability window
+PASS  async incompatible resources remain unclaimed
+PASS  explicit match completes while matcher Deployment is stopped
+PASS  no resource assigned to two requests
+PASS  explicit match respects type, 50 km radius and current availability window
+PASS  explicit incompatible resources remain unclaimed
+PASS  no resource assigned to two requests
+PASS  two requests competing for one resource produce one match and one waiting request
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-3-app
+== demo-3: PASS (2/2 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-3.txt
+== gate round 1: demo-4
+== demo-4: Seed a deterministic dataset; logical key counts, replica copies and locate samples (run auth-official/round-1)
+seed/reset: clean deployment; dataset seed 4: 300 keys demo4-4-0..299, value {seed, i}, operation IDs demo4-4-<i> (re-runs replay)
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  seed: 300 keys committed through the coordinator (0 replayed from an earlier run, 11 s)
+PASS  locate: all 300 keys have a shard, a 16-hex hash, the shard's three replicas and a leader among them
+PASS  dataset: every shard owns some of the 300 seeded keys (shard 0: 107, shard 1: 84, shard 2: 109)
+PASS  read back: all 300 keys at version 1 with their values (strong reads)
+shard 0: records 118 (kv 111, request 2, resource 5) replicas 3 countsKnown true heartbeat age 398 ms
+shard 1: records 96 (kv 94, request 1, resource 1) replicas 3 countsKnown true heartbeat age 463 ms
+shard 2: records 116 (kv 110, request 2, resource 4) replicas 3 countsKnown true heartbeat age 469 ms
+PASS  distribution: every shard holds at least its seeded keys (shard 0: 107, shard 1: 84, shard 2: 109), counts known, three replicas
+
+# replica copies of shard 0 (logical 118 records x 3 replicas = 354 copies)
+storage-shard-0-0 162 7348c470c830a7c9dd87292799fae95ca0bfc2d4e5ac880c143ea89e4da77681 records=118
+storage-shard-0-1 162 7348c470c830a7c9dd87292799fae95ca0bfc2d4e5ac880c143ea89e4da77681 records=118
+storage-shard-0-2 162 7348c470c830a7c9dd87292799fae95ca0bfc2d4e5ac880c143ea89e4da77681 records=118
+PASS  replicas shard-0: three identical copies at appliedIndex 162, each with at least 107 seeded keys
+
+# replica copies of shard 1 (logical 96 records x 3 replicas = 288 copies)
+storage-shard-1-0 139 2e4f43319118c44952e2b10e808a111febbef6a6bbe94f1e5a6254870e3f5649 records=96
+storage-shard-1-1 139 2e4f43319118c44952e2b10e808a111febbef6a6bbe94f1e5a6254870e3f5649 records=96
+storage-shard-1-2 139 2e4f43319118c44952e2b10e808a111febbef6a6bbe94f1e5a6254870e3f5649 records=96
+PASS  replicas shard-1: three identical copies at appliedIndex 139, each with at least 84 seeded keys
+
+# replica copies of shard 2 (logical 116 records x 3 replicas = 348 copies)
+storage-shard-2-0 174 bc146e06baa0aaf287e3606f54d1ca555bd0171a31f5a7383e28eb368e521593 records=116
+storage-shard-2-1 174 bc146e06baa0aaf287e3606f54d1ca555bd0171a31f5a7383e28eb368e521593 records=116
+storage-shard-2-2 174 bc146e06baa0aaf287e3606f54d1ca555bd0171a31f5a7383e28eb368e521593 records=116
+PASS  replicas shard-2: three identical copies at appliedIndex 174, each with at least 109 seeded keys
+
+# locate samples (two keys per shard)
+{"key":"demo4-4-2","shard":0,"hash":"da81d3f80727281b","leaderId":"storage-shard-0-0/4e036357-c2c4-495f-bc78-1b0afe1f7596","replicas":["storage-shard-0-0","storage-shard-0-1","storage-shard-0-2"]}
+{"key":"demo4-4-5","shard":0,"hash":"e97a3f0c0a4eb1a9","leaderId":"storage-shard-0-0/4e036357-c2c4-495f-bc78-1b0afe1f7596","replicas":["storage-shard-0-0","storage-shard-0-1","storage-shard-0-2"]}
+{"key":"demo4-4-0","shard":1,"hash":"fc99f6e7c25739ad","leaderId":"storage-shard-1-0/3b8221bf-278e-4947-b034-1ae02ac5dc2d","replicas":["storage-shard-1-0","storage-shard-1-1","storage-shard-1-2"]}
+{"key":"demo4-4-3","shard":1,"hash":"a033d7e817743ad7","leaderId":"storage-shard-1-0/3b8221bf-278e-4947-b034-1ae02ac5dc2d","replicas":["storage-shard-1-0","storage-shard-1-1","storage-shard-1-2"]}
+{"key":"demo4-4-1","shard":2,"hash":"20d281c631e8fcb0","leaderId":"storage-shard-2-0/1ef09132-238d-4770-a83f-a82397c3b634","replicas":["storage-shard-2-0","storage-shard-2-1","storage-shard-2-2"]}
+{"key":"demo4-4-9","shard":2,"hash":"97db0fa8c9df057f","leaderId":"storage-shard-2-0/1ef09132-238d-4770-a83f-a82397c3b634","replicas":["storage-shard-2-0","storage-shard-2-1","storage-shard-2-2"]}
+== demo-4: PASS (9/9 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-4.txt
+== gate round 1: demo-5
+== demo-5: Submit a burst; show RabbitMQ queue counts, matching and waiting results (run auth-official/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  500 distinct request creates acknowledged against 50 seeded resources
+PASS  no resource assigned to two requests
+PASS  burst settles to 50 reciprocal matches and 450 waiting requests
+PASS  matching queue ready/unacked returns to zero within bounded quiescence
+PASS  broker observations show asynchronous work in flight
+PASS  all broker samples completed without hidden observation errors: []
+PASS  all shard outboxes drained before retry admission is paused
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-5-app
+== demo-5: PASS (2/2 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-5.txt
+== gate round 1: demo-6
+== demo-6: Stop a shard's leader under load; a surviving majority keeps serving (run auth-official/round-1)
+seed/reset: healthy deployment; load Job demo6-1794672725-load (seed 6, 40s, 4 writers, ledger chaos-ledger:/ledger/demo6-1794672725.json); stop shard 1's leader after 8s (cordon its worker, delete the pod)
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  placement: one replica of every shard per data worker (make placement-check)
+PASS  stop: storage-shard-1-0 (storage-shard-1-0/3b8221bf-278e-4947-b034-1ae02ac5dc2d, leader at term 2) deleted with reliefgrid-worker2 cordoned; its replacement is Pending
+PASS  load: demo6-1794672725-load running when the leader stopped (8 s in)
+PASS  election: storage-shard-1-2 leads shard 1 at term 3 (was storage-shard-1-0 at 2), 2631 ms after the stop
+ledger /ledger/demo6-1794672725.json: 2591 acknowledged, 0 unknown, 0 rejected, 0 reads
+{
+  "ok": true,
+  "ledger": {
+    "acked": 2591,
+    "unknown": 0,
+    "rejected": 0,
+    "reads": 0,
+    "ackedInWindow": 2080,
+    "errorCount": 0
+  },
+  "resolution": {
+    "resolved": 0,
+    "notApplied": 0,
+    "stillUnknown": 0
+  },
+  "verdict": {
+    "checked": 2591,
+    "keys": 1304,
+    "unknown": 0,
+    "lost": 0
+  }
+}
+PASS  load: exit 0, 2591 writes acknowledged, 2080 of them while storage-shard-1-0 was down
+PASS  ledger: every acknowledged write survived (invcheck verify, 2591 checked)
+{
+  "ok": true,
+  "verdict": "clean",
+  "incomplete": null
+}
+PASS  invariants: complete, clean and quiescent (invcheck check)
+PASS  stopped throughout: storage-shard-1-0 is still the same Pending replacement after the checks
+handed to demo 7: node/reliefgrid-worker2 reliefgrid.io/demo6-handoff="shard=1 pod=storage-shard-1-0 node=reliefgrid-worker2 serverId=storage-shard-1-0/3b8221bf-278e-4947-b034-1ae02ac5dc2d uid=2f7eb2cf-be2c-43b1-b754-3d9f2ce26a6c term=2" (storage-shard-1-0 stopped, reliefgrid-worker2 cordoned)
+== demo-6: PASS (9/9 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-6.txt
+== gate round 1: demo-7
+== demo-7: Restart the stopped node; replay, catch-up and equal committed state (run auth-official/round-1)
+seed/reset: continues from demo 6 (node/reliefgrid-worker2 reliefgrid.io/demo6-handoff): shard 1's storage-shard-1-0 stopped; 100 writes under demo7-7-1794672797 while it is down (seed 7); restart by uncordoning its worker
+PASS  preflight: coordinator reachable
+PASS  stop: continuing from demo 6: storage-shard-1-0 is still Pending with reliefgrid-worker2 cordoned
+PASS  stopped: storage-shard-1-0 is down; storage-shard-1-2 leads shard 1 at term 3
+PASS  writes: 100 writes to shard 1 committed while storage-shard-1-0 was down
+shard 1 commit index after the writes: 3743 (leader storage-shard-1-2)
+PASS  restart: reliefgrid-worker2 uncordoned; storage-shard-1-0 is Running on it again (1 s)
+
+# replay/catch-up of storage-shard-1-0 (polls of /mgmt/status)
+0s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+1s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+2s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+2s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+3s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+3s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+4s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+5s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+5s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+6s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+6s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+7s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+8s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+8s {"state":"Follower","appliedIndex":3743,"commitIndex":3743,"leaderCommitIndex":3743,"restoredIndex":0,"caughtUp":true}
+PASS  catch-up: storage-shard-1-0 is caughtUp at leader commit 3743 (>= 3743, the commit index after the writes); FSM at command 3743
+PASS  data-ready: storage-shard-1-0 is Ready (readiness gated on catch-up)
+PASS  identity: storage-shard-1-0 rejoined as storage-shard-1-0/3b8221bf-278e-4947-b034-1ae02ac5dc2d (same disk); storage-shard-1-2 leads all three
+
+# dumps of shard 1 after settling
+storage-shard-1-0 3743 c084f376f64a1565e18bac556b4f26830c68c310d78480b1c035d6f3455e0823 records=891
+storage-shard-1-1 3743 c084f376f64a1565e18bac556b4f26830c68c310d78480b1c035d6f3455e0823 records=891
+storage-shard-1-2 3743 c084f376f64a1565e18bac556b4f26830c68c310d78480b1c035d6f3455e0823 records=891
+PASS  equal state: the three replicas' dumps are identical at appliedIndex 3743
+stale reads of the missed writes on storage-shard-1-0: 0 retried after a 503 not caught up
+PASS  replayed data: all 100 writes made while it was down are served by storage-shard-1-0's own FSM
+PASS  coordinator: all nine nodes UP
+== demo-7: PASS (11/11 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-7.txt
+== gate round 1: demo-8
+== demo-8: Delete one API or matcher pod while traffic and work continue (run auth-official/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  api: two Ready pods before deletion
+PASS  interrupted create retried and replayed its original result
+PASS  api: a new UID becomes Ready within 90s
+PASS  api: traffic completed with no lost create outcome: []
+PASS  api: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  api: every successful create replay returned its original result
+PASS  matcher: two Ready pods before deletion
+PASS  matcher: a new UID becomes Ready within 90s
+PASS  matcher: traffic completed with no lost create outcome: []
+PASS  matcher: successful calls continued during and after pod replacement
+PASS  no resource assigned to two requests
+PASS  matcher: every successful create replay returned its original result
+PASS  1 interrupted calls observed; every one recovered using its original key and payload
+PASS  retry admission workers are identified before pausing
+PASS  last committed handoffs drained with routed confirms while admission stays stopped
+PASS  invcheck: complete, reciprocal, no terminal claim and outbox drained
+PASS  application assertions passed; inputs, interruptions and strong reads retained in ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-8-app
+== demo-8: PASS (2/2 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-8.txt
+== gate round 1: demo-9
+== demo-9: Scale the API from 2 to 6 replicas under traffic (run auth-official/round-1)
+seed/reset: clean deployment via demo-reset -> app-deploy; recorded UUID seed and frozen create inputs; fixed workload and settling budgets
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  manual API scale demo has no competing HPA
+PASS  API starts at two replicas
+PASS  all six API pods become Ready under traffic
+PASS  every API pod, including all four new pods, serves through the Service
+PASS  Service traffic completed without hidden failures: []
+PASS  API restored to two replicas
+PASS  application assertions passed; inputs, interruptions and strong reads retained in ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-9-app
+== demo-9: PASS (2/2 checks)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/demo-9.txt
+# gate auth-official
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-14T16:10:09Z
+finished:   2026-11-14T16:14:13Z
+code tree:  a9c466fbd3a2 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no
+
+demo    round 1
+demo-1  PASS
+demo-2  PASS
+demo-3  PASS
+demo-4  PASS
+demo-5  PASS
+demo-6  PASS
+demo-7  PASS
+demo-8  PASS
+demo-9  PASS
+reset   OK (0 s)
+cordons none
+
+result: PASS (9/9 passed)
+evidence: ~/.cache/reliefgrid/auth-official-20261114/course/auth-official/round-1/

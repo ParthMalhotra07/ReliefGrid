@@ -1,0 +1,6 @@
+commit: 7c4f8299bd8b9a6b59fa51824cf499e6124db706
+subject: feat(auth): INTERNAL_AUTH enable switch, refusal logging and runbook [#29] (#179)
+tree: 7da93d6623857c2049ef20f77f7890f390ef50e5
+origin/main at pull: 7c4f8299bd8b9a6b59fa51824cf499e6124db706
+recorded: 2026-11-14T11:27:34Z
+worktree: ~/code/ReliefGrid-auth-official (detached)

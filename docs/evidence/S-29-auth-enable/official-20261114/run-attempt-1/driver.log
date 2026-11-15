@@ -1,0 +1,5 @@
+=== 2026-11-14T12:32:01Z START a-reset
+=== 2026-11-14T12:33:52Z END a-reset rc=0 (111 s)
+=== 2026-11-14T12:33:52Z START b-auth-on
+=== 2026-11-14T12:33:56Z END b-auth-on rc=1 (4 s)
+STOPPED at b-auth-on

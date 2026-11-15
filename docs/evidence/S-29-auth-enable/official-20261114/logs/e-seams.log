@@ -1,0 +1,89 @@
+21:44:21 building and loading reliefgrid/storagenode:seams
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.35kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#3 DONE 0.0s
+
+#4 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#4 resolve gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab 0.0s done
+#4 DONE 0.0s
+
+#5 [build 1/7] FROM docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8
+#5 resolve docker.io/library/golang:1.27.2@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 926.96kB 0.0s done
+#6 DONE 0.0s
+
+#7 [build 3/7] COPY go.mod go.sum ./
+#7 CACHED
+
+#8 [build 2/7] WORKDIR /src
+#8 CACHED
+
+#9 [build 4/7] RUN --mount=type=cache,target=/go/pkg/mod go mod download
+#9 CACHED
+
+#10 [build 5/7] COPY cmd/ cmd/
+#10 CACHED
+
+#11 [build 6/7] COPY internal/ internal/
+#11 DONE 0.0s
+
+#12 [build 7/7] RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build 	CGO_ENABLED=0 go build -trimpath -tags "seams" -o /out/ ./cmd/storagenode ./cmd/storagectl
+#12 DONE 1.5s
+
+#4 [stage-1 1/2] FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
+#4 CACHED
+
+#13 [stage-1 2/2] COPY --from=build /out/storagenode /out/storagectl /
+#13 DONE 0.1s
+
+#14 exporting to image
+#14 exporting layers
+#14 exporting layers 1.6s done
+#14 exporting manifest sha256:7b1532385ef2ae99f2288a07a4e4fabdc4e73e3c789532a41b6f4c670e35651b done
+#14 exporting config sha256:e5021c8355559f6da2972fe4e25fa0d3b0630171b0cb3fb085d65dceba4da92c done
+#14 exporting attestation manifest sha256:1877d7e723203584e58733207461115d434a4f430cd32a4868c5c320e501e67c done
+#14 exporting manifest list sha256:d12caa9d8a7ff90253c58a07aad5dbcd3916433356175fa9aecc6c386023cd7c done
+#14 naming to docker.io/reliefgrid/storagenode:seams done
+#14 unpacking to docker.io/reliefgrid/storagenode:seams 0.1s done
+#14 DONE 1.9s
+Image: "reliefgrid/storagenode:seams" with ID "sha256:d12caa9d8a7ff90253c58a07aad5dbcd3916433356175fa9aecc6c386023cd7c" not yet present on node "reliefgrid-worker", loading...
+Image: "reliefgrid/storagenode:seams" with ID "sha256:d12caa9d8a7ff90253c58a07aad5dbcd3916433356175fa9aecc6c386023cd7c" not yet present on node "reliefgrid-worker3", loading...
+Image: "reliefgrid/storagenode:seams" with ID "sha256:d12caa9d8a7ff90253c58a07aad5dbcd3916433356175fa9aecc6c386023cd7c" not yet present on node "reliefgrid-control-plane", loading...
+Image: "reliefgrid/storagenode:seams" with ID "sha256:d12caa9d8a7ff90253c58a07aad5dbcd3916433356175fa9aecc6c386023cd7c" not yet present on node "reliefgrid-worker2", loading...
+Image: "reliefgrid/storagenode:seams" with ID "sha256:d12caa9d8a7ff90253c58a07aad5dbcd3916433356175fa9aecc6c386023cd7c" not yet present on node "reliefgrid-worker4", loading...
+21:44:27 upgrading storage to image tag seams
+walk.go:75: found symbolic link in path: ~/code/ReliefGrid-auth-official/deploy/helm/storage/files/ring.yaml resolves to ~/code/ReliefGrid-auth-official/contracts/ring.yaml. Contents of linked file included and used
+21:44:43 running tests/seams (SCH01|SCH12|SCH13a|SCH13b); evidence docs/evidence/S4.6b/kind-hrishabh-sharrma-ThinkPad-E14-Gen-7.txt
+=== RUN   TestKindSCH01LogBarrier
+    kind_test.go:617: SCH01: A at 4306, B at 4307, commit 4307, applied 4305 when reached
+--- PASS: TestKindSCH01LogBarrier (0.32s)
+=== RUN   TestKindSCH12CrashMidSnapshotCreation
+    kind_test.go:636: killed storage-shard-1-1 (crictl)
+    kind_test.go:654: SCH12: paused at &{Indexes:map[] CommitIndex:0 AppliedIndex:0 RaftIndex:0 ImageIndex:4323 Bytes:1196032 Size:2392064}; restored 4315; kill crictl
+--- PASS: TestKindSCH12CrashMidSnapshotCreation (3.65s)
+=== RUN   TestKindSCH13aCrashMidInstallTransfer
+    kind_test.go:677: filler: 612 writes on shard 1 in 10.568447055s (isolation networkpolicy+conntrack)
+    kind_test.go:684: killed storage-shard-1-0 (crictl)
+    kind_test.go:702: restore-transfer: paused at &{Indexes:map[] CommitIndex:0 AppliedIndex:0 RaftIndex:4937 ImageIndex:0 Bytes:1353805 Size:2707610}; kill crictl
+--- PASS: TestKindSCH13aCrashMidInstallTransfer (25.13s)
+=== RUN   TestKindSCH13bCrashMidRestoreStage
+    kind_test.go:677: filler: 612 writes on shard 1 in 9.419462964s (isolation networkpolicy+conntrack)
+    kind_test.go:684: killed storage-shard-1-0 (crictl)
+    kind_test.go:702: restore-stage: paused at &{Indexes:map[] CommitIndex:0 AppliedIndex:0 RaftIndex:0 ImageIndex:5554 Bytes:1509376 Size:3018752}; kill crictl
+--- PASS: TestKindSCH13bCrashMidRestoreStage (44.08s)
+PASS
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/seams	73.189s
+21:45:57 PASS
+21:45:57 restoring the storage release to image tag dev
+walk.go:75: found symbolic link in path: ~/code/ReliefGrid-auth-official/deploy/helm/storage/files/ring.yaml resolves to ~/code/ReliefGrid-auth-official/contracts/ring.yaml. Contents of linked file included and used

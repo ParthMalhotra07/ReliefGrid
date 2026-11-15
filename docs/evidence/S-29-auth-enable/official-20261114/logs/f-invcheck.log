@@ -1,0 +1,21 @@
+== 1. seeded load (s45-seed20261114: 4 writers x 4 keys x 50 writes)
+PASS  seeded load ran to completion (exit 0)
+PASS  invcheck verify: nothing acknowledged was lost ({"acked":216,"unknown":0,"lost":0})
+== 2. quiesce
+PASS  quiesced: load finished; 4 app Deployment(s) at 0 replicas (reliefgrid-api, reliefgrid-matcher, reliefgrid-traefik, reliefgrid-ui)
+PASS  drained the outbox with the app at 0 (read 0, published 0, marked 0, retries 0)
+PASS  invcheck check (strict): claim invariants clean, no write during the walk, outbox pending 0 on every shard
+== 3. storagectl audit per shard
+PASS  shard 0: equal, 3 replicas at appliedIndex 7504 (was 7375 before the load), root 1df8626c34bfad77
+PASS  shard 1: equal, 3 replicas at appliedIndex 6090 (was 5992 before the load), root 824ce5438aa939ef
+PASS  shard 2: equal, 3 replicas at appliedIndex 7461 (was 7353 before the load), root 40f0280b93814b2d
+evidence: docs/evidence/S4.5/kind-20261114T161618Z.txt
+S4.5 kind part: PASSED (8/8 checks)
+restored deployment.apps/reliefgrid-api to 2 replicas
+restored deployment.apps/reliefgrid-matcher to 2 replicas
+restored deployment.apps/reliefgrid-traefik to 1 replicas
+restored deployment.apps/reliefgrid-ui to 1 replicas
+job.batch/s45-check-seed20261114 condition met
+PASS  strict invcheck: ok, clean, quiescent, outbox pending 0 on every shard
+PASS  the invcheck Job ran with the app sender token mounted
+PASS  app restored after verify-S4.5

@@ -1,0 +1,12 @@
+PASS  release storage: internalAuth.enabled=true (computed values)
+PASS  release reliefgrid: internalAuth.enabled=true (computed values)
+PASS  Secret reliefgrid-internal-auth: token and sender-token, no previous-token
+PASS  Secret reliefgrid-node-auth: token and sender-token, no previous-token
+PASS  coordinator: INTERNAL_AUTH_ENABLED=true
+PASS  storage-shard-0: INTERNAL_AUTH_ENABLED=true
+PASS  storage-shard-1: INTERNAL_AUTH_ENABLED=true
+PASS  storage-shard-2: INTERNAL_AUTH_ENABLED=true
+PASS  api: INTERNAL_AUTH_TOKEN_FILE set
+PASS  matcher: INTERNAL_AUTH_TOKEN_FILE set
+PASS  coordinator GET /internal/ring without a token: 401
+FAIL  no refusal log line for the request without a token: storage-coordinator-5f9dcc4985-6qxs5 2026/11/14 13:47:22 WARN internal auth refused credential=app method=GET route=/internal/ring peer=127.0.0.1:56866 reason=missing
