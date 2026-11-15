@@ -19,10 +19,14 @@ import (
 
 // s42Fake is one fake shard: for each pod, timed `storagectl status` answers and timed
 // `get pod -o json` answers. Each answer applies from its offset after the run starts until
-// the next one; "" means the call fails (pod gone or unreachable).
+// the next one; "" means the call fails (pod gone or unreachable). `storagectl
+// transfer-leader` is logged and exits transferRC; once it has succeeded, status answers come
+// from afterTransfer (offsets from the transfer) for the pods it lists.
 type s42Fake struct {
-	status map[string][]s42At
-	pod    map[string][]s42At
+	status        map[string][]s42At
+	pod           map[string][]s42At
+	afterTransfer map[string][]s42At
+	transferRC    int
 }
 
 type s42At struct {
@@ -32,15 +36,17 @@ type s42At struct {
 
 const s42Shard = "storage-shard-1-"
 
-func s42Status(state, leader string) string {
+func s42Status(state, leader string) string { return s42StatusTerm(state, leader, 5) }
+
+func s42StatusTerm(state, leader string, term int) string {
 	id := func(p string) string { return s42Shard + p + "/id-" + p }
 	l := ""
 	if leader != "" {
 		l = id(leader)
 	}
-	return fmt.Sprintf(`{"state":%q,"leaderId":%q,"caughtUp":true,"configuration":{"committed":true,"servers":[`+
+	return fmt.Sprintf(`{"state":%q,"leaderId":%q,"term":%d,"caughtUp":true,"configuration":{"committed":true,"servers":[`+
 		`{"id":%q,"suffrage":"Voter"},{"id":%q,"suffrage":"Voter"},{"id":%q,"suffrage":"Voter"}]}}`,
-		state, l, id("0"), id("1"), id("2"))
+		state, l, term, id("0"), id("1"), id("2"))
 }
 
 func s42Pod(uid string, ready, terminating bool) string {
@@ -62,7 +68,7 @@ func (f s42Fake) run(t *testing.T, snippet string) (string, int, time.Duration) 
 	t.Helper()
 	dir := t.TempDir()
 	bin, fk := filepath.Join(dir, "bin"), filepath.Join(dir, "fake")
-	for _, d := range []string{bin, filepath.Join(fk, "status"), filepath.Join(fk, "pod")} {
+	for _, d := range []string{bin, filepath.Join(fk, "status"), filepath.Join(fk, "pod"), filepath.Join(fk, "after")} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -80,6 +86,12 @@ func (f s42Fake) run(t *testing.T, snippet string) (string, int, time.Duration) 
 	for p, tl := range f.status {
 		write(filepath.Join(fk, "status", p), tl)
 	}
+	for p, tl := range f.afterTransfer {
+		write(filepath.Join(fk, "after", p), tl)
+	}
+	if err := os.WriteFile(filepath.Join(fk, "transfer-rc"), []byte(fmt.Sprint(f.transferRC)), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	for p, tl := range f.pod {
 		write(filepath.Join(fk, "pod", p), tl)
 	}
@@ -93,14 +105,24 @@ for a in "$@"; do
 	case "$a" in
 	exec) verb=exec ;;
 	get) verb=get ;;
-	pod|--|/storagectl|status|json) ;;
+	pod|--|/storagectl|status|transfer-leader|json) ;;
 	-*) ;;
 	*) [ -z "$pod" ] && pod="$a" ;;
 	esac
 done
+t0="$FAKE/t0"
+if [ "$verb" = exec ] && [[ " $* " == *" transfer-leader "* ]]; then
+	echo "transfer-leader $pod" >> "$FAKE/calls"
+	rc="$(cat "$FAKE/transfer-rc")"
+	[ "$rc" = 0 ] && date +%s%N > "$FAKE/transferred"
+	exit "$rc"
+fi
 case "$verb" in exec) f="$FAKE/status/$pod" ;; get) f="$FAKE/pod/$pod" ;; *) exit 64 ;; esac
+if [ "$verb" = exec ] && [ -f "$FAKE/transferred" ] && [ -f "$FAKE/after/$pod" ]; then
+	f="$FAKE/after/$pod" t0="$FAKE/transferred"
+fi
 [ -f "$f" ] || exit 1
-now=$(( ($(date +%s%N) - $(cat "$FAKE/t0")) / 1000000 ))
+now=$(( ($(date +%s%N) - $(cat "$t0")) / 1000000 ))
 body="$(awk -v now="$now" '$1 <= now { sub(/^[0-9]+ /, ""); b = $0 } END { print b }' "$f")"
 [ -n "$body" ] || { echo "Error from server (NotFound): $pod" >&2; exit 1; }
 printf '%s\n' "$body"
@@ -294,5 +316,96 @@ func TestS42VerifierUsesTheWaits(t *testing.T) {
 	restart := src[strings.Index(src, `echo "== 1.`):strings.Index(src, `echo "== 2.`)]
 	if strings.Index(restart, "pod_replaced") > strings.Index(restart, "group_ok") {
 		t.Errorf("the restart checks group health before waiting for the new pod:\n%s", restart)
+	}
+}
+
+// The wipe's "no election while the wiped pod waits" check is about the unadmitted pod. If
+// the target leads, deleting it forces an election by itself, so step_off first hands
+// leadership away (storagectl transfer-leader, S3.1) and returns only once another member
+// leads a settled group. The term read after it is the one the check starts from.
+func TestS42StepOffTargetIsLeader(t *testing.T) {
+	f := s42Fake{
+		status: map[string][]s42At{
+			s42Shard + "0": {{body: s42Status("Follower", "2")}},
+			s42Shard + "1": {{body: s42Status("Follower", "2")}},
+			s42Shard + "2": {{body: s42Status("Leader", "2")}},
+		},
+		// After the transfer: a short leaderless gap, then 1-0 leads term 6.
+		afterTransfer: map[string][]s42At{
+			s42Shard + "0": {s42Follower(""), {after: 800 * time.Millisecond, body: s42StatusTerm("Leader", "0", 6)}},
+			s42Shard + "1": {s42Follower(""), {after: 800 * time.Millisecond, body: s42StatusTerm("Follower", "0", 6)}},
+			s42Shard + "2": {s42Follower(""), {after: 800 * time.Millisecond, body: s42StatusTerm("Follower", "0", 6)}},
+		},
+	}
+	out, code, _ := f.run(t, `r="$(step_off storage-shard-1-2 10)"; echo "rc=$? r=[$r]"
+echo "calls=[$(tr '\n' ';' < "$FAKE/calls")]"
+echo "term=$(field "$(st "$(leader_pod)")" .term)"`)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, out)
+	}
+	for _, want := range []string{
+		"rc=0 r=[storage-shard-1-0 transferred]",
+		"calls=[transfer-leader storage-shard-1-2;]", // exactly one transfer, asked of the target
+		"term=6", // the term window starts after the transfer's election
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+}
+
+// A follower target needs no transfer: leadership is left alone.
+func TestS42StepOffTargetIsFollower(t *testing.T) {
+	f := s42Fake{status: map[string][]s42At{
+		s42Shard + "0": {{body: s42Status("Follower", "1")}},
+		s42Shard + "1": {{body: s42Status("Leader", "1")}},
+		s42Shard + "2": {{body: s42Status("Follower", "1")}},
+	}}
+	out, _, _ := f.run(t, `r="$(step_off storage-shard-1-2 2)"; echo "rc=$? r=[$r]"; [ -e "$FAKE/calls" ] && echo "transfer called" || echo "no transfer"`)
+	for _, want := range []string{"rc=0 r=[storage-shard-1-1 unchanged]", "no transfer"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+}
+
+// A refused transfer, or a target that still leads after it, fails closed.
+func TestS42StepOffFailsClosed(t *testing.T) {
+	leading := map[string][]s42At{
+		s42Shard + "0": {{body: s42Status("Follower", "2")}},
+		s42Shard + "1": {{body: s42Status("Follower", "2")}},
+		s42Shard + "2": {{body: s42Status("Leader", "2")}},
+	}
+	for name, f := range map[string]s42Fake{
+		"transfer refused":       {status: leading, transferRC: 1},
+		"target still leads":     {status: leading, afterTransfer: leading},
+		"no leader to step away": {status: map[string][]s42At{s42Shard + "0": {s42Follower("")}, s42Shard + "1": {s42Follower("")}, s42Shard + "2": {s42Follower("")}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out, _, _ := f.run(t, `r="$(step_off storage-shard-1-2 2)"; echo "rc=$? r=[$r]"`)
+			if out != "rc=1 r=[]" {
+				t.Fatalf("got %q, want rc=1 r=[]", out)
+			}
+		})
+	}
+}
+
+// The wipe step steps leadership off the target before the control and before it reads the
+// term the "no election" check compares against.
+func TestS42WipeStepsOffBeforeTheTermWindow(t *testing.T) {
+	b, err := os.ReadFile("verify-S4.2.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(b)
+	wipe := src[strings.Index(src, `echo "== 3.`):strings.Index(src, `echo "== 4.`)]
+	off := strings.Index(wipe, `step_off "$POD" "$LEADER_WAIT"`)
+	if off < 0 {
+		t.Fatalf("the wipe step does not call step_off:\n%s", wipe)
+	}
+	for _, later := range []string{`peer0="$(dial_peer`, `term0=`, `kn delete pvc`} {
+		if i := strings.Index(wipe, later); i < off {
+			t.Errorf("%q comes before step_off", later)
+		}
 	}
 }

@@ -62,3 +62,27 @@ pod_replaced() {
 	jq -e --arg old "$2" '(.metadata.uid // "") as $u | $u != "" and $u != $old and .metadata.deletionTimestamp == null and
 		any(.status.conditions[]?; .type == "Ready" and .status == "True")' <<<"$j" >/dev/null 2>&1
 }
+# step_off <pod> <seconds>: make sure <pod> is not the leader. If it leads, it hands
+# leadership to another voter (storagectl transfer-leader, S3.1: answers once it no longer
+# leads). Then wait until another member leads a settled group (group_ok). Prints
+# "<leader> transferred|unchanged"; exit 1, printing nothing, if there is no leader, the
+# transfer fails, or <pod> still leads in time. Deleting a leader forces an election on its
+# own, which a check for "no election caused by the unadmitted pod" must not count.
+step_off() {
+	local l i n=$(($2 * 2))
+	l="$(await_leader "$2")" || return 1
+	if [ "$l" != "$1" ]; then
+		echo "$l unchanged"
+		return 0
+	fi
+	kn exec "$1" -c storagenode -- /storagectl transfer-leader >/dev/null 2>&1 || return 1
+	for ((i = 0; i < n; i++)); do
+		l="$(leader_pod)"
+		if [ -n "$l" ] && [ "$l" != "$1" ] && group_ok; then
+			echo "$l transferred"
+			return 0
+		fi
+		sleep 0.5
+	done
+	return 1
+}

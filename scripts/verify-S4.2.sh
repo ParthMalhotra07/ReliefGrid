@@ -205,6 +205,11 @@ start_job "$load_job" load --coordinator "$COORD_URL" --ledger "/ledger/$load_jo
 
 echo "== 3. wipe $POD: the empty disk stays unadmitted"
 old_id="$(field "$(st "$POD")" .serverId)"
+# "No election while the wiped pod waits" (below) checks that the unadmitted pod leaves the
+# group alone. Deleting a leading target would force an election by itself, so hand its
+# leadership to another member first; the term window then starts with the target a follower.
+off="$(step_off "$POD" "$LEADER_WAIT")" || abort "wipe: $POD is a follower before the wipe (leadership handed off within ${LEADER_WAIT}s)" "$(for p in $(pods); do printf '%s %s\n' "$p" "$(st "$p" | jq -c '{state, leaderId, term}' 2>/dev/null)"; done)"
+pass "wipe: $POD is a follower before the wipe (leader ${off% *}, leadership ${off#* })"
 # Positive control: the same dial helper reaches the admitted pod, so its failures below mean
 # closed ports, not a broken check. Restarting the leader leaves the shard leaderless for a few
 # seconds; wait for one, bounded, and never dial from an empty name.
