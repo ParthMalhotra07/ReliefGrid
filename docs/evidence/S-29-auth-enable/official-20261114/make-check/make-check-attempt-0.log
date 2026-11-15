@@ -1,0 +1,203 @@
+go vet ./...
+go vet -tags chaos ./cmd/invcheck/...
+golangci-lint run ./...
+0 issues.
+golangci-lint run --build-tags chaos ./cmd/invcheck/...
+0 issues.
+go test -race ./...
+ok  	github.com/ParthMalhotra07/ReliefGrid/chaos/judge	1.010s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/api	31.452s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/coordinator	1.064s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/invcheck	2.378s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher	1.056s
+?   	github.com/ParthMalhotra07/ReliefGrid/cmd/matcher/replay	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagectl	2.322s
+ok  	github.com/ParthMalhotra07/ReliefGrid/cmd/storagenode	1.371s
+ok  	github.com/ParthMalhotra07/ReliefGrid/contracts	4.996s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/admission	1.212s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/api	4.699s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/api/gen	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/appmetrics	1.641s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/auth	1.019s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordclient	13.973s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/coordinator	33.129s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm	18.515s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore	58.645s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/fsm/merkle	1.063s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/geo	1.011s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalapi	1.012s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/internalauth	1.026s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck	6.731s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/invcheck/invchecktest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/mq	2.682s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/obs	1.039s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/outbox	2.877s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/raftstore	81.085s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/reconcile	3.516s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/ring	4.292s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode	10.026s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit	2.585s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/storagenode/audit/audittest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/store	1.016s
+?   	github.com/ParthMalhotra07/ReliefGrid/internal/store/storetest	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testnet	1.013s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/testseam	1.720s
+ok  	github.com/ParthMalhotra07/ReliefGrid/internal/workflow	10.203s
+?   	github.com/ParthMalhotra07/ReliefGrid/loadtest/cmd/gendata	[no test files]
+?   	github.com/ParthMalhotra07/ReliefGrid/loadtest/cmd/loadreport	[no test files]
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/dataset	4.814s
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/ledger	5.215s
+ok  	github.com/ParthMalhotra07/ReliefGrid/loadtest/report	4.356s
+--- FAIL: TestDeployInternalAuthUnsetIsUnchanged (0.40s)
+    deploy_internal_auth_test.go:59: commands differ from before the switch:
+         got:
+        kubectl --context kind-reliefgrid get nodes -l reliefgrid.io/demo-cordoned=true -o name
+        make -s cluster-down \[INTERNAL_AUTH=unset\]
+        make -s cluster-up \[INTERNAL_AUTH=unset\]
+        make -s storage-image \[INTERNAL_AUTH=unset\]
+        make -s coordinator-image \[INTERNAL_AUTH=unset\]
+        make -s tools-image \[INTERNAL_AUTH=unset\]
+        helm --kube-context kind-reliefgrid install storage deploy/helm/storage -n reliefgrid --create-namespace --wait --wait-for-jobs --timeout 6m
+        kubectl --context kind-reliefgrid -n reliefgrid get secret storage-operator-token -o jsonpath=\{.data.token\}
+        curl -s -m 3 -H Authorization:\ Bearer\ op http://127.0.0.1:\<port\>/admin/nodes
+        kubectl --context kind-reliefgrid -n reliefgrid port-forward svc/storage-coordinator \<port\>:8080
+        make -s app-deploy \[INTERNAL_AUTH=unset\]
+        kubectl --context kind-reliefgrid get nodes -o json
+        reset exit 0
+        kubectl --request-timeout=10s --context kind-reliefgrid get nodes -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get service storage-coordinator
+        helm --kube-context kind-reliefgrid list -n reliefgrid -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get pvc data-reliefgrid-rabbitmq-0 --ignore-not-found -o jsonpath=\{.metadata.uid\}
+        make app-images \[INTERNAL_AUTH=unset\]
+        kind load docker-image --name reliefgrid reliefgrid/api:a15-fixed \[INTERNAL_AUTH=unset\]
+        docker image inspect reliefgrid/api:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/matcher:a15-fixed \[INTERNAL_AUTH=unset\]
+        docker image inspect reliefgrid/matcher:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/ui:a15-fixed \[INTERNAL_AUTH=unset\]
+        docker image inspect reliefgrid/ui:a15-fixed --format \{\{.Id\}\}
+        helm repo add reliefgrid-traefik https://traefik.github.io/charts
+        helm dependency build deploy/helm/reliefgrid
+        helm --kube-context kind-reliefgrid upgrade --install reliefgrid deploy/helm/reliefgrid -n reliefgrid --create-namespace -f deploy/helm/reliefgrid/values-app-kind.yaml --set storage.enabled=false --set-string app.api.image.tag=a15-fixed --set-string app.matcher.image.tag=a15-fixed --set-string app.ui.image.tag=a15-fixed --set-string storage.image.tag=a15-fixed --set-string storage.coordinator.image.tag=a15-fixed --wait --wait-for-jobs --timeout 10m
+        app-deploy exit 3
+
+        want:
+        kubectl --context kind-reliefgrid get nodes -l reliefgrid.io/demo-cordoned=true -o name
+        make -s cluster-down \[INTERNAL_AUTH=unset\]
+        make -s cluster-up \[INTERNAL_AUTH=unset\]
+        make -s storage-image \[INTERNAL_AUTH=unset\]
+        make -s coordinator-image \[INTERNAL_AUTH=unset\]
+        make -s tools-image \[INTERNAL_AUTH=unset\]
+        helm --kube-context kind-reliefgrid install storage deploy/helm/storage -n reliefgrid --create-namespace --wait --wait-for-jobs --timeout 6m
+        kubectl --context kind-reliefgrid -n reliefgrid get secret storage-operator-token -o jsonpath=\{.data.token\}
+        kubectl --context kind-reliefgrid -n reliefgrid port-forward svc/storage-coordinator \<port\>:8080
+        curl -s -m 3 -H Authorization:\ Bearer\ op http://127.0.0.1:\<port\>/admin/nodes
+        make -s app-deploy \[INTERNAL_AUTH=unset\]
+        kubectl --context kind-reliefgrid get nodes -o json
+        reset exit 0
+        kubectl --request-timeout=10s --context kind-reliefgrid get nodes -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get service storage-coordinator
+        helm --kube-context kind-reliefgrid list -n reliefgrid -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get pvc data-reliefgrid-rabbitmq-0 --ignore-not-found -o jsonpath=\{.metadata.uid\}
+        make app-images \[INTERNAL_AUTH=unset\]
+        kind load docker-image --name reliefgrid reliefgrid/api:a15-fixed \[INTERNAL_AUTH=unset\]
+        docker image inspect reliefgrid/api:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/matcher:a15-fixed \[INTERNAL_AUTH=unset\]
+        docker image inspect reliefgrid/matcher:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/ui:a15-fixed \[INTERNAL_AUTH=unset\]
+        docker image inspect reliefgrid/ui:a15-fixed --format \{\{.Id\}\}
+        helm repo add reliefgrid-traefik https://traefik.github.io/charts
+        helm dependency build deploy/helm/reliefgrid
+        helm --kube-context kind-reliefgrid upgrade --install reliefgrid deploy/helm/reliefgrid -n reliefgrid --create-namespace -f deploy/helm/reliefgrid/values-app-kind.yaml --set storage.enabled=false --set-string app.api.image.tag=a15-fixed --set-string app.matcher.image.tag=a15-fixed --set-string app.ui.image.tag=a15-fixed --set-string storage.image.tag=a15-fixed --set-string storage.coordinator.image.tag=a15-fixed --wait --wait-for-jobs --timeout 10m
+        app-deploy exit 3
+--- FAIL: TestDeployInternalAuthTrue (0.39s)
+    deploy_internal_auth_test.go:84: got:
+        kubectl --context kind-reliefgrid get nodes -l reliefgrid.io/demo-cordoned=true -o name
+        make -s cluster-down \[INTERNAL_AUTH=true\]
+        make -s cluster-up \[INTERNAL_AUTH=true\]
+        make -s storage-image \[INTERNAL_AUTH=true\]
+        make -s coordinator-image \[INTERNAL_AUTH=true\]
+        make -s tools-image \[INTERNAL_AUTH=true\]
+        helm --kube-context kind-reliefgrid install storage deploy/helm/storage -n reliefgrid --create-namespace -f deploy/helm/storage/values-internal-auth.yaml --wait --wait-for-jobs --timeout 6m
+        kubectl --context kind-reliefgrid -n reliefgrid get secret storage-operator-token -o jsonpath=\{.data.token\}
+        curl -s -m 3 -H Authorization:\ Bearer\ op http://127.0.0.1:\<port\>/admin/nodes
+        kubectl --context kind-reliefgrid -n reliefgrid port-forward svc/storage-coordinator \<port\>:8080
+        make -s app-deploy \[INTERNAL_AUTH=true\]
+        kubectl --context kind-reliefgrid get nodes -o json
+        reset exit 0
+        helm --kube-context kind-reliefgrid get values storage -n reliefgrid -a -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid get nodes -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get service storage-coordinator
+        helm --kube-context kind-reliefgrid list -n reliefgrid -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get pvc data-reliefgrid-rabbitmq-0 --ignore-not-found -o jsonpath=\{.metadata.uid\}
+        make app-images \[INTERNAL_AUTH=true\]
+        kind load docker-image --name reliefgrid reliefgrid/api:a15-fixed \[INTERNAL_AUTH=true\]
+        docker image inspect reliefgrid/api:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/matcher:a15-fixed \[INTERNAL_AUTH=true\]
+        docker image inspect reliefgrid/matcher:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/ui:a15-fixed \[INTERNAL_AUTH=true\]
+        docker image inspect reliefgrid/ui:a15-fixed --format \{\{.Id\}\}
+        helm repo add reliefgrid-traefik https://traefik.github.io/charts
+        helm dependency build deploy/helm/reliefgrid
+        helm --kube-context kind-reliefgrid upgrade --install reliefgrid deploy/helm/reliefgrid -n reliefgrid --create-namespace -f deploy/helm/reliefgrid/values-app-kind.yaml --set storage.enabled=false -f deploy/helm/reliefgrid/values-internal-auth.yaml --set-string app.api.image.tag=a15-fixed --set-string app.matcher.image.tag=a15-fixed --set-string app.ui.image.tag=a15-fixed --set-string storage.image.tag=a15-fixed --set-string storage.coordinator.image.tag=a15-fixed --wait --wait-for-jobs --timeout 10m
+        app-deploy exit 3
+
+        want:
+        kubectl --context kind-reliefgrid get nodes -l reliefgrid.io/demo-cordoned=true -o name
+        make -s cluster-down \[INTERNAL_AUTH=true\]
+        make -s cluster-up \[INTERNAL_AUTH=true\]
+        make -s storage-image \[INTERNAL_AUTH=true\]
+        make -s coordinator-image \[INTERNAL_AUTH=true\]
+        make -s tools-image \[INTERNAL_AUTH=true\]
+        helm --kube-context kind-reliefgrid install storage deploy/helm/storage -n reliefgrid --create-namespace -f deploy/helm/storage/values-internal-auth.yaml --wait --wait-for-jobs --timeout 6m
+        kubectl --context kind-reliefgrid -n reliefgrid get secret storage-operator-token -o jsonpath=\{.data.token\}
+        kubectl --context kind-reliefgrid -n reliefgrid port-forward svc/storage-coordinator \<port\>:8080
+        curl -s -m 3 -H Authorization:\ Bearer\ op http://127.0.0.1:\<port\>/admin/nodes
+        make -s app-deploy \[INTERNAL_AUTH=true\]
+        kubectl --context kind-reliefgrid get nodes -o json
+        reset exit 0
+        helm --kube-context kind-reliefgrid get values storage -n reliefgrid -a -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid get nodes -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get service storage-coordinator
+        helm --kube-context kind-reliefgrid list -n reliefgrid -o json
+        kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get pvc data-reliefgrid-rabbitmq-0 --ignore-not-found -o jsonpath=\{.metadata.uid\}
+        make app-images \[INTERNAL_AUTH=true\]
+        kind load docker-image --name reliefgrid reliefgrid/api:a15-fixed \[INTERNAL_AUTH=true\]
+        docker image inspect reliefgrid/api:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/matcher:a15-fixed \[INTERNAL_AUTH=true\]
+        docker image inspect reliefgrid/matcher:a15-fixed --format \{\{.Id\}\}
+        kind load docker-image --name reliefgrid reliefgrid/ui:a15-fixed \[INTERNAL_AUTH=true\]
+        docker image inspect reliefgrid/ui:a15-fixed --format \{\{.Id\}\}
+        helm repo add reliefgrid-traefik https://traefik.github.io/charts
+        helm dependency build deploy/helm/reliefgrid
+        helm --kube-context kind-reliefgrid upgrade --install reliefgrid deploy/helm/reliefgrid -n reliefgrid --create-namespace -f deploy/helm/reliefgrid/values-app-kind.yaml --set storage.enabled=false -f deploy/helm/reliefgrid/values-internal-auth.yaml --set-string app.api.image.tag=a15-fixed --set-string app.matcher.image.tag=a15-fixed --set-string app.ui.image.tag=a15-fixed --set-string storage.image.tag=a15-fixed --set-string storage.coordinator.image.tag=a15-fixed --wait --wait-for-jobs --timeout 10m
+        app-deploy exit 3
+
+        reset:
+        reset: delete the kind cluster
+        reset: create the kind cluster
+        reset: build and load the storage image
+        reset: build and load the coordinator image
+        reset: build and load the tools image
+        reset: install deploy/helm/storage
+        reset: wait until the coordinator reports nine storage nodes UP
+        reset: install app against existing storage (including chart dependencies)
+        reset: check that no worker is cordoned
+        reset: clean deployment in 0 s
+
+        app:
+        application deployment evidence: /tmp/TestDeployInternalAuthTrue2630609813/001/a15
+        kind placement inputs: three Ready data workers and one Ready infra worker
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	71.267s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts/demos/drain-outbox	1.074s
+ok  	github.com/ParthMalhotra07/ReliefGrid/scripts/reconcile-crash	1.049s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/mq	1.016s
+ok  	github.com/ParthMalhotra07/ReliefGrid/spike/raft	1.075s
+ok  	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	1.043s
+ok  	github.com/ParthMalhotra07/ReliefGrid/ui	1.031s
+FAIL
+make: *** [Makefile:101: test] Error 1
+
+real	1m50.280s
+user	6m26.656s
+sys	0m41.674s
