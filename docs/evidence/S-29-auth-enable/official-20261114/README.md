@@ -131,6 +131,21 @@ not a safety assertion.
    settled requests, and the full chaos suite reports. `off-repo/SHA256SUMS.full-run` lists every
    file of the run root with its sha256, size and location.
 
+## Qualification (#183, added after the run)
+
+The negative log findings above depend on every pod log having been read successfully. They
+are: no sender token in any pod log (stage d), no old or new token in any pod log (stage g), and
+no in-cluster sender refused (stages b, d, g). The helpers in `stages/lib.sh` did not enforce
+that. `no_token_in_logs` returned 0 when a pod's `kubectl logs` failed, and `refusals` /
+`in_cluster_refusals` used `|| true`, which also hid pod list and log read failures (#183
+reproduces this offline). No read failure is known from this run, and the planted-copy check
+shows that the scan matched when logs were read. But the run does not record per-pod
+read success, so these findings are observations, not proof of complete collection. They also
+cover only the pods that existed when each check ran: previous logs of restarted containers were
+not scanned, and pods replaced by the rotation's rollout restarts were gone. The scripts and logs of this run are left
+unchanged. Later gates use `scripts/auth-log-checks.sh` (#184), which fails closed and writes
+a completeness summary.
+
 ## Not covered
 
 - Raft TCP is not covered by this header (network policy is its boundary).
