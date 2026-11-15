@@ -1,0 +1,37 @@
+# S4.2 admission gate and storagectl replace
+result:     FAILED (1 of 16 checks failed)
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+date:       2026-11-15T11:43:15Z
+code tree:  dc0cce1cb83b
+code dirty: no
+shard/pod:  1/storage-shard-1-2
+
+## checks
+PASS  guard: the chart cannot set ADMISSION (absent from every template, value and rendered manifest)
+PASS  guard: the chart cannot set STORAGECTL_CRASH_AT (absent from every template, value and rendered manifest)
+PASS  guard: every storage pod is rendered with MANIFEST_NAME (the gate on)
+PASS  the coordinator restarted on the new image
+PASS  storage-shard-0 restarted on the new image
+PASS  storage-shard-1 restarted on the new image
+PASS  storage-shard-2 restarted on the new image
+PASS  shard-1: three committed voters, caught up
+PASS  #21: storage-shard-1-0 reports the committed configuration = manifest peerIds
+PASS  #21: storage-shard-1-1 reports the committed configuration = manifest peerIds
+PASS  #21: storage-shard-1-2 reports the committed configuration = manifest peerIds
+PASS  #21: the bootstrap fence names the committed configuration
+PASS  Role storage-admission: get on the three manifests only
+PASS  restart: storage-shard-1-2 back as storage-shard-1-2/39fdeb9d-7f7c-433b-bb24-0e9f9d67ee03 without any manifest change
+PASS  restart: admitted unchanged (none)
+FAIL  control:  reaches storage-shard-1-2:7000 and :8080 before the wipe
+
+## manifest
+{
+  "groupId": "shard-1",
+  "peerIds": "[\"storage-shard-1-0/0ee8e7eb-8e50-411c-97cd-25026a6f5f8e\",\"storage-shard-1-1/a4be713a-b660-4845-b3c2-6af7aaf2d8f8\",\"storage-shard-1-2/39fdeb9d-7f7c-433b-bb24-0e9f9d67ee03\"]",
+  "peers": "[{\"podName\":\"storage-shard-1-0\",\"address\":\"storage-shard-1-0.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-1\",\"address\":\"storage-shard-1-1.storage-shard-1.reliefgrid.svc.cluster.local:7000\"},{\"podName\":\"storage-shard-1-2\",\"address\":\"storage-shard-1-2.storage-shard-1.reliefgrid.svc.cluster.local:7000\"}]",
+  "phase": "BOOTSTRAPPED",
+  "ringVersion": "1",
+  "shard": "1"
+}
+
+## replace Job logs
