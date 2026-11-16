@@ -118,7 +118,7 @@ def figure4():
 STYLES={
     'title':ParagraphStyle('title',fontName='Helvetica-Bold',fontSize=18,leading=21,textColor=INK,spaceAfter=8),
     'h2':ParagraphStyle('h2',fontName='Helvetica-Bold',fontSize=13.5,leading=16,textColor=INK,spaceBefore=7,spaceAfter=7,keepWithNext=True),
-    'body':ParagraphStyle('body',fontName='Times-Roman',fontSize=11.1,leading=14,spaceAfter=6),
+    'body':ParagraphStyle('body',fontName='Times-Roman',fontSize=10.5,leading=13,spaceAfter=5),
     'tablecaption':ParagraphStyle('tablecaption',fontName='Times-Italic',fontSize=9.5,leading=11.5,spaceAfter=6,keepWithNext=True),
     'caption':ParagraphStyle('caption',fontName='Times-Italic',fontSize=9,leading=11,spaceAfter=7),
     'table':ParagraphStyle('table',fontName='Times-Roman',fontSize=9,leading=11),
@@ -138,13 +138,14 @@ def markup(text):
 
 def table(rows):
     count=len(rows[0]);widths=([110,245,WIDTH-355] if count==3 else [110,135,165,WIDTH-410])
+    if count==2:widths=[190,WIDTH-190]
     if count==4 and rows[0][0]=='Decision':widths=[100,105,220,WIDTH-425]
     if count==3 and 'PS internal' in rows[0][0]:widths=[125,230,WIDTH-355]
     if count==3 and rows[0][0].startswith('Demo'):widths=[135,WIDTH-225,90]
     if count==3 and rows[0][0]=='Fault':widths=[135,265,WIDTH-400]
     cells=[[Paragraph(markup(cell),STYLES['th' if i==0 else 'table']) for cell in row] for i,row in enumerate(rows)]
     t=Table(cells,colWidths=widths,repeatRows=1,hAlign='LEFT')
-    t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),BLUE),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),.6,EDGE),('LINEBELOW',(0,1),(-1,-1),.25,colors.HexColor('#cdd6dd')),('LEFTPADDING',(0,0),(-1,-1),5),('RIGHTPADDING',(0,0),(-1,-1),5),('TOPPADDING',(0,0),(-1,-1),4),('BOTTOMPADDING',(0,0),(-1,-1),4)]))
+    t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),BLUE),('VALIGN',(0,0),(-1,-1),'TOP'),('LINEBELOW',(0,0),(-1,0),.6,EDGE),('LINEBELOW',(0,1),(-1,-1),.25,colors.HexColor('#cdd6dd')),('LEFTPADDING',(0,0),(-1,-1),5),('RIGHTPADDING',(0,0),(-1,-1),5),('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3)]))
     return t
 
 def footer(canvas,doc):
@@ -183,6 +184,9 @@ def build(root,output):
                 story.append(KeepTogether(group));continue
             if line_text.startswith('# '):story.append(Paragraph(markup(line_text[2:]),STYLES['title']));i+=1;continue
             if line_text.startswith('## '):story.append(Paragraph(markup(line_text[3:]),STYLES['h2']));i+=1;continue
+            if line_text.startswith('- '):
+                story.append(Paragraph(markup(line_text[2:]),STYLES['body'],bulletText='\u2022'))
+                i+=1;continue
             paragraph=[line_text];i+=1
             while i<len(lines) and lines[i].strip() and not lines[i].lstrip().startswith(('#','|','![')):
                 paragraph.append(lines[i].strip());i+=1

@@ -4,9 +4,25 @@ Parth Malhotra and Hrishabh Sharrma
 
 Working submission draft. Source baseline: b77e5b9761119a73bed8f2d3eede40c863492275. Historical runs retain their own revisions. Phase 2 evidence is reviewed at #176 (25ea8bc); its measured source remains 514bb33. Final gate and final submission reference pin remain outstanding.
 
-## 1. Abstract and problem statement
+## 1. Abstract
 
-An emergency request may remain unmatched until a compatible resource becomes available. ReliefGrid separates durable acceptance from assignment. Two Go application services, an HTTP API and asynchronous matcher, use three storage shards, each replicated by three Raft voters. Durable intents, conditional claims and permanent attempt closures coordinate assignments across shards. A transactional outbox bridges committed changes to RabbitMQ. Evaluation combines acknowledged-write ledgers, authoritative reads, invariant checks, replica audits and controlled local Kubernetes faults. Retained Phase 1 load reports bracket the HTTP threshold at 50 requests/s on one host; background matching and singleton availability are reported separately.
+In an emergency, a request for help (an ambulance, food, shelter) often cannot be matched straight away, because no suitable resource is free yet. ReliefGrid is a distributed system that accepts such requests safely and keeps trying to match them as resources become available.
+
+It has two application services, an HTTP API and an asynchronous matcher, on top of a storage layer of three shards. Each shard is copied on three replicas that agree on every change using the Raft consensus protocol. Changes are handed to RabbitMQ through a transactional outbox, so a committed change is never lost between the database and the queue.
+
+We deployed it on a local Kubernetes cluster (kind) and tested it with scripted demos, fault injection and load tests. In the final gate, all 9 required demos passed twice, and the chaos tests lost no acknowledged writes. Load testing found that every read was adding an entry to the Raft log. Fixing this raised the load the system handles before slowing down from 50 to over 80 requests per second, and made writes about 7 times faster (p99 684 ms to 94 ms).
+
+## Introduction
+
+The problem statement asks for a system that matches emergency requests to available resources, built from microservices, a coordinator, a message queue and sharded storage with replicas. The hard part is not the matching itself. It is what happens when things fail: a server crashes in the middle of a write, the network splits, or a message is delivered twice.
+
+Our main goal was that the system never gives a wrong answer, even during failures. In practice that means:
+
+- a write that the system confirmed is never lost;
+- the same resource is never given to two requests;
+- if the system is not sure whether a write happened, it says "unknown" and retries the same operation, instead of guessing.
+
+The rest of this report explains how the system is built (sections 3 to 5), how we worked and tested it (methodology and section 6), what the load tests showed (section 7), and the decisions we made and why (section 8).
 
 ## 2. Requirement, service and API mapping
 
@@ -38,6 +54,14 @@ T4/T2. Internal functions and technology roles. The coordinator selects a fixed 
 | Enumeration/publication | Scan; outbox read and published marking | Complete-shard reads; durable handoff |
 
 Keyed creates freeze canonical payload, identifiers, timestamps and original response across retries; changed-payload key reuse is rejected. Unknown outcomes retain the same identity. ETags/If-Match protect conditional updates. Cursors bind query/ring state; pages are not a global snapshot. A failed/partial shard scan cannot establish absence. Current ownership always requires authoritative state, not a historical successful operation result.
+
+## Methodology
+
+We split the design into named goals and built each goal on its own branch, merged through a pull request. Every pull request was reviewed by the other person before merging, and the reviews often found real bugs.
+
+For most changes we wrote a failing test first, then the fix. For important checks we also did mutation testing: we broke the code on purpose and made sure a test failed. This showed that our tests actually catch the bugs they are meant to catch.
+
+Bigger claims were checked by scripted runs on a fresh cluster: a "gate" that runs all 9 required demos twice, plus replacement, chaos, audit and auth checks. Every run keeps its logs and results with checksums in the repository, so each result in this report can be traced to a run. When a run failed, we kept it in the evidence, found the cause, fixed it and ran it again.
 
 ## 3. Architecture, sharding and consistency
 
@@ -138,8 +162,6 @@ T5. Fault behavior and evidence boundaries. Ten chaos faults and two deliberate 
 
 The scoped gate's collector records fixed 2/2 replicas with no HPA/ScaledObject, but runtime build binding is NOT_ESTABLISHED for dev images. Some raw logs/screenshots remain outside the repository, listed in the report. Alias routes were deployed but not exercised by that gate; later forms were not part of its source. Final aliases/forms and excluded enhancements need their own accepted run.
 
-Development and evaluation method. We divided the architecture plan into named goals, each implemented on its own branch and reviewed through a pull request. We wrote failing tests before implementing changes and used mutation checks to confirm that selected tests caught deliberately broken safety rules. Each of us reviewed the other's work, with particular attention to ownership boundaries and failure cases. Scripted demonstrations and clean deployment gates checked the required operations, recovery paths and replica counts. Separate chaos and load campaigns exercised faults and performance under recorded configurations, retaining command output, reports and checksums, with hashes and locations for raw files kept outside the repository. We kept incomplete audits, source and image qualifications, and untested combinations visible so that a passing run supported only the claim it actually checked.
-
 ## Later campaigns and application checks
 
 The later #167 campaign kept API2/matcher2/UI1 active and passed 22 checks, distinct from the app-quiesced gate. Replication lag is max(0, leaderCommitIndex - followerRaftAppliedIndex), not commit minus last FSM command: barriers/no-ops/configuration entries do not advance that SQL counter. Its idle sample advanced commit 86174 to 86237 with FSM 85904, producing 333 false entries under the old formula and zero Raft-level lag. A real delay reached 51 then settled to zero; the stale-reader control detected 514 stale reads. Neither run establishes chaos safety under measured high load. [6]
@@ -147,6 +169,33 @@ The later #167 campaign kept API2/matcher2/UI1 active and passed 22 checks, dist
 Raft progress is not SQLite completion. Settle requires caught-up groups, equal completed-FSM indexes, acknowledged-ledger read-back and all nine members UP. Unreadable status is no sample, never zero. Merkle compares complete replicas at equal command indexes; it diagnoses divergence without proving the read protocol or repairing live rows.
 
 Application evidence includes real-FSM adversarial schedules and retained kind/broker/browser tests. A historical scaling run records 637 aggregate CANCELLED/no-assigned-resource checks, not a per-request response ledger. Dirty source/missing immutable build binding limits it to recorded images; its final fixed-profile snapshot was unverified. Newer scoped-gate snapshots do not retroactively fill that gap. UI forms preserve key/body across reentry/unknown replies and require a current read: v3 cannot be confirmed by v2. Saved/offline state is labelled and offline writes disabled. [4-5,9]
+
+## Final gate
+
+Run gate-20261115T192826Z, code at 636b265, evidence #186. This is the run on the frozen code, with internal authentication switched on, aging at 0 s, autoscaling off, and fixed replicas (API 2, matcher 2).
+
+| Check | Result |
+|---|---|
+| Course demos 1 to 9, two rounds | 18/18 passed (resets 106 s and 109 s) |
+| Replica replacement | 65/65 checks passed |
+| Chaos (10 faults plus 2 control experiments) | 22/22 checks passed: 0 lost writes, 0 unresolved unknowns, 0 stale reads |
+| Auth probes | 401 without a token or with a wrong one, 200 with the right one |
+| Auth log checks | All passed and complete: 71/71 pod logs read, no token found in any log |
+| Merkle audit and strict invariant check | 8/8 passed; clean, with no pending outbox events |
+| UI forms, PS alias routes (7), traced request | Passed |
+| Fixed-replica check | API 2, matcher 2, no autoscalers |
+
+The final gate passed on its third attempt. The first two stopped on problems in our test scripts, not in the system: a check that looked for a new leader only once instead of waiting for the election, and a metrics check that was not given its auth token. Both failed runs are kept in the evidence with their causes.
+
+## Internal authentication
+
+Official run, evidence #181. Internal calls between services now need a token. In the official run on a fresh deployment, all 9 demos passed with auth on, all 18 checks for refused and logged requests passed, and a full token rotation passed 40/40 checks: first only the old token worked, then both worked during the switch, then only the new one.
+
+## Not certified
+
+- Positive-interval aging and autoscaling were not verified in the final gate.
+- Token rotation was verified in the official auth run but not repeated on the final code.
+- Switching auth on for an already-running deployment was not tested.
 
 ## 7. Performance: Phase 1 and Phase 2
 
@@ -214,7 +263,11 @@ T7. PS section 12 decision matrix; rationales are not performance proofs. Other 
 | Open-model load | Closed-loop VUs | Offered/achieved gap and dropped work visible | [7] |
 | Merkle audit | Full dumps/row copying | Equal-index localization; diagnostic only | [9] |
 
-ReliefGrid demonstrates durable local matching with explicit uncertainty, committed claim fences and checked recovery. Singleton coordinator/broker, fixed membership and one-host placement bound availability realism. Positive aging, auth rollout/rotation and any final autoscaling option remain separately accepted goals. The final gate must cover its actual aliases/forms/source/images; final clean-clone/offline execution, rehearsals, recording and submission are not established by prepared scripts or this report.
+ReliefGrid shows that a sharded, replicated matching system can stay correct when parts of it fail. Across the final gate and the chaos tests, no acknowledged write was lost, no resource was given out twice, and uncertain outcomes were retried safely instead of guessed.
+
+The most useful thing we learned came from load testing. Our reads were each adding an entry to the Raft log, which made the coordinator the bottleneck. Switching to a read fence that confirms leadership without writing to the log raised the validated limit from 50 to over 80 requests per second and cut write latency by about 7 times. We would not have found this without measuring.
+
+The system still has clear limits. It runs on one machine, the coordinator and the message broker are single instances, and the cluster size is fixed. Aging and autoscaling were built but not certified. These would be the next steps.
 
 ## 9. References and repository evidence index
 
