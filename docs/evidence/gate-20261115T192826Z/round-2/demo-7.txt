@@ -1,0 +1,58 @@
+# demo-7: Restart the stopped node; replay, catch-up and equal committed state
+result:     PASS (11/11 checks)
+runId:      gate-20261115/round-2
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-15T19:55:36Z
+finished:   2026-11-15T19:55:58Z
+duration:   21.9 s
+code tree:  3c5d007d397b (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: continues from demo 6 (node/reliefgrid-worker3 reliefgrid.io/demo6-handoff): shard 1's storage-shard-1-0 stopped; 100 writes under demo7-7-1794772536 while it is down (seed 7); restart by uncordoning its worker
+
+## versions
+git head: 636b265084fc
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:387cabe5b0d694fc19632f39c3713ad1051b0e396201926a6c35d36a25fff0a1
+image reliefgrid/coordinator:dev: sha256:8e2a8e4598413c87273b65950adc7d166fc0e37309dd3d6585a94aeea403c4f5
+
+## checks
+PASS  preflight: coordinator reachable
+PASS  stop: continuing from demo 6: storage-shard-1-0 is still Pending with reliefgrid-worker3 cordoned
+PASS  stopped: storage-shard-1-0 is down; storage-shard-1-1 leads shard 1 at term 3
+PASS  writes: 100 writes to shard 1 committed while storage-shard-1-0 was down
+PASS  restart: reliefgrid-worker3 uncordoned; storage-shard-1-0 is Running on it again (1 s)
+PASS  catch-up: storage-shard-1-0 is caughtUp at leader commit 4319 (>= 4319, the commit index after the writes); FSM at command 4319
+PASS  data-ready: storage-shard-1-0 is Ready (readiness gated on catch-up)
+PASS  identity: storage-shard-1-0 rejoined as storage-shard-1-0/6f3d62ae-b2c7-4eb8-a0d4-338ac2311f12 (same disk); storage-shard-1-1 leads all three
+PASS  equal state: the three replicas' dumps are identical at appliedIndex 4319
+PASS  replayed data: all 100 writes made while it was down are served by storage-shard-1-0's own FSM
+PASS  coordinator: all nine nodes UP
+
+## commands
+shard 1 commit index after the writes: 4319 (leader storage-shard-1-1)
+
+# replay/catch-up of storage-shard-1-0 (polls of /mgmt/status)
+0s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+1s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+1s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+2s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+3s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+3s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+4s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+5s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+5s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+6s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+6s {"state":"Follower","appliedIndex":0,"commitIndex":0,"leaderCommitIndex":0,"restoredIndex":0,"caughtUp":false}
+7s {"state":"Follower","appliedIndex":4319,"commitIndex":4319,"leaderCommitIndex":4319,"restoredIndex":2898,"caughtUp":true}
+dumps of shard 1: 0 retried at different appliedIndexes
+
+# dumps of shard 1 after settling
+storage-shard-1-0 4319 6c6dde104092aa36f1264a3a8be4e9e1fdf37453a746192ed6e75b4e2fa207a7 records=917
+storage-shard-1-1 4319 6c6dde104092aa36f1264a3a8be4e9e1fdf37453a746192ed6e75b4e2fa207a7 records=917
+storage-shard-1-2 4319 6c6dde104092aa36f1264a3a8be4e9e1fdf37453a746192ed6e75b4e2fa207a7 records=917
+stale reads of the missed writes on storage-shard-1-0: 0 retried after a 503 not caught up

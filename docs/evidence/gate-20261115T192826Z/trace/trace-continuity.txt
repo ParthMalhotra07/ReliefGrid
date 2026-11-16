@@ -1,0 +1,4 @@
+publish: matcher:publish <- api:POST /api/v1/requests
+consume: matcher:consume <- matcher:publish <- api:POST /api/v1/requests
+raft.apply: storagenode:raft.apply <- storagenode:PUT /internal/data/{key} <- coordinator:coordinator.forward <- coordinator:PUT /internal/data/{key} <- api:coordclient.CompareAndSet <- api:POST /api/v1/requests
+PASS 44 spans; only external parent unresolved: [('POST /api/v1/requests', '2b98767f8e00742d')]

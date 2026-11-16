@@ -1,0 +1,16 @@
+{
+  "path": "/internal/data/cfg:gate-auth-71736efd2cb3404eb14dfb85d9f269cd",
+  "body": {
+    "operationId": "gate-auth-create-a99da64315944a8a8d724903ee35c4b2",
+    "at": 1794775181327,
+    "ringVersion": 1,
+    "value": {
+      "check": "gate-auth"
+    }
+  },
+  "cleanup": {
+    "operationId": "gate-auth-delete-8abe2201efb94c14800b41610eb19d3e",
+    "at": 1794775181327,
+    "ringVersion": 1
+  }
+}

@@ -1,0 +1,12 @@
+PASS POST /requests                  alias = /api/v1 (1 pair(s), status 201)
+PASS GET  /requests/{id}             alias = /api/v1 (1 pair(s), status 200)
+PASS PUT  /requests/{id}/status      alias = /api/v1 (1 pair(s), status 200)
+PASS POST /resources                 alias = /api/v1 (1 pair(s), status 201)
+PASS GET  /resources                 alias = /api/v1 (1 pair(s), status 200)
+PASS PUT  /resources/{id}/status     alias = /api/v1 (1 pair(s), status 200)
+PASS POST /match/{id}                alias = /api/v1 (1 pair(s), status 200)
+PASS GET /requests/000cd975-3644-5df5-bc8a-cd737d4ebfc4: alias body and ETag equal /api/v1
+PASS GET /requests/00355e17-a23c-5249-aa9b-eedc5f39b5e5: alias body and ETag equal /api/v1
+PASS GET /requests/00465263-1c84-59a7-b4dc-45af107061b9: alias body and ETag equal /api/v1
+PASS GET /resources?limit=20: alias body and ETag equal /api/v1
+PASS all seven PS alias routes answer like their /api/v1 paths

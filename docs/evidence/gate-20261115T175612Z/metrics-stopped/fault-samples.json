@@ -1,0 +1,13 @@
+[
+  {
+    "phase": "baseline",
+    "time": 1794770242.9192448,
+    "caughtUp": null,
+    "leader": "storage-shard-0-2",
+    "oldUp": 1.0,
+    "oldDown": 0.0,
+    "lag": 0.0,
+    "targets": 9.0,
+    "age": 2728.569
+  }
+]

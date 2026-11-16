@@ -1,0 +1,26 @@
+[
+  {
+    "passed": true,
+    "assertion": "manual API scale demo has no competing HPA"
+  },
+  {
+    "passed": true,
+    "assertion": "API starts at two replicas"
+  },
+  {
+    "passed": true,
+    "assertion": "all six API pods become Ready under traffic"
+  },
+  {
+    "passed": true,
+    "assertion": "every API pod, including all four new pods, serves through the Service"
+  },
+  {
+    "passed": true,
+    "assertion": "Service traffic completed without hidden failures: []"
+  },
+  {
+    "passed": true,
+    "assertion": "API restored to two replicas"
+  }
+]
