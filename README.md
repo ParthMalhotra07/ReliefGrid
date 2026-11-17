@@ -1,102 +1,194 @@
 # ReliefGrid
 
-Distributed emergency resource matching with three Raft-replicated shards,
-a deterministic SQLite state machine, coordinator-owned routing and leader
-discovery, and RabbitMQ-driven matching workflows. The application services are
-the public API and matcher; coordinator and storage provide the distributed data
-service. A dispatch UI is served through Traefik.
+ReliefGrid matches emergency requests (water, food, medicine, transportation,
+shelter) to nearby resources that can serve them. Requests and resources live in a
+sharded store: three shards, each replicated three times with Raft, so each shard
+keeps working when one of its replicas is lost. Matching runs asynchronously through
+RabbitMQ, and every claim is checked inside the replicated state machine, so a
+resource is never given to two requests. It implements the course problem statement
+*Emergency Response Matching* (PS9) on Docker and Kubernetes (kind).
 
-## Run a local demonstration
+## Architecture
 
-Use Linux, or WSL2 with Docker Desktop integration enabled. Install the exact
-versions in [tools.mk](tools.mk) using [CONTRIBUTING](CONTRIBUTING.md#tools).
-Docker must be running and reachable from that shell. The default kind profile
-uses one control plane, three data workers and one infra worker; see the
-[cluster configuration](deploy/kind/cluster.yaml).
+```mermaid
+flowchart LR
+  UI[Dispatch UI] --> T[Traefik :8080]
+  Client[PS client] --> T
+  T --> API[API x2]
+  API --> C[Coordinator<br/>ring + leader discovery]
+  M[Matcher x2] --> C
+  C --> S1[Shard 1<br/>3 Raft replicas]
+  C --> S2[Shard 2<br/>3 Raft replicas]
+  C --> S3[Shard 3<br/>3 Raft replicas]
+  S1 & S2 & S3 -. outbox relay .-> MQ[(RabbitMQ)]
+  MQ --> M
+```
 
-Also install Bash, make, Python 3, **jq, curl, GNU timeout, and a C compiler**
-(for the Go race tests) before running the commands below. `make doctor` does
-not check every auxiliary prerequisite; in particular the reset uses jq when
-confirming that all nine storage nodes are UP.
+- **API** (`cmd/api`): the public REST API under `/api/v1`, with keyed retries.
+- **Matcher** (`cmd/matcher`): consumes RabbitMQ events, claims resources, relays
+  each shard's outbox and runs the reconcilers.
+- **Coordinator** (`cmd/coordinator`): owns the consistent-hash ring (xxhash64,
+  128 virtual nodes), tracks storage heartbeats and finds each shard's leader.
+- **Storage** (`cmd/storagenode`): 3 shards × 3 replicas. Each shard is a HashiCorp
+  Raft group with a deterministic SQLite state machine.
+- **RabbitMQ**: durable queues with publisher confirms and manual acks.
+- **UI** (`ui/`): the dispatch workspace with a map, served through Traefik.
+- **Observability**: Prometheus and Grafana (`deploy/helm/observability`), and an
+  OpenTelemetry Collector with Jaeger (`deploy/helm/tracing`).
 
-An uncached machine needs network access to download the pinned Go/tooling and
-Go modules, pull container/base/kind images, and fetch the pinned Traefik chart
-through [app-chart-deps.sh](scripts/app-chart-deps.sh). The standard setup below
-is online preparation, not an offline installation. Prepare and verify the
-offline kit separately before attempting a network-isolated demonstration.
+More detail: the [report architecture chapter](docs/report/architecture.md) and the
+design records in [docs/adr](docs/adr).
+
+## Problem statement mapping
+
+The seven client operations are served under `/api/v1` and, through Traefik, at the
+bare paths the problem statement uses:
+
+| PS operation | Canonical route | PS alias |
+|---|---|---|
+| Submit a request | `POST /api/v1/requests` | `POST /requests` |
+| Request details | `GET /api/v1/requests/{id}` | `GET /requests/{id}` |
+| Update request status | `PUT /api/v1/requests/{id}/status` | `PUT /requests/{id}/status` |
+| Register a resource | `POST /api/v1/resources` | `POST /resources` |
+| List resources | `GET /api/v1/resources` | `GET /resources` |
+| Update resource status | `PUT /api/v1/resources/{id}/status` | `PUT /resources/{id}/status` |
+| Match a request | `POST /api/v1/match/{requestId}` | `POST /match/{requestId}` |
+
+- Public contract: [contracts/public.yaml](contracts/public.yaml)
+- Internal (coordinator and storage) contract: [contracts/internal.yaml](contracts/internal.yaml)
+- Field-by-field mapping: [docs/report/ps-compliance.md](docs/report/ps-compliance.md)
+
+## Quick start
+
+**Prerequisites.** Linux (or WSL2) with Docker running, and the exact tool versions
+pinned in [tools.mk](tools.mk): Go, kind, kubectl, Helm, golangci-lint, oapi-codegen
+and Python's openapi-spec-validator. Install steps are in
+[CONTRIBUTING.md](CONTRIBUTING.md#tools). You also need Bash, make, Python 3, jq,
+curl and a C compiler (for the race tests). `make doctor` checks the tool versions,
+Docker, free RAM and the host ports.
 
 ```sh
 git clone https://github.com/ParthMalhotra07/ReliefGrid.git
 cd ReliefGrid
 make doctor
-make check
-make demo-reset
+make demo-reset                     # about 2 minutes
 ```
 
-`demo-reset` asks for the cluster name. It **deletes and recreates the entire
-selected kind cluster and everything running on it** (default `reliefgrid`),
-builds/loads images, bootstraps the three
-storage groups and installs the application. Storage has a single Helm owner:
-the app is installed over the standalone storage release with `storage.enabled=false`.
-
-Check the deployment and open the dispatch UI:
+`make demo-reset` asks for the cluster name, then **deletes and recreates** the kind
+cluster (default `reliefgrid`), builds and loads the images, bootstraps the three
+storage shards and installs the app. To turn on authentication between the internal
+services, run it as:
 
 ```sh
-kubectl --context kind-reliefgrid -n reliefgrid get pods
-curl --fail 'http://localhost:8080/api/v1/requests?limit=1'
+INTERNAL_AUTH=true make demo-reset
 ```
 
-The UI is at **http://localhost:8080/**. The canonical public API is under
-`/api/v1`; its routes, fields and error semantics are in the
-[public contract](contracts/public.yaml).
+See [docs/operations/internal-auth.md](docs/operations/internal-auth.md). For a
+demonstration without network access, prepare the
+[offline kit](docs/operations/offline-kit.md) in advance.
 
-## Verify the demonstrations
+**Open the tools:**
 
-```sh
-make e2e-smoke
-make demo-2
-make gate
-```
+| What | Command | Address |
+|---|---|---|
+| Dispatch UI and API | none (kind publishes the port) | http://localhost:8080/ |
+| Grafana | `make metrics-up`, then `make metrics-ui` | http://127.0.0.1:3000 (`admin` / `reliefgrid-local`, local only) |
+| Jaeger | `make tracing-up`, then `make tracing-ui` | http://127.0.0.1:16686 |
 
-`demo-1` through `demo-9` run individual asserted demonstrations. `gate` runs all
-nine twice, starting each round from a clean deployment, and asks before resets.
-Read its actual PASS/FAIL summary; a historical green run does not certify a new
-source revision. Logs and assertion reports go under `docs/evidence/<run-id>/`.
-The [demo scripts](scripts/demos) define the fixtures, bounds and pass criteria.
+Quick check: `curl --fail 'http://localhost:8080/api/v1/requests?limit=1'`.
 
-The gate includes storage failure/recovery and app interruption scenarios.
-Kubernetes readiness alone does not establish storage invariants; the demos use
-authoritative reads and invcheck where required. An interrupted write with an
-unknown outcome must retain its operation identity rather than be treated as a
-definite rejection.
+## Running the demos
 
-## Development and cleanup
+Each demo checks its own pass criteria and writes a report under
+`docs/evidence/<run-id>/`. The scripts are in [scripts/demos](scripts/demos).
 
-| Command | Purpose |
+| Target | What it shows |
 |---|---|
-| `make dev` | Create/select the kind cluster; this target alone does not install the full application |
-| `make app-deploy` | Build/load and upgrade the app against an existing standalone storage deployment |
-| `make check` | Formatting, vet, lint and race tests |
-| `make gen-check` | Verify generated contract code has no drift |
-| `make cluster-down` | Delete the local kind cluster and its data |
+| `make demo-1` | Create a request, read it back, show its shard and replicas |
+| `make demo-2` | Register a resource, list it, update its status |
+| `make demo-3` | Async and explicit matching; reciprocal assignment, no double claim |
+| `make demo-4` | Seed a large dataset; all three shards hold data |
+| `make demo-5` | A burst of requests; RabbitMQ counts, matching and waiting results |
+| `make demo-6` | Stop a shard leader; reads and writes continue on the majority |
+| `make demo-7` | Restart the stopped node; it replays the log and catches up |
+| `make demo-8` | Delete an API or matcher pod while work continues |
+| `make demo-9` | Scale the API from 2 to 6 replicas under traffic |
 
-For a fresh full setup use `make demo-reset` as above. For an app-only upgrade use
-`make app-deploy`; it preserves the standalone storage release. These commands
-target the local demonstration environment.
+**Demo 6 → 7 pairing:** run demo 7 right after demo 6 (`make demo-6 demo-7`). Demo 6
+leaves its stopped pod for demo 7 to restart. Run on its own, demo 7 stops a leader
+itself, but only if the shard is fully healthy.
 
-## Report and presentation
+## Testing and verification
 
-The classroom deployment target is local kind. Cloud deployment is parked.
-Submission must include the **public GitHub repository URL**; verify signed-out
-access to [this repository](https://github.com/ParthMalhotra07/ReliefGrid). A live
-demonstration is **mandatory**. The recording is a backup and must show deployment
-from scratch, including every deployment step; verify that the recording plays
-back successfully. The professor requires the report to be **under 10 pages**.
-The shared outline, final formatting and exported page count still need review.
+| Command | What it does |
+|---|---|
+| `make check` | `git diff --check`, gofmt, go vet, golangci-lint, `go test -race ./...` |
+| `make gen-check` | Regenerates code from `contracts/` and fails on any drift |
+| `make gate` | All nine demos from a clean deployment, twice, with a summary ([gate.sh](scripts/demos/gate.sh)) |
+| `make verify-S4.3` | Chaos Mesh suite: leader kills, isolation, restarts, plus negative controls |
+| `scripts/verify-S4.5.sh --kind` | Merkle audit: each shard's replicas hash equal at one index ([guide](docs/operations/merkle-audit.md)) |
+| `loadtest/run.sh step` | A k6 load run on kind, followed by an audit and an invariant check |
+| `scripts/verify-S5.2.sh` | Checks the recorded load reports (no cluster needed) |
+| `make verify-ps-aliases` | The seven PS aliases through the deployed Traefik |
 
-The [report core](https://github.com/ParthMalhotra07/ReliefGrid/pull/137) and
-[three-round rehearsal runbook](https://github.com/ParthMalhotra07/ReliefGrid/pull/144)
-are prepared for review. Their PR state distinguishes prepared material from
-merged submission content. Final readiness also requires the owners' reviewed
-report, actual rehearsal notes, a playable backup recording and the submission
-receipt; this README does not claim those actions have happened.
+`make gate`, `make verify-S4.3` and the load harness need a kind cluster; the gate
+and the load harness recreate it.
+
+## Results
+
+| Check | Result | Evidence |
+|---|---|---|
+| Final gate `gate-20261115T192826Z` at `636b265`, internal auth on | Demos 18/18 (two rounds); replacement 65/65; chaos 22/22 with 0 lost writes, 0 unresolved unknowns, 0 stale reads; Merkle 8/8 | [evidence](docs/evidence/gate-20261115T192826Z), [#186](https://github.com/ParthMalhotra07/ReliefGrid/pull/186) |
+| Internal auth enable and rotation | Official run recorded | [#181](https://github.com/ParthMalhotra07/ReliefGrid/pull/181) |
+| Load: saturation point | Phase 1 (strong reads) 50 req/s → Phase 2 (linearizable reads) > 80 req/s, validated n=3 | [evidence](docs/evidence/S5.2/phase2-linearizable), [#176](https://github.com/ParthMalhotra07/ReliefGrid/pull/176) |
+| Load: baseline write p99 at 25 req/s | 684 ms → 94 ms | [comparison](docs/evidence/S5.2/phase2-linearizable/comparison.md) |
+
+Phase 1 evidence is in [docs/evidence/S5.2](docs/evidence/S5.2). A gate result
+belongs to the commit it ran on, not automatically to later commits.
+
+## Repository layout
+
+| Folder | Contents |
+|---|---|
+| `cmd/` | Binaries: api, matcher, coordinator, storagenode, storagectl, invcheck |
+| `internal/` | Libraries: FSM, Raft store, ring, coordinator, workflow, messaging, outbox, auth |
+| `contracts/` | OpenAPI contracts (public, internal), event schemas, ring spec |
+| `deploy/` | kind config, Helm charts (storage, app, observability, tracing, autoscaling), offline kit |
+| `ui/` | Dispatch UI (React and Leaflet, served by a small Go server) |
+| `scripts/` | Demo, gate, verification, deploy and CI scripts |
+| `chaos/` | Chaos Mesh experiments, fault scripts and the result judge |
+| `loadtest/` | k6 load harness, dataset generator and report tooling |
+| `tests/` | Adversarial workflow schedules and storage test seams |
+| `spike/` | Early Raft and RabbitMQ experiments |
+| `infra/` | Optional GCP setup (parked) |
+| `docs/` | Report, design records, operations guides and recorded evidence |
+
+## Limitations
+
+- Everything runs on a single host (kind); node failures are simulated on one machine.
+- The coordinator and the RabbitMQ broker are single instances.
+- Shard membership is fixed: three shards of three replicas, with no resharding.
+- Request aging with a positive interval, and autoscaling, are implemented but not
+  certified by the final gate (it ran with aging `0s` and fixed replica counts).
+- Turning internal auth on in an already running deployment has not been tested;
+  it is enabled at install time.
+
+## Contributions
+
+| Hrishabh | Parth |
+|---|---|
+| Storage, Raft and sharding: SQLite state machine, hash ring, snapshots, coordinator routing, scans, Kubernetes storage, admission and replacement | API, workflow and messaging: contracts, public API, intent-first matching, retries, relay, broker topology, reconciliation |
+| Consistency and reads: checks inside the state machine, unknown-outcome handling, read fence, linearizable reads | UI and forms: dispatch workspace, live updates, request and resource forms |
+| Chaos and verification: invariant checker, failure harness, Chaos Mesh suite, Merkle audit | Metrics and dashboards: app metrics, Grafana dashboards, API and matcher autoscaling |
+| Performance and tracing: read-fence study, tracing, storage metrics, load harness and results | Caller authentication: credential helpers, API, matcher and operational callers |
+| Auth receivers: coordinator and storage auth, enable switch, rotation evidence | Report and delivery: core report chapters, design records, offline kit, package checks, rehearsal plan |
+| Gates and evidence: demo gate, final gate, CI and test fixes | Verification: app demos, recovery checks, evidence collectors |
+
+**Both:** architecture and interface decisions, report writing, demo rehearsals, and
+reviews of each other's pull requests.
+
+## Report
+
+The report source is in [docs/report](docs/report/README.md), starting with the
+[architecture](docs/report/architecture.md) and
+[requirements and results](docs/report/requirements-and-results.md) chapters.
