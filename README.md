@@ -60,32 +60,46 @@ bare paths the problem statement uses:
 
 ## Quick start
 
-**Prerequisites.** Linux (or WSL2) with Docker running, and the exact tool versions
-pinned in [tools.mk](tools.mk): Go, kind, kubectl, Helm, golangci-lint, oapi-codegen
-and Python's openapi-spec-validator. Install steps are in
-[CONTRIBUTING.md](CONTRIBUTING.md#tools). You also need Bash, make, Python 3, jq,
-curl and a C compiler (for the race tests). `make doctor` checks the tool versions,
-Docker, free RAM and the host ports.
+**Prerequisites.**
+
+- Linux, or WSL2 with Docker Desktop integration enabled. Docker must be running
+  and reachable from the shell you use.
+- The exact tool versions pinned in [tools.mk](tools.mk): Go, kind, kubectl, Helm,
+  golangci-lint, oapi-codegen and Python's openapi-spec-validator. Install steps are
+  in [CONTRIBUTING.md](CONTRIBUTING.md#tools).
+- Bash, make, Python 3, jq, curl, GNU `timeout` and a C compiler (for the race tests).
+  `make doctor` checks the tool versions, Docker, free RAM and the host ports, but
+  not these extra tools; the reset uses jq to confirm all nine storage nodes are UP.
+
+The cluster has one control plane, three data workers and one infra worker
+([deploy/kind/cluster.yaml](deploy/kind/cluster.yaml)). The first setup needs network
+access to download the pinned tools and Go modules, pull the container and kind
+images, and fetch the pinned Traefik chart
+([scripts/app-chart-deps.sh](scripts/app-chart-deps.sh)). This is an online setup,
+not an offline one.
 
 ```sh
 git clone https://github.com/ParthMalhotra07/ReliefGrid.git
 cd ReliefGrid
 make doctor
+make check
 make demo-reset                     # about 2 minutes
 ```
 
-`make demo-reset` asks for the cluster name, then **deletes and recreates** the kind
-cluster (default `reliefgrid`), builds and loads the images, bootstraps the three
-storage shards and installs the app. To turn on authentication between the internal
-services, run it as:
+`make demo-reset` asks for the cluster name, then **deletes and recreates the whole
+kind cluster** (default `reliefgrid`) and everything on it, builds and loads the
+images, bootstraps the three storage shards and installs the app. Storage has one
+Helm owner: the app is installed over the standalone storage release with
+`storage.enabled=false`. To turn on authentication between the internal services,
+run it as:
 
 ```sh
 INTERNAL_AUTH=true make demo-reset
 ```
 
 See [docs/operations/internal-auth.md](docs/operations/internal-auth.md). For a
-demonstration without network access, prepare the
-[offline kit](docs/operations/offline-kit.md) in advance.
+demonstration without network access, prepare and verify the
+[offline kit](docs/operations/offline-kit.md) separately, in advance.
 
 **Open the tools:**
 
@@ -95,7 +109,20 @@ demonstration without network access, prepare the
 | Grafana | `make metrics-up`, then `make metrics-ui` | http://127.0.0.1:3000 (`admin` / `reliefgrid-local`, local only) |
 | Jaeger | `make tracing-up`, then `make tracing-ui` | http://127.0.0.1:16686 |
 
-Quick check: `curl --fail 'http://localhost:8080/api/v1/requests?limit=1'`.
+Check the deployment:
+
+```sh
+kubectl --context kind-reliefgrid -n reliefgrid get pods
+curl --fail 'http://localhost:8080/api/v1/requests?limit=1'
+```
+
+**Day-to-day commands:**
+
+| Command | Purpose |
+|---|---|
+| `make dev` | Create or select the kind cluster (does not install the app) |
+| `make app-deploy` | Rebuild and upgrade the app; keeps the standalone storage release |
+| `make cluster-down` | Delete the local kind cluster and its data |
 
 ## Running the demos
 
@@ -124,6 +151,7 @@ itself, but only if the shard is fully healthy.
 |---|---|
 | `make check` | `git diff --check`, gofmt, go vet, golangci-lint, `go test -race ./...` |
 | `make gen-check` | Regenerates code from `contracts/` and fails on any drift |
+| `make e2e-smoke` | Create, register and match through Traefik; checks reciprocal ownership |
 | `make gate` | All nine demos from a clean deployment, twice, with a summary ([gate.sh](scripts/demos/gate.sh)) |
 | `make verify-S4.3` | Chaos Mesh suite: leader kills, isolation, restarts, plus negative controls |
 | `scripts/verify-S4.5.sh --kind` | Merkle audit: each shard's replicas hash equal at one index ([guide](docs/operations/merkle-audit.md)) |
@@ -132,14 +160,18 @@ itself, but only if the shard is fully healthy.
 | `make verify-ps-aliases` | The seven PS aliases through the deployed Traefik |
 
 `make gate`, `make verify-S4.3` and the load harness need a kind cluster; the gate
-and the load harness recreate it.
+and the load harness recreate it. The gate asks before each reset; read its PASS/FAIL
+summary, since an earlier green run does not certify a new commit. Kubernetes
+readiness alone does not prove the storage invariants, so the demos use
+authoritative reads and the invariant checker where needed. A write whose outcome is
+unknown keeps its operation ID and is retried, not treated as rejected.
 
 ## Results
 
 | Check | Result | Evidence |
 |---|---|---|
 | Final gate `gate-20261115T192826Z` at `636b265`, internal auth on | Demos 18/18 (two rounds); replacement 65/65; chaos 22/22 with 0 lost writes, 0 unresolved unknowns, 0 stale reads; Merkle 8/8 | [evidence](docs/evidence/gate-20261115T192826Z), [#186](https://github.com/ParthMalhotra07/ReliefGrid/pull/186) |
-| Internal auth enable and rotation | Official run recorded | [#181](https://github.com/ParthMalhotra07/ReliefGrid/pull/181) |
+| Internal auth enable and rotation, official run at `7c4f829` | Demos 9/9 with auth on; 401 and refusal-log checks 18/18; rotation 40/40 (old token only → both → new only) | [evidence](docs/evidence/S-29-auth-enable/official-20261114), [#181](https://github.com/ParthMalhotra07/ReliefGrid/pull/181) |
 | Load: saturation point | Phase 1 (strong reads) 50 req/s → Phase 2 (linearizable reads) > 80 req/s, validated n=3 | [evidence](docs/evidence/S5.2/phase2-linearizable), [#176](https://github.com/ParthMalhotra07/ReliefGrid/pull/176) |
 | Load: baseline write p99 at 25 req/s | 684 ms → 94 ms | [comparison](docs/evidence/S5.2/phase2-linearizable/comparison.md) |
 
@@ -187,8 +219,16 @@ belongs to the commit it ran on, not automatically to later commits.
 **Both:** architecture and interface decisions, report writing, demo rehearsals, and
 reviews of each other's pull requests.
 
-## Report
+## Report and submission
 
 The report source is in [docs/report](docs/report/README.md), starting with the
 [architecture](docs/report/architecture.md) and
-[requirements and results](docs/report/requirements-and-results.md) chapters.
+[requirements and results](docs/report/requirements-and-results.md) chapters. The
+rehearsal plan is in [docs/operations/rehearsals.md](docs/operations/rehearsals.md).
+
+- The deployment target is local kind; cloud deployment is parked.
+- The report must be under 10 pages.
+- The submission includes the public repository URL; check that
+  [the repository](https://github.com/ParthMalhotra07/ReliefGrid) opens when signed out.
+- The live demonstration is mandatory. The recording is a backup: it must show the
+  deployment from scratch, every step, and must play back correctly.
