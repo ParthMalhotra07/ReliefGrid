@@ -1,6 +1,7 @@
 # ADR005 — Transactional outbox and durable retry handoff
 
-Status: implemented core decision; report text awaiting owner review.
+Status: implemented core decision, included in the reviewed #137 report core;
+compact submission text and final layout retain their own editorial review.
 
 ## Context and decision
 

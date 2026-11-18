@@ -1,0 +1,28 @@
+{
+  "result": "PASS",
+  "pagesIncludingReferences": 9,
+  "sourceBaseline": "f72715e1b6fdcc8564e81df0fbaf7b08c1f28956",
+  "handoutSource": "ca0fd99a6080d26f1d44512d605a1a46fb83b9e4",
+  "preservedSourceFiles": 15,
+  "originalHashesMatch": true,
+  "charactersPerPage": [
+    2665,
+    2363,
+    2441,
+    2715,
+    2627,
+    2245,
+    2552,
+    2672,
+    2325
+  ],
+  "placeholderAndTextBoundsChecks": "PASS",
+  "visualReview": "All nine rendered pages inspected; no clipped labels, overflow or unreadable tables observed.",
+  "pdfSha256": "fb81f1a717d7ad703fafd83017da3fdf912898a3381817f3832efbbc93da6fc4",
+  "limitations": [
+    "Review draft, not final submission",
+    "Phase 2 raw comparison publication pending",
+    "Final source pin and owner acceptance pending",
+    "No new physical deployment or gate run"
+  ]
+}

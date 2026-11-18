@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "pagesIncludingReferences": 9,
+  "originalSourceFilesMatch": 15,
+  "sourceBaseline": "b77e5b9761119a73bed8f2d3eede40c863492275",
+  "phase2Evidence": "25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3",
+  "phase2MeasuredSource": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+  "visualReview": "All nine final pages rendered and inspected; readable tables/figure labels, intact captions, no observed clipping or overlap.",
+  "checks": [
+    "under ten pages",
+    "required Phase 2/stack/method text present",
+    "no unresolved submission citations",
+    "text inside page bounds",
+    "original import hashes unchanged"
+  ],
+  "pdfSha256": "47f6cc1c337352dd13d45034e4ed0fda6f3babacc052be672e632980c8c263e5",
+  "limitations": [
+    "Review draft pending human abstract/introduction/conclusion rewrite and joint read-through",
+    "Final integrated gate and submission source pin remain",
+    "No new physical load or enabled auth/aging run"
+  ]
+}
