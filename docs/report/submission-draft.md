@@ -185,6 +185,8 @@ Run gate-20261115T192826Z, code at 636b265, evidence #186. This is the run on th
 | UI forms, PS alias routes (7), traced request | Passed |
 | Fixed-replica check | API 2, matcher 2, no autoscalers |
 
+Change after the gate. After the final gate, PR #189 (merge 5974ff2) fixed the UI’s Needs-attention counter so that it counts requests by their current workflow state. The change is UI-only, adds a browser regression test, and does not affect the storage, workflow or messaging code that the gate tested, so the gate results above still apply.
+
 The final gate passed on its third attempt. The first two stopped on problems in our test scripts, not in the system: a check that looked for a new leader only once instead of waiting for the election, and a metrics check that was not given its auth token. Both failed runs are kept in the evidence with their causes.
 
 ## Internal authentication
