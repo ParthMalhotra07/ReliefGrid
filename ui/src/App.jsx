@@ -550,15 +550,17 @@ function App() {
             title="Needs attention"
             value={
               d.snapshot
-                ? requests.filter(
-                    (r) =>
-                      ["CANCELLING", "FULFILLING", "RETRYING"].includes(
-                        r.status,
-                      ) || r.lastError,
+                ? requests.filter((r) =>
+                    [
+                      "WAITING",
+                      "RETRYING",
+                      "CANCELLING",
+                      "FULFILLING",
+                    ].includes(r.status),
                   ).length
                 : "—"
             }
-            note="Cleanup and retry states"
+            note="Waiting, retrying, or finishing cleanup"
             color="amber"
           />
         </div>
