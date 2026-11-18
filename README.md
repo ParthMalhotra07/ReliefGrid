@@ -10,6 +10,8 @@ resource is never given to two requests. It implements the course problem statem
 
 ## Architecture
 
+![ReliefGrid system architecture](docs/report/figures/F1-system-architecture.png)
+
 ```mermaid
 flowchart LR
   UI[Dispatch UI] --> T[Traefik :8080]
@@ -39,6 +41,8 @@ flowchart LR
 More detail: the [report architecture chapter](docs/report/architecture.md) and the
 design records in [docs/adr](docs/adr).
 
+[Project report (PDF)](docs/report/reliefgrid-submission-draft.pdf)
+
 ## Problem statement mapping
 
 The seven client operations are served under `/api/v1` and, through Traefik, at the
@@ -62,8 +66,9 @@ bare paths the problem statement uses:
 
 **Prerequisites.**
 
-- Linux, or WSL2 with Docker Desktop integration enabled. Docker must be running
-  and reachable from the shell you use.
+- Linux (tested on Ubuntu) or Windows with WSL2 and Docker Desktop.
+  On Windows, enable Docker Desktop's WSL2 integration.
+  Docker must be running and reachable from the shell you use.
 - The exact tool versions pinned in [tools.mk](tools.mk): Go, kind, kubectl, Helm,
   golangci-lint, oapi-codegen and Python's openapi-spec-validator. Install steps are
   in [CONTRIBUTING.md](CONTRIBUTING.md#tools).
