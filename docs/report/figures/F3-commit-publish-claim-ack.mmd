@@ -1,0 +1,23 @@
+flowchart TB
+  accTitle: F3 — Commit, publish, claim and ack
+  accDescr: An earlier unknown persists through a later 4xx without a committed Result. Ack only after durable handoff.
+  subgraph publication["Publication"]
+    direction LR
+    commit["Request + outbox<br/>commit"] --> publish["Mandatory<br/>routed publish"] --> confirm["Broker confirm"] --> mark["Publication<br/>marking"]
+    publish -->|"Failure: retain<br/>outbox work"| publish
+  end
+  subgraph matching["Matching"]
+    direction LR
+    intent["Durable intent"] --> claim["Resource<br/>TryClaim"] --> reciprocal["Reciprocal request<br/>transition"] --> handoff["Durable handoff"] -->|Only after handoff| ack["Delivery ack"]
+  end
+  publication -->|Broker delivery| matching
+  matching --> unknown{"Outcome<br/>unknown?"}
+  unknown -->|"Same operationId / lookup"| matching
+  subgraph recovery["Recovery · timeout ≠ rejection"]
+    direction LR
+    close["Committed<br/>CloseAttempt"] -->|"Fence delayed claims"| retarget["New attempt"]
+  end
+  unknown -->|Close before retarget| recovery
+  retarget["New attempt<br/>→ durable intent"]
+  classDef durable fill:#e8f1fa,stroke:#335b7e,color:#142c40;
+  class commit,intent,claim,reciprocal,handoff,close durable;

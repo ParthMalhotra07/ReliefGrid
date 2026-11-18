@@ -26,7 +26,7 @@ and CI tooling; Parth owns app/messaging/UI and app deployment. See
 [policies](../../deploy/helm/storage/templates/networkpolicy.yaml#L1) and
 [ownership](../../CONTRIBUTING.md#L9).
 
-Use #145's reviewed clean-clone narrative when integrated. `make dev` creates or
+Use the merged #145 clean-clone narrative in the repository README. `make dev` creates or
 selects the cluster; it is not a complete app installation. The clean demo path
 uses `make demo-reset` and explicit deployment/readiness checks. During the live
 demo, S should explain liveness versus Raft data readiness, majority loss,
@@ -87,7 +87,8 @@ preloaded image archives, packaged charts, browser assets/fonts and deterministi
 seed inputs. Its acceptance is the demos with external networking disconnected,
 not merely a successful archive command. The [retained A5.4 acceptance](https://github.com/ParthMalhotra07/ReliefGrid/tree/b4ae2487df19c18d0cc44d2f6e1dd5225fba4701/docs/evidence/A5.4/accepted-20261107)
 supports the recorded artifact's nine passes, not this integrated source tree.
-#139's host-prerequisite documentation and timeout cleanup remain under review.
+#139's reviewed host prerequisites and timeout cleanup are merged; a fresh kit
+for the final cohort still needs its own disconnected execution.
 Cloud/Terraform work remains parked; no GCP credits,
 deployment or teardown is required for the agreed local submission.
 
@@ -97,6 +98,6 @@ backup recording. Repository public visibility was observed on 7 November; that
 does not establish submission, presenter rehearsals, recording creation or playback. The public
 GitHub link, mandatory live demonstration and deployment-from-scratch backup
 recording are resolved submission requirements. The professor confirmed a report under 10 pages; the
-[nine-page submission outline](submission-outline.md) is proposed for joint
-agreement. Final export/page-count and execution of external deliverables remain
+[nine-page submission outline](submission-outline.md) records the agreed
+S5.5/A3.5 allocation, including visuals. Final export/page-count and execution of external deliverables remain
 pending until recorded.

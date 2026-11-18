@@ -1,0 +1,17 @@
+Source commit: ca0fd99a6080d26f1d44512d605a1a46fb83b9e4
+PASS handouts/s-report/S-sections-v3.md
+PASS handouts/s-report/figures/F1-system-architecture.mmd
+PASS handouts/s-report/figures/F1-system-architecture.png
+PASS handouts/s-report/figures/F1-system-architecture.svg
+PASS handouts/s-report/figures/F2-schema-and-states.mmd
+PASS handouts/s-report/figures/F2-schema-and-states.png
+PASS handouts/s-report/figures/F2-schema-and-states.svg
+PASS handouts/s-report/figures/F3-commit-publish-claim-ack.mmd
+PASS handouts/s-report/figures/F3-commit-publish-claim-ack.png
+PASS handouts/s-report/figures/F3-commit-publish-claim-ack.svg
+PASS handouts/s-report/figures/F4-placement-and-persistence.mmd
+PASS handouts/s-report/figures/F4-placement-and-persistence.png
+PASS handouts/s-report/figures/F4-placement-and-persistence.svg
+PASS handouts/s-report/figures/README.md
+PASS handouts/s-report/figures/mermaid-config.json
+ALL 15 IMPORTED SOURCE FILES MATCH ORIGINAL GIT OBJECTS

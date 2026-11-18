@@ -1,0 +1,2 @@
+REPORT VERIFY FAIL
+docs/report/submission-A-draft.md: broken local link ../evidence/intentionally-absent-report-probe.txt

@@ -1,0 +1,40 @@
+{
+  "scope": "historical three-node loopback microbenchmark; jointly selected M6 study",
+  "benchmark_commit": "5ad15ac",
+  "benchmark_path": "docs/evidence/S4.1/bench-20261031T083641Z.txt",
+  "historical_safety_path": "docs/evidence/S4.1/fence-seeds-20261031T082917Z.txt",
+  "samples_per_combination": 5,
+  "iterations_per_sample": 2000,
+  "measurements": {
+    "serial": {
+      "barrier_ns_per_op": {
+        "median": 449566,
+        "min": 423521,
+        "max": 509105
+      },
+      "fence_ns_per_op": {
+        "median": 126084,
+        "min": 124887,
+        "max": 189025
+      },
+      "ratio_of_medians": 3.566,
+      "barrier_entries_per_op": 1,
+      "fence_entries_per_op": 0
+    },
+    "parallel": {
+      "barrier_ns_per_op": {
+        "median": 112730,
+        "min": 108726,
+        "max": 113965
+      },
+      "fence_ns_per_op": {
+        "median": 23335,
+        "min": 21198,
+        "max": 23877
+      },
+      "ratio_of_medians": 4.831,
+      "barrier_entries_per_op": 1,
+      "fence_entries_per_op": 0
+    }
+  }
+}
