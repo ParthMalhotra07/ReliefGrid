@@ -1,0 +1,75 @@
+# demo-6: Stop a shard's leader under load; a surviving majority keeps serving
+result:     PASS (9/9 checks)
+runId:      auth-official/round-1
+host:       hrishabh-sharrma-ThinkPad-E14-Gen-7
+started:    2026-11-14T16:12:05Z
+finished:   2026-11-14T16:13:17Z
+duration:   71.8 s
+code tree:  a9c466fbd3a2 (git ls-tree -r HEAD -- go.mod go.sum Makefile tools.mk contracts cmd internal loadtest deploy scripts/demos scripts/port-forwards.sh chaos | git hash-object --stdin)
+code dirty: no (uncommitted changes under those paths)
+seed/reset: healthy deployment; load Job demo6-1794672725-load (seed 6, 40s, 4 writers, ledger chaos-ledger:/ledger/demo6-1794672725.json); stop shard 1's leader after 8s (cordon its worker, delete the pod)
+
+## versions
+git head: 7c4f8299bd8b
+go: go version go1.27.2 linux/amd64
+kubectl: v1.37.1
+kubernetes (kind-reliefgrid): v1.37.0
+helm: v3.22.1+gd6c1a0e
+kind: kind v0.33.0 go1.26.7 linux/amd64
+docker: 29.9.1
+image reliefgrid/storagenode:dev: sha256:75d05f0601465023b3af5f91bd8f6f8cbb5af189325051ae403b3d4e7147692f
+image reliefgrid/coordinator:dev: sha256:963a3875d0251704abf08d0157ce17a4bb462090eb9439b577ef75c2f2c30587
+
+## checks
+PASS  preflight: nine storage pods Ready, nine nodes UP, one leader per shard
+PASS  placement: one replica of every shard per data worker (make placement-check)
+PASS  stop: storage-shard-1-0 (storage-shard-1-0/3b8221bf-278e-4947-b034-1ae02ac5dc2d, leader at term 2) deleted with reliefgrid-worker2 cordoned; its replacement is Pending
+PASS  load: demo6-1794672725-load running when the leader stopped (8 s in)
+PASS  election: storage-shard-1-2 leads shard 1 at term 3 (was storage-shard-1-0 at 2), 2631 ms after the stop
+PASS  load: exit 0, 2591 writes acknowledged, 2080 of them while storage-shard-1-0 was down
+PASS  ledger: every acknowledged write survived (invcheck verify, 2591 checked)
+PASS  invariants: complete, clean and quiescent (invcheck check)
+PASS  stopped throughout: storage-shard-1-0 is still the same Pending replacement after the checks
+
+## commands
+
+# load Job output
+$ kn logs job/demo6-1794672725-load --tail=20
+ledger /ledger/demo6-1794672725.json: 2591 acknowledged, 0 unknown, 0 rejected, 0 reads
+[exit 0, 0.1 s]
+
+# invcheck verify (Job demo6-1794672725-verify, window from the stop to the load's end)
+$ jq {ok, ledger: (.ledger | del(.errors)), resolution, verdict: (.verdict | {checked, keys, unknown, lost: (.lost | length)})}
+{
+  "ok": true,
+  "ledger": {
+    "acked": 2591,
+    "unknown": 0,
+    "rejected": 0,
+    "reads": 0,
+    "ackedInWindow": 2080,
+    "errorCount": 0
+  },
+  "resolution": {
+    "resolved": 0,
+    "notApplied": 0,
+    "stillUnknown": 0
+  },
+  "verdict": {
+    "checked": 2591,
+    "keys": 1304,
+    "unknown": 0,
+    "lost": 0
+  }
+}
+[exit 0, 0.0 s]
+
+# invcheck check (Jobs demo6-1794672725-check-N; 0 retried as not quiescent)
+$ jq {ok, verdict, incomplete}
+{
+  "ok": true,
+  "verdict": "clean",
+  "incomplete": null
+}
+[exit 0, 0.0 s]
+handed to demo 7: node/reliefgrid-worker2 reliefgrid.io/demo6-handoff="shard=1 pod=storage-shard-1-0 node=reliefgrid-worker2 serverId=storage-shard-1-0/3b8221bf-278e-4947-b034-1ae02ac5dc2d uid=2f7eb2cf-be2c-43b1-b754-3d9f2ce26a6c term=2" (storage-shard-1-0 stopped, reliefgrid-worker2 cordoned)

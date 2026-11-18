@@ -11,6 +11,9 @@ SHARDS=(0 1 2)
 RING_VERSION="$(sed -n 's/^ringVersion:[[:space:]]*\([0-9]*\).*/\1/p' "$REPO_ROOT/contracts/ring.yaml")"
 COORD_PORT="" # set by coord_forward
 OPTOK=""      # the operator token, set by coord_forward
+AUTH_WHY=""   # why internal auth could not be set up, set by demo_auth
+# shellcheck source=scripts/internal-auth-env.sh
+. "$REPO_ROOT/scripts/internal-auth-env.sh"
 
 k() { kubectl --context "$CTX" "$@"; }
 kn() { k -n "$NS" "$@"; }
@@ -35,7 +38,25 @@ forward() {
 	for _ in $(seq 50); do (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null && { FWD_PORT="$port"; return 0; }; sleep 0.1; done
 	return 1
 }
+# demo_auth: internalAuth.enabled (#29), once per demo. On, the app and node sender tokens go
+# into 0600 files (removed when the demo exits) and cput/cget send the app token, stale_get
+# and demo 1's replica reads the node token, through curl header files. Off, nothing changes.
+# A release whose auth state or Secrets cannot be read stops the demo: AUTH_WHY says why.
+demo_auth() {
+	case "$INTERNAL_AUTH_ON" in # already set up: off, or on with its files written
+	false) return 0 ;;
+	true) [ -n "$INTERNAL_AUTH_DIR" ] && return 0 ;;
+	esac
+	demo_on_exit internal_auth_cleanup
+	if ! internal_auth_setup "$CTX" "$NS" 2>"$DEMO_TMP/internal-auth.err"; then
+		AUTH_WHY="internal auth: $(sed -n 's/^internal-auth: //p' "$DEMO_TMP/internal-auth.err" | head -1)"
+		INTERNAL_AUTH_ON="" # nothing half set up is remembered: a retry starts again
+		return 1
+	fi
+	AUTH_WHY=""
+}
 coord_forward() {
+	demo_auth || return 1
 	OPTOK="$(kn get secret storage-operator-token -o jsonpath='{.data.token}' 2>/dev/null | base64 -d)" || return 1
 	[ -n "$OPTOK" ] && forward svc/storage-coordinator 8080 && COORD_PORT="$FWD_PORT"
 }
@@ -52,7 +73,7 @@ cadmin() {
 # *); prints "<http code> <body>"
 cput() {
 	local code
-	code="$(curl -s -m 10 -o "$DEMO_TMP/cput.json" -w '%{http_code}' -X PUT "$(coord)/internal/data/$1" \
+	code="$(curl -s -m 10 "${INTERNAL_AUTH_CURL[@]}" -o "$DEMO_TMP/cput.json" -w '%{http_code}' -X PUT "$(coord)/internal/data/$1" \
 		-H 'Content-Type: application/json' -H 'If-None-Match: *' \
 		-d "{\"operationId\":\"$2\",\"at\":1792800000000,\"ringVersion\":$RING_VERSION,\"value\":$3}")"
 	echo "$code $(jq -c . "$DEMO_TMP/cput.json" 2>/dev/null)"
@@ -60,7 +81,7 @@ cput() {
 # cget <key> [consistency]: a read through the coordinator; prints "<http code> <body>"
 cget() {
 	local code
-	code="$(curl -s -m 10 -o "$DEMO_TMP/cget.json" -w '%{http_code}' "$(coord)/internal/data/$1${2:+?consistency=$2}")"
+	code="$(curl -s -m 10 "${INTERNAL_AUTH_CURL[@]}" -o "$DEMO_TMP/cget.json" -w '%{http_code}' "$(coord)/internal/data/$1${2:+?consistency=$2}")"
 	echo "$code $(jq -c . "$DEMO_TMP/cget.json" 2>/dev/null)"
 }
 
@@ -176,7 +197,7 @@ not_caught_up() {
 # <local port>; prints the HTTP code; exit 75 if it answered "not caught up", else 0
 stale_get() {
 	local c
-	c="$(curl -s -m 5 -o "$3" -w '%{http_code}' "http://127.0.0.1:$1/internal/data/$2?consistency=stale")"
+	c="$(curl -s -m 5 "${NODE_AUTH_CURL[@]}" -o "$3" -w '%{http_code}' "http://127.0.0.1:$1/internal/data/$2?consistency=stale")"
 	printf '%s\n' "$c"
 	not_caught_up "$c" "$3" && return 75
 	return 0
@@ -232,7 +253,7 @@ preflight() {
 	j="$(kn get pods -l app.kubernetes.io/component=storagenode -o json 2>/dev/null)" || why "cannot list storage pods in $NS" || return 1
 	[ "$(jq '[.items[] | select(.status.conditions[]? | .type == "Ready" and .status == "True")] | length' <<<"$j")" = 9 ] ||
 		why "not all nine storage pods are Ready" || return 1
-	coord_forward || why "cannot reach the coordinator (Service storage-coordinator)" || return 1
+	coord_forward || why "${AUTH_WHY:-cannot reach the coordinator (Service storage-coordinator)}" || return 1
 	j="$(cadmin /admin/nodes)" || why "coordinator /admin/nodes failed" || return 1
 	[ "$(jq '[.nodes[] | select(.state == "UP")] | length' <<<"$j")" = 9 ] || why "the coordinator does not report nine nodes UP" || return 1
 	for s in "${SHARDS[@]}"; do

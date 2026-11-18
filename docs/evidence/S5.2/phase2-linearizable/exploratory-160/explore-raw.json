@@ -1,0 +1,671 @@
+{
+ "t0": 1794547776.935545,
+ "steps": [
+  {
+   "targetRps": 10,
+   "achievedRps": 7.73,
+   "errorRate": 0.0,
+   "droppedIterations": 0,
+   "write": {
+    "n": 354,
+    "p50": 8.04,
+    "p95": 11.78,
+    "p99": 15.87
+   },
+   "read": {
+    "n": 392,
+    "p50": 2.48,
+    "p95": 4.98,
+    "p99": 6.68
+   },
+   "list": {
+    "n": 104,
+    "p50": 4.31,
+    "p95": 7.65,
+    "p99": 9.37
+   },
+   "coordinatorMillicores": 56.4,
+   "nearLimit": [],
+   "queuePeak": {
+    "matching.requests": 2,
+    "matching.wakeups": 9,
+    "retry.5s": 148
+   },
+   "nacks": 0
+  },
+  {
+   "targetRps": 20,
+   "achievedRps": 19.88,
+   "errorRate": 0.0,
+   "droppedIterations": 0,
+   "write": {
+    "n": 786,
+    "p50": 8.11,
+    "p95": 55.11,
+    "p99": 64.88
+   },
+   "read": {
+    "n": 1186,
+    "p50": 2.46,
+    "p95": 39.85,
+    "p99": 57.18
+   },
+   "list": {
+    "n": 215,
+    "p50": 5.47,
+    "p95": 56.62,
+    "p99": 65.61
+   },
+   "coordinatorMillicores": 159.7,
+   "nearLimit": [],
+   "queuePeak": {
+    "matching.requests": 14,
+    "matching.wakeups": 14,
+    "retry.5s": 324
+   },
+   "nacks": 1
+  },
+  {
+   "targetRps": 30,
+   "achievedRps": 30.0,
+   "errorRate": 0.000303,
+   "droppedIterations": 0,
+   "write": {
+    "n": 1198,
+    "p50": 24.52,
+    "p95": 76.55,
+    "p99": 89.03
+   },
+   "read": {
+    "n": 1770,
+    "p50": 5.63,
+    "p95": 40.79,
+    "p99": 47.98
+   },
+   "list": {
+    "n": 332,
+    "p50": 18.91,
+    "p95": 79.37,
+    "p99": 84.81
+   },
+   "coordinatorMillicores": 229.7,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 229.7,
+     "pct": 91.9
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 50,
+    "matching.wakeups": 33,
+    "retry.5s": 318
+   },
+   "nacks": 2
+  },
+  {
+   "targetRps": 40,
+   "achievedRps": 40.0,
+   "errorRate": 0.0,
+   "droppedIterations": 0,
+   "write": {
+    "n": 1541,
+    "p50": 48.11,
+    "p95": 86.83,
+    "p99": 105.27
+   },
+   "read": {
+    "n": 2415,
+    "p50": 5.25,
+    "p95": 30.66,
+    "p99": 39.91
+   },
+   "list": {
+    "n": 444,
+    "p50": 31.56,
+    "p95": 80.16,
+    "p99": 112.12
+   },
+   "coordinatorMillicores": 241.9,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 241.9,
+     "pct": 96.8
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 163,
+    "matching.wakeups": 25,
+    "retry.5s": 311
+   },
+   "nacks": -2
+  },
+  {
+   "targetRps": 50,
+   "achievedRps": 50.0,
+   "errorRate": 0.000545,
+   "droppedIterations": 0,
+   "write": {
+    "n": 1919,
+    "p50": 57.48,
+    "p95": 107.64,
+    "p99": 154.26
+   },
+   "read": {
+    "n": 3045,
+    "p50": 6.25,
+    "p95": 37.32,
+    "p99": 51.27
+   },
+   "list": {
+    "n": 536,
+    "p50": 39.32,
+    "p95": 97.29,
+    "p99": 128.58
+   },
+   "coordinatorMillicores": 245.9,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 245.9,
+     "pct": 98.4
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 1505,
+    "matching.wakeups": 48,
+    "retry.5s": 279
+   },
+   "nacks": -1
+  },
+  {
+   "targetRps": 60,
+   "achievedRps": 60.01,
+   "errorRate": 0.00106,
+   "droppedIterations": 0,
+   "write": {
+    "n": 2367,
+    "p50": 69.82,
+    "p95": 141.2,
+    "p99": 242.84
+   },
+   "read": {
+    "n": 3598,
+    "p50": 7.04,
+    "p95": 40.38,
+    "p99": 57.85
+   },
+   "list": {
+    "n": 636,
+    "p50": 53.18,
+    "p95": 115.81,
+    "p99": 164.69
+   },
+   "coordinatorMillicores": 245.4,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 245.4,
+     "pct": 98.2
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 4069,
+    "matching.wakeups": 128,
+    "retry.5s": 219
+   },
+   "nacks": 3
+  },
+  {
+   "targetRps": 70,
+   "achievedRps": 70.01,
+   "errorRate": 0.001039,
+   "droppedIterations": 0,
+   "write": {
+    "n": 2759,
+    "p50": 80.11,
+    "p95": 197.88,
+    "p99": 329.6
+   },
+   "read": {
+    "n": 4152,
+    "p50": 11.38,
+    "p95": 53.95,
+    "p99": 75.64
+   },
+   "list": {
+    "n": 790,
+    "p50": 67.25,
+    "p95": 157.09,
+    "p99": 211.39
+   },
+   "coordinatorMillicores": 245.5,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 245.5,
+     "pct": 98.2
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 7225,
+    "matching.wakeups": 116,
+    "retry.5s": 205
+   },
+   "nacks": 4
+  },
+  {
+   "targetRps": 80,
+   "achievedRps": 80.0,
+   "errorRate": 0.001023,
+   "droppedIterations": 0,
+   "write": {
+    "n": 3027,
+    "p50": 87.75,
+    "p95": 257.52,
+    "p99": 479.16
+   },
+   "read": {
+    "n": 4914,
+    "p50": 14.68,
+    "p95": 58.22,
+    "p99": 81.01
+   },
+   "list": {
+    "n": 859,
+    "p50": 78.01,
+    "p95": 183.87,
+    "p99": 259.66
+   },
+   "coordinatorMillicores": 245.2,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 245.2,
+     "pct": 98.1
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 9983,
+    "matching.wakeups": 167,
+    "retry.5s": 153
+   },
+   "nacks": 22
+  },
+  {
+   "targetRps": 90,
+   "achievedRps": 90.0,
+   "errorRate": 0.001818,
+   "droppedIterations": 0,
+   "write": {
+    "n": 3543,
+    "p50": 105.04,
+    "p95": 339.71,
+    "p99": 524.21
+   },
+   "read": {
+    "n": 5317,
+    "p50": 18.34,
+    "p95": 65.74,
+    "p99": 86.04
+   },
+   "list": {
+    "n": 1040,
+    "p50": 105.6,
+    "p95": 219.74,
+    "p99": 280.43
+   },
+   "coordinatorMillicores": 246.0,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 246.0,
+     "pct": 98.4
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 8740,
+    "matching.wakeups": 369,
+    "retry.5s": 83
+   },
+   "nacks": -1
+  },
+  {
+   "targetRps": 100,
+   "achievedRps": 100.0,
+   "errorRate": 0.002273,
+   "droppedIterations": 0,
+   "write": {
+    "n": 3877,
+    "p50": 118.48,
+    "p95": 467.67,
+    "p99": 738.73
+   },
+   "read": {
+    "n": 6006,
+    "p50": 22.63,
+    "p95": 78.54,
+    "p99": 115.21
+   },
+   "list": {
+    "n": 1117,
+    "p50": 141.98,
+    "p95": 308.84,
+    "p99": 389.93
+   },
+   "coordinatorMillicores": 245.2,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 245.2,
+     "pct": 98.1
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 9519,
+    "matching.wakeups": 1462,
+    "retry.5s": 54
+   },
+   "nacks": 0
+  },
+  {
+   "targetRps": 110,
+   "achievedRps": 110.01,
+   "errorRate": 0.00157,
+   "droppedIterations": 0,
+   "write": {
+    "n": 4249,
+    "p50": 122.18,
+    "p95": 529.75,
+    "p99": 866.8
+   },
+   "read": {
+    "n": 6638,
+    "p50": 21.93,
+    "p95": 87.65,
+    "p99": 145.33
+   },
+   "list": {
+    "n": 1214,
+    "p50": 185.36,
+    "p95": 423.14,
+    "p99": 570.4
+   },
+   "coordinatorMillicores": 243.6,
+   "nearLimit": [
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 243.6,
+     "pct": 97.4
+    },
+    {
+     "pod": "storage-shard-2-0",
+     "m": 278.5,
+     "pct": 92.8
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 10019,
+    "matching.wakeups": 2472,
+    "retry.5s": 47
+   },
+   "nacks": 3306
+  },
+  {
+   "targetRps": 120,
+   "achievedRps": 118.95,
+   "errorRate": 0.001299,
+   "droppedIterations": 26,
+   "write": {
+    "n": 4572,
+    "p50": 191.67,
+    "p95": 1137.86,
+    "p99": 2024.44
+   },
+   "read": {
+    "n": 7190,
+    "p50": 39.31,
+    "p95": 194.36,
+    "p99": 416.05
+   },
+   "list": {
+    "n": 1323,
+    "p50": 350.74,
+    "p95": 918.89,
+    "p99": 1674.83
+   },
+   "coordinatorMillicores": 234.3,
+   "nearLimit": [
+    {
+     "pod": "storage-shard-2-0",
+     "m": 294.5,
+     "pct": 98.2
+    },
+    {
+     "pod": "storage-shard-0-0",
+     "m": 291.2,
+     "pct": 97.1
+    },
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 234.3,
+     "pct": 93.7
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 10019,
+    "matching.wakeups": 2687,
+    "retry.5s": 24
+   },
+   "nacks": 6717
+  },
+  {
+   "targetRps": 130,
+   "achievedRps": 129.25,
+   "errorRate": 0.0,
+   "droppedIterations": 18,
+   "write": {
+    "n": 5027,
+    "p50": 274.83,
+    "p95": 1742.71,
+    "p99": 2822.71
+   },
+   "read": {
+    "n": 7806,
+    "p50": 68.05,
+    "p95": 342.92,
+    "p99": 639.25
+   },
+   "list": {
+    "n": 1384,
+    "p50": 566.62,
+    "p95": 1483.35,
+    "p99": 2313.85
+   },
+   "coordinatorMillicores": 233.7,
+   "nearLimit": [
+    {
+     "pod": "storage-shard-0-0",
+     "m": 297.7,
+     "pct": 99.2
+    },
+    {
+     "pod": "storage-shard-2-0",
+     "m": 297.4,
+     "pct": 99.1
+    },
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 233.7,
+     "pct": 93.5
+    },
+    {
+     "pod": "storage-shard-1-0",
+     "m": 272.4,
+     "pct": 90.8
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 10017,
+    "matching.wakeups": 2987,
+    "retry.5s": 12
+   },
+   "nacks": 9155
+  },
+  {
+   "targetRps": 140,
+   "achievedRps": 137.68,
+   "errorRate": 0.005612,
+   "droppedIterations": 44,
+   "write": {
+    "n": 5303,
+    "p50": 371.18,
+    "p95": 3398.37,
+    "p99": 5001.16
+   },
+   "read": {
+    "n": 8370,
+    "p50": 111.77,
+    "p95": 777.07,
+    "p99": 1439.0
+   },
+   "list": {
+    "n": 1472,
+    "p50": 1101.05,
+    "p95": 2819.62,
+    "p99": 3876.5
+   },
+   "coordinatorMillicores": 223.8,
+   "nearLimit": [
+    {
+     "pod": "storage-shard-0-0",
+     "m": 299.1,
+     "pct": 99.7
+    },
+    {
+     "pod": "storage-shard-2-0",
+     "m": 297.9,
+     "pct": 99.3
+    },
+    {
+     "pod": "storage-shard-1-0",
+     "m": 273.4,
+     "pct": 91.1
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 10018,
+    "matching.wakeups": 3086,
+    "retry.5s": 8
+   },
+   "nacks": 10377
+  },
+  {
+   "targetRps": 150,
+   "achievedRps": 142.25,
+   "errorRate": 0.069402,
+   "droppedIterations": 157,
+   "write": {
+    "n": 5666,
+    "p50": 781.37,
+    "p95": 5001.59,
+    "p99": 5002.17
+   },
+   "read": {
+    "n": 8389,
+    "p50": 301.33,
+    "p95": 2231.74,
+    "p99": 4000.92
+   },
+   "list": {
+    "n": 1593,
+    "p50": 2943.96,
+    "p95": 10003.45,
+    "p99": 20003.94
+   },
+   "coordinatorMillicores": 226.1,
+   "nearLimit": [
+    {
+     "pod": "storage-shard-0-0",
+     "m": 299.3,
+     "pct": 99.8
+    },
+    {
+     "pod": "storage-shard-2-0",
+     "m": 299.3,
+     "pct": 99.8
+    },
+    {
+     "pod": "storage-shard-1-0",
+     "m": 290.1,
+     "pct": 96.7
+    },
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 226.1,
+     "pct": 90.4
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 10017,
+    "matching.wakeups": 3137,
+    "retry.5s": 3
+   },
+   "nacks": 9491
+  },
+  {
+   "targetRps": 160,
+   "achievedRps": 152.09,
+   "errorRate": 0.226001,
+   "droppedIterations": 353,
+   "write": {
+    "n": 5822,
+    "p50": 2018.72,
+    "p95": 5001.82,
+    "p99": 5002.84
+   },
+   "read": {
+    "n": 9248,
+    "p50": 1052.23,
+    "p95": 4001.18,
+    "p99": 4001.9
+   },
+   "list": {
+    "n": 1660,
+    "p50": 4860.97,
+    "p95": 19006.24,
+    "p99": 29007.46
+   },
+   "coordinatorMillicores": 239.5,
+   "nearLimit": [
+    {
+     "pod": "storage-shard-0-0",
+     "m": 299.2,
+     "pct": 99.7
+    },
+    {
+     "pod": "storage-shard-1-0",
+     "m": 299.1,
+     "pct": 99.7
+    },
+    {
+     "pod": "storage-shard-2-0",
+     "m": 299.2,
+     "pct": 99.7
+    },
+    {
+     "pod": "storage-coordinator-6c449fd88-vqt5d",
+     "m": 239.5,
+     "pct": 95.8
+    }
+   ],
+   "queuePeak": {
+    "matching.requests": 10017,
+    "matching.wakeups": 3252,
+    "retry.5s": 2
+   },
+   "nacks": 7151
+  }
+ ]
+}

@@ -1,0 +1,40 @@
+[
+  {
+    "createdAt": "2026-11-15T11:37:53.323Z",
+    "details": "Synthetic demo competitor-0",
+    "location": {
+      "lat": -26,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "934c3706-d71a-51ee-9016-84693b88ebb5",
+    "requestType": "MEDICINE",
+    "status": "WAITING",
+    "updatedAt": "2026-11-15T11:37:53.433Z",
+    "urgency": "HIGH",
+    "version": "v2",
+    "assignedResourceId": null,
+    "nextAttemptAt": "2026-11-15T11:37:58.433Z",
+    "retryCount": 1,
+    "lastError": "NO_CANDIDATE"
+  },
+  {
+    "createdAt": "2026-11-15T11:37:53.316Z",
+    "details": "Synthetic demo competitor-1",
+    "location": {
+      "lat": -26,
+      "lng": 30
+    },
+    "peopleAffected": 1,
+    "requestId": "938cf3e8-1bef-5248-925e-449d045404e7",
+    "requestType": "MEDICINE",
+    "status": "MATCHED",
+    "updatedAt": "2026-11-15T11:37:53.336Z",
+    "urgency": "HIGH",
+    "version": "v3",
+    "assignedResourceId": "f1514c3f-e8c5-5ed1-a5b0-42f079bcf14d",
+    "nextAttemptAt": null,
+    "retryCount": 0,
+    "lastError": ""
+  }
+]

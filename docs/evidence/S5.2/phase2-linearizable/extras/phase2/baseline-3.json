@@ -1,0 +1,110 @@
+{
+ "dir": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/baseline-3",
+ "runId": "S5.2-baseline-20261112T183824Z",
+ "scenario": "baseline",
+ "git": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+ "load": [
+  {
+   "shard": 0,
+   "raftEntries": 26870,
+   "commands": 26870,
+   "nonCommand": 0,
+   "fsmApplies": 26870,
+   "barriers": 0,
+   "appliedUncounted": 0,
+   "reads": {
+    "linearizable": 112239,
+    "stale": 0,
+    "strong": 0
+   }
+  },
+  {
+   "shard": 1,
+   "raftEntries": 38034,
+   "commands": 38030,
+   "nonCommand": 4,
+   "fsmApplies": 38034,
+   "barriers": 0,
+   "appliedUncounted": 4,
+   "reads": {
+    "linearizable": 154736,
+    "stale": 0,
+    "strong": 0
+   }
+  },
+  {
+   "shard": 2,
+   "raftEntries": 18276,
+   "commands": 18272,
+   "nonCommand": 4,
+   "fsmApplies": 18276,
+   "barriers": 0,
+   "appliedUncounted": 4,
+   "reads": {
+    "linearizable": 85833,
+    "stale": 0,
+    "strong": 0
+   }
+  }
+ ],
+ "coordinatorCpu": [
+  {
+   "targetRps": null,
+   "millicores": 213.2,
+   "samples": 92
+  }
+ ],
+ "idle": [
+  {
+   "shard": 0,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
+   "reads": {
+    "linearizable": 385,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 1,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
+   "reads": {
+    "linearizable": 385,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 2,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
+   "reads": {
+    "linearizable": 384,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  }
+ ]
+}

@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/ParthMalhotra07/ReliefGrid/internal/api"
-	"github.com/ParthMalhotra07/ReliefGrid/internal/coordclient"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/fsm/memstore"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/geo"
 	"github.com/ParthMalhotra07/ReliefGrid/internal/store"
@@ -149,7 +148,7 @@ func newExecution(t *testing.T, f ScheduleFixture, seed int, run string) *execut
 	t.Cleanup(cancel)
 	var s store.Store
 	if os.Getenv("SCHEDULE_BACKEND") == "cluster" {
-		c, err := coordclient.New(ctx, os.Getenv("COORDINATOR_URL"))
+		c, err := scheduleCoordinatorClient(ctx, os.Getenv("COORDINATOR_URL"))
 		if err != nil {
 			t.Fatal(err)
 		}

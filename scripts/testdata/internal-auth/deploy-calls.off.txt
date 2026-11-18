@@ -1,0 +1,28 @@
+kubectl --context kind-reliefgrid get nodes -l reliefgrid.io/demo-cordoned=true -o name
+make -s cluster-down \[INTERNAL_AUTH=unset\]
+make -s cluster-up \[INTERNAL_AUTH=unset\]
+make -s storage-image \[INTERNAL_AUTH=unset\]
+make -s coordinator-image \[INTERNAL_AUTH=unset\]
+make -s tools-image \[INTERNAL_AUTH=unset\]
+helm --kube-context kind-reliefgrid install storage deploy/helm/storage -n reliefgrid --create-namespace --wait --wait-for-jobs --timeout 6m
+kubectl --context kind-reliefgrid -n reliefgrid get secret storage-operator-token -o jsonpath=\{.data.token\}
+kubectl --context kind-reliefgrid -n reliefgrid port-forward svc/storage-coordinator \<port\>:8080
+curl -s -m 3 -H Authorization:\ Bearer\ op http://127.0.0.1:\<port\>/admin/nodes
+make -s app-deploy \[INTERNAL_AUTH=unset\]
+kubectl --context kind-reliefgrid get nodes -o json
+reset exit 0
+kubectl --request-timeout=10s --context kind-reliefgrid get nodes -o json
+kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get service storage-coordinator
+helm --kube-context kind-reliefgrid list -n reliefgrid -o json
+kubectl --request-timeout=10s --context kind-reliefgrid -n reliefgrid get pvc data-reliefgrid-rabbitmq-0 --ignore-not-found -o jsonpath=\{.metadata.uid\}
+make app-images \[INTERNAL_AUTH=unset\]
+kind load docker-image --name reliefgrid reliefgrid/api:a15-fixed \[INTERNAL_AUTH=unset\]
+docker image inspect reliefgrid/api:a15-fixed --format \{\{.Id\}\}
+kind load docker-image --name reliefgrid reliefgrid/matcher:a15-fixed \[INTERNAL_AUTH=unset\]
+docker image inspect reliefgrid/matcher:a15-fixed --format \{\{.Id\}\}
+kind load docker-image --name reliefgrid reliefgrid/ui:a15-fixed \[INTERNAL_AUTH=unset\]
+docker image inspect reliefgrid/ui:a15-fixed --format \{\{.Id\}\}
+helm repo add reliefgrid-traefik https://traefik.github.io/charts
+helm dependency build deploy/helm/reliefgrid
+helm --kube-context kind-reliefgrid upgrade --install reliefgrid deploy/helm/reliefgrid -n reliefgrid --create-namespace -f deploy/helm/reliefgrid/values-app-kind.yaml --set storage.enabled=false --set-string app.api.image.tag=a15-fixed --set-string app.matcher.image.tag=a15-fixed --set-string app.ui.image.tag=a15-fixed --set-string storage.image.tag=a15-fixed --set-string storage.coordinator.image.tag=a15-fixed --wait --wait-for-jobs --timeout 10m
+app-deploy exit 3

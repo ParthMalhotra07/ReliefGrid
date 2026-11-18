@@ -134,6 +134,15 @@ REJOIN_MAX_SECONDS="${REJOIN_MAX_SECONDS:-120}"
 NO_SELF_BOOTSTRAP_SECONDS="${NO_SELF_BOOTSTRAP_SECONDS:-20}"
 HOLD_SECONDS="${HOLD_SECONDS:-60}"
 KEEP_CLUSTER="${KEEP_CLUSTER:-1}"
+# STORAGE_INTERNAL_AUTH=true installs every release below with internalAuth.enabled=true
+# (#29): routed and direct /internal calls then send the sender tokens, and a request
+# without one must get 401. Unset or false: the release and every call are as before.
+STORAGE_INTERNAL_AUTH="${STORAGE_INTERNAL_AUTH:-false}"
+case "$STORAGE_INTERNAL_AUTH" in
+true) AUTH_SET=(--set internalAuth.enabled=true) ;;
+false) AUTH_SET=() ;;
+*) echo "STORAGE_INTERNAL_AUTH must be true or false, not '$STORAGE_INTERNAL_AUTH'" >&2; exit 2 ;;
+esac
 EVIDENCE="docs/evidence/S1.5/storage-k8s-$(hostname -s).txt"
 EVIDENCE_S21="docs/evidence/S2.1/snapshot-restore-$(hostname -s).txt"
 EVIDENCE_S31="docs/evidence/S3.1/readiness-placement-$(hostname -s).txt"
@@ -212,6 +221,7 @@ stop_forwards() {
 cleanup() {
 	[ -n "$cordoned" ] && kubectl --context "$CTX" uncordon "$cordoned" >/dev/null 2>&1
 	stop_forwards
+	internal_auth_cleanup
 	rm -rf "$tmp"
 }
 trap cleanup EXIT
@@ -220,6 +230,15 @@ trap 'exit 130' INT
 trap 'exit 143' TERM HUP
 # shellcheck source=scripts/port-forwards.sh
 . "$(dirname "$0")/port-forwards.sh"
+# shellcheck source=scripts/internal-auth-env.sh
+. "$(dirname "$0")/internal-auth-env.sh"
+# auth_refresh: the release's sender tokens into fresh 0600 files (#29). After every install,
+# since a reinstall generates new Secrets; off, it leaves every call unchanged.
+auth_refresh() {
+	internal_auth_cleanup
+	INTERNAL_AUTH_RELEASE="$RELEASE" internal_auth_setup "$CTX" "$NS" || return 1
+	[ "$INTERNAL_AUTH_ON" = "$STORAGE_INTERNAL_AUTH" ] || { echo "internal auth is $INTERNAL_AUTH_ON, want $STORAGE_INTERNAL_AUTH" >&2; return 1; }
+}
 
 k() { kubectl --context "$CTX" "$@"; }
 kn() { k -n "$NS" "$@"; }
@@ -356,7 +375,7 @@ write_key() {
 	port_forward "$leader"; port="$pf_port"
 	value="{\"verify\":\"S1.5-$tag-$(date +%s)\"}"
 	for i in $(seq 0 200); do # a foreign key is 400 and never proposed
-		code="$(curl -s -o "$tmp/put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s15-$tag-$i" \
+		code="$(curl -s "${NODE_AUTH_CURL[@]}" -o "$tmp/put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s15-$tag-$i" \
 			-H 'Content-Type: application/json' -H 'If-None-Match: *' \
 			-d "{\"operationId\":\"op-s15-$tag-$i-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":$value}")"
 		[ "$code" = 400 ] && grep -q 'owned by shard' "$tmp/put.json" && continue
@@ -374,7 +393,7 @@ read_key() {
 	read -r leader term < <(wait_leader 15 0 $(pod_names "$shard"))
 	[ -n "${leader:-}" ] || return 1
 	port_forward "$leader"; port="$pf_port"
-	code="$(curl -s -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
+	code="$(curl -s "${NODE_AUTH_CURL[@]}" -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
 	kill "$pf_pid" 2>/dev/null
 	pf_pid=""
 	[ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/get.json")" = "$(jq -c . <<<"$value")" ] && [ "$(jq -r .record.version "$tmp/get.json")" = 1 ]
@@ -774,8 +793,9 @@ docker create --name s15-probe "$COORD_IMAGE" >/dev/null 2>&1 && docker cp "s15-
 docker rm -f s15-probe >/dev/null 2>&1
 
 t0="$(now)"
-if helm --kube-context "$CTX" install "$RELEASE" "$CHART" -n "$NS" --create-namespace --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/install.out" 2>&1; then
+if helm --kube-context "$CTX" install "$RELEASE" "$CHART" -n "$NS" --create-namespace "${AUTH_SET[@]}" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/install.out" 2>&1; then
 	pass "install: helm install --wait --wait-for-jobs succeeds ($(since "$t0") s)"
+	auth_refresh || abort "install: internal auth tokens readable (internalAuth.enabled=$STORAGE_INTERNAL_AUTH)"
 else
 	kn get pods -o wide
 	kn logs "job/$(job_name)" --tail=30 2>/dev/null
@@ -848,16 +868,38 @@ if coord_forward; then
 		fail "coordinator: /admin/distribution answers 200" "$(head -c 300 <<<"$dist")"
 	fi
 	ckey="cfg:s15b-coord-$(date +%s)" cval="{\"verify\":\"S1.5b-$(date +%s)\"}"
-	code="$(curl -s -m 6 -o "$tmp/cput.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$cport/internal/data/$ckey" \
+	code="$(curl -s "${INTERNAL_AUTH_CURL[@]}" -m 6 -o "$tmp/cput.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$cport/internal/data/$ckey" \
 		-H 'Content-Type: application/json' -H 'If-None-Match: *' \
 		-d "{\"operationId\":\"op-s15b-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":$cval}")"
 	[ "$code" = 200 ] && [ "$(jq -r .result.version "$tmp/cput.json" 2>/dev/null)" = 1 ] &&
 		pass "coordinator: PUT $ckey through the coordinator committed (version 1)" ||
 		fail "coordinator: PUT $ckey through the coordinator committed" "HTTP $code: $(cat "$tmp/cput.json" 2>/dev/null)"
-	code="$(curl -s -m 6 -o "$tmp/cget.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/data/$ckey")"
+	code="$(curl -s "${INTERNAL_AUTH_CURL[@]}" -m 6 -o "$tmp/cget.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/data/$ckey")"
 	[ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/cget.json" 2>/dev/null)" = "$(jq -c . <<<"$cval")" ] &&
 		pass "coordinator: GET $ckey through the coordinator returns the write" ||
 		fail "coordinator: GET $ckey through the coordinator returns the write" "HTTP $code: $(cat "$tmp/cget.json" 2>/dev/null)"
+	# internalAuth.enabled (#29): a request without the token is refused before any handler.
+	if [ "$INTERNAL_AUTH_ON" = true ]; then
+		code="$(curl -s -m 6 -o "$tmp/cnoauth.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/ring")"
+		[ "$code" = 401 ] && [ "$(jq -r .code "$tmp/cnoauth.json" 2>/dev/null)" = UNAUTHORIZED ] &&
+			pass "internal auth: coordinator GET /internal/ring without a token answers 401 UNAUTHORIZED" ||
+			fail "internal auth: coordinator GET /internal/ring without a token answers 401 UNAUTHORIZED" "HTTP $code: $(head -c 200 "$tmp/cnoauth.json" 2>/dev/null)"
+		code="$(curl -s -m 6 -o "$tmp/cnoauth-put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$cport/internal/data/$ckey-noauth" \
+			-H 'Content-Type: application/json' -H 'If-None-Match: *' \
+			-d "{\"operationId\":\"op-s15b-noauth-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":$cval}")"
+		[ "$code" = 401 ] && pass "internal auth: coordinator PUT without a token answers 401" ||
+			fail "internal auth: coordinator PUT without a token answers 401" "HTTP $code"
+		port_forward storage-shard-0-0
+		code="$(curl -s -m 6 -o "$tmp/snoauth.json" -w '%{http_code}' "http://127.0.0.1:$pf_port/internal/data/cfg:s15b-noauth")"
+		[ "$code" = 401 ] && [ "$(jq -r .code "$tmp/snoauth.json" 2>/dev/null)" = UNAUTHORIZED ] &&
+			pass "internal auth: storage GET /internal/data without a token answers 401 UNAUTHORIZED" ||
+			fail "internal auth: storage GET /internal/data without a token answers 401 UNAUTHORIZED" "HTTP $code"
+		code="$(curl -s -m 6 "${NODE_AUTH_CURL[@]}" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$pf_port/internal/data/cfg:s15b-noauth")"
+		[ "$code" != 401 ] && [ "$code" != 000 ] && pass "internal auth: the same storage read with the node token is not refused (HTTP $code)" ||
+			fail "internal auth: the same storage read with the node token is not refused" "HTTP $code"
+		kill "$pf_pid" 2>/dev/null
+		pf_pid=""
+	fi
 else
 	fail "coordinator: port-forward to Service $COORD" "$(cat "$tmp/cpf.out" 2>/dev/null)"
 fi
@@ -903,7 +945,10 @@ cnp_run() {
 	local name="$1" image="$2" labels="$3" phase rc=2
 	shift 3
 	kn delete pod "$name" --ignore-not-found --wait=true >/dev/null 2>&1
-	kn run "$name" --image "$image" --image-pull-policy Never --restart Never ${labels:+--labels "$labels"} --command -- "$@" >/dev/null 2>&1
+	# The tools image's routed writes carry the app sender token when internal auth is on (#29).
+	local auth=()
+	[ "$image" = "$TOOLS_IMAGE" ] && mapfile -t auth < <(internal_auth_run_overrides "$name")
+	kn run "$name" --image "$image" --image-pull-policy Never --restart Never ${labels:+--labels "$labels"} "${auth[@]}" --command -- "$@" >/dev/null 2>&1
 	for _ in $(seq 90); do
 		phase="$(kn get pod "$name" -o jsonpath='{.status.phase}' 2>/dev/null)"
 		case "$phase" in Succeeded) rc=0; break ;; Failed) rc=1; break ;; esac
@@ -950,7 +995,8 @@ printf '%s\n' $(load_cmd chaos) | jq -Rs 'split("\n")[:-1]' | jq --arg image "$T
 	apiVersion: "batch/v1", kind: "Job", metadata: {name: "cnp-chaos", labels: {"reliefgrid.io/chaos": "true"}},
 	spec: {backoffLimit: 0, ttlSecondsAfterFinished: 600, template: {metadata: {labels: {"reliefgrid.io/chaos": "true"}},
 		spec: {restartPolicy: "Never", securityContext: {runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532},
-			containers: [{name: "invcheck", image: $image, imagePullPolicy: "Never", command: .}]}}}}' | kn apply -f - >/dev/null 2>&1
+			containers: [{name: "invcheck", image: $image, imagePullPolicy: "Never", command: .}]}}}}' |
+	internal_auth_patch_job | kn apply -f - >/dev/null 2>&1
 if kn wait --for=condition=complete job/cnp-chaos --timeout=90s >/dev/null 2>&1; then
 	log="$tmp/s43-cnp-chaos.log"
 	kn logs job/cnp-chaos >"$log" 2>&1
@@ -965,7 +1011,7 @@ kn delete job cnp-chaos --wait=false >/dev/null 2>&1
 # Heartbeats: a node is DOWN 5 s after its last one, so 9 UP now means they still arrive.
 if coord_forward; then
 	pass "coordinator networkpolicy: kubectl port-forward to Service $COORD still connects"
-	code="$(curl -s -m 5 -o "$tmp/cring.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/ring")"
+	code="$(curl -s "${INTERNAL_AUTH_CURL[@]}" -m 5 -o "$tmp/cring.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/ring")"
 	[ "$code" = 200 ] && [ "$(jq -r .ringVersion "$tmp/cring.json" 2>/dev/null)" = "$ring_version" ] &&
 		pass "coordinator networkpolicy: GET /internal/ring through the port-forward answers 200" ||
 		fail "coordinator networkpolicy: GET /internal/ring through the port-forward answers 200" "HTTP $code"
@@ -991,7 +1037,7 @@ else
 	port_forward "$leader"; port="$pf_port"
 	key="" value="{\"verify\":\"S1.5-$(date +%s)\"}"
 	for i in $(seq 0 200); do # first key the ring gives to WRITE_SHARD; a foreign key is 400 and never proposed
-		code="$(curl -s -o "$tmp/put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s15-verify-$i" \
+		code="$(curl -s "${NODE_AUTH_CURL[@]}" -o "$tmp/put.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s15-verify-$i" \
 			-H 'Content-Type: application/json' -H 'If-None-Match: *' \
 			-d "{\"operationId\":\"op-s15-$i-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":$value}")"
 		[ "$code" = 400 ] && grep -q 'owned by shard' "$tmp/put.json" && continue
@@ -1011,7 +1057,7 @@ else
 	if [ -n "${newleader:-}" ]; then
 		pass "failover shard-$WRITE_SHARD: $newleader leads at term $newterm, $(since "$t0") s after deleting $leader"
 		port_forward "$newleader"; port="$pf_port"
-		code="$(curl -s -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
+		code="$(curl -s "${NODE_AUTH_CURL[@]}" -o "$tmp/get.json" -w '%{http_code}' "http://127.0.0.1:$port/internal/data/$key")"
 		if [ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/get.json")" = "$(jq -c . <<<"$value")" ] && [ "$(jq -r .record.version "$tmp/get.json")" = 1 ]; then
 			pass "failover shard-$WRITE_SHARD: strong read of $key on $newleader returns the write"
 		else
@@ -1055,7 +1101,7 @@ if [ -n "${ckey:-}" ] && [ -n "$cs" ]; then
 		coord_failover="shard-$cs: deleted ${cleader:-?}; new leader '${cnew:-none}' after $t_elected s; the coordinator named '$got' (term '${gterm:-}') at the ${COORD_FAILOVER_SECONDS}s deadline"
 		fail "coordinator failover shard-$cs: the coordinator names the new leader within ${COORD_FAILOVER_SECONDS}s" "$coord_failover"$'\n'"$( [ -z "${cnew:-}" ] && polls_detail)"
 	fi
-	code="$(curl -s -m 6 -o "$tmp/cget.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/data/$ckey")"
+	code="$(curl -s "${INTERNAL_AUTH_CURL[@]}" -m 6 -o "$tmp/cget.json" -w '%{http_code}' "http://127.0.0.1:$cport/internal/data/$ckey")"
 	[ "$code" = 200 ] && [ "$(jq -c .record.value "$tmp/cget.json" 2>/dev/null)" = "$(jq -c . <<<"$cval")" ] &&
 		pass "coordinator failover shard-$cs: $ckey still reads back through the coordinator" ||
 		fail "coordinator failover shard-$cs: $ckey still reads back through the coordinator" "HTTP $code: $(cat "$tmp/cget.json" 2>/dev/null)"
@@ -1106,7 +1152,7 @@ dump_of() { kn exec "$1" -c storagenode -- /storagectl dump 2>/dev/null; }
 cas_updates() {
 	local port="$1" key="$2" v="$3" n="$4" i code
 	for ((i = 0; i < n; i++)); do
-		code="$(curl -s -o "$tmp/cas.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/$key" \
+		code="$(curl -s "${NODE_AUTH_CURL[@]}" -o "$tmp/cas.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/$key" \
 			-H 'Content-Type: application/json' -H "If-Match: \"$v\"" \
 			-d "{\"operationId\":\"op-s21-$key-$v-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":{\"n\":$v}}")"
 		[ "$code" = 200 ] && [ "$(jq -r .result.version "$tmp/cas.json")" = $((v + 1)) ] || { echo "$v"; return 1; }
@@ -1232,7 +1278,7 @@ s21_results=""
 # --- 6c. helm upgrade on healthy groups only verifies ---------------------------------------
 declare -A rv_before ids_all
 for s in "${SHARDS[@]}"; do rv_before[$s]="$(manifest_rv "$s")"; ids_all[$s]="$(server_ids "$s")"; done
-if helm --kube-context "$CTX" upgrade "$RELEASE" "$CHART" -n "$NS" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/upgrade1.out" 2>&1; then
+if helm --kube-context "$CTX" upgrade "$RELEASE" "$CHART" -n "$NS" "${AUTH_SET[@]}" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/upgrade1.out" 2>&1; then
 	pass "upgrade: helm upgrade --wait --wait-for-jobs on healthy groups succeeds"
 else
 	fail "upgrade: helm upgrade --wait --wait-for-jobs on healthy groups succeeds" "$(tail -3 "$tmp/upgrade1.out" | tr '\n' '|')"
@@ -1254,6 +1300,7 @@ job_uids() { kn get jobs -l app.kubernetes.io/component=storage-bootstrap -o jso
 uids_before_rb="$(job_uids)"
 if helm --kube-context "$CTX" rollback "$RELEASE" 1 -n "$NS" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/rollback.out" 2>&1; then
 	pass "rollback: helm rollback $RELEASE 1 succeeds"
+	auth_refresh || fail "rollback: internal auth tokens readable"
 else
 	fail "rollback: helm rollback $RELEASE 1 succeeds" "$(tail -3 "$tmp/rollback.out" | tr '\n' '|')"
 fi
@@ -1367,7 +1414,7 @@ fi
 read -r hl _ < <(wait_leader 15 0 "${tpods[@]}")
 for p in "${tpods[@]}"; do [ "$p" != "${hl:-}" ] && hf="$p" && break; done
 port_forward "$hf"; port="$pf_port"
-code="$(curl -s -m 6 -o "$tmp/hint.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/${kv_t%% *}" \
+code="$(curl -s "${NODE_AUTH_CURL[@]}" -m 6 -o "$tmp/hint.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/${kv_t%% *}" \
 	-H 'Content-Type: application/json' -H 'If-None-Match: *' \
 	-d "{\"operationId\":\"op-s31-hint-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":{\"hint\":1}}")"
 kill "$pf_pid" 2>/dev/null
@@ -1410,7 +1457,7 @@ sleep 3
 port_forward "${rl:-none}"; port="$pf_port"
 tl0="$(now)" n=0
 for i in $(seq 0 $((LAG_WRITES * 6))); do # about a third of keys belong to this shard; foreign keys are 400 and never proposed
-	code="$(curl -s -m 5 -o "$tmp/lag.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s31-lag-${tl0%.*}-$i" \
+	code="$(curl -s "${NODE_AUTH_CURL[@]}" -m 5 -o "$tmp/lag.json" -w '%{http_code}' -X PUT "http://127.0.0.1:$port/internal/data/cfg:s31-lag-${tl0%.*}-$i" \
 		-H 'Content-Type: application/json' -H 'If-None-Match: *' \
 		-d "{\"operationId\":\"op-s31-lag-$i-$(date +%s%N)\",\"at\":1792800000000,\"ringVersion\":$ring_version,\"value\":{\"lag\":$i}}")"
 	[ "$code" = 200 ] && n=$((n + 1))
@@ -1494,8 +1541,9 @@ kn delete pvc -l app.kubernetes.io/name=storage,app.kubernetes.io/component=stor
 kept=0
 for s in "${SHARDS[@]}"; do [ "$(phase "$s")" = BOOTSTRAPPED ] && kept=$((kept + 1)); done
 [ "$kept" = 3 ] && pass "uninstall: the three manifests survive, phase BOOTSTRAPPED" || fail "uninstall: the three manifests survive, phase BOOTSTRAPPED" "$kept kept"
-helm --kube-context "$CTX" install "$RELEASE" "$CHART" -n "$NS" >"$tmp/reinstall.out" 2>&1 ||
+helm --kube-context "$CTX" install "$RELEASE" "$CHART" -n "$NS" "${AUTH_SET[@]}" >"$tmp/reinstall.out" 2>&1 ||
 	fail "reinstall: helm install over wiped disks" "$(tail -3 "$tmp/reinstall.out" | tr '\n' '|')"
+auth_refresh || fail "reinstall: internal auth tokens readable"
 j="$(job_name)"
 if kn wait --for=condition=Failed "job/$j" --timeout=180s >/dev/null 2>&1; then
 	pass "guard: the bootstrap Job fails over wiped disks with a BOOTSTRAPPED manifest"
@@ -1543,8 +1591,9 @@ helm --kube-context "$CTX" status "$RELEASE" -n "$NS" >/dev/null 2>&1 && fail "s
 # --- 9. Kill the bootstrap Job mid-run, re-run it ----------------------------------------
 # A fresh install whose Job holds after bootstrapping shard 0, before it records
 # BOOTSTRAPPED; it is deleted inside that window.
-helm --kube-context "$CTX" install "$RELEASE" "$CHART" -n "$NS" --set "bootstrap.debugHoldSeconds=$HOLD_SECONDS" >"$tmp/install2.out" 2>&1 ||
+helm --kube-context "$CTX" install "$RELEASE" "$CHART" -n "$NS" "${AUTH_SET[@]}" --set "bootstrap.debugHoldSeconds=$HOLD_SECONDS" >"$tmp/install2.out" 2>&1 ||
 	fail "rerun: helm install with a hold" "$(tail -3 "$tmp/install2.out" | tr '\n' '|')"
+auth_refresh || fail "rerun: internal auth tokens readable"
 j="$(job_name)"
 held=""
 for _ in $(seq 180); do
@@ -1564,7 +1613,7 @@ else
 	fail "rerun: Job $j bootstrapped shard 0 and is holding" "$(job_logs "$j" | tail -3 | tr '\n' '|')"
 fi
 t0="$(now)"
-if helm --kube-context "$CTX" upgrade "$RELEASE" "$CHART" -n "$NS" --set bootstrap.debugHoldSeconds=0 --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/upgrade2.out" 2>&1; then
+if helm --kube-context "$CTX" upgrade "$RELEASE" "$CHART" -n "$NS" "${AUTH_SET[@]}" --set bootstrap.debugHoldSeconds=0 --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT" >"$tmp/upgrade2.out" 2>&1; then
 	pass "rerun: helm upgrade --wait --wait-for-jobs re-runs the Job and succeeds ($(since "$t0") s)"
 else
 	fail "rerun: helm upgrade --wait --wait-for-jobs re-runs the Job and succeeds" "$(tail -3 "$tmp/upgrade2.out" | tr '\n' '|')"

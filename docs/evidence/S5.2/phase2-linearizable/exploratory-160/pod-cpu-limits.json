@@ -1,0 +1,19 @@
+{
+  "reliefgrid-api-648d8bfdfc-cn4p8": 400,
+  "reliefgrid-api-648d8bfdfc-hg4zg": 400,
+  "reliefgrid-matcher-78d8995ddd-jr5r8": 250,
+  "reliefgrid-matcher-78d8995ddd-qvqnp": 250,
+  "reliefgrid-rabbitmq-0": 750,
+  "reliefgrid-traefik-7cc48c599-64tfh": 300,
+  "reliefgrid-ui-84cbdb5d68-kpvww": 50,
+  "storage-coordinator-6c449fd88-vqt5d": 250,
+  "storage-shard-0-0": 300,
+  "storage-shard-0-1": 300,
+  "storage-shard-0-2": 300,
+  "storage-shard-1-0": 300,
+  "storage-shard-1-1": 300,
+  "storage-shard-1-2": 300,
+  "storage-shard-2-0": 300,
+  "storage-shard-2-1": 300,
+  "storage-shard-2-2": 300
+}

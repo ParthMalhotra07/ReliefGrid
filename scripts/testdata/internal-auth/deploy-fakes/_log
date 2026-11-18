@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# _log <tool> <args...>: one line in $WORK/calls, the work dir shown as <work> and free local
+# ports (chosen per run) as <port>.
+line="$1"; shift
+for a in "$@"; do
+	a="${a//$WORK/<work>}"
+	[[ "$a" =~ ^[0-9]+:([0-9]+)$ ]] && a="<port>:${BASH_REMATCH[1]}"
+	[[ "$a" =~ ^(.*127\.0\.0\.1:)[0-9]+(.*)$ ]] && a="${BASH_REMATCH[1]}<port>${BASH_REMATCH[2]}"
+	line+=" $(printf '%q' "$a")"
+done
+echo "$line" >>"$WORK/calls"

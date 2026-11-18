@@ -1,0 +1,2 @@
+coord_forward ok
+after cleanup: INTERNAL_AUTH_TOKEN_FILE=unset

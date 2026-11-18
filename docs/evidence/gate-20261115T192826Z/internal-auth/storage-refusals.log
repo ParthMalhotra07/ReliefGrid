@@ -1,0 +1,1 @@
+2026/11/15 20:39:41 WARN internal auth refused credential=node method=GET route=/internal/scan peer=127.0.0.1:48472 reason=missing

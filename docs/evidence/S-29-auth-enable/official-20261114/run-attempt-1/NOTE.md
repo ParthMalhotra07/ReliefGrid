@@ -1,0 +1,1 @@
+Run attempt 1 stopped at b-auth-on (12:33:56Z) on a defect in the check script: `refusals | grep -q` under pipefail returned 141 (SIGPIPE) although the expected refusal line was present (see b-auth-on.log). All 11 `| grep -q` pipelines now use quiet_grep (lib.sh). Restarted from a fresh reset, as decided.

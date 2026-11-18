@@ -1,0 +1,16 @@
+28eb8e5d3a1fba8de729cd28d43c0da42f39a5ee69d1d89c687e5927c45d69c8  course/gate-20261115/round-1/demo-5-app/attempts.jsonl
+b98af3d0f8c43ddc23062fd01af786eeaa62db07b9b361799fff775bbece0d32  course/gate-20261115/round-1/demo-5-app/created.jsonl
+8624dbad5181d1dfb1b2c937c304ecef8063c9c71ae58972113cee5002add14a  course/gate-20261115/round-1/demo-5-app/inputs.jsonl
+fe899155b64553159a4ee06b515e32862e9b650a175da4ba48fe3f7a860979f8  course/gate-20261115/round-1/demo-5-app/settled-requests.json
+ed4b088c8a4fd2488a2977bb3cc029913ab19e0e4b239c23c2b950121fecd24a  course/gate-20261115/round-2/demo-5-app/attempts.jsonl
+1295496fb41c9f2d6c1cfe28fc3a7c139828a15dbfb6c748bf9dab7d948f5b0c  course/gate-20261115/round-2/demo-5-app/created.jsonl
+21494f73a1d2ccd1a4e3b9ee135182691a420f86d39ae8625cc59c822a1b73fb  course/gate-20261115/round-2/demo-5-app/inputs.jsonl
+fd2c33d1187427ae230a490456fe46da0803741a0f0f40a2c85c59f02fd76edf  course/gate-20261115/round-2/demo-5-app/settled-requests.json
+6c05e4b82a8aff502d0f0bf620c27976f0390cd05bc919b3244fce761bc02da1  deployed-ui/deployed-ui-offline.png
+3e8e4856450132df6c59386d4b645fbd72630279eac0ba2c044cf6c8deb207ba  deployed-ui/deployed-ui.png
+ea82c45d72e53cfce78db5cf31a2d6eb2b630d6dc3c106b7dcccb0100b733bfc  deployed-ui/form-request.png
+3d74901380f51dceac7f1ab41416a38ea06ab9097a9a0411208d24896c619519  deployed-ui/form-resource.png
+ff8a8b0aec0f3f69535ebfc34de4d61278e5a6d2f35f0f53154866d731cd533d  evidence/enhanced/docs/evidence/A4.2/live-20261115T203818Z/cluster.png
+e053a4c13cb2ae140ae0b2259b3adee117ea4439e651ef763d42c774c462c98b  evidence/enhanced/docs/evidence/A4.2/live-20261115T203818Z/coordinator-forward.txt
+9cc0d7accecebcac5a8adecc003c20403586fd386742ea7fe36f847e84090cb5  evidence/enhanced/docs/evidence/A4.2/live-20261115T203818Z/matching.png
+25712fdcec5a7857228f727118b139138166d1b415f6f6890d3a07aff07590ac  evidence/enhanced/docs/evidence/A4.2/live-20261115T203818Z/storage.png

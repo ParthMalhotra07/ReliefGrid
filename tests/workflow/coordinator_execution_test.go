@@ -25,14 +25,17 @@ func scheduleRing(x *execution) internalapi.Ring {
 	ctx, cancel := context.WithTimeout(x.ctx, 3*time.Second)
 	defer cancel()
 	var response *http.Response
-	var err error
+	client, err := scheduleHTTPClient()
+	if err != nil {
+		x.t.Fatal(err)
+	}
 	for {
 		var req *http.Request
 		req, err = http.NewRequestWithContext(ctx, "GET", strings.TrimRight(os.Getenv("COORDINATOR_URL"), "/")+"/internal/ring", nil)
 		if err != nil {
 			x.t.Fatal(err)
 		}
-		response, err = (&http.Client{Timeout: time.Second}).Do(req)
+		response, err = client.Do(req)
 		if err == nil {
 			break
 		}

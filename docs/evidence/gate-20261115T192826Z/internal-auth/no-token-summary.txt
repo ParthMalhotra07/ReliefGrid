@@ -1,0 +1,15 @@
+check=no-token
+result=PASS
+context=kind-reliefgrid
+namespace=reliefgrid
+selector=(all pods)
+since=(all)
+pods_expected=any
+pods_listed=71
+logs_read=71
+log_failures=0
+containers_restarted=1
+previous_logs_read=1
+previous_logs_failed=0
+token_files=5
+tokens_found_in=0

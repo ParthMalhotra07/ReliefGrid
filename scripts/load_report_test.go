@@ -209,11 +209,9 @@ func TestLoadReportCheckRejects(t *testing.T) {
 		{"invcheck failed", set("invariants.invcheck", "FAIL"), "invariants.invcheck"},
 		{"saturation not the last passing step", set("saturation.rps", 20), "the steps give 30 req/s"},
 		{"saturation reason wrong", set("saturation.brokenBy", []any{"writeP99"}), "saturation.brokenBy"},
-		{"no step breaks a threshold", func(t *testing.T, m map[string]any) {
-			for k, v := range map[string]any{"writeP99Ms": 900, "readP99Ms": 240, "listP99Ms": 480, "errorRate": 0.005, "droppedIterations": 0} {
-				step(3, k, v)(t, m)
-			}
-		}, "no step breaks a threshold"},
+		{"saturation claimed but no step breaks", func(t *testing.T, m map[string]any) {
+			unbroken(t, m)
+		}, "no step breaks a threshold up to 40 req/s, the report says"},
 		{"first step already saturated", step(0, "errorRate", 0.5), "already breaks"},
 		{"inconclusive cannot hide safety failure", func(t *testing.T, m map[string]any) {
 			step(0, "errorRate", 0.5)(t, m)
@@ -257,7 +255,7 @@ func TestLoadReportCheckRejects(t *testing.T) {
 			c.mutate(t, m)
 			code, out := runLoadCheck(t, writeReport(t, m), "--require-saturation")
 			wantCode, label := 1, "FAIL"
-			if c.name == "no step breaks a threshold" || c.name == "first step already saturated" {
+			if c.name == "first step already saturated" {
 				wantCode, label = 3, "INCONCLUSIVE"
 			}
 			if code != wantCode || !strings.Contains(out, label) || !strings.Contains(out, c.want) {
@@ -391,6 +389,58 @@ func TestLoadReportCheckHeadroomCountsReturningRetries(t *testing.T) {
 			}
 		})
 	}
+}
+
+// unbroken makes the fixture's top step (40 req/s) pass every threshold, so no
+// step in the tested range breaks one.
+func unbroken(t *testing.T, m map[string]any) {
+	t.Helper()
+	top := m["steps"].([]any)[3].(map[string]any)
+	for k, v := range map[string]any{"writeP99Ms": 900, "readP99Ms": 240, "listP99Ms": 480, "errorRate": 0.005, "droppedIterations": 0} {
+		top[k] = v
+	}
+}
+
+// A step run that breaks no threshold up to its top step is a result, not an
+// inconclusive bracket: the system saturates above the tested range. The check
+// passes it, labelled "saturation > <top> req/s", when the report states no
+// saturation point; it still fails on anything else, safety first.
+func TestLoadReportCheckSaturationAboveRange(t *testing.T) {
+	for _, args := range [][]string{nil, {"--require-saturation"}} {
+		m := loadReport(t)
+		unbroken(t, m)
+		delete(m, "saturation")
+		code, out := runLoadCheck(t, writeReport(t, m), args...)
+		if code != 0 || !strings.Contains(out, "PASS  saturation: > 40 req/s (no step breaks a threshold up to 40 req/s)") ||
+			strings.Contains(out, "INCONCLUSIVE") {
+			t.Fatalf("args %v: want exit 0 labelled saturation > 40 req/s, got exit %d:\n%s", args, code, out)
+		}
+	}
+	t.Run("null saturation", func(t *testing.T) {
+		m := loadReport(t)
+		unbroken(t, m)
+		m["saturation"] = nil
+		if code, out := runLoadCheck(t, writeReport(t, m), "--require-saturation"); code != 0 {
+			t.Fatalf("want exit 0, got exit %d:\n%s", code, out)
+		}
+	})
+	t.Run("cannot hide a safety failure", func(t *testing.T) {
+		m := loadReport(t)
+		unbroken(t, m)
+		delete(m, "saturation")
+		m["invariants"].(map[string]any)["invcheck"] = "FAIL"
+		if code, out := runLoadCheck(t, writeReport(t, m), "--require-saturation"); code != 1 || !strings.Contains(out, "invariants.invcheck") {
+			t.Fatalf("want exit 1 naming invariants.invcheck, got exit %d:\n%s", code, out)
+		}
+	})
+	t.Run("first step broken is still inconclusive", func(t *testing.T) {
+		m := loadReport(t)
+		m["steps"].([]any)[0].(map[string]any)["errorRate"] = 0.5
+		delete(m, "saturation")
+		if code, out := runLoadCheck(t, writeReport(t, m), "--require-saturation"); code != 3 || !strings.Contains(out, "INCONCLUSIVE  saturation: the first step") {
+			t.Fatalf("want exit 3, got exit %d:\n%s", code, out)
+		}
+	})
 }
 
 func TestLoadReportCheckFiles(t *testing.T) {

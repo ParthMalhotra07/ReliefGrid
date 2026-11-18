@@ -8,6 +8,7 @@ const clients = new Set();
 let reads = 0,
   status = "CANCELLING",
   version = 4,
+  lastError = "",
   fail = false,
   unknownWrite = false;
 const claimed = () =>
@@ -25,7 +26,7 @@ const record = () => ({
   updatedAt: "2026-11-05T06:01:00Z",
   assignedResourceId: claimed() ? resourceId : null,
   retryCount: 0,
-  lastError: "",
+  lastError,
   nextAttemptAt: null,
 });
 const positions = [0, 1, 2].map((shard) => ({
@@ -49,6 +50,7 @@ http
     if (p === "/__test/reset") {
       status = "CANCELLING";
       version = 4;
+      lastError = "";
       fail = false;
       unknownWrite = false;
       reads = 0;
@@ -65,6 +67,7 @@ http
         status = b.status;
         version++;
       }
+      if ("lastError" in b) lastError = b.lastError;
       if ("fail" in b) fail = b.fail;
       if ("unknownWrite" in b) unknownWrite = b.unknownWrite;
       if (b.disconnect) for (const c of clients) c.end();

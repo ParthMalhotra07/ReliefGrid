@@ -1,0 +1,22 @@
+{
+  "mode": "full",
+  "run": "20261115T191714Z",
+  "checks": [
+    "four production application exporters discovered individually",
+    "all seven canonical broker queues; disposable projection queues excluded",
+    "all three shards observed by complete authoritative workflow walks",
+    "all three provisioned dashboards and every PromQL query evaluated",
+    "real REST/outbox/broker/consumer match recorded business-latency observation",
+    "durable cancellation cleanup observed without exposing entity IDs as metric labels",
+    "unfinished workflow age grows across complete authoritative observations"
+  ],
+  "result": "FAIL",
+  "baseCommit": "636b265084fc2f855a0d3b17ec8ca6634209bef2",
+  "syntheticRequestId": "f965f095-8f31-5bec-9c0c-51e7a1467824",
+  "syntheticResourceId": "647965c8-ced9-59f9-a455-92b547b60392",
+  "workflowAgeSamplesSeconds": [
+    2724.594,
+    2728.569
+  ],
+  "storageHandoffMissing": []
+}

@@ -23,6 +23,8 @@ OUT="docs/evidence/S4.6b/kind-$(hostname -s).txt"
 TESTS="${SEAMS_TESTS:-SCH01|SCH12|SCH13a|SCH13b}"
 
 kn() { kubectl --context "$CTX" -n "$NS" "$@"; }
+# shellcheck source=scripts/internal-auth-env.sh
+. "$(dirname "$0")/internal-auth-env.sh"
 log() { printf '%s %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 
 kind get clusters 2>/dev/null | grep -qx "${CTX#kind-}" || { log "no kind cluster ${CTX#kind-}; this script never creates one"; exit 2; }
@@ -37,6 +39,7 @@ restore() {
 	status=$?
 	cleanup_status=0
 	trap - EXIT
+	internal_auth_cleanup
 	[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null
 	for s in 0 1 2; do for i in 0 1 2; do kn label pod "storage-shard-$s-$i" reliefgrid.io/chaos-isolated- >/dev/null 2>&1; done; done
 	log "restoring the storage release to image tag $DEFAULT_TAG"
@@ -45,6 +48,9 @@ restore() {
 	exit "$status"
 }
 trap restore EXIT
+# internalAuth.enabled (#29): on, the readiness probe sends the app sender token and
+# tests/seams gets INTERNAL_AUTH_TOKEN_FILE; off, nothing changes. Removed by restore.
+INTERNAL_AUTH_RELEASE="$RELEASE" internal_auth_setup "$CTX" "$NS" || { log "cannot set up internal auth"; exit 2; }
 
 log "building and loading reliefgrid/storagenode:seams"
 make -s storage-image-seams >/dev/null || { log "storage-image-seams failed"; exit 2; }
@@ -54,7 +60,7 @@ rollout seams || { log "rollout onto the seams image failed"; exit 2; }
 port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])')"
 kn port-forward svc/storage-coordinator "$port:8080" >/dev/null 2>&1 &
 pf_pid=$!
-for _ in $(seq 1 50); do curl -fsS "http://127.0.0.1:$port/internal/ring" >/dev/null 2>&1 && break; sleep 0.2; done
+for _ in $(seq 1 50); do curl -fsS "${INTERNAL_AUTH_CURL[@]}" "http://127.0.0.1:$port/internal/ring" >/dev/null 2>&1 && break; sleep 0.2; done
 
 mkdir -p "$(dirname "$OUT")"
 log "running tests/seams ($TESTS); evidence $OUT"

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+"$(dirname "$0")/_log" kubectl "$@"
+args=()
+while [ $# -gt 0 ]; do case "$1" in --context | -n) shift 2 ;; --request-timeout=*) shift ;; *) args+=("$1"); shift ;; esac; done
+set -- "${args[@]}"
+case "$*" in
+"get nodes -o json")
+	echo '{"items":['
+	for n in worker:data worker2:data worker3:data worker4:infra; do
+		echo "{\"metadata\":{\"name\":\"${n%%:*}\",\"labels\":{\"role\":\"${n##*:}\"}},\"spec\":{},\"status\":{\"conditions\":[{\"type\":\"Ready\",\"status\":\"True\"}]}}$([ "$n" = worker4:infra ] || echo ,)"
+	done
+	echo ']}' ;;
+"get secret storage-operator-token -o jsonpath={.data.token}") printf b3A= ;;
+*) exit 0 ;;
+esac

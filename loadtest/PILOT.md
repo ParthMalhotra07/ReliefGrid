@@ -20,8 +20,9 @@ Runner interfaces: RUN_DIR names a new directory (existing paths are refused).
 Adjacent .runner.log, .runner-status.json and .report-check.log survive failure
 without changing report checksums. Status fields retain runnerExit, k6Exit
 (null if not reached), reportExit, teeExit and safetyFailure. Checker exit 3
-means an inconclusive bracket only if all other validation passed; exit 1 is
-invalid evidence. Runner exit 4 means invariant/restoration safety failure;
+means an inconclusive bracket (the first step already breaks a threshold) only
+if all other validation passed; exit 1 is invalid evidence. A step run that
+breaks no threshold up to its top step passes as "saturation > <top> req/s". Runner exit 4 means invariant/restoration safety failure;
 exit 5 means its log writer failed on an otherwise successful run. A step
 k6 exit 99 is usable only with a valid bracket; smoke requires k6 exit 0.
 

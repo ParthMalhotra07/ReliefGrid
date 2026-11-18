@@ -1,0 +1,24 @@
+--- FAIL: TestScheduleClusterStartupInternalAuth (0.03s)
+    --- FAIL: TestScheduleClusterStartupInternalAuth/enabled (0.01s)
+        internal_auth_test.go:51: cluster startup sent the wrong credential class
+        internal_auth_test.go:63: coordclient: load ring: 401 "" is not a ring
+--- FAIL: TestScheduleRingProbeInternalAuth (0.01s)
+    --- FAIL: TestScheduleRingProbeInternalAuth/enabled (0.00s)
+        internal_auth_test.go:77: ring probe has wrong credential class
+        internal_auth_test.go:82: ring HTTP401
+--- FAIL: TestScheduleAuthFilesFailBeforeNetwork (0.00s)
+    --- FAIL: TestScheduleAuthFilesFailBeforeNetwork/invalid- (0.00s)
+        internal_auth_test.go:96: invalid raw-HTTP credential accepted
+    --- FAIL: TestScheduleAuthFilesFailBeforeNetwork/invalid-secretnewline (0.00s)
+        internal_auth_test.go:96: invalid raw-HTTP credential accepted
+    --- FAIL: TestScheduleAuthFilesFailBeforeNetwork/invalid-secret,other (0.00s)
+        internal_auth_test.go:96: invalid raw-HTTP credential accepted
+    --- FAIL: TestScheduleAuthFilesFailBeforeNetwork/invalid-secret_with_space (0.00s)
+        internal_auth_test.go:96: invalid raw-HTTP credential accepted
+    internal_auth_test.go:101: missing raw-HTTP credential accepted
+--- FAIL: TestScheduleAuthRedirectCompatibility (0.00s)
+    --- FAIL: TestScheduleAuthRedirectCompatibility/enabled (0.00s)
+        internal_auth_test.go:123: credentialed redirect followed
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/tests/workflow	0.089s
+FAIL

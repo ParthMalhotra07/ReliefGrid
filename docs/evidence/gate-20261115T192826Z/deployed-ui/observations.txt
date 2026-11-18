@@ -1,0 +1,3 @@
+PASS deployed UI live; first six API rows match; offline view visibly stale
+API status counts (first page): {"MATCHED": 19, "WAITING": 81}
+UI counters: R | + | ReliefGrid | DISPATCH WORKSPACE | Live | Local dispatcher | OPERATIONS / LIVE OVERVIEW | Dispatch overview | Connect people with the help they need. | ↻ Refresh data | This view contains up to 100 requests and 100 resources. More records exist; filters apply to the loaded view. | Create request | Register resource | Matching runs automatically. | Open requests | 100 | In the loaded view | Active assignments | 19 | Reciprocal claims observed | Resources available | 7 | As last reported | Needs attention | 81 | Cleanup and retry states | ⌕ | All resource types | Water | Food | Medicine |

@@ -170,10 +170,10 @@ func (c *Coordinator) Handler() http.Handler {
 	mux.HandleFunc("GET /admin/ring/simulate", c.operator(c.adminRingSimulate))
 	appHandler, nodeHandler := http.Handler(mux), http.Handler(mux)
 	if c.cfg.AppAuth != nil {
-		appHandler = internalauth.Receiver(*c.cfg.AppAuth, mux)
+		appHandler = internalauth.ReceiverFor("app", *c.cfg.AppAuth, mux)
 	}
 	if c.cfg.NodeAuth != nil {
-		nodeHandler = internalauth.Receiver(*c.cfg.NodeAuth, mux)
+		nodeHandler = internalauth.ReceiverFor("node", *c.cfg.NodeAuth, mux)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

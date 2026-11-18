@@ -22,6 +22,19 @@ NS="${NAMESPACE:-reliefgrid}"
 CTX="kind-$CLUSTER"
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-6m}"
 
+# INTERNAL_AUTH=true (#29): both releases are installed with internal HTTP authentication on,
+# through a values file only (deploy/helm/{storage,reliefgrid}/values-internal-auth.yaml; the
+# storage chart generates the tokens; no token is on any command line). Unset or false: as
+# before. The app release gets the same setting through app-deploy (INTERNAL_AUTH is passed on).
+case "${INTERNAL_AUTH:-}" in
+"" | false) auth_values=() ;;
+true) auth_values=(-f deploy/helm/storage/values-internal-auth.yaml) ;;
+*)
+	echo "reset: INTERNAL_AUTH must be true or false, not '$INTERNAL_AUTH'" >&2
+	exit 2
+	;;
+esac
+
 if [ "${RESET_CONFIRM:-}" != "$CLUSTER" ]; then
 	echo "reset: this deletes and recreates the kind cluster '$CLUSTER' and everything on it."
 	read -r -p "Type the cluster name to confirm: " RESET_CONFIRM || true
@@ -46,7 +59,7 @@ step "build and load the storage image" make -s storage-image
 step "build and load the coordinator image" make -s coordinator-image
 step "build and load the tools image" make -s tools-image
 step "install deploy/helm/storage" helm --kube-context "$CTX" install storage deploy/helm/storage -n "$NS" --create-namespace \
-	--wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT"
+	"${auth_values[@]}" --wait --wait-for-jobs --timeout "$INSTALL_TIMEOUT"
 pf_pid="" # nine_up's port-forward, also killed if the reset is interrupted
 trap '[ -n "$pf_pid" ] && kill "$pf_pid" 2>/dev/null' EXIT
 trap 'exit 130' INT

@@ -1,0 +1,14 @@
+10:59:31 run: isolation: kind nodes on CPUs 0-5, k6 on 6-7, power profile performance
+10:59:31 run: run S5.2-step-20261113T052930Z in ~/.cache/reliefgrid/S5.2-explore2-20261113T052633Z/explore-160/run
+10:59:32 run: dataset: {"seed":52,"ops":170622,"requests":25797,"resources":16949}
+10:59:34 run: k6 step on CPU 6-7: 1920s, 170622 ops in the dataset
+step: 159837 requests
+11:31:42 run: FAILED: line 486: taskset -c "$K6_CPUS" "$K6" run --quiet --no-color --out json="$DIR/raw/k6-points.jsonl.gz" -e API_URL="$API_URL" -e DATASET="$DIR/dataset.json" -e SUMMARY="$DIR/k6-summary.json" "${K6_ENV[@]}" "$SCRIPT" 2> "$DIR/raw/k6.log" (exit 99)
+11:31:42 run: k6 exit 99: a threshold was crossed; the report says which
+
+gzip: stdout: Broken pipe
+11:31:44 run: settling 20s
+{"created":24183,"matched":13288,"other":{},"unreadable":0,"waiting":10895}
+11:35:10 run: audit: waiting for headroom: every queue, with the retries returning to it, at most 80% of its max-length, for at most 1200s
+11:55:23 run: FAILED: audit: no queue headroom within 1200s: matching.requests 23936 > 8000 (80% of 10000; 7783 queued + 16153 returning from retry.120s,retry.30s,retry.5s);
+11:55:23 run: restored: node cpusets, power profile balanced

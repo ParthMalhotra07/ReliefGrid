@@ -93,7 +93,7 @@ func (s *server) dataRoutes() http.Handler {
 	mux.HandleFunc("GET /internal/operations/{operationId}", s.getOperation)
 	handler := http.Handler(mux)
 	if s.internalAuth != nil {
-		handler = internalauth.Receiver(*s.internalAuth, mux)
+		handler = internalauth.ReceiverFor("node", *s.internalAuth, mux)
 	}
 	shard := strconv.Itoa(s.shard)
 	// Each request is a server span continuing the coordinator's attempt

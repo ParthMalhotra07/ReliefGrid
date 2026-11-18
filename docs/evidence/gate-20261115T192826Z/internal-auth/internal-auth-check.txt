@@ -1,0 +1,13 @@
+PASS GET /internal/ring -> 200
+PASS GET /internal/ring -> 401
+PASS PUT /internal/data/cfg:gate-auth-71736efd2cb3404eb14dfb85d9f269cd -> 401
+PASS GET /internal/scan -> 401
+PASS GET /internal/ring -> 401
+PASS PUT /internal/data/cfg:gate-auth-71736efd2cb3404eb14dfb85d9f269cd -> 200
+PASS GET /internal/data/cfg:gate-auth-71736efd2cb3404eb14dfb85d9f269cd -> 200
+PASS GET /internal/scan -> 200
+PASS DELETE /internal/data/cfg:gate-auth-71736efd2cb3404eb14dfb85d9f269cd -> 200
+PASS refusal logs name credential class, method, route and reason; no configured or presented token appears
+PASS  no-token: no token in the logs of all 71 pods
+PASS  refusals: 4 refusal line(s) from all 10 pods
+PASS  in-cluster-refusals: no in-cluster refusal among 4 from all 10 pods

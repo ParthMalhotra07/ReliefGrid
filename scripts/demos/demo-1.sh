@@ -115,7 +115,7 @@ done
 read_replicas() {
 	local pod c
 	for pod in $(pod_names "${s:-0}"); do
-		c="$(curl -s -m 5 -o "$DEMO_TMP/stale-$pod.json" -w '%{http_code}' "http://127.0.0.1:${port[$pod]:-0}/internal/data/req:$id?consistency=stale")"
+		c="$(curl -s -m 5 "${NODE_AUTH_CURL[@]}" -o "$DEMO_TMP/stale-$pod.json" -w '%{http_code}' "http://127.0.0.1:${port[$pod]:-0}/internal/data/req:$id?consistency=stale")"
 		echo "$pod $c $(jq -c . "$DEMO_TMP/stale-$pod.json" 2>/dev/null)"
 	done >"$DEMO_TMP/replicas"
 	replica_reads_agree "$version" <"$DEMO_TMP/replicas"

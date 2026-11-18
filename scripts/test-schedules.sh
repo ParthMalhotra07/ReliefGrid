@@ -15,6 +15,8 @@ out="$ROOT/docs/evidence/A2.3/$SCHEDULE_RUN_ID"
 mkdir -p "$out"
 if [ -n "${SCHEDULE_IDS:-}" ];then echo "SUBSET $SCHEDULE_IDS: not complete A2.3 acceptance";fi
 broker="" proxy="" replicas="" shard_replicas="" storage_tag=""
+schedule_auth_loaded=false
+INTERNAL_AUTH_CURL=()
 cleanup(){
  local status=$? cleanup_status=0
  trap - EXIT
@@ -32,10 +34,23 @@ cleanup(){
  fi
  if [ -n "$replicas" ];then kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas="$replicas" >/dev/null || cleanup_status=1;fi
  if [ -n "$broker" ];then docker rm -f "$broker" >/dev/null || cleanup_status=1;fi
+ if [ "$schedule_auth_loaded" = true ];then internal_auth_cleanup || cleanup_status=1;fi
  if [ "$status" = 0 ];then status=$cleanup_status;fi
  exit "$status"
 }
 trap cleanup EXIT
+if [ "$backend" != m8 ];then
+ # Read the existing release before any reset, cluster mutation or child test.
+ # Memory-only M8 never needs Helm or cluster credentials.
+ # shellcheck source=scripts/internal-auth-env.sh
+ source scripts/internal-auth-env.sh
+ schedule_auth_loaded=true
+ internal_auth_detect kind-reliefgrid reliefgrid || { echo 'Cannot determine existing schedule auth state; refusing to reset or run tests' >&2;exit 1; }
+ if [ "${SCHEDULE_RESET:-1}" = 1 ] && [ "$INTERNAL_AUTH_ON" = true ];then
+  echo 'Refusing to reset an auth-enabled deployment; prepare any explicit reset separately and use SCHEDULE_RESET=0' >&2
+  exit 1
+ fi
+fi
 if [ -z "${MQ_AMQP_URL:-}" ] && [ -z "${MQ_MANAGEMENT_URL:-}" ];then
  image="$(awk '$1=="image:"{print $2;exit}' deploy/helm/reliefgrid/values.yaml)"
  [[ "$image" =~ ^rabbitmq:4\.3\.[0-9]+-management@sha256:[0-9a-f]{64}$ ]]
@@ -62,6 +77,9 @@ if [ "$backend" != m8 ];then
  if [ "${SCHEDULE_RESET:-1}" = 1 ];then
   A15_EVIDENCE_DIR="$out/deployment" RESET_CONFIRM=reliefgrid make demo-reset > "$out/deploy.log" 2>&1
  fi
+ # A permitted reset may recreate the Secrets or change the configured mode.
+ # Reread the actual release and stage its current sender files only afterwards.
+ internal_auth_setup kind-reliefgrid reliefgrid || { echo 'Cannot determine or stage schedule internal auth' >&2;exit 1; }
  needs_seams=false
  if [ -z "${SCHEDULE_IDS:-}" ];then needs_seams=true;else
   case ",${SCHEDULE_IDS}," in *,1,*|*,01,*|*,12,*|*,13,*|*,13a,*|*,13b,*) needs_seams=true;;esac
@@ -83,12 +101,12 @@ if [ "$backend" != m8 ];then
  proxy=$!
  export COORDINATOR_URL="http://127.0.0.1:$port"
  ready=false
- for _ in $(seq 50);do if curl --fail --silent --max-time 1 "$COORDINATOR_URL/internal/ring" >/dev/null;then ready=true;break;fi;sleep .1;done
+ for _ in $(seq 50);do if curl --fail --silent --max-time 1 "${INTERNAL_AUTH_CURL[@]}" "$COORDINATOR_URL/internal/ring" >/dev/null;then ready=true;break;fi;sleep .1;done
  if [ "$ready" != true ];then echo 'Coordinator loopback forward did not become ready' >&2;tail -10 "$out/forward.log" >&2;exit 1;fi
  # Every audited fixture now confirms and drains its own outbox after assertions.
  # Refuse foreign work before any cluster case, including non-relay subsets.
  for shard in 0 1 2;do
-  curl --fail --silent --max-time 5 "$COORDINATOR_URL/internal/outbox?shard=$shard&limit=1&consistency=strong" |
+  curl --fail --silent --max-time 5 "${INTERNAL_AUTH_CURL[@]}" "$COORDINATOR_URL/internal/outbox?shard=$shard&limit=1&consistency=strong" |
    jq -e '(.events|type)=="array" and (.events|length)==0' >/dev/null || { echo 'Cluster must have no foreign pending outbox work before schedule audits' >&2;exit 1; }
  done
  if [ "$hold" = 1 ];then

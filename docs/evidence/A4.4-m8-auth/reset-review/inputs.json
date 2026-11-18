@@ -1,0 +1,17 @@
+{
+  "mainForIntegration": "803c287",
+  "reviewedPreviousHead": "afbf10d51e12aa2b1b68b4b9e5da50aa768a564d",
+  "checks": [
+    "real-helper default/explicit reset refusal",
+    "enabled reset refusal",
+    "post-reset mode/credential reload",
+    "no cluster mutations or child tests on refused preflight",
+    "three unsafe mutations rejected",
+    "full check and generation"
+  ],
+  "limitations": [
+    "No live enabled-kind or rotation acceptance"
+  ],
+  "firstValidatedParent": "ca5ea77f41955f858650a97281cec13014cdf564",
+  "currentParent": "4168f2a3c8d6d0e725dbdf0a8cbedfab48984100"
+}

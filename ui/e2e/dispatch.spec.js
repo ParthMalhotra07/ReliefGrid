@@ -44,6 +44,42 @@ test("dispatch shows authoritative state, assignments, filters and telemetry", a
     "No requests match",
   );
 });
+test("needs attention follows the current workflow state", async ({
+  page,
+  request,
+}) => {
+  await request.post("/__test/state", {
+    data: { status: "WAITING", lastError: "NO_CANDIDATE" },
+  });
+  await page.goto("/");
+  const attention = page
+    .locator(".metric")
+    .filter({ hasText: "Needs attention" })
+    .locator("strong");
+  await expect(attention).toHaveText("1");
+  for (const [status, lastError, count] of [
+    ["MATCHED", "RESOURCE_AVAILABLE", "0"],
+    ["IN_PROGRESS", "RESOURCE_AVAILABLE", "0"],
+    ["FULFILLING", "", "1"],
+    ["FULFILLED", "RESOURCE_AVAILABLE", "0"],
+    ["RETRYING", "", "1"],
+    ["CANCELLING", "", "1"],
+    ["CANCELLED", "NO_CANDIDATE", "0"],
+    ["WAITING", "", "1"],
+    ["PENDING", "", "0"],
+    ["MATCHING", "", "0"],
+  ]) {
+    await request.post("/__test/state", { data: { status, lastError } });
+    await page.getByRole("button", { name: /Refresh data/ }).click();
+    const card = page.getByRole("button", {
+      name: /Water needed at the school/,
+    });
+    await expect(
+      card.getByText(status.replaceAll("_", " "), { exact: true }),
+    ).toBeVisible();
+    await expect(attention).toHaveText(count);
+  }
+});
 test("events trigger authoritative refresh and reconnect recovers a missed update", async ({
   page,
   request,

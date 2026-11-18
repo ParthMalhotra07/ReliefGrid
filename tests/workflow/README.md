@@ -111,3 +111,21 @@ entity while deliberately stripping its outbox event. The old final-state fixtur
 still passes, while the durable-row assertion rejects it. Pure negative cases
 also reject missing/duplicate/corrupted rows and missing or foreign closures.
 No deliberately broken command is sent to kind by these negative controls.
+
+## Internal authentication
+
+The cluster runner uses the shared `scripts/internal-auth-env.sh` setup from
+#174 after any requested reset and before changing storage images or scaling
+workers. Unreadable auth state or invalid/missing Secrets aborts the run. The
+shell's ring/outbox preflights and the workflow client's first ring lookup,
+mutations and restart ring probes use the app sender credential. Management
+seam endpoints keep their separate operator bearer credential. Temp sender and
+header files are removed by the outer exit trap even if a child test fails.
+
+Memory-only M8 has no coordinator identity and ignores cluster credential files.
+For an already enabled joint kind check, use `SCHEDULE_RESET=0` and the agreed
+schedule/seed subset; the ordinary default reset installs the clean default
+profile. Setup rereads sender Secrets on each runner invocation; credential
+rotation needs the agreed receiver overlap and a fresh invocation rather than
+assuming an existing staged token changes in place. Authentication and full
+schedule acceptance remain separate observations.

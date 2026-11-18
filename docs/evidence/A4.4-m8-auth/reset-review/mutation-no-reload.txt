@@ -1,0 +1,18 @@
+--- FAIL: TestSchedulesAuthPreflightBeforeReset (0.07s)
+    --- FAIL: TestSchedulesAuthPreflightBeforeReset/post-reset-read-failure (0.07s)
+        schedules_auth_preflight_test.go:119: child=true want=false: helm --kube-context kind-reliefgrid -n reliefgrid get values storage -a -o json
+            make demo-reset
+            kubectl --context kind-reliefgrid -n reliefgrid get deployment reliefgrid-matcher -o jsonpath={.spec.replicas}
+            kubectl --context kind-reliefgrid -n reliefgrid get statefulset storage-shard-1 -o jsonpath={.spec.replicas}
+            kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas=0
+            kubectl --context kind-reliefgrid -n reliefgrid wait --for=delete pods -l app.kubernetes.io/instance=reliefgrid,app.kubernetes.io/component=matcher --timeout=90s
+            kubectl --context kind-reliefgrid -n reliefgrid port-forward --address=127.0.0.1 svc/storage-coordinator 40203:8080
+            go-started
+            kubectl --context kind-reliefgrid -n reliefgrid scale statefulset/storage-shard-1 --replicas=3
+            kubectl --context kind-reliefgrid -n reliefgrid rollout status statefulset/storage-shard-1 --timeout=90s
+            kubectl --context kind-reliefgrid -n reliefgrid scale deployment reliefgrid-matcher --replicas=2
+
+            SUBSET 4: not complete A2.3 acceptance
+FAIL
+FAIL	github.com/ParthMalhotra07/ReliefGrid/scripts	0.079s
+FAIL

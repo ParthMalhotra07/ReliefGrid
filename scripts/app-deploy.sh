@@ -11,6 +11,35 @@ context="kind-$cluster"
 # the full subchart in its isolated namespace.
 with_storage="${APP_WITH_STORAGE:-false}"
 case "$with_storage" in true|false) ;; *) echo 'APP_WITH_STORAGE must be true or false' >&2; exit 1 ;; esac
+# INTERNAL_AUTH=true (#29): the app release gets internal HTTP authentication through
+# deploy/helm/reliefgrid/values-internal-auth.yaml (values file only; the storage release owns
+# and generates the tokens). Unset: exactly as before. Set (true or false): it must match the
+# storage release, or the app's sender mounts would point at Secrets that do not exist (or
+# send nothing to receivers that require a token).
+auth_values=()
+case "${INTERNAL_AUTH:-}" in
+'') ;;
+true|false)
+  [ "$INTERNAL_AUTH" = true ] && auth_values=(-f deploy/helm/reliefgrid/values-internal-auth.yaml)
+  if [ "$with_storage" = true ] && [ "$INTERNAL_AUTH" = true ]; then
+    echo 'INTERNAL_AUTH=true is for the standalone storage release (APP_WITH_STORAGE=false): the app chart does not pass it to its storage subchart' >&2
+    exit 2
+  fi
+  if [ "$with_storage" = false ]; then
+    # The storage release's state by the same rule as scripts/internal-auth-env.sh: only a JSON
+    # boolean counts; an absent or null internalAuth (a chart before #29) is off.
+    storage_auth="$(helm --kube-context "$context" get values storage -n "$namespace" -a -o json | jq -r '
+      if type != "object" then "invalid"
+      elif .internalAuth == null then "false"
+      elif (.internalAuth | type) == "object" and (.internalAuth.enabled | type) == "boolean" then (.internalAuth.enabled | tostring)
+      else "invalid" end')" && [ -n "$storage_auth" ] ||
+      { echo 'INTERNAL_AUTH: cannot read the storage release values' >&2; exit 2; }
+    [ "$storage_auth" = "$INTERNAL_AUTH" ] ||
+      { echo "INTERNAL_AUTH=$INTERNAL_AUTH but the storage release has internalAuth.enabled=$storage_auth; deploy both with the same setting (make demo-reset INTERNAL_AUTH=...)" >&2; exit 2; }
+  fi
+  ;;
+*) echo "INTERNAL_AUTH must be true or false, not '$INTERNAL_AUTH'" >&2; exit 2 ;;
+esac
 export APP_IMAGE_TAG="${APP_IMAGE_TAG:-a15-$(date -u +%Y%m%d%H%M%S)}"
 A15_EVIDENCE_DIR="$(python3 scripts/app_evidence.py)"
 export A15_EVIDENCE_DIR
@@ -62,6 +91,7 @@ bash scripts/app-chart-deps.sh
 helm --kube-context "$context" upgrade --install "$release" deploy/helm/reliefgrid \
   -n "$namespace" --create-namespace -f deploy/helm/reliefgrid/values-app-kind.yaml \
   --set storage.enabled="$with_storage" \
+  "${auth_values[@]}" \
   --set-string app.api.image.tag="$APP_IMAGE_TAG" \
   --set-string app.matcher.image.tag="$APP_IMAGE_TAG" \
   --set-string app.ui.image.tag="$APP_IMAGE_TAG" \

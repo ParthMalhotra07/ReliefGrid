@@ -1,0 +1,22 @@
+rate 0.3138 reads/s per reader; mean reads per reader in the window 9.45
+R=2: mean total 18.9 (observed 20, 18); P(min shard < 3) = 0.207; P(min shard <= 3) = 0.430
+floor (a shard owns no key; no reader count helps): 0.0054
+R= 2: P(any shard < 3) = 0.2072
+R= 3: P(any shard < 3) = 0.0857
+R= 4: P(any shard < 3) = 0.0347
+R= 5: P(any shard < 3) = 0.0228
+R= 6: P(any shard < 3) = 0.0104
+R= 7: P(any shard < 3) = 0.0101
+R= 8: P(any shard < 3) = 0.0081
+R= 9: P(any shard < 3) = 0.0066
+R=10: P(any shard < 3) = 0.0055
+R=11: P(any shard < 3) = 0.0055
+R=12: P(any shard < 3) = 0.0054
+R=13: P(any shard < 3) = 0.0054
+R=14: P(any shard < 3) = 0.0053
+R=15: P(any shard < 3) = 0.0054
+R=16: P(any shard < 3) = 0.0054
+R= 6 sensitivity: rate 0.299, window 27.1 s -> P = 0.0164
+R= 8 sensitivity: rate 0.299, window 27.1 s -> P = 0.0109
+R=10 sensitivity: rate 0.299, window 27.1 s -> P = 0.0058
+R=12 sensitivity: rate 0.299, window 27.1 s -> P = 0.0055

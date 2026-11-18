@@ -15,7 +15,7 @@
 #
 # Environment: CHAOS_CONTEXT (kind-reliefgrid), CHAOS_NAMESPACE (reliefgrid), TOOLS_IMAGE
 # (reliefgrid/tools:dev), ELECTION_MAX_SECONDS (10), ISOLATE_SECONDS (20), CUT_CHECK_SECONDS (8),
-# READERS (2), READ_INTERVAL_MS (50), READ_CONSISTENCY (linearizable), GRACE_SECONDS (2); and
+# READERS (2; 10 for restart-coordinator), READ_INTERVAL_MS (50), READ_CONSISTENCY (linearizable), GRACE_SECONDS (2); and
 # faults.sh's.
 
 set -uo pipefail
@@ -33,12 +33,26 @@ ISOLATE_SECONDS="${ISOLATE_SECONDS:-20}"
 CUT_CHECK_SECONDS="${CUT_CHECK_SECONDS:-8}"
 RECOVERY_MAX_SECONDS=60 # any experiment: fault start -> an agreed leader
 WORKERS=4 KEYS=4 INTERVAL_MS=50
-READERS="${READERS:-2}"
+# restart-coordinator runs 10 readers, the others 2. While the coordinator is down every read
+# waits on it (about 3.2 s each, 0.314 reads/s per reader in the retained runs, #181), and reader
+# j of R reads the 16 update keys j, j+R, ... in turn, so each shard's reads after the grace
+# depend on how many keys it owns and where each reader is in its cycle. Simulated with the
+# ring's shard shares (0.357/0.300/0.343) and that rate over a 30 s window, the chance that some
+# shard gets fewer than chaos/judge MinCoverage (3) reads is 20.7% with 2 readers, 0.81% with
+# 8 and 0.55% with 10, which is the floor: 0.54% of runs leave a shard owning none of the 16
+# keys, which no reader count fixes (docs/evidence/S4.3/coordinator-read-coverage/).
+case "${EXPERIMENT:-}" in # demo 6 sources this file without one
+restart-coordinator) READERS="${READERS:-10}" ;;
+*) READERS="${READERS:-2}" ;;
+esac
 READ_INTERVAL_MS="${READ_INTERVAL_MS:-50}"
 READ_CONSISTENCY="${READ_CONSISTENCY:-linearizable}"
 GRACE_SECONDS="${GRACE_SECONDS:-2}"
 # shellcheck source=chaos/scripts/faults.sh
 . "$(dirname "${BASH_SOURCE[0]}")/faults.sh"
+# shellcheck source=scripts/internal-auth-env.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../../scripts/internal-auth-env.sh" ||
+	{ echo "chaos: cannot load scripts/internal-auth-env.sh" >&2; exit 2; }
 
 chaos_usage() {
 	cat <<EOF
@@ -194,10 +208,14 @@ EOF
 }
 
 # start_job <name> <invcheck args...>: /invcheck as a Job on the infra worker, with the
-# ledger PVC at /ledger. Kept for an hour after it finishes, for inspection.
+# ledger PVC at /ledger. Kept for an hour after it finishes, for inspection. With
+# internalAuth.enabled the Job also mounts the app sender token (and, for --probe reads
+# of storage pods, the node one); off, the Job is exactly as before (#29).
 start_job() {
-	local name="$1"
+	local name="$1" a node=()
 	shift
+	if [ -z "$INTERNAL_AUTH_ON" ]; then internal_auth_detect "$CTX" "$NS" || return 1; fi
+	for a in "$@"; do [ "$a" = --probe ] && node=(--node); done
 	kn delete job "$name" --ignore-not-found --wait >/dev/null 2>&1
 	printf '%s\n' "$@" | jq -Rs 'split("\n")[:-1]' | jq --arg name "$name" --arg image "$TOOLS_IMAGE" --arg run "$run_id" '{
 		apiVersion: "batch/v1", kind: "Job",
@@ -212,7 +230,7 @@ start_job() {
 				volumes: [{name: "ledger", persistentVolumeClaim: {claimName: "chaos-ledger"}}],
 				containers: [{name: "invcheck", image: $image, imagePullPolicy: "Never",
 					command: (["/invcheck"] + .), volumeMounts: [{name: "ledger", mountPath: "/ledger"}]}]}}}}' |
-		kn apply -f - >/dev/null
+		internal_auth_patch_job "${node[@]}" | kn apply -f - >/dev/null
 }
 job_done() { # job_done <name>: the Job succeeded or failed
 	local s

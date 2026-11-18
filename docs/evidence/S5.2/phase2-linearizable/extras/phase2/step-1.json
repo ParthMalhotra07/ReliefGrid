@@ -1,0 +1,145 @@
+{
+ "dir": "~/.cache/reliefgrid/S5.2-phase2-20261112T170200Z/step-1",
+ "runId": "S5.2-step-20261112T170848Z",
+ "scenario": "step",
+ "git": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+ "load": [
+  {
+   "shard": 0,
+   "raftEntries": 49039,
+   "commands": 49035,
+   "nonCommand": 4,
+   "fsmApplies": 49039,
+   "barriers": 0,
+   "appliedUncounted": 4,
+   "reads": {
+    "linearizable": 200433,
+    "stale": 0,
+    "strong": 0
+   }
+  },
+  {
+   "shard": 1,
+   "raftEntries": 45108,
+   "commands": 45095,
+   "nonCommand": 13,
+   "fsmApplies": 45108,
+   "barriers": 0,
+   "appliedUncounted": 13,
+   "reads": {
+    "linearizable": 189140,
+    "stale": 0,
+    "strong": 0
+   }
+  },
+  {
+   "shard": 2,
+   "raftEntries": 36087,
+   "commands": 36076,
+   "nonCommand": 11,
+   "fsmApplies": 36087,
+   "barriers": 0,
+   "appliedUncounted": 11,
+   "reads": {
+    "linearizable": 157156,
+    "stale": 0,
+    "strong": 0
+   }
+  }
+ ],
+ "coordinatorCpu": [
+  {
+   "targetRps": 10,
+   "millicores": 50.8,
+   "samples": 21
+  },
+  {
+   "targetRps": 20,
+   "millicores": 156.6,
+   "samples": 21
+  },
+  {
+   "targetRps": 30,
+   "millicores": 225.1,
+   "samples": 21
+  },
+  {
+   "targetRps": 40,
+   "millicores": 244.1,
+   "samples": 21
+  },
+  {
+   "targetRps": 50,
+   "millicores": 245.3,
+   "samples": 21
+  },
+  {
+   "targetRps": 60,
+   "millicores": 245.9,
+   "samples": 21
+  },
+  {
+   "targetRps": 70,
+   "millicores": 245.7,
+   "samples": 21
+  },
+  {
+   "targetRps": 80,
+   "millicores": 245.6,
+   "samples": 21
+  }
+ ],
+ "idle": [
+  {
+   "shard": 0,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
+   "reads": {
+    "linearizable": 385,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 1,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
+   "reads": {
+    "linearizable": 382,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  },
+  {
+   "shard": 2,
+   "raftEntries": 0,
+   "commands": 0,
+   "nonCommand": 0,
+   "fsmApplies": 0,
+   "barriers": 0,
+   "appliedUncounted": 0,
+   "reads": {
+    "linearizable": 384,
+    "stale": 0,
+    "strong": 0
+   },
+   "seconds": 61.6,
+   "nonCommandPerS": 0.0,
+   "commandsPerS": 0.0
+  }
+ ]
+}

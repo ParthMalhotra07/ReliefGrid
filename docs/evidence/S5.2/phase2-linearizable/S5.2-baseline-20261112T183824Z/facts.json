@@ -1,0 +1,139 @@
+{
+  "goal": "S5.2",
+  "runId": "S5.2-baseline-20261112T183824Z",
+  "scenario": "baseline",
+  "startedAt": "2026-11-13T00:08:29.403977265+05:30",
+  "endedAt": "2026-11-12T18:48:29.403977265Z",
+  "warmupSeconds": 120,
+  "git": {
+    "sha": "514bb33e1ffd3c6f8a83591fc82e6347b837d7ac",
+    "dirty": false
+  },
+  "host": {
+    "cpuModel": "Intel(R) Core(TM) Ultra 7 258V",
+    "logicalCpus": 8,
+    "memTotalGiB": 30.4,
+    "kernel": "7.0.0-43-generic",
+    "powerProfile": "performance",
+    "k6Cpus": "6-7",
+    "kindCpus": "0-5",
+    "powerProfileRestored": "balanced",
+    "powerProfileDegraded": "no",
+    "swapUsedMiB": 243,
+    "loadAvgStart": 2.03,
+    "cpuMHzStart": 2686,
+    "cpuMHzEnd": 3941
+  },
+  "versions": {
+    "k6": "v2.3.0",
+    "kind": "v0.33.0",
+    "kindNodeImage": "kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5",
+    "kubectl": "v1.37.1",
+    "helm": "v3.22.1",
+    "go": "1.27.2",
+    "images": {
+      "api": "sha256:b1af22b2a40df49f84b138e963edcdfeb6be23a17ad5d64fe8624b1ad6fc4bf8",
+      "coordinator": "sha256:ae4667fbdf40ce97a8699e0b622d0beb0e123709e1dca492d44b3d6e85a4d10e",
+      "matcher": "sha256:c0f908ad4c380ef8c2f5a33d3ef54e75744029e49e6419f1d4f7e334ffb2299d",
+      "rabbitmq": "sha256:57bcedccc5c75e55ac33e5f3eaeb28529317b5a02fe5e2722a025f2674c8063e",
+      "storagenode": "sha256:8d045d7b3e888b28b384c266656bcb956a630a3d6cbd94efb03012587ab6b2dc",
+      "traefik": "sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65",
+      "ui": "sha256:b55cd53774e73020e506d11fb495bd015120fe43a3c8d2424a502a03ea48d5f3"
+    }
+  },
+  "config": {
+    "raftProfile": "load",
+    "readFence": "fence",
+    "tracing": "off",
+    "autoscaling": "off",
+    "replicas": {
+      "api": 2,
+      "matcher": 2
+    },
+    "podQoS": "Guaranteed",
+    "podCpuLimitsMillicores": {
+      "reliefgrid-api-d5678db88-dwqpd": 400,
+      "reliefgrid-api-d5678db88-qlg89": 400,
+      "reliefgrid-matcher-5cff87dbfc-t98dw": 250,
+      "reliefgrid-matcher-5cff87dbfc-wr5vq": 250,
+      "reliefgrid-rabbitmq-0": 750,
+      "reliefgrid-traefik-7cc48c599-g7rgq": 300,
+      "reliefgrid-ui-bc9545879-zd8zt": 50,
+      "storage-coordinator-6c449fd88-xv68l": 250,
+      "storage-shard-0-0": 300,
+      "storage-shard-0-1": 300,
+      "storage-shard-0-2": 300,
+      "storage-shard-1-0": 300,
+      "storage-shard-1-1": 300,
+      "storage-shard-1-2": 300,
+      "storage-shard-2-0": 300,
+      "storage-shard-2-1": 300,
+      "storage-shard-2-2": 300
+    }
+  },
+  "load": {
+    "executor": "constant-arrival-rate",
+    "durationSeconds": 600,
+    "maxVUs": 400
+  },
+  "steps": [],
+  "invcheck": {
+    "exitCode": 0
+  },
+  "audit": {
+    "mode": "without-admission",
+    "matcherReplicas": 2,
+    "matcherReplicasAfter": 2,
+    "headroom": {
+      "pct": 80,
+      "boundSeconds": 600,
+      "waitedSeconds": 0,
+      "ok": true,
+      "limits": {
+        "matching.dead": 10000,
+        "matching.requests": 10000,
+        "matching.wakeups": 10000,
+        "retry.120s": 10000,
+        "retry.30s": 10000,
+        "retry.5s": 10000,
+        "wakeup.retry.5s": 10000
+      },
+      "depthsAtPause": {
+        "matching.dead": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "matching.requests": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "matching.wakeups": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "retry.120s": {
+          "ready": 4527,
+          "unacked": 0
+        },
+        "retry.30s": {
+          "ready": 50,
+          "unacked": 0
+        },
+        "retry.5s": {
+          "ready": 0,
+          "unacked": 0
+        },
+        "wakeup.retry.5s": {
+          "ready": 0,
+          "unacked": 0
+        }
+      }
+    },
+    "drain": {
+      "read": 0,
+      "published": 0,
+      "marked": 0,
+      "retries": 0
+    }
+  }
+}
