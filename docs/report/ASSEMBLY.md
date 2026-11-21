@@ -1,6 +1,6 @@
-# Review draft assembly
+# Report assembly
 
-submission-draft.md integrates the A fragments and supplied S v3 contribution
+submission-draft.md (rendered as reliefgrid-report.pdf) integrates the A fragments and supplied S v3 contribution
 into nine sections. Sections now flow naturally; figures remain with their captions and table headers
 repeat on continuation. The page count is verified after rendering, not inferred
 from the nine-page editorial budget. Build with Python and pdf-requirements.txt:
@@ -19,13 +19,11 @@ previous 5.5/3.5 figures were rounded editing envelopes. Layout is checked on th
 actual PDF, including references and captions, not inferred from word count.
 No additional cover/contents/appendix is outside the count.
 
-Phase 2 evidence at #176 (25ea8bc) has now been independently replayed/reviewed
+Phase 2 evidence at #176 (25ea8bc) has been independently replayed/reviewed
 and integrated, retaining the measured source 514bb33 and unaudited exploration
-qualifications. This remains a review draft awaiting final cohort acceptance
-and final source/reference pin.
-Final cohort checks, final source pin and report owner review remain required.
-The current draft has no {FINAL_SHA}/TODO citation placeholders; source links
-use its declared baseline and historical runs retain their own identities.
+qualifications. The report pins its submission source to
+b099c604027e4c4cbef94dcda4ca70c3eea72cdf; historical runs retain their own
+identities. It has no {FINAL_SHA}/TODO citation placeholders.
 
 The retained PDF was built with Python 3.12.10, reportlab 5.0.1. Page rendering and
 text/hash checks used pypdf 6.21.2 and pymupdf 2.1; these are optional review

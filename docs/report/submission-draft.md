@@ -2,7 +2,7 @@
 
 Parth Malhotra and Hrishabh Sharrma
 
-Working submission draft. Source baseline: b77e5b9761119a73bed8f2d3eede40c863492275. Historical runs retain their own revisions. Phase 2 evidence is reviewed at #176 (25ea8bc); its measured source remains 514bb33. Final gate and final submission reference pin remain outstanding.
+Source at submission: b099c604027e4c4cbef94dcda4ca70c3eea72cdf. Historical runs keep their own recorded revisions.
 
 ## 1. Abstract
 
@@ -75,7 +75,7 @@ F1. The broker schedules work; shard consensus authorizes changes. Every shard h
 
 Raft log/stable state and completed snapshots live on PVCs. SQLite is derived, uses WAL/synchronous=OFF and is rebuilt in emptyDir from durable Raft history. SQLite commit is the local visibility boundary, not the independent durability source. The guarantee depends on retained quorum history and the disk/filesystem failure model; local volumes are not off-machine backup.
 
-Strong reads use a committed Barrier. The optional linearizable fence establishes an own-term commit, captures a read index, requires fresh majority evidence, rechecks term/leadership and waits for SQLite completion. Queued Raft apply and old acknowledgements are insufficient. The first term gate may still append a barrier. Stale reads are separate diagnostics. The integrated source includes #166: application callers default to linearizable and refuse missing/unknown authoritative served labels. Explicit strong calls retain Barrier behavior. The earlier Phase 1 and Phase 2 runs retain their own measured revisions; their results do not certify this assembled source as a newly load-tested deployment. [8]
+Since #166, application reads default to linearizable via the read fence. Explicit strong reads still use a Raft barrier. The fence establishes an own-term commit, captures a read index, requires fresh majority evidence, rechecks term/leadership and waits for SQLite completion. Queued Raft apply and old acknowledgements are insufficient. The first term gate may still append a barrier. Stale reads are separate diagnostics. Application callers refuse missing/unknown authoritative served labels. The earlier Phase 1 and Phase 2 runs retain their own measured revisions; their results do not certify this assembled source as a newly load-tested deployment. [8]
 
 Each command checks operationId deduplication, expected version, state and attempt rules in one committed SQLite transaction. Entity change, historical result, outbox event and completed-command index are recorded together. Proposers supply identifiers and integer timestamps; apply samples no wall clock/randomness and makes no unordered decisions. Resource and request claims are unique; live assignments require reciprocity and terminal requests hold no live claim. [4]
 
@@ -94,7 +94,7 @@ F3. Publication and matching are separate asynchronous paths. Confirmation prece
 
 The matcher authoritatively reads the request and uses type/location/window filters for candidate hints. It records a MATCHING intent binding request, resource, attempt and fingerprint before TryClaim. The resource shard checks eligibility and closure in committed apply; reciprocal request confirmation checks current version/attempt. A fresh read never authorizes an unchecked future write.
 
-Unknown results retain intent and operationId. A lookup/retry resolves the historical command, not present ownership. RETRYING fences confirmation until the old attempt closes. Cancellation and fulfilment remain CANCELLING/FULFILLING while closure and cleanup are pending. Reusable resources may return AVAILABLE; consumed resources remain CONSUMED and expired windows become OFFLINE. CloseAttempt releases only the bound claim.
+Unknown results retain intent and operationId. A lookup/retry resolves the historical command, not present ownership. RETRYING fences confirmation until the old attempt closes. Cancellation and fulfilment remain CANCELLING/FULFILLING until closure and cleanup complete. Reusable resources may return AVAILABLE; consumed resources remain CONSUMED and expired windows become OFFLINE. CloseAttempt releases only the bound claim.
 
 Consumers use manual ack and prefetch 8, acknowledging only after the required durable transition/retry handoff. Retry queues have explicit dead-letter routing back to work; transient outages do not justify immediate nack loops. Reconcilers page bounded scans and resume intermediate states through the same rules. Recovery assumes eventual quorum/broker/worker availability; it is not a cross-shard transaction.
 
@@ -172,7 +172,7 @@ Application evidence includes real-FSM adversarial schedules and retained kind/b
 
 ## Final gate
 
-Run gate-20261115T192826Z, code at 636b265, evidence #186. This is the run on the frozen code, with internal authentication switched on, aging at 0 s, autoscaling off, and fixed replicas (API 2, matcher 2).
+Run gate-20261115T192826Z, code at 636b265, evidence #186 [11]. This is the run on the frozen code, with internal authentication switched on, aging at 0 s, autoscaling off, and fixed replicas (API 2, matcher 2).
 
 | Check | Result |
 |---|---|
@@ -181,17 +181,17 @@ Run gate-20261115T192826Z, code at 636b265, evidence #186. This is the run on th
 | Chaos (10 faults plus 2 control experiments) | 22/22 checks passed: 0 lost writes, 0 unresolved unknowns, 0 stale reads |
 | Auth probes | 401 without a token or with a wrong one, 200 with the right one |
 | Auth log checks | All passed and complete: 71/71 pod logs read, no token found in any log |
-| Merkle audit and strict invariant check | 8/8 passed; clean, with no pending outbox events |
+| Merkle audit and strict invariant check | 8/8 passed; clean, with no undelivered outbox events |
 | UI forms, PS alias routes (7), traced request | Passed |
 | Fixed-replica check | API 2, matcher 2, no autoscalers |
 
-Change after the gate. After the final gate, PR #189 (merge 5974ff2) fixed the UI’s Needs-attention counter so that it counts requests by their current workflow state. The change is UI-only, adds a browser regression test, and does not affect the storage, workflow or messaging code that the gate tested, so the gate results above still apply.
+**Change after the gate.** After the final gate, PR #189 (merge 5974ff2) fixed the UI’s Needs-attention counter so that it counts requests by their current workflow state. The change is UI-only, adds a browser regression test, and does not affect the storage, workflow or messaging code that the gate tested, so the gate results above still apply.
 
 The final gate passed on its third attempt. The first two stopped on problems in our test scripts, not in the system: a check that looked for a new leader only once instead of waiting for the election, and a metrics check that was not given its auth token. Both failed runs are kept in the evidence with their causes.
 
 ## Internal authentication
 
-Official run, evidence #181. Internal calls between services now need a token. In the official run on a fresh deployment, all 9 demos passed with auth on, all 18 checks for refused and logged requests passed, and a full token rotation passed 40/40 checks: first only the old token worked, then both worked during the switch, then only the new one.
+Official run, evidence #181 [12]. Internal calls between services now need a token. In the official run on a fresh deployment, all 9 demos passed with auth on, all 18 checks for refused and logged requests passed, and a full token rotation passed 40/40 checks: first only the old token worked, then both worked during the switch, then only the new one.
 
 ## Not certified
 
@@ -275,8 +275,12 @@ The system still has clear limits. It runs on one machine, the coordinator and t
 
 [1] Course Cloud Computing problem statement: Tables 2/3/8; sections 9, 10 and 12. Local deployment and live demo requirements are authoritative.
 
-[2] [Implementation source baseline](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275). Re-pin final submission; historical measurements retain their own revisions.
+[2] [Implementation source at submission](https://github.com/ParthMalhotra07/ReliefGrid/tree/b099c604027e4c4cbef94dcda4ca70c3eea72cdf). Historical measurements retain their own revisions.
 
-[3] [Public/internal/ring contracts and simulation](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/contracts). [4] [Architecture, workflow and ADR004/005](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/report/architecture.md). [5] [12 November scoped gate](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/evidence/gate-20261112T100532Z/report.md). [6] [Later #167 campaign](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7). [#168 unknown-outcome fix](https://github.com/ParthMalhotra07/ReliefGrid/pull/168). [7] [S5.2 Phase 1 reports/aggregates and methodology](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/docs/evidence/S5.2). [8] [ADR006 and retained M6 raw replay](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/adr/006-read-fence-study.md). [9] [Deployment, Merkle audit and qualified validation/rehearsal records](https://github.com/ParthMalhotra07/ReliefGrid/blob/b77e5b9761119a73bed8f2d3eede40c863492275/docs/report/deployment-and-demo.md).
+[3] [Public/internal/ring contracts and simulation](https://github.com/ParthMalhotra07/ReliefGrid/tree/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/contracts). [4] [Architecture, workflow and ADR004/005](https://github.com/ParthMalhotra07/ReliefGrid/blob/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/report/architecture.md). [5] [12 November scoped gate](https://github.com/ParthMalhotra07/ReliefGrid/blob/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/evidence/gate-20261112T100532Z/report.md). [6] [Later #167 campaign](https://github.com/ParthMalhotra07/ReliefGrid/tree/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7). [#168 unknown-outcome fix](https://github.com/ParthMalhotra07/ReliefGrid/pull/168). [7] [S5.2 Phase 1 reports/aggregates and methodology](https://github.com/ParthMalhotra07/ReliefGrid/tree/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/evidence/S5.2). [8] [ADR006 and retained M6 raw replay](https://github.com/ParthMalhotra07/ReliefGrid/blob/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/adr/006-read-fence-study.md). [9] [Deployment, Merkle audit and qualified validation/rehearsal records](https://github.com/ParthMalhotra07/ReliefGrid/blob/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/report/deployment-and-demo.md).
 
 [10] [Phase 2 comparison, reviewed #176](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) and [method/deviations/limits](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md). Raw measurement source 514bb33; evidence publication source 25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3.
+
+[11] [Final gate gate-20261115T192826Z evidence](https://github.com/ParthMalhotra07/ReliefGrid/tree/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/evidence/gate-20261115T192826Z) and [PR #186](https://github.com/ParthMalhotra07/ReliefGrid/pull/186).
+
+[12] [Internal auth official enable and rotation run](https://github.com/ParthMalhotra07/ReliefGrid/tree/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/docs/evidence/S-29-auth-enable) and [PR #181](https://github.com/ParthMalhotra07/ReliefGrid/pull/181).
