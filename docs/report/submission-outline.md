@@ -60,7 +60,7 @@ which timestamp the server supplies. Keep exact field wording tied to the
 original problem statement, not inferred from endpoint examples.
 
 Full mappings: [PS compliance](ps-compliance.md). Full schemas:
-[contracts](https://github.com/ParthMalhotra07/ReliefGrid/tree/b77e5b9761119a73bed8f2d3eede40c863492275/contracts).
+[contracts](https://github.com/ParthMalhotra07/ReliefGrid/tree/b099c604027e4c4cbef94dcda4ca70c3eea72cdf/contracts).
 
 ## 3. Architecture, sharding, consistency and schemas: 1.50 pages
 

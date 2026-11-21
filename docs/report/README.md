@@ -48,15 +48,13 @@ links cannot prove scientific claims or page count. The public repository link,
 mandatory live demo and deployment-from-scratch backup recording are required;
 public visibility alone does not establish actual submission or playback.
 
-## Assembled review draft
+## Assembled report
 
 The [assembled Markdown](submission-draft.md) and
-[nine-page PDF](reliefgrid-submission-draft.pdf) integrate the A text with
+[nine-page PDF](reliefgrid-report.pdf) integrate the A text with
 [Hrishabh's supplied contribution](contributions/README.md). See
 [assembly/build instructions](ASSEMBLY.md) and [editable figures](figures/README.md).
-The rendered draft is under ten pages including references. It remains a
-review draft with final source pin and final evidence
-acceptance outstanding; archival editorial placeholders are not accepted
-submission references.
+The rendered report is under ten pages including references. Its source is
+pinned to b099c604027e4c4cbef94dcda4ca70c3eea72cdf.
 
-The [reviewed Phase 2 comparison](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) is integrated in the flowing draft, with [method/deviation qualifications](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md).
+The [reviewed Phase 2 comparison](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) is integrated in the report, with [method/deviation qualifications](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md).

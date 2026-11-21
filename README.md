@@ -41,7 +41,7 @@ flowchart LR
 More detail: the [report architecture chapter](docs/report/architecture.md) and the
 design records in [docs/adr](docs/adr).
 
-[Project report (PDF)](docs/report/reliefgrid-submission-draft.pdf)
+[Project report (PDF)](docs/report/reliefgrid-report.pdf)
 
 ## Problem statement mapping
 

@@ -207,25 +207,24 @@ unknown outcome rather than claiming rejection ([proposal](../../internal/raftst
 same operationId or use durable closure. A historical SUCCESS records what
 happened to an operation, not who owns a resource now.
 
-Read modes are explicit. Default strong reads use a committed log barrier; stale
-reads are unfenced local diagnostic observations. The optional linearizable fence
-avoids a log entry per steady-state read: establish an own-term commit, capture
-the read index, obtain quorum acceptances for requests sent after read start,
-reject term/role change and wait for SQLite's completed command index
+Read modes are explicit. Since #166, application reads default to linearizable
+via the read fence: coordclient sends `consistency=linearizable` for any read that
+names no mode. Strong is the explicit barrier mode: a caller that names it (for
+example `cmd/invcheck`) still gets a committed log barrier. Stale reads are
+unfenced local diagnostic observations. The fence avoids a log entry per
+steady-state read: establish an own-term commit, capture the read index, obtain
+quorum acceptances for requests sent after read start, reject term/role change
+and wait for SQLite's completed command index
 ([fence](../../internal/raftstore/fence.go#L11),
 [contract](../../contracts/internal.yaml#L32)). Raft AppliedIndex alone can count
 work handed to the FSM before SQLite commits; barriers/no-ops/configuration
 entries also differ from command indexes ([index boundary](../../internal/raftstore/node.go#L94)).
-`strongReadFence: fence` selects how explicit linearizable reads are implemented;
-it does not change the contract's strong default
-([storage values](../../deploy/helm/storage/values.yaml#L29)).
+`strongReadFence: fence` selects how linearizable reads are implemented on the
+storage node; a storage request that arrives with no mode is still served as
+strong ([storage values](../../deploy/helm/storage/values.yaml#L29)).
 
-Application read paths that leave their mode unspecified currently use strong
-(Barrier) reads. Configuring the optional fence does not make those calls
-linearizable-mode requests automatically. Therefore the S4.1/M6 fence study is
-not proof that the current app workload uses the fence or gains its measured
-speedup. A separate post-gate read-mode PR and before/after load comparison are
-planned; no default or contract is changed by this report.
+The S4.1/M6 fence study measured the fence in isolation; the Phase 2 load
+comparison measured the application with the linearizable default.
 
 TryClaim checks permanent closure, recognizes the same bound claim, closes a
 conflicting/ineligible attempt, or commits the eligible claim. Rejection-and-closure

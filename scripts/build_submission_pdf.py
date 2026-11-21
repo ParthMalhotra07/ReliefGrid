@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build the review draft with native vector figures and readable table text.
+"""Build the project report PDF with native vector figures and readable table text.
 
-Requires reportlab==5.0.1. It does not run workloads, resolve pending evidence,
-or declare final submission acceptance. Input is docs/report/submission-draft.md.
+Requires reportlab==5.0.1. It does not run workloads or check evidence.
+Input is docs/report/submission-draft.md; output is docs/report/reliefgrid-report.pdf.
 """
 import argparse
 from html import escape
@@ -150,7 +150,7 @@ def table(rows):
 
 def footer(canvas,doc):
     canvas.saveState();canvas.setFont('Helvetica',8);canvas.setFillColor(EDGE)
-    canvas.drawString(42,24,'ReliefGrid - review draft; final evidence/source pin pending')
+    canvas.drawString(42,24,'ReliefGrid - Cloud Computing project report')
     canvas.drawRightString(A4[0]-42,24,str(doc.page))
     canvas.restoreState()
 
@@ -191,14 +191,14 @@ def build(root,output):
             while i<len(lines) and lines[i].strip() and not lines[i].lstrip().startswith(('#','|','![')):
                 paragraph.append(lines[i].strip());i+=1
             content=' '.join(paragraph)
-            style='tablecaption' if re.match(r'T\d',content) else 'caption' if re.match(r'F\d\.',content) else 'ref' if re.match(r'\[\d+\]',content) else 'meta' if content.startswith(('Working submission','Parth Malhotra')) else 'body'
+            style='tablecaption' if re.match(r'T\d',content) else 'caption' if re.match(r'F\d\.',content) else 'ref' if re.match(r'\[\d+\]',content) else 'meta' if content.startswith(('Source at submission','Parth Malhotra')) else 'body'
             story.append(Paragraph(markup(content),STYLES[style]))
     output.parent.mkdir(parents=True,exist_ok=True)
-    doc=BaseDocTemplate(str(output),pagesize=A4,leftMargin=42,rightMargin=42,topMargin=36,bottomMargin=42,title='ReliefGrid submission review draft',author='Parth Malhotra and Hrishabh Sharrma',pageCompression=1)
+    doc=BaseDocTemplate(str(output),pagesize=A4,leftMargin=42,rightMargin=42,topMargin=36,bottomMargin=42,title='ReliefGrid project report',author='Parth Malhotra and Hrishabh Sharrma',pageCompression=1)
     doc.addPageTemplates(PageTemplate(id='report',frames=[Frame(42,42,WIDTH,A4[1]-78,leftPadding=0,rightPadding=0,topPadding=0,bottomPadding=0)],onPage=footer))
     doc.build(story)
     print('Built',output)
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--root',type=Path,default=Path(__file__).resolve().parents[1]);parser.add_argument('--output',type=Path)
-    args=parser.parse_args();build(args.root,args.output or args.root/'docs/report/reliefgrid-submission-draft.pdf')
+    args=parser.parse_args();build(args.root,args.output or args.root/'docs/report/reliefgrid-report.pdf')
