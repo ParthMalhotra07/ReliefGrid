@@ -24,6 +24,7 @@
   --on-brand: #ffffff;
   --navy: #173b5d;
   --blue: #234e76;
+  --link: #234e76;
   --teal: #1a7168;
   --focus: #1a7168;
   --border: #d6e0da;
@@ -69,6 +70,108 @@
   color: var(--text);
   background: var(--page);
   font-synthesis: none;
+}
+/* Dark theme: the system setting unless Light is chosen, or Dark chosen. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0f1a24;
+    --surface: #16232f;
+    --surface-2: #1b2a37;
+    --surface-3: #233645;
+    --surface-overlay: #16232ff2;
+    --backdrop: #000000a6;
+    --text: #e6edf3;
+    --text-2: #c4d1db;
+    --text-muted: #a3b4c1;
+    --on-brand: #ffffff;
+    --navy: #2b5c87;
+    --blue: #2f6595;
+    --link: #a3cbee;
+    --teal: #4fb3a1;
+    --focus: #6fd0bd;
+    --border: #2e4150;
+    --border-soft: #243543;
+    --border-strong: #4a6475;
+    --ok-text: #86dcae;
+    --ok-bg: #173b2b;
+    --ok-border: #2f6c50;
+    --warn-text: #f2c97a;
+    --warn-bg: #3a2c12;
+    --warn-border: #74591f;
+    --warn-solid: #c9973a;
+    --danger-text: #f4a593;
+    --danger-bg: #43211c;
+    --danger-border: #7d3c32;
+    --danger-solid: #d4574e;
+    --info-text: #a3cbee;
+    --info-bg: #19304a;
+    --info-border: #44698f;
+    --neutral-solid: #6f7f88;
+    --shadow: #0000004d;
+    --shadow-strong: #000000b3;
+    --map-bg: #1c2a35;
+    --map-halo: #0f1a24;
+    --map-land: #2b3b37;
+    --map-coast: #6b8a84;
+    --radius-line: #7fb6e0;
+    --line-cancelling: #e5ad61;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0f1a24;
+  --surface: #16232f;
+  --surface-2: #1b2a37;
+  --surface-3: #233645;
+  --surface-overlay: #16232ff2;
+  --backdrop: #000000a6;
+  --text: #e6edf3;
+  --text-2: #c4d1db;
+  --text-muted: #a3b4c1;
+  --on-brand: #ffffff;
+  --navy: #2b5c87;
+  --blue: #2f6595;
+  --link: #a3cbee;
+  --teal: #4fb3a1;
+  --focus: #6fd0bd;
+  --border: #2e4150;
+  --border-soft: #243543;
+  --border-strong: #4a6475;
+  --ok-text: #86dcae;
+  --ok-bg: #173b2b;
+  --ok-border: #2f6c50;
+  --warn-text: #f2c97a;
+  --warn-bg: #3a2c12;
+  --warn-border: #74591f;
+  --warn-solid: #c9973a;
+  --danger-text: #f4a593;
+  --danger-bg: #43211c;
+  --danger-border: #7d3c32;
+  --danger-solid: #d4574e;
+  --info-text: #a3cbee;
+  --info-bg: #19304a;
+  --info-border: #44698f;
+  --neutral-solid: #6f7f88;
+  --shadow: #0000004d;
+  --shadow-strong: #000000b3;
+  --map-bg: #1c2a35;
+  --map-halo: #0f1a24;
+  --map-land: #2b3b37;
+  --map-coast: #6b8a84;
+  --radius-line: #7fb6e0;
+  --line-cancelling: #e5ad61;
+  color-scheme: dark;
+}
+:root {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .leaflet-tile-pane {
+    filter: brightness(0.82) contrast(1.05);
+  }
+}
+:root[data-theme="dark"] .leaflet-tile-pane {
+  filter: brightness(0.82) contrast(1.05);
 }
 @font-face {
   font-family: "Inter Variable";
@@ -736,7 +839,7 @@ select {
   background: transparent;
   padding: 6px 8px;
   min-height: 32px;
-  color: var(--blue);
+  color: var(--link);
   font-weight: 650;
 }
 .map-tool:hover:not(:disabled) {
@@ -831,7 +934,7 @@ select {
 }
 .assignment-line {
   width: 12px;
-  border-top: 1.5px dashed #246893;
+  border-top: 1.5px dashed var(--radius-line);
 }
 .timeline .panel-heading {
   border-bottom: 0;
@@ -1391,7 +1494,7 @@ footer .small-dot {
   border: 0;
   background: transparent;
   padding: 2px;
-  color: var(--blue);
+  color: var(--link);
   text-decoration: underline;
   text-underline-offset: 3px;
   font-size: 13px;
@@ -1918,4 +2021,80 @@ h3 {
   .button:active:not(:disabled) {
     transform: none;
   }
+}
+/* Map chrome and the map's own shapes follow the theme; pins do not. */
+.leaflet-container {
+  background: var(--map-bg);
+}
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background: var(--surface);
+  color: var(--text);
+  border-bottom-color: var(--border);
+}
+.leaflet-bar a.leaflet-disabled {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.leaflet-control-attribution,
+.leaflet-control-scale-line {
+  background: var(--surface-overlay) !important;
+  color: var(--text-2);
+}
+.leaflet-control-scale-line {
+  border-color: var(--text-2);
+}
+.leaflet-control-attribution a {
+  color: var(--info-text);
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip,
+.leaflet-tooltip {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.leaflet-popup-close-button {
+  color: var(--text-2) !important;
+}
+.leaflet-tooltip-top::before {
+  border-top-color: var(--surface);
+}
+.leaflet-tooltip-bottom::before {
+  border-bottom-color: var(--surface);
+}
+.leaflet-tooltip-left::before {
+  border-left-color: var(--surface);
+}
+.leaflet-tooltip-right::before {
+  border-right-color: var(--surface);
+}
+path.world-land {
+  fill: var(--map-land);
+  stroke: var(--map-coast);
+}
+path.matching-radius {
+  stroke: var(--radius-line);
+  fill: var(--radius-line);
+}
+path.assignment-path {
+  stroke: var(--radius-line);
+}
+path.assignment-path.cancelling {
+  stroke: var(--line-cancelling);
+}
+.theme-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.theme-switch select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 4px 6px;
 }

@@ -193,10 +193,10 @@ export function DispatchMap({
       pane: "world-overview",
       interactive: false,
       attribution: "Natural Earth",
+      // Colours come from the theme (path.world-land in app.css).
       style: {
-        color: "#8ea8a4",
+        className: "world-land",
         weight: 1,
-        fillColor: "#e7e7d6",
         fillOpacity: 1,
       },
     }).addTo(m);
@@ -333,7 +333,9 @@ export function DispatchMap({
       const resource = resources.find((v) => reciprocal(row, v));
       if (resource) {
         L.polyline([point, toPoint(resource.location)], {
-          color: row.status === "CANCELLING" ? "#986521" : "#286386",
+          className:
+            "assignment-path" +
+            (row.status === "CANCELLING" ? " cancelling" : ""),
           weight: 3,
           dashArray: "5 6",
           interactive: false,
@@ -474,10 +476,8 @@ export function DispatchMap({
     L.circle(centre, {
       radius: RADIUS_KM * 1000,
       className: "matching-radius",
-      color: "#286386",
       weight: 2,
       opacity: 0.55,
-      fillColor: "#286386",
       fillOpacity: 0.05,
       interactive: false,
     }).addTo(layer);

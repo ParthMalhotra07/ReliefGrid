@@ -442,3 +442,176 @@ test("surfaces share one radius and elevation, and focus has one ring", async ({
     }),
   ).toEqual(["solid", "2px", "rgb(26, 113, 104)"]);
 });
+
+test.describe("dark mode", () => {
+  const page_bg = (page) =>
+    page.evaluate(
+      () => getComputedStyle(document.documentElement).backgroundColor,
+    );
+  const LIGHT = "rgb(241, 244, 248)";
+  const DARK = "rgb(15, 26, 36)";
+
+  test("follows the system setting by default", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+    await expect(page.getByLabel("Colour theme")).toHaveValue("system");
+    expect(await page_bg(page)).toBe(DARK);
+    await page.emulateMedia({ colorScheme: "light" });
+    expect(await page_bg(page)).toBe(LIGHT);
+  });
+
+  test("System, Light and Dark settings apply and are remembered", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/");
+    const theme = page.getByLabel("Colour theme");
+    await theme.selectOption("dark");
+    expect(await page_bg(page)).toBe(DARK);
+    await page.reload();
+    await expect(page.getByLabel("Colour theme")).toHaveValue("dark");
+    expect(await page_bg(page)).toBe(DARK);
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.getByLabel("Colour theme").selectOption("light");
+    expect(await page_bg(page)).toBe(LIGHT);
+    await page.reload();
+    expect(await page_bg(page)).toBe(LIGHT);
+    await page.getByLabel("Colour theme").selectOption("system");
+    expect(await page_bg(page)).toBe(DARK);
+    await page.reload();
+    await expect(page.getByLabel("Colour theme")).toHaveValue("system");
+  });
+
+  test("the setting works without browser storage", async ({ page }) => {
+    await page.addInitScript(() => {
+      const fail = () => {
+        throw new Error("storage disabled");
+      };
+      Storage.prototype.getItem = fail;
+      Storage.prototype.setItem = fail;
+    });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto("/");
+    await expect(page.getByLabel("Colour theme")).toHaveValue("system");
+    await page.getByLabel("Colour theme").selectOption("dark");
+    expect(await page_bg(page)).toBe(DARK);
+    expect(errors).toEqual([]);
+  });
+
+  test("dark views meet AA, and the map stays readable", async ({
+    page,
+    request,
+  }) => {
+    const { contrastFailures } = await import("./contrast.js");
+    await request.post("/__test/state", { data: { status: "WAITING" } });
+    await create(request, "resources", {
+      resourceType: "FOOD",
+      name: "Food near",
+      location: { lat: 19.09, lng: 72.89 },
+      reusable: true,
+      windowStart: "2026-11-05T00:00:00Z",
+      windowEnd: "2026-11-06T00:00:00Z",
+    });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+    await expect(
+      page.getByRole("status", { name: "Connection status" }),
+    ).toContainText("Live");
+    const failures = [];
+    const check = async (view) =>
+      failures.push(
+        ...(await contrastFailures(page)).map((v) => `${view}: ${v}`),
+      );
+    await check("overview");
+    await page
+      .getByRole("region", { name: "Requests", exact: true })
+      .getByRole("button", { name: /Water needed at the school/ })
+      .click();
+    await check("request selected");
+    const map = page.getByRole("region", { name: "Dispatch map" });
+    // A dimmed marker's reason stays readable.
+    await map
+      .getByRole("button", { name: /^Resource: Food near/ })
+      .dispatchEvent("mouseover");
+    await expect(map.locator(".leaflet-tooltip")).toBeVisible();
+    await check("dimmed tooltip");
+    await page.getByRole("button", { name: "How matching works" }).click();
+    await check("how matching works");
+    await page.getByRole("button", { name: "How matching works" }).click();
+    await request.post("/__test/state", {
+      data: {
+        status: "MATCHED",
+        eventId: "13131313-1313-4313-8313-131313131313",
+      },
+    });
+    await expect(
+      page.getByRole("region", { name: "Notifications" }).getByRole("status"),
+    ).toHaveCount(1);
+    await check("toast");
+    await page
+      .getByRole("button", { name: "Register resource", exact: true })
+      .click();
+    await check("register form");
+    await page.getByRole("button", { name: "Close creation form" }).click();
+    expect(failures).toEqual([]);
+    // Map controls are themed; tiles get only a mild filter; pins keep colour.
+    const look = await page.evaluate(() => {
+      const css = (selector, prop) =>
+        getComputedStyle(document.querySelector(selector))[prop];
+      return {
+        zoom: css(".leaflet-control-zoom a", "backgroundColor"),
+        tiles: css(".leaflet-tile-pane", "filter"),
+        markers: css(".leaflet-marker-pane", "filter"),
+        radius: css("path.matching-radius", "stroke"),
+        critical: getComputedStyle(
+          document.querySelector(".urgency-critical"),
+          "::after",
+        ).backgroundColor,
+      };
+    });
+    expect(look.zoom).toBe("rgb(22, 35, 47)");
+    expect(look.tiles).toMatch(/^brightness\(0\.\d+\)/);
+    expect(look.markers).toBe("none");
+    expect(look.radius).toBe("rgb(127, 182, 224)");
+    expect(look.critical).toBe("rgb(183, 62, 56)");
+  });
+  test("the record chooser and list view stay readable in dark", async ({
+    page,
+    request,
+  }) => {
+    const { contrastFailures } = await import("./contrast.js");
+    for (const details of ["Blankets at the school", "Torches at the school"])
+      await create(request, "requests", {
+        requestType: "SHELTER",
+        urgency: "HIGH",
+        peopleAffected: 3,
+        details,
+        location: { lat: 19.08, lng: 72.88 },
+      });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await page.goto("/");
+    await page
+      .getByRole("region", { name: "Dispatch map" })
+      .getByRole("button", { name: "3 records at this location" })
+      .click();
+    await expect(
+      page.getByRole("list", { name: "Records at this location" }),
+    ).toBeVisible();
+    // Let Leaflet's pop-up fade-in finish.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            getComputedStyle(document.querySelector(".record-chooser")).opacity,
+        ),
+      )
+      .toBe("1");
+    const failures = await contrastFailures(page);
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "List", exact: true }).click();
+    failures.push(...(await contrastFailures(page)));
+    expect(failures).toEqual([]);
+  });
+});

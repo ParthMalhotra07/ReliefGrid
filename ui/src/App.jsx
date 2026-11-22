@@ -34,6 +34,9 @@ import {
 } from "./state.js";
 import { typeIcon } from "./icons.js";
 import { QueueTrend, sparkline } from "./trend.js";
+import { applyTheme, saveTheme, savedTheme, THEMES } from "./theme.js";
+// Before the first render, so the page never flashes the other theme.
+applyTheme(savedTheme());
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
 const SORT_KEY = "reliefgrid.dispatch.sort.v1";
 // The shared clock ticks every 5 s (feed times); window boundaries also wake
@@ -481,6 +484,7 @@ function App() {
     [creating, setCreating] = useState(null),
     [explaining, setExplaining] = useState(false),
     [sort, setSort] = useState(savedSort),
+    [theme, setTheme] = useState(savedTheme),
     // The one clock for everything time-based on screen: window and waiting
     // badges, the details panel, dimming reasons and feed times.
     [now, setNow] = useState(() => Date.now());
@@ -695,6 +699,23 @@ function App() {
             <i />
             {!d.online ? "Offline · saved view" : d.stream}
           </span>
+          <label className="theme-switch">
+            Theme
+            <select
+              aria-label="Colour theme"
+              value={theme}
+              onChange={(e) => {
+                setTheme(e.target.value);
+                saveTheme(e.target.value);
+              }}
+            >
+              {THEMES.map(([key, name]) => (
+                <option key={key} value={key}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className="session-label">Local dispatcher</span>
         </div>
       </header>
