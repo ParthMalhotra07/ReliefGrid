@@ -1,7 +1,7 @@
 {
-  "revision": "2b1434c437ee1c1f",
+  "revision": "82891864c32a17ed",
   "assets": [
-    "/assets/app-CCS66L4C.js",
+    "/assets/app-GOHFVXXW.js",
     "/assets/app-K3YKZIF6.css",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
@@ -15,7 +15,7 @@
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
     "src/App.jsx": "db31a4ab208903b90caf553ecd4f3958abcbb848492f39011940a5e492cfb89b",
     "src/CreateDialog.jsx": "1bf40bf4f09f2cddf846e2ee096d097c9171e637d623e54f34182bdb95e9c417",
-    "src/DispatchMap.jsx": "693afd89a4f0de30bc10aa8207c2cb593dfbfdbc2ffd87081b1341077907a95d",
+    "src/DispatchMap.jsx": "46064476c7cfa4c0d80adf52d46b6a374b10fca8c74a22f5a7fc01205416c528",
     "src/app.css": "a5acb1c7de15fc9756a9bd4e64b6ce2fd487215006f5bc6cd7c735ee0819db78",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
@@ -23,13 +23,13 @@
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-CCS66L4C.js": "cff2d681efbd021936672cae07cc8bd327bc6270601d31e641f72683d8687860",
+    "app-GOHFVXXW.js": "b4c72f6ef717a29fff0c1b496c547ea85f3134e6d148e57e5ac8de5a0db1b863",
     "app-K3YKZIF6.css": "1b61c6d6bdb376ee1f409a9663f748891f6ae913d28af1e6e36e0e2841b19266",
-    "index.html": "9ef8e3f34a134aad4054735c766773d610e05495d7ad70718156e8f1a6569345",
+    "index.html": "2b80d89333914449b860df23b0dc33b12a76eb429a7cfaf26fdaf02f90bb83d6",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "f25d1af25ce3f1ecac062d12655deb3b06ca12f45eca55db373599bf50099d71"
+    "sw.js": "cf6d155c7835588ef1a60cd59f76cc2370f0e3db90d2cbda8bf409b3ab7b1bee"
   }
 }
