@@ -194,3 +194,82 @@ test("a globe request during a running zoom animation still ends on the globe", 
     );
   }
 });
+
+test("pins hidden by search leave the map's marker layer and return once", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const map = page.getByRole("region", { name: "Dispatch map" });
+  const search = page.getByLabel("Search requests or resources");
+  const pins = map.locator(".dispatch-pin");
+  const layers = () =>
+    map.evaluate((element) => Number(element.dataset.markerLayers));
+  await expect(pins).toHaveCount(2);
+  await expect.poll(layers).toBe(2);
+  for (let cycle = 0; cycle < 3; cycle++) {
+    await search.fill("no record has this text");
+    await expect(pins).toHaveCount(0);
+    await expect.poll(layers).toBe(0);
+    await search.fill("");
+    await expect(pins).toHaveCount(2);
+    await expect.poll(layers).toBe(2);
+  }
+});
+
+test("a live update keeps focus on the same option of an open chooser", async ({
+  page,
+  request,
+}) => {
+  // The fixture request sits at 19.08, 72.88; two more share its location.
+  for (const details of ["Blankets at the school", "Torches at the school"])
+    await create(request, "requests", {
+      requestType: "SHELTER",
+      urgency: "HIGH",
+      peopleAffected: 3,
+      details,
+      location: { lat: 19.08, lng: 72.88 },
+    });
+  await page.goto("/");
+  await expect(
+    page.getByRole("status", { name: "Connection status" }),
+  ).toContainText("Live");
+  const map = page.getByRole("region", { name: "Dispatch map" });
+  await map.getByRole("button", { name: "3 records at this location" }).focus();
+  await page.keyboard.press("Enter");
+  const chooser = page.getByRole("list", { name: "Records at this location" });
+  const options = chooser.getByRole("button");
+  await expect(options).toHaveCount(3);
+  const second = (await options.nth(1).innerText()).split("\n")[1];
+  await options.nth(1).focus();
+  const focusedTitle = () =>
+    page.evaluate(
+      () =>
+        document.activeElement
+          ?.closest(".record-choice")
+          ?.querySelector(".record-title")?.textContent ?? null,
+    );
+  await expect.poll(focusedTitle).toBe(second);
+  // A status-only change for the fixture request rebuilds the chooser.
+  await request.post("/__test/state", {
+    data: {
+      status: "MATCHED",
+      eventId: "66666666-6666-4666-8666-666666666666",
+    },
+  });
+  await expect(
+    chooser.getByRole("button", { name: /Water needed at the school/ }),
+  ).toContainText("MATCHED");
+  await expect(options).toHaveCount(3);
+  await expect.poll(focusedTitle).toBe(second);
+  // When a record leaves the group, focus goes to the first option, even
+  // from an option whose record stays.
+  await options.nth(2).focus();
+  await request.post("/__test/state", {
+    data: {
+      location: { lat: 19.0, lng: 72.8 },
+      eventId: "77777777-7777-4777-8777-777777777777",
+    },
+  });
+  await expect(options).toHaveCount(2);
+  await expect(options.first()).toBeFocused();
+});

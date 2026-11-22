@@ -104,6 +104,7 @@ function chooser(members, onChoose, onClose) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "record-choice" + (member.active ? " active" : "");
+    button.dataset.key = member.key;
     if (member.active) button.setAttribute("aria-current", "true");
     for (const [name, text] of [
       ["record-kind", member.kind + " · " + words(member.type)],
@@ -389,18 +390,40 @@ export function DispatchMap({
         live.set(entry.key, mapMarker(entry).addTo(layers.current));
         continue;
       }
-      const before = marker.entry.signature;
+      const old = marker.entry;
+      const before = old.signature;
       updateMarker(marker, entry);
       const open = openChooser.current;
-      if (open?.key === entry.key && before !== entry.signature)
+      if (open?.key === entry.key && before !== entry.signature) {
+        // Rebuilding the list would drop keyboard focus to the page body, so
+        // it returns to the same record, or to the first one if it left.
+        const shown = open.popup.getElement();
+        const focused = shown
+          ?.querySelector(".record-chooser-list")
+          ?.contains(document.activeElement)
+          ? document.activeElement.closest(".record-choice")?.dataset.key
+          : null;
+        const keys = (v) => v.members.map((member) => member.key).join("|");
+        const same = keys(old) === keys(entry);
         open.popup.setContent(content(marker));
+        if (focused !== null) {
+          const choices = [...shown.querySelectorAll(".record-choice")];
+          const target = same
+            ? choices.find((v) => v.dataset.key === focused)
+            : choices[0];
+          (target || choices[0])?.focus({ preventScroll: true });
+        }
+      }
     }
     for (const [key, marker] of live) {
       if (wanted.has(key)) continue;
       if (openChooser.current?.key === key) m.closePopup();
-      marker.remove();
+      // marker.remove() would leave it registered in the layer group.
+      layers.current.removeLayer(marker);
       live.delete(key);
     }
+    // Exposed for the browser tests, which check hidden pins are released.
+    element.current.dataset.markerLayers = layers.current.getLayers().length;
     if (!fitted.current) {
       if (position) {
         map.current.setView(toPoint(position), 13);

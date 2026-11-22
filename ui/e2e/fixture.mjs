@@ -9,6 +9,7 @@ let reads = 0,
   status = "CANCELLING",
   version = 4,
   lastError = "",
+  location = { lat: 19.08, lng: 72.88 },
   fail = false,
   unknownWrite = false;
 const claimed = () =>
@@ -20,7 +21,7 @@ const record = () => ({
   urgency: "CRITICAL",
   peopleAffected: 6,
   details: "Water needed at the school",
-  location: { lat: 19.08, lng: 72.88 },
+  location,
   version: "v" + version,
   createdAt: "2026-11-05T06:00:00Z",
   updatedAt: "2026-11-05T06:01:00Z",
@@ -51,6 +52,7 @@ http
       status = "CANCELLING";
       version = 4;
       lastError = "";
+      location = { lat: 19.08, lng: 72.88 };
       fail = false;
       unknownWrite = false;
       reads = 0;
@@ -68,6 +70,10 @@ http
         version++;
       }
       if ("lastError" in b) lastError = b.lastError;
+      if (b.location) {
+        location = b.location;
+        version++;
+      }
       if ("fail" in b) fail = b.fail;
       if ("unknownWrite" in b) unknownWrite = b.unknownWrite;
       if (b.disconnect) for (const c of clients) c.end();
