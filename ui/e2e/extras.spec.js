@@ -380,3 +380,41 @@ test("the street layer never requests tiles outside the world", async ({
   expect(outside).toEqual([]);
   expect(rejected).toBe(0);
 });
+
+test("a gazetteer search is not blocked by a slow online search", async ({
+  page,
+}) => {
+  let release;
+  const replied = new Promise((resolve) => (release = resolve));
+  await page.route(nominatim, async (route) => {
+    await replied;
+    await route
+      .fulfill({
+        contentType: "application/json",
+        headers: { "Access-Control-Allow-Origin": "*" },
+        body: JSON.stringify([
+          { display_name: "Late Lonavala", lat: "18.75", lon: "73.4" },
+        ]),
+      })
+      .catch(() => {});
+  });
+  const form = await openForm(page);
+  const box = form.getByRole("searchbox", { name: "Search place" });
+  await box.fill("Lonavala");
+  await box.press("Enter");
+  await expect(
+    form.getByRole("status", { name: "Place search result" }),
+  ).toHaveText("Searching…");
+  await box.fill("andheri");
+  await box.press("Enter");
+  const results = form.getByRole("list", { name: "Place results" });
+  await expect(results.getByRole("button", { name: /Andheri/ })).toBeVisible({
+    timeout: 1000,
+  });
+  release();
+  await page.waitForTimeout(500);
+  await expect(
+    results.getByRole("button", { name: /Late Lonavala/ }),
+  ).toHaveCount(0);
+  await expect(results.getByRole("button", { name: /Andheri/ })).toBeVisible();
+});

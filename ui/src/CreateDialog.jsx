@@ -58,7 +58,8 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     [query, setQuery] = useState(""),
     [places, setPlaces] = useState({ results: [], source: "" }),
     [placeNote, setPlaceNote] = useState("");
-  const searching = useRef(false);
+  const sequence = useRef(0),
+    inflight = useRef(null);
   const dialog = useRef(null);
   useEffect(() => {
     const element = dialog.current;
@@ -166,33 +167,38 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   };
+  // The latest search wins: a local answer replaces a pending online search,
+  // and a late online reply for an older query is discarded.
   const search = async () => {
     const q = query.trim();
-    if (!q || searching.current) return;
+    if (!q) return;
+    const show = (results, source, note) => {
+      inflight.current?.abort();
+      inflight.current = null;
+      sequence.current++;
+      setPlaces({ results, source });
+      setPlaceNote(note);
+    };
     const local = gazetteer(q);
-    if (local.length) {
-      setPlaces({ results: local, source: "gazetteer" });
-      setPlaceNote("");
-      return;
-    }
-    if (!navigator.onLine) {
-      setPlaces({ results: [], source: "" });
-      setPlaceNote(UNAVAILABLE);
-      return;
-    }
+    if (local.length) return show(local, "gazetteer", "");
+    if (!navigator.onLine) return show([], "", UNAVAILABLE);
     if (!placeSearch.ready()) {
-      setPlaceNote(
-        "Place search allows one online search per second. Try again in a moment.",
-      );
+      if (!inflight.current)
+        setPlaceNote(
+          "Place search allows one online search per second. Try again in a moment.",
+        );
       return;
     }
-    searching.current = true;
-    setPlaceNote("Searching…");
+    show([], "", "Searching…");
+    const id = sequence.current;
+    const controller = new AbortController();
+    inflight.current = controller;
     try {
       const { results } = await placeSearch.online(
         q,
-        AbortSignal.timeout(8000),
+        AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]),
       );
+      if (id !== sequence.current) return;
       setPlaces({ results, source: "nominatim" });
       setPlaceNote(
         results.length
@@ -200,12 +206,14 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
           : "No places found. Use the map or enter coordinates.",
       );
     } catch {
+      if (id !== sequence.current) return;
       setPlaces({ results: [], source: "" });
       setPlaceNote(UNAVAILABLE);
     } finally {
-      searching.current = false;
+      if (inflight.current === controller) inflight.current = null;
     }
   };
+  useEffect(() => () => inflight.current?.abort(), []);
   const noun = kind === "request" ? "request" : "resource";
   return (
     <dialog
