@@ -14,6 +14,13 @@ const localTime = (date) =>
   new Date(date.getTime() - date.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
+// Six hours after a datetime-local value, in the same local form.
+const sixHoursAfter = (value) => {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime())
+    ? localTime(new Date(date.getTime() + 6 * 3600000))
+    : "";
+};
 const label = (value) => value.charAt(0) + value.slice(1).toLowerCase();
 function initial(kind, pending) {
   const body = pending ? JSON.parse(pending.body) : {};
@@ -29,11 +36,9 @@ function initial(kind, pending) {
     start: localTime(
       body.windowStart ? new Date(body.windowStart) : new Date(),
     ),
-    end: localTime(
-      body.windowEnd
-        ? new Date(body.windowEnd)
-        : new Date(Date.now() + 3600000),
-    ),
+    end: body.windowEnd
+      ? localTime(new Date(body.windowEnd))
+      : sixHoursAfter(localTime(new Date())),
   };
 }
 export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
@@ -51,6 +56,8 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     [pickerOpen, setPickerOpen] = useState(false),
     [error, setError] = useState(setup.error || ""),
     [result, setResult] = useState(null),
+    // Available until follows Available from (+6 h) until it is edited.
+    [untilEdited, setUntilEdited] = useState(() => !!client?.pending()),
     [jump, setJump] = useState(null),
     [locating, setLocating] = useState(""),
     [query, setQuery] = useState(""),
@@ -269,6 +276,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
               disabled={!canCreate}
               onClick={() => {
                 setResult(null);
+                setUntilEdited(false);
                 setFields(initial(kind, null));
               }}
             >
@@ -472,7 +480,14 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                     type="datetime-local"
                     required
                     value={fields.start}
-                    onChange={(e) => update("start", e.target.value)}
+                    onChange={(e) => {
+                      const start = e.target.value;
+                      setFields((old) => ({
+                        ...old,
+                        start,
+                        end: untilEdited ? old.end : sixHoursAfter(start),
+                      }));
+                    }}
                   />
                 </label>
                 <label>
@@ -481,7 +496,10 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                     type="datetime-local"
                     required
                     value={fields.end}
-                    onChange={(e) => update("end", e.target.value)}
+                    onChange={(e) => {
+                      setUntilEdited(true);
+                      update("end", e.target.value);
+                    }}
                   />
                 </label>
                 <label className="checkbox wide">

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Activity, describe, relative, FEED_SIZE } from "./activity.js";
+import { Activity, describe, relative, FEED_SIZE, Toasts } from "./activity.js";
 
 const request = (id, status, version, details = "Meals " + id) => ({
   requestId: id,
@@ -156,4 +156,103 @@ test("an event shown just before an unrelated burst is not absorbed by it", () =
     ["8 requests created", "Request created"],
   );
   assert.equal(items[1].title, "Solo meals");
+});
+
+test("an event that arrives while the first read is in flight is kept", () => {
+  const feed = new Activity(() => 0);
+  feed.observe({
+    entityId: "a",
+    entityVersion: 6,
+    eventType: "request.state_changed",
+  });
+  feed.observe({
+    entityId: "b",
+    entityVersion: 2,
+    eventType: "request.state_changed",
+  });
+  // The baseline already shows b at v2 but a only at v5.
+  assert.deepEqual(
+    feed.resolve(
+      snapshot([request("a", "WAITING", 5), request("b", "MATCHED", 2)]),
+    ),
+    [],
+  );
+  const items = feed.resolve(
+    snapshot([request("a", "MATCHED", 6), request("b", "MATCHED", 2)]),
+  );
+  assert.deepEqual(
+    items.map((v) => [describe(v), v.id]),
+    [["Request matched", "a"]],
+  );
+});
+
+test("a request created and matched within one read gets both entries", () => {
+  const feed = new Activity(() => 0);
+  feed.resolve(snapshot([]));
+  feed.observe({
+    entityId: "a",
+    entityVersion: 1,
+    eventType: "request.created",
+  });
+  feed.observe({
+    entityId: "a",
+    entityVersion: 3,
+    eventType: "request.state_changed",
+  });
+  const items = feed.resolve(snapshot([request("a", "MATCHED", 3)]));
+  assert.deepEqual(items.map(describe), ["Request matched", "Request created"]);
+  assert.deepEqual(
+    feed.fresh.map((v) => v.action),
+    ["created", "matched"],
+  );
+});
+
+test("toasts group a burst but not an event a second before it in the same read", () => {
+  const notices = new Toasts(() => 5000);
+  const entry = (id, at) => ({
+    kind: "request",
+    action: "matched",
+    id,
+    at,
+    resource: "",
+  });
+  const list = notices.add([
+    entry("early-request", 1000),
+    ...Array.from({ length: 50 }, (_, i) => entry("burst-" + i, 2000 + i)),
+  ]);
+  assert.deepEqual(
+    list.map((v) => v.text),
+    ["50 requests matched", "Request #early-re matched"],
+  );
+});
+test("toasts never show more than three and expire after five seconds", () => {
+  let clock = 0;
+  const notices = new Toasts(() => clock);
+  for (let i = 0; i < 4; i++) {
+    clock = i * 1000;
+    notices.add([
+      {
+        kind: "request",
+        action: "cancelled",
+        id: "r" + i + "-xxxxxx",
+        at: clock,
+      },
+    ]);
+  }
+  assert.deepEqual(
+    notices.list.map((v) => v.text),
+    [
+      "Request #r3-xxxxx cancelled",
+      "Request #r2-xxxxx cancelled",
+      "Request #r1-xxxxx cancelled",
+    ],
+  );
+  // r1 was shown at 1 s, so it expires at 6 s; r2 and r3 remain.
+  clock = 6500;
+  assert.deepEqual(
+    notices.prune().map((v) => v.text),
+    ["Request #r3-xxxxx cancelled", "Request #r2-xxxxx cancelled"],
+  );
+  clock = 8001;
+  assert.deepEqual(notices.prune(), []);
 });

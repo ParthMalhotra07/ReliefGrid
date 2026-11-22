@@ -1566,3 +1566,70 @@ footer .small-dot {
   font-size: 12px;
   color: #526459;
 }
+.dispatch-pin.pin-dimmed {
+  opacity: 0.38;
+  filter: grayscale(0.7);
+}
+.dispatch-pin.pin-dimmed:hover,
+.dispatch-pin.pin-dimmed:focus-visible {
+  opacity: 0.85;
+}
+.radius-label > span {
+  display: inline-block;
+  transform: translate(-50%, -130%);
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #ffffffd9;
+  color: #286386;
+  font-size: 10px;
+  font-weight: 700;
+}
+.map-legend .legend-note {
+  flex-basis: 100%;
+  color: #8a9a8f;
+  font-size: 10px;
+}
+.timeline-timing {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 650;
+  color: #286386;
+}
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #b9ccc0;
+  border-left: 4px solid #33866d;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 6px 18px #162f4d26;
+  font-size: 12px;
+  pointer-events: auto;
+}
+.toast p {
+  margin: 0;
+  flex: 1;
+}
+.toast button {
+  border: 0;
+  background: none;
+  font-size: 16px;
+  line-height: 1;
+  color: #60766a;
+  cursor: pointer;
+}

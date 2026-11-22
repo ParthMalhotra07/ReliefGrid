@@ -10,6 +10,7 @@ let reads = 0,
   version = 4,
   lastError = "",
   location = { lat: 19.08, lng: 72.88 },
+  updatedAt = "2026-11-05T06:01:00Z",
   fail = false,
   unknownWrite = false;
 const claimed = () =>
@@ -24,7 +25,7 @@ const record = () => ({
   location,
   version: "v" + version,
   createdAt: "2026-11-05T06:00:00Z",
-  updatedAt: "2026-11-05T06:01:00Z",
+  updatedAt,
   assignedResourceId: claimed() ? resourceId : null,
   retryCount: 0,
   lastError,
@@ -53,6 +54,7 @@ http
       version = 4;
       lastError = "";
       location = { lat: 19.08, lng: 72.88 };
+      updatedAt = "2026-11-05T06:01:00Z";
       fail = false;
       unknownWrite = false;
       reads = 0;
@@ -70,6 +72,7 @@ http
         version++;
       }
       if ("lastError" in b) lastError = b.lastError;
+      if (b.updatedAt) updatedAt = b.updatedAt;
       if (b.location) {
         location = b.location;
         version++;
@@ -80,7 +83,7 @@ http
       if (b.eventId)
         for (const c of clients)
           c.write(
-            `id: ${b.eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: requestId, entityVersion: 5, eventType: "request.state_changed", ...b.hint, eventId: b.eventId })}\n\n`,
+            `id: ${b.eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: requestId, entityVersion: version, eventType: "request.state_changed", ...b.hint, eventId: b.eventId })}\n\n`,
           );
       return send(res, 200, { ok: true });
     }
@@ -113,6 +116,22 @@ http
           );
       }
       return send(res, 200, { ids });
+    }
+    if (p === "/__test/patch") {
+      // Change a created record and, when asked, announce it on the stream.
+      const b = await body(req);
+      const found = [...creations.values()].find(
+        (v) => v.current.requestId === b.id || v.current.resourceId === b.id,
+      );
+      if (!found) return send(res, 404, { code: "NOT_FOUND" });
+      const version = Number(found.current.version.slice(1)) + 1;
+      found.current = { ...found.current, ...b.set, version: "v" + version };
+      if (b.eventId)
+        for (const c of clients)
+          c.write(
+            `id: ${b.eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: b.id, entityVersion: version, eventType: (found.kind === "request" ? "request" : "resource") + ".state_changed", eventId: b.eventId })}\n\n`,
+          );
+      return send(res, 200, found.current);
     }
     if (p === "/__test/creations")
       return send(res, 200, {

@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
-import { reciprocal, terminal } from "./state.js";
+import { RADIUS_KM, reciprocal, terminal } from "./state.js";
 import worldLand from "./world-land.json";
 
 const tileURL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const attribution =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
 const empty = [];
+const noReasons = new Map();
+// Kilometres per degree of latitude on the backend's mean Earth radius.
+const kmPerDegree = (6371.0088 * Math.PI) / 180;
 const initialCentre = [20.6, 78.9];
 const initialZoom = 4;
 // At or below this zoom the whole globe or a continent fills the map.
@@ -141,11 +144,14 @@ export function DispatchMap({
   online,
   onPick,
   position,
+  radius,
+  dimmed = noReasons,
 }) {
   const element = useRef(null);
   const map = useRef(null);
   const layers = useRef(null);
   const lines = useRef(null);
+  const radiusLayer = useRef(null);
   const markers = useRef(new Map());
   const openChooser = useRef(null);
   const settled = useRef((change) => change());
@@ -193,6 +199,7 @@ export function DispatchMap({
         fillOpacity: 1,
       },
     }).addTo(m);
+    radiusLayer.current = L.layerGroup().addTo(m);
     lines.current = L.layerGroup().addTo(m);
     layers.current = L.layerGroup().addTo(m);
     return () => {
@@ -276,6 +283,7 @@ export function DispatchMap({
     for (const row of resources) {
       const active =
         selection?.kind === "resource" && selection.id === row.resourceId;
+      const reason = dimmed.get(row.resourceId);
       place({
         key: "resource:" + row.resourceId,
         kind: "Resource",
@@ -284,8 +292,11 @@ export function DispatchMap({
         status: row.status,
         active,
         point: toPoint(row.location),
-        className: "resource-pin" + (active ? " pin-selected" : ""),
-        title: "Resource: " + row.name,
+        className:
+          "resource-pin" +
+          (active ? " pin-selected" : "") +
+          (reason ? " pin-dimmed" : ""),
+        title: "Resource: " + row.name + (reason ? " · " + reason : ""),
         pick: () => onSelectResource(row),
       });
     }
@@ -437,6 +448,7 @@ export function DispatchMap({
       }
     }
   }, [
+    dimmed,
     onSelectRequest,
     onSelectResource,
     position,
@@ -445,6 +457,34 @@ export function DispatchMap({
     selection,
     visible,
   ]);
+
+  // The selected request's matching radius, on both the street map and the
+  // world overview.
+  useEffect(() => {
+    const layer = radiusLayer.current;
+    layer.clearLayers();
+    if (!radius) return;
+    const centre = toPoint(radius);
+    L.circle(centre, {
+      radius: RADIUS_KM * 1000,
+      className: "matching-radius",
+      color: "#286386",
+      weight: 2,
+      opacity: 0.55,
+      fillColor: "#286386",
+      fillOpacity: 0.05,
+      interactive: false,
+    }).addTo(layer);
+    L.marker([radius.lat + RADIUS_KM / kmPerDegree, radius.lng], {
+      interactive: false,
+      keyboard: false,
+      icon: L.divIcon({
+        className: "radius-label",
+        html: `<span>Matching radius ${RADIUS_KM} km</span>`,
+        iconSize: [0, 0],
+      }),
+    }).addTo(layer);
+  }, [radius]);
 
   useEffect(() => {
     if (focus) {

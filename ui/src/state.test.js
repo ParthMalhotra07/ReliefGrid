@@ -95,3 +95,70 @@ test("retry reasons are shown only for the state they explain", () => {
   assert.equal(retryReason("MATCHING", "NO_CANDIDATE"), "");
   assert.equal(retryReason("WAITING", ""), "");
 });
+
+test("eligibility mirrors the backend and reports the most relevant reason", async () => {
+  const { ineligible } = await import("./state.js");
+  const now = Date.parse("2026-11-22T12:00:00Z");
+  const request = {
+    requestType: "WATER",
+    location: { lat: 19.08, lng: 72.88 },
+  };
+  const base = {
+    resourceType: "WATER",
+    status: "AVAILABLE",
+    activeClaim: null,
+    location: { lat: 19.1, lng: 72.9 },
+    windowStart: "2026-11-22T11:00:00Z",
+    windowEnd: "2026-11-22T18:00:00Z",
+  };
+  const check = (change) => ineligible(request, { ...base, ...change }, now);
+  assert.equal(check({}), "");
+  // 50 km is still eligible, as in the backend (distance <= radiusKM).
+  assert.equal(
+    check({ location: { lat: 19.08 + 49.99 / 111.195, lng: 72.88 } }),
+    "",
+  );
+  assert.equal(
+    check({ location: { lat: 20.16, lng: 72.88 } }),
+    "Too far: 120 km",
+  );
+  assert.equal(check({ windowEnd: "2026-11-22T12:00:00Z" }), "Window closed");
+  assert.equal(check({ windowStart: "2026-11-22T12:00:00Z" }), "");
+  assert.equal(check({ resourceType: "FOOD" }), "Wrong type");
+  assert.equal(check({ activeClaim: { requestId: "x" } }), "Already assigned");
+  assert.equal(check({ status: "OFFLINE" }), "Not available");
+  assert.equal(
+    check({ resourceType: "FOOD", windowEnd: "2026-11-22T11:30:00Z" }),
+    "Window closed",
+  );
+});
+
+test("timeline timings use the timeline's own timestamps", async () => {
+  const { timings, duration } = await import("./state.js");
+  assert.equal(duration(3800), "3.8 s");
+  assert.equal(duration(132000), "2 min 12 s");
+  assert.equal(duration(600000), "10 min");
+  assert.equal(duration(3900000), "1 h 5 min");
+  const t = (s) =>
+    new Date(Date.parse("2026-11-05T06:00:00Z") + s * 1000).toISOString();
+  assert.deepEqual(
+    timings(t(0), [
+      { status: "WAITING", at: t(1.5) },
+      { status: "MATCHING", at: t(6.5) },
+      { status: "WAITING", at: t(7) },
+      { status: "MATCHING", at: t(133.5) },
+      { status: "MATCHED", at: t(135) },
+      { status: "CANCELLED", at: t(140) },
+    ]),
+    [
+      "",
+      "",
+      "Waited 2 min 12 s",
+      "",
+      "Matched 2 min 15 s after creation",
+      "Cancelled 2 min 20 s after creation",
+    ],
+  );
+  // A wait that has not ended yet has no total.
+  assert.deepEqual(timings(t(0), [{ status: "WAITING", at: t(2) }]), [""]);
+});

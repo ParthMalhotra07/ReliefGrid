@@ -127,3 +127,62 @@ export function distanceKm(a, b) {
       Math.sin(dlng / 2) ** 2;
   return 2 * 6371.0088 * Math.asin(Math.sqrt(Math.max(0, Math.min(1, h))));
 }
+
+// Mirrors internal/workflow/candidates.go: same type, AVAILABLE with no active
+// claim, from <= now < until, and within 50 km (distance <= 50). Returns ""
+// for an eligible resource, otherwise the single most relevant reason.
+export const RADIUS_KM = 50;
+export function ineligible(request, resource, now = Date.now()) {
+  const distance = distanceKm(request.location, resource.location);
+  if (distance > RADIUS_KM) return `Too far: ${Math.round(distance)} km`;
+  const from = Date.parse(resource.windowStart),
+    until = Date.parse(resource.windowEnd);
+  if (!(from <= now && now < until)) return "Window closed";
+  if (resource.resourceType !== request.requestType) return "Wrong type";
+  if (resource.activeClaim || ["ASSIGNED", "BUSY"].includes(resource.status))
+    return "Already assigned";
+  if (resource.status !== "AVAILABLE") return "Not available";
+  return "";
+}
+
+// "3.8 s", "2 min 12 s", "10 min", "1 h 5 min".
+export function duration(ms) {
+  if (!(ms >= 0)) return "";
+  if (ms < 60000) return `${(Math.round(ms / 100) / 10).toFixed(1)} s`;
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60),
+      s = seconds % 60;
+    return s ? `${m} min ${s} s` : `${m} min`;
+  }
+  const h = Math.floor(seconds / 3600),
+    m = Math.floor((seconds % 3600) / 60);
+  return m ? `${h} h ${m} min` : `${h} h`;
+}
+
+// Timings for observed timeline entries, from the timeline's own timestamps:
+// time since creation on Matched, Fulfilled and Cancelled, and on the last
+// Waiting entry the span from the first wait until the last one ended.
+export function timings(createdAt, entries) {
+  const at = (v) => Date.parse(v);
+  const created = at(createdAt);
+  const out = entries.map(() => "");
+  entries.forEach((entry, i) => {
+    const name = {
+      MATCHED: "Matched",
+      FULFILLED: "Fulfilled",
+      CANCELLED: "Cancelled",
+    }[entry.status];
+    const since = duration(at(entry.at) - created);
+    if (name && since) out[i] = `${name} ${since} after creation`;
+  });
+  const waits = entries.flatMap((v, i) => (v.status === "WAITING" ? [i] : []));
+  const last = waits.at(-1);
+  if (last !== undefined && entries[last + 1]) {
+    const waited = duration(
+      at(entries[last + 1].at) - at(entries[waits[0]].at),
+    );
+    if (waited) out[last] = `Waited ${waited}`;
+  }
+  return out;
+}
