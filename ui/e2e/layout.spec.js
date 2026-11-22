@@ -256,3 +256,71 @@ test("Show on map is offered only on mobile widths", async ({ page }) => {
       .getByRole("button", { name: "Show on map" }),
   ).toBeHidden();
 });
+
+test("Show on map is disabled while filters hide the selected record (390 px)", async ({
+  page,
+}) => {
+  // Parth's reproduction from the #196 review.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await live(page);
+  await page
+    .getByRole("region", { name: "Requests", exact: true })
+    .getByRole("button", { name: /Water needed at the school/ })
+    .click();
+  const details = page.getByRole("region", { name: "Request details" });
+  const show = details.getByRole("button", { name: "Show on map" });
+  await expect(show).toBeEnabled();
+  await page.getByLabel("Search requests or resources").fill("no such record");
+  await expect(show).toBeDisabled();
+  await expect(details.getByText("Hidden by current filters")).toBeVisible();
+  // Clearing the search makes the pin and the action available again.
+  await page.getByLabel("Search requests or resources").fill("");
+  await expect(details.getByText("Hidden by current filters")).toHaveCount(0);
+  await show.click();
+  const map = page.getByRole("region", { name: "Dispatch map" });
+  await expect(map).toBeInViewport({ ratio: 0.9 });
+  await expect(
+    map.getByRole("button", { name: "Request: Water needed at the school" }),
+  ).toBeInViewport();
+  // A resource hidden by the type filter.
+  await page
+    .getByRole("region", { name: "Resources", exact: true })
+    .getByRole("button", { name: /Water team Alpha/ })
+    .click();
+  const resource = page.getByRole("region", { name: "Resource details" });
+  await page.getByLabel("Resource type").selectOption("FOOD");
+  await expect(
+    resource.getByRole("button", { name: "Show on map" }),
+  ).toBeDisabled();
+  await expect(resource.getByText("Hidden by current filters")).toBeVisible();
+});
+
+test("the feed stays bounded through a two-minute read outage", async ({
+  page,
+  request,
+}) => {
+  // Parth's simulation: 50 events a second for two minutes after the
+  // baseline, with every read failing. The page clock drives the timers.
+  await page.clock.install();
+  await page.goto("/");
+  await live(page);
+  await expect(page.getByRole("region", { name: "Requests" })).toContainText(
+    "LATEST READ",
+  );
+  const feed = page.getByRole("region", { name: "Activity" });
+  const held = async () => Number(await feed.getAttribute("data-held"));
+  await request.post("/__test/state", { data: { fail: true } });
+  let peak = 0;
+  for (let second = 0; second < 120; second += 5) {
+    await request.post("/__test/events", { data: { count: 250 } });
+    await page.waitForTimeout(150);
+    await page.clock.runFor(5000);
+    peak = Math.max(peak, await held());
+    expect(await held()).toBeLessThanOrEqual(200);
+  }
+  expect(peak).toBeGreaterThan(0);
+  // With no further events, the timer alone removes everything past 30 s.
+  await page.clock.runFor(35000);
+  await expect.poll(held).toBe(0);
+});

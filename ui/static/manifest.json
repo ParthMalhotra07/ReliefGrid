@@ -1,8 +1,8 @@
 {
-  "revision": "ca557db9f191675b",
+  "revision": "d0072cb67f9047f3",
   "assets": [
-    "/assets/app-FPQ42QET.js",
-    "/assets/app-PHUENNCX.css",
+    "/assets/app-3YKHUDOS.js",
+    "/assets/app-46LANJRR.css",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
@@ -13,11 +13,11 @@
     "index.html": "7f4a49b1f0641b892835a3977acda5379b42d014915d04e832262447d1e85d22",
     "package-lock.json": "617c6a871ed4179c6fde59669bf6ca26d1a74bbc679eecb57ad97d928c667dda",
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
-    "src/App.jsx": "ab2c1a3b959f0428a2f8ecd5fdffd7efbaf07a9de4ffee32bf0bb1a2616e1f48",
+    "src/App.jsx": "6e60de8da7298e1a38a6fad28223ad9a11f2ade7ce17c4fb3985a835f28ba57d",
     "src/CreateDialog.jsx": "75c2d45c26ae0dc98a605d78d7f5d4aaa25c2fcaefb66cce680f1a68cb561c76",
     "src/DispatchMap.jsx": "79dae233e329eae6ed33503365802400af12466d01fbb557c61236534b2350cb",
-    "src/activity.js": "6153cc83623df43baf8343e4d5d25d8a0e1d85239cf089cc89565b743226d136",
-    "src/app.css": "4151ae577827a4db04d3e88fd0736920d5ea40a021658f154c9f29467f11efe7",
+    "src/activity.js": "e5f55c8a035f6439dd64b381ad6b1b69df5c0f85545c56a5f9c67d9a516bc00f",
+    "src/app.css": "62a6484a8f6d744ba44acaad010b62d0b28e6b74cc3f3b4275afa33b3f35df1a",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/places.js": "ae5b9aee94409dfd00ee9459b539b1e097b8d7ced950c1f1228098d66b111449",
     "src/places.json": "994533411832b238d660ba3ad70524f24e9108233165be59e10245a6e4763e48",
@@ -26,13 +26,13 @@
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-FPQ42QET.js": "e32fd4f1856254a8c87270e2ec11792315dd10eff73da65fb3247e9ee41dc0a0",
-    "app-PHUENNCX.css": "dec5b2057b2a27d45d211bd8ff36594600897cfb418f5a797093463d1a812efc",
-    "index.html": "8e945b21a9cd53b56594bad20d98991b410f229275968ab44851b11fa3931143",
+    "app-3YKHUDOS.js": "d0493c11d358af8e801ce93f519567cf0d40fe8bf47671d65c761cd03d276786",
+    "app-46LANJRR.css": "d4d63e63e567db7f5bef1ee4334b17948c0669f44a8136910372004352e4d7b4",
+    "index.html": "6c097ee93cbdce8632ccbcf11224f934a710c6fd4bd6a05effbe9f87d197c5b7",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "62b007c8bf43fe07e333021d8f189e5490607a405027525711fcdfd7b8a57455"
+    "sw.js": "653b5a81bbce3a3f3f27d86317af6b1034b37f99509c69156d21b1f522942de7"
   }
 }
