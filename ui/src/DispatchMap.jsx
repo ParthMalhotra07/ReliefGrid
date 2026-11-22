@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { RADIUS_KM, reciprocal, terminal } from "./state.js";
+import { typeIcon } from "./icons.js";
 import worldLand from "./world-land.json";
 
 const tileURL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -295,7 +296,9 @@ export function DispatchMap({
         className:
           "resource-pin" +
           (active ? " pin-selected" : "") +
-          (reason ? " pin-dimmed" : ""),
+          (reason ? " pin-dimmed" : "") +
+          (typeIcon(row.resourceType) ? " typed-pin" : ""),
+        html: typeIcon(row.resourceType),
         title: "Resource: " + row.name + (reason ? " · " + reason : ""),
         pick: () => onSelectResource(row),
       });
@@ -305,12 +308,15 @@ export function DispatchMap({
       const active =
         selection?.kind === "request" && selection.id === row.requestId;
       const state = terminal(row.status) ? " pin-terminal" : "";
+      // Colour and size follow urgency; an unfinished critical request also
+      // pulses (not under prefers-reduced-motion).
       const urgency =
         row.urgency === "CRITICAL"
-          ? " pin-critical"
+          ? " pin-critical urgency-critical" +
+            (terminal(row.status) ? "" : " pin-pulse")
           : row.urgency === "HIGH"
-            ? " pin-high"
-            : "";
+            ? " pin-high urgency-high"
+            : " urgency-normal";
       place({
         key: "request:" + row.requestId,
         kind: "Request",

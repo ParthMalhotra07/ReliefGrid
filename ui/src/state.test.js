@@ -164,3 +164,67 @@ test("timeline timings use the timeline's own timestamps", async () => {
   // A wait that has not ended yet has no total.
   assert.deepEqual(timings(t(0), [{ status: "WAITING", at: t(2) }]), [""]);
 });
+
+test("window badges, waiting time and request sorts", async () => {
+  const { windowLabel, waitingLabel, sortRequests } =
+    await import("./state.js");
+  const now = Date.parse("2026-11-05T12:00:00Z");
+  const at = (m) => new Date(now + m * 60000).toISOString();
+  const resource = (from, until) => ({
+    windowStart: at(from),
+    windowEnd: at(until),
+  });
+  assert.equal(windowLabel(resource(-60, 45), now), "Open · closes in 45 min");
+  assert.equal(windowLabel(resource(20, 180), now), "Opens in 20 min");
+  assert.equal(windowLabel(resource(-180, -60), now), "Expired");
+  // The end is exclusive, as in the backend.
+  assert.equal(windowLabel(resource(-60, 0), now), "Expired");
+  assert.equal(windowLabel(resource(0, 30), now), "Open · closes in 30 min");
+  assert.equal(windowLabel(resource(-60, 0.2), now), "Open · closes in 1 min");
+  assert.equal(windowLabel({ windowStart: "x", windowEnd: at(5) }, now), "");
+  const req = { createdAt: at(-30) };
+  assert.equal(waitingLabel(req, [], now), "waiting 30 min");
+  assert.equal(
+    waitingLabel(
+      req,
+      [
+        { status: "MATCHING", at: at(-20) },
+        { status: "WAITING", at: at(-12.5) },
+      ],
+      now,
+    ),
+    "waiting 12 min",
+  );
+  assert.equal(
+    waitingLabel({ createdAt: at(-73.5) }, [], now),
+    "waiting 1 h 13 min",
+  );
+  assert.equal(
+    waitingLabel({ createdAt: at(-1500) }, [], now),
+    "waiting 1 d 1 h",
+  );
+  const r = (requestId, urgency, created, status) => ({
+    requestId,
+    urgency,
+    status,
+    createdAt: at(created),
+  });
+  const rows = [
+    r("a", "NORMAL", -60, "WAITING"),
+    r("b", "CRITICAL", -10, "MATCHED"),
+    r("c", "HIGH", -30, "RETRYING"),
+    r("d", "CRITICAL", -40, "WAITING"),
+  ];
+  const ids = (mode, history) =>
+    sortRequests(rows, mode, history).map((v) => v.requestId);
+  assert.deepEqual(ids("urgency"), ["d", "b", "c", "a"]);
+  assert.deepEqual(ids("newest"), ["b", "c", "d", "a"]);
+  assert.deepEqual(
+    ids("oldest-waiting", { d: [{ status: "WAITING", at: at(-70) }] }),
+    ["d", "a", "c", "b"],
+  );
+  assert.deepEqual(
+    rows.map((v) => v.requestId),
+    ["a", "b", "c", "d"],
+  );
+});
