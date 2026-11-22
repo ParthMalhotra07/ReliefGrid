@@ -10,8 +10,8 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #213c38;
-  background: #f3f6f5;
+  color: #233632;
+  background: #f7f6f1;
   font-synthesis: none;
 }
 body {
@@ -50,9 +50,9 @@ a {
   text-decoration: none;
 }
 .topbar {
-  height: 82px;
+  height: 68px;
   background: #fff;
-  border-bottom: 1px solid #e1e9e6;
+  border-bottom: 1px solid #e0e5dc;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -138,13 +138,13 @@ a {
 .workspace {
   max-width: 1760px;
   margin: auto;
-  padding: 31px 38px 22px;
+  padding: 26px 38px 22px;
 }
 .page-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 .eyebrow {
   font-size: 11px;
@@ -153,14 +153,14 @@ a {
   color: #778c83;
 }
 h1 {
-  font-size: 29px;
+  font-size: clamp(25px, 3.1vw, 38px);
   letter-spacing: -1px;
   margin: 8px 0 5px;
   line-height: 1.25;
 }
 .page-heading p {
   font-size: 14px;
-  color: #7b8b84;
+  color: #52665c;
   margin: 0;
 }
 .button {
@@ -177,9 +177,13 @@ h1 {
   background: #f8fcfa;
 }
 .button.primary {
-  background: #176d60;
+  background: #166454;
   color: white;
-  border-color: #176d60;
+  border-color: #166454;
+}
+.button.primary:hover:not(:disabled) {
+  background: #104b3f;
+  border-color: #104b3f;
 }
 .button.danger {
   color: #a94c3c;
@@ -201,15 +205,17 @@ h1 {
 .summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 15px;
+  gap: 1px;
+  overflow: hidden;
+  background: #dbe3d9;
+  border: 1px solid #dbe3d9;
+  border-radius: 10px;
   margin-bottom: 23px;
 }
 .metric {
-  border: 1px solid #e0e8e4;
   background: #fff;
-  border-radius: 9px;
-  min-height: 116px;
-  padding: 19px 21px;
+  min-height: 98px;
+  padding: 13px 19px;
   display: flex;
   justify-content: space-between;
   position: relative;
@@ -231,34 +237,14 @@ h1 {
   margin: 5px 0;
 }
 .metric small {
-  font-size: 11px;
-  color: #8a9892;
+  font-size: 12px;
+  color: #586a60;
 }
-.metric i {
-  height: 32px;
-  width: 32px;
-  background: #e6f3ee;
-  border-radius: 9px;
-  position: relative;
+.metric-blue strong {
+  color: #245c7b;
 }
-.metric i:before {
-  content: "";
-  position: absolute;
-  inset: 9px;
-  border: 1.5px solid #357a67;
-  border-radius: 3px;
-}
-.metric-blue i {
-  background: #edf3f8;
-}
-.metric-blue i:before {
-  border-color: #4e789d;
-}
-.metric-amber i {
-  background: #fcf3e4;
-}
-.metric-amber i:before {
-  border-color: #be9143;
+.metric-amber strong {
+  color: #825d25;
 }
 .filters {
   display: flex;
@@ -334,7 +320,7 @@ select {
 }
 .panel {
   background: #fff;
-  border: 1px solid #dfe8e2;
+  border: 1px solid #dbe3d9;
   border-radius: 10px;
   overflow: hidden;
 }
@@ -494,9 +480,75 @@ select {
   gap: 18px;
 }
 .map {
-  height: 390px;
-  background: #e9f0e9;
+  height: clamp(390px, 55vh, 590px);
   isolation: isolate;
+}
+.map-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px 12px;
+  padding: 6px 14px;
+  background: #f6f8f3;
+  border-bottom: 1px solid #e2e9df;
+  color: #465d51;
+  font-size: 12px;
+}
+.map-tool-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.map-tool {
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  padding: 6px 8px;
+  min-height: 32px;
+  color: #175b50;
+  font-weight: 650;
+}
+.map-tool:hover:not(:disabled) {
+  background: #fff;
+  border-color: #c8d7cf;
+}
+.dispatch-pin {
+  display: grid !important;
+  place-items: center;
+  --pin: #1a7168;
+}
+.dispatch-pin::after {
+  content: "";
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: var(--pin);
+  box-shadow: 0 1px 4px #192b36a0;
+}
+.pin-high {
+  --pin: #995810;
+}
+.pin-critical {
+  --pin: #b73e38;
+}
+.pin-terminal {
+  --pin: #65706c;
+}
+.resource-pin {
+  --pin: #246893;
+}
+.resource-pin::after {
+  border-radius: 4px;
+}
+.picked-pin {
+  --pin: #185b50;
+}
+.pin-selected::after,
+.dispatch-pin:focus-visible::after {
+  outline: 2px solid var(--pin);
+  outline-offset: 2px;
 }
 .leaflet-container {
   font:
@@ -505,7 +557,10 @@ select {
 }
 .leaflet-control-attribution {
   font-size: 10px !important;
-  background: #ffffffba !important;
+  background: #fffffff2 !important;
+}
+.leaflet-control-attribution a {
+  text-decoration: underline;
 }
 .leaflet-control-zoom a {
   color: #426a57 !important;
@@ -517,8 +572,8 @@ select {
   flex-wrap: wrap;
   align-items: center;
   padding: 12px 14px;
-  font-size: 9px;
-  color: #7d8d80;
+  font-size: 11px;
+  color: #526459;
   border-top: 1px solid #e7eee8;
 }
 .map-legend span {
@@ -784,11 +839,6 @@ footer .small-dot {
   height: 5px;
   margin-right: 5px;
 }
-@media (min-width: 1550px) {
-  .map {
-    height: 470px;
-  }
-}
 @media (max-width: 1150px) {
   .workspace {
     padding: 25px;
@@ -815,9 +865,6 @@ footer .small-dot {
   }
   .search {
     min-width: 260px;
-  }
-  .summary {
-    gap: 10px;
   }
   .metric {
     padding: 16px;
@@ -881,10 +928,6 @@ footer .small-dot {
   }
   .metric small {
     font-size: 10px;
-  }
-  .metric i {
-    height: 26px;
-    width: 26px;
   }
   .filters {
     gap: 7px;
@@ -1058,6 +1101,61 @@ footer .small-dot {
   font-size: 13px;
   line-height: 1.6;
   color: #60766a;
+}
+.location-map {
+  margin-top: 9px;
+  border: 1px solid #dbe3d9;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.location-map p {
+  margin: 9px 13px;
+  color: #526459;
+  font-size: 12px;
+}
+.map.picker-map {
+  height: 245px;
+  cursor: crosshair;
+}
+.resource-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  margin: 0;
+  padding: 16px 17px;
+}
+.resource-facts dt,
+.assignment-detail span {
+  color: #526459;
+  font-size: 12px;
+}
+.resource-facts dd {
+  margin: 4px 0 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.timeline:focus-visible,
+.resource-details:focus-visible {
+  outline: 2px solid #166454;
+  outline-offset: 2px;
+}
+.assignment-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  align-items: center;
+  padding: 0 17px 10px;
+}
+.detail-link {
+  border: 0;
+  background: transparent;
+  padding: 2px;
+  color: #175b50;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
 }
 .create-fields {
   display: grid;

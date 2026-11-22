@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test-support.js";
 const eventId = "44444444-4444-4444-8444-444444444444";
 test.beforeEach(async ({ request }) => {
   await request.post("/__test/reset");
@@ -26,6 +26,7 @@ test("dispatch shows authoritative state, assignments, filters and telemetry", a
   ).toContainText("3");
   await expect(page.getByLabel("Dispatch map")).toBeVisible();
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   await expect(
@@ -272,6 +273,7 @@ test("cancel uses only the public status endpoint and waits for committed cleanu
     "WAITING",
   );
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   page.on("dialog", (dialog) => dialog.accept());
@@ -310,6 +312,7 @@ test("an unknown write outcome remains visible after a successful reread", async
     "WAITING",
   );
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   page.on("dialog", (dialog) => dialog.accept());
@@ -363,6 +366,7 @@ test("same-render action reentry admits only one pending write", async ({
   await request.post("/__test/state", { data: { status: "WAITING" } });
   await page.goto("/");
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   const writes = await page

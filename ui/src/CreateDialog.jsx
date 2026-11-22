@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { CreateSubmission } from "./create.js";
+import { DispatchMap } from "./DispatchMap.jsx";
 import { TYPES } from "./state.js";
 
 const localTime = (date) =>
@@ -40,6 +41,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
   const [pending, setPending] = useState(() => client?.pending()),
     [fields, setFields] = useState(() => initial(kind, client?.pending())),
     [busy, setBusy] = useState(false),
+    [pickerOpen, setPickerOpen] = useState(false),
     [error, setError] = useState(setup.error || ""),
     [result, setResult] = useState(null);
   const dialog = useRef(null);
@@ -108,6 +110,17 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     }
   };
   const disabled = busy || !!pending || !client;
+  const lat = fields.lat === "" ? NaN : Number(fields.lat);
+  const lng = fields.lng === "" ? NaN : Number(fields.lng);
+  const point =
+    Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : undefined;
+  const pick = (location) => {
+    setFields((old) => ({
+      ...old,
+      lat: location.lat.toFixed(5),
+      lng: location.lng.toFixed(5),
+    }));
+  };
   const noun = kind === "request" ? "request" : "resource";
   return (
     <dialog
@@ -270,6 +283,31 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                 onChange={(e) => update("lng", e.target.value)}
               />
             </label>
+            {!disabled && (
+              <div className="wide location-picker">
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => setPickerOpen(!pickerOpen)}
+                  aria-expanded={pickerOpen}
+                  aria-controls={
+                    pickerOpen ? "creation-location-map" : undefined
+                  }
+                >
+                  {pickerOpen ? "Hide map" : "Pick on map"}
+                </button>
+                {pickerOpen && (
+                  <div id="creation-location-map" className="location-map">
+                    <p>Click the map or use its centre.</p>
+                    <DispatchMap
+                      online={online}
+                      onPick={pick}
+                      position={point}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             {kind === "resource" && (
               <>
                 <label>

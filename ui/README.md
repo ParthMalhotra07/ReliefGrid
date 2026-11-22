@@ -25,10 +25,17 @@ and then `git diff --exit-code -- ui/static` to enforce reproducible output.
 
 Run `HTTP_ADDR=127.0.0.1:8081 go run ./ui` behind the existing same-origin API
 routing for development; `make app-deploy` builds and deploys all three app images.
-There are no CDN scripts, external fonts, tile downloads or API keys. The map is
-an explicitly labelled coordinate schematic; request/resource positions and
-reciprocal assignment lines come from the API. Third-party licenses are bundled
-under `/assets/licenses.txt`.
+The UI has no CDN scripts, external fonts or map API keys. Street mode requests
+only the visible OpenStreetMap raster tiles. This exposes the viewed map area to
+the tile provider. The app draws record coordinates and reciprocal assignments
+locally from the existing API lists. Positions reflect the latest successful read
+and refresh on the same dispatch updates as the lists.
+
+Choose **Use schematic** to avoid external tiles. The map also falls back to the
+local coordinate schematic when offline or when the tile service is unavailable.
+The service worker never caches street tiles. Location picking fills the existing
+editable latitude and longitude fields in both create forms. Third-party licenses
+are bundled under `/assets/licenses.txt`.
 
 ## Read and offline semantics
 

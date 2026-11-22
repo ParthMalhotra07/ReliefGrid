@@ -6,10 +6,10 @@ import React, {
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./app.css";
 import { CreateDialog } from "./CreateDialog.jsx";
+import { DispatchMap } from "./DispatchMap.jsx";
 import { coalescedRefresh } from "./refresh.js";
 import {
   EventIDs,
@@ -30,6 +30,13 @@ const time = (value) =>
       })
     : "Not yet observed";
 const short = (id) => id?.slice(0, 8) || "—";
+const coordinates = ({ lat, lng }) => lat.toFixed(5) + ", " + lng.toFixed(5);
+const dateTime = (value) => {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime())
+    ? date.toLocaleString()
+    : "Not reported";
+};
 const label = (text) =>
   text
     ?.replaceAll("_", " ")
@@ -218,122 +225,10 @@ function Badge({ status }) {
     </span>
   );
 }
-function DispatchMap({
-  requests,
-  resources,
-  selected,
-  onSelect,
-  focus,
-  visible,
-}) {
-  const element = useRef(null),
-    map = useRef(null),
-    layers = useRef(null),
-    fitted = useRef(false);
-  useEffect(() => {
-    const m = L.map(element.current, {
-      zoomControl: false,
-      preferCanvas: false,
-    }).setView([20.6, 78.9], 4);
-    map.current = m;
-    L.control.zoom({ position: "bottomright" }).addTo(m);
-    m.attributionControl.setPrefix("Leaflet");
-    L.imageOverlay(
-      "/assets/map-grid.svg",
-      [
-        [-85, -180],
-        [85, 180],
-      ],
-      { opacity: 0.22, interactive: false },
-    ).addTo(m);
-    for (const lat of [-60, -30, 0, 30, 60])
-      L.polyline(
-        [
-          [lat, -180],
-          [lat, 180],
-        ],
-        { color: "#b9cbc5", weight: 0.5, interactive: false },
-      ).addTo(m);
-    for (const lng of [-120, -60, 0, 60, 120])
-      L.polyline(
-        [
-          [-85, lng],
-          [85, lng],
-        ],
-        { color: "#b9cbc5", weight: 0.5, interactive: false },
-      ).addTo(m);
-    layers.current = L.layerGroup().addTo(m);
-    return () => {
-      m.remove();
-      map.current = null;
-    };
-  }, []);
-  useEffect(() => {
-    if (!map.current) return;
-    const group = layers.current;
-    group.clearLayers();
-    const points = [];
-    const tooltip = (text) => {
-      const el = document.createElement("span");
-      el.textContent = text;
-      return el;
-    };
-    for (const row of resources) {
-      const p = [row.location.lat, row.location.lng];
-      points.push(p);
-      L.circleMarker(p, {
-        radius: 8,
-        color: "#246893",
-        weight: 3,
-        fillColor: "#fff",
-        fillOpacity: 1,
-      })
-        .bindTooltip(tooltip(row.name))
-        .addTo(group);
-    }
-    for (const row of requests) {
-      const p = [row.location.lat, row.location.lng];
-      points.push(p);
-      const color =
-        row.urgency === "CRITICAL"
-          ? "#c94e42"
-          : row.urgency === "HIGH"
-            ? "#b57b22"
-            : "#168078";
-      L.circleMarker(p, {
-        radius: row.requestId === selected ? 11 : 7,
-        color: "#fff",
-        weight: 2,
-        fillColor: color,
-        fillOpacity: terminal(row.status) ? 0.4 : 1,
-      })
-        .bindTooltip(tooltip(`${label(row.requestType)} · ${row.status}`))
-        .on("click", () => onSelect(row.requestId))
-        .addTo(group);
-      const res = resources.find((v) => reciprocal(row, v));
-      if (res)
-        L.polyline([p, [res.location.lat, res.location.lng]], {
-          color: row.status === "CANCELLING" ? "#b57b22" : "#246893",
-          weight: 2,
-          dashArray: "5 6",
-        }).addTo(group);
-    }
-    if (points.length && !fitted.current) {
-      map.current.fitBounds(points, { padding: [38, 38], maxZoom: 12 });
-      fitted.current = true;
-    }
-  }, [requests, resources, selected, onSelect]);
-  useEffect(() => {
-    if (focus && map.current) map.current.setView([focus.lat, focus.lng], 12);
-  }, [focus]);
-  useEffect(() => {
-    if (!visible) return;
-    const frame = requestAnimationFrame(() => map.current?.invalidateSize());
-    return () => cancelAnimationFrame(frame);
-  }, [visible]);
-  return (
-    <div ref={element} className="map" aria-label="Dispatch map" role="img" />
-  );
+function showDetailsOnMobile(panel) {
+  if (matchMedia("(max-width: 720px)").matches) {
+    requestAnimationFrame(() => document.getElementById(panel)?.focus());
+  }
 }
 function App() {
   const d = useDispatch(),
@@ -342,6 +237,7 @@ function App() {
     [status, setStatus] = useState(""),
     [urgency, setUrgency] = useState(""),
     [selected, setSelected] = useState(""),
+    [resourceSelection, setResourceSelection] = useState(""),
     [focus, setFocus] = useState(null),
     [view, setView] = useState("map"),
     [busy, setBusy] = useState(false),
@@ -370,7 +266,20 @@ function App() {
           .toLowerCase()
           .includes(query)),
   );
-  const chosen = requests.find((r) => r.requestId === selected);
+  const selectedResource = resources.find(
+    (r) => r.resourceId === resourceSelection,
+  );
+  const chosen = resourceSelection
+    ? selectedResource && requests.find((r) => reciprocal(r, selectedResource))
+    : requests.find((r) => r.requestId === selected);
+  const assigned = chosen && resources.find((r) => reciprocal(chosen, r));
+  const mapSelection = useMemo(
+    () =>
+      resourceSelection
+        ? { kind: "resource", id: resourceSelection }
+        : { kind: "request", id: selected },
+    [resourceSelection, selected],
+  );
   const canAct = d.online && !d.stale && !busy;
   const more = [
     ...(d.snapshot?.requests.positions || []),
@@ -428,7 +337,16 @@ function App() {
       }
     }
   }, [d.snapshot, uncertain]);
-  const pick = useCallback((id) => setSelected(id), []);
+  const pickRequest = useCallback((row) => {
+    setSelected(row.requestId);
+    setResourceSelection("");
+    setFocus({ ...row.location });
+  }, []);
+  const pickResource = useCallback((row) => {
+    setSelected("");
+    setResourceSelection(row.resourceId);
+    setFocus({ ...row.location });
+  }, []);
   return (
     <>
       {creating && (
@@ -464,16 +382,15 @@ function App() {
       <main className="workspace">
         <div className="page-heading">
           <div>
-            <div className="eyebrow">OPERATIONS / LIVE OVERVIEW</div>
             <h1>Dispatch overview</h1>
-            <p>Connect people with the help they need.</p>
+            <p>Review requests, locate resources and manage assignments.</p>
           </div>
           <button
             className="button refresh"
             onClick={d.refresh}
             disabled={!d.online || d.loading}
           >
-            {d.loading ? "Refreshing…" : "↻ Refresh data"}
+            {d.loading ? "Refreshing…" : "Refresh data"}
           </button>
         </div>
         {(d.error || actionError) && (
@@ -511,7 +428,6 @@ function App() {
           >
             Register resource
           </button>
-          <span>Matching runs automatically.</span>
         </div>
         <div className="summary">
           <Metric
@@ -625,8 +541,12 @@ function App() {
               {visibleRequests.map((r) => (
                 <button
                   key={r.requestId}
-                  className={`request-card ${selected === r.requestId ? "selected" : ""}`}
-                  onClick={() => setSelected(r.requestId)}
+                  className={`request-card ${chosen?.requestId === r.requestId ? "selected" : ""}`}
+                  aria-pressed={chosen?.requestId === r.requestId}
+                  onClick={() => {
+                    pickRequest(r);
+                    showDetailsOnMobile("request-details");
+                  }}
                 >
                   <div className="card-top">
                     <span className={`urgency urgency-${r.urgency}`}>
@@ -667,15 +587,16 @@ function App() {
             <section className="panel map-panel">
               <div className="panel-heading">
                 <h2>Area overview</h2>
-                <span className="quiet-tag">OFFLINE SCHEMATIC</span>
               </div>
               <DispatchMap
                 requests={visibleRequests}
                 resources={visibleResources}
-                selected={selected}
-                onSelect={pick}
+                selection={mapSelection}
+                onSelectRequest={pickRequest}
+                onSelectResource={pickResource}
                 focus={focus}
                 visible={view === "map"}
+                online={d.online}
               />
               <div className="map-legend">
                 <span>
@@ -692,7 +613,57 @@ function App() {
                 </span>
               </div>
             </section>
-            <section className="panel timeline" aria-label="Request details">
+            {selectedResource && (
+              <section
+                className="panel resource-details"
+                aria-label="Resource details"
+                id="resource-details"
+                tabIndex={-1}
+              >
+                <div className="panel-heading">
+                  <h2>{selectedResource.name}</h2>
+                  <Badge status={selectedResource.status} />
+                </div>
+                <dl className="resource-facts">
+                  <div>
+                    <dt>Coordinates</dt>
+                    <dd>{coordinates(selectedResource.location)}</dd>
+                  </div>
+                  <div>
+                    <dt>Available from</dt>
+                    <dd>{dateTime(selectedResource.windowStart)}</dd>
+                  </div>
+                  <div>
+                    <dt>Available until</dt>
+                    <dd>{dateTime(selectedResource.windowEnd)}</dd>
+                  </div>
+                  <div>
+                    <dt>Request</dt>
+                    <dd>
+                      {chosen ? (
+                        <button
+                          type="button"
+                          className="detail-link"
+                          onClick={() => pickRequest(chosen)}
+                        >
+                          #{short(chosen.requestId)}
+                        </button>
+                      ) : selectedResource.activeClaim ? (
+                        "Assignment unconfirmed in loaded view"
+                      ) : (
+                        "Unassigned"
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            )}
+            <section
+              className="panel timeline"
+              aria-label="Request details"
+              id="request-details"
+              tabIndex={-1}
+            >
               <div className="panel-heading">
                 <h2>Request timeline</h2>
                 {chosen && (
@@ -715,6 +686,18 @@ function App() {
                     </div>
                     <Badge status={chosen.status} />
                   </div>
+                  {assigned && (
+                    <div className="assignment-detail">
+                      <span>Assigned resource</span>
+                      <button
+                        type="button"
+                        className="detail-link"
+                        onClick={() => pickResource(assigned)}
+                      >
+                        {assigned.name}
+                      </button>
+                    </div>
+                  )}
                   <ol className="timeline-items">
                     <li>
                       <i />
@@ -810,9 +793,10 @@ function App() {
                   <button
                     className="resource-card"
                     key={r.resourceId}
+                    aria-pressed={resourceSelection === r.resourceId}
                     onClick={() => {
-                      setFocus(r.location);
-                      if (r.activeClaim) setSelected(r.activeClaim.requestId);
+                      pickResource(r);
+                      showDetailsOnMobile("resource-details");
                     }}
                   >
                     <div className="resource-icon">
@@ -873,7 +857,7 @@ function App() {
               <small>
                 {d.stale
                   ? "Current availability is not confirmed."
-                  : "Each shard answered the latest strong reads."}{" "}
+                  : "Each shard answered the latest authoritative reads."}{" "}
                 Pod readiness is not reported here.
               </small>
             </section>
@@ -945,7 +929,6 @@ function Metric({ title, value, note, color }) {
         <strong>{value}</strong>
         <small>{note}</small>
       </div>
-      <i />
     </section>
   );
 }
