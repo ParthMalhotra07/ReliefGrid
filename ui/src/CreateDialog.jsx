@@ -373,6 +373,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                   Use my location
                 </button>
               </div>
+              <p className="place-credit">Places: GeoNames (CC BY 4.0)</p>
               {places.length > 0 && (
                 <ul className="place-results" aria-label="Place results">
                   {places.map((row) => (

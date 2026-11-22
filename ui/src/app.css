@@ -1410,6 +1410,11 @@ footer .small-dot {
   color: #60766a;
   white-space: nowrap;
 }
+.place-credit {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #60766a;
+}
 .place-note {
   margin: 6px 0 0;
   font-size: 12px;

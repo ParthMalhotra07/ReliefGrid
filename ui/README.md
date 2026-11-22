@@ -108,3 +108,9 @@ Resource availability is entered in browser-local time, converted to UTC once
 and frozen with the body. Neither internal/node/operator credentials nor manual
 claim edits are exposed. The browser fixtures verify these paths; a final
 deployment demonstration remains separate from the fixture acceptance.
+
+## Place data
+
+Place data: GeoNames (https://www.geonames.org), CC BY 4.0. Selected and
+simplified for offline search; 13 entries excluded for data errors; HSR Layout
+replaced by Ulsoor.

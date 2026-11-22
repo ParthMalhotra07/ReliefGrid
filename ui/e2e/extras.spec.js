@@ -481,3 +481,23 @@ test("the street layer never requests tiles outside the world", async ({
   expect(outside).toEqual([]);
   expect(rejected).toBe(0);
 });
+
+test("both forms credit GeoNames under the place search box", async ({
+  page,
+}) => {
+  for (const kind of ["request", "resource"]) {
+    const form = await openForm(page, kind);
+    const credit = form.getByText("Places: GeoNames (CC BY 4.0)", {
+      exact: true,
+    });
+    await expect(credit).toBeVisible();
+    // It sits directly below the search box.
+    const box = await form
+      .getByRole("searchbox", { name: "Search place" })
+      .boundingBox();
+    const line = await credit.boundingBox();
+    expect(line.y).toBeGreaterThanOrEqual(box.y + box.height);
+    expect(line.y - (box.y + box.height)).toBeLessThan(40);
+    await form.getByRole("button", { name: "Close creation form" }).click();
+  }
+});
