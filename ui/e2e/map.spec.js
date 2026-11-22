@@ -40,7 +40,7 @@ test("tile failure falls back without interrupting dispatch", async ({
   await page.route(tiles, (route) => route.abort());
   await page.goto("/");
   await expect(page.getByLabel("Map background status")).toHaveText(
-    "Street map unavailable · world overview shown",
+    "Street map unavailable · outline map shown",
   );
   await expect(page.locator(".leaflet-world-overview-pane path")).toHaveCount(
     1,

@@ -145,3 +145,31 @@ test("request cards explain only reasons that apply to the current state", async
   await expect(card).toContainText("No matching resource within 50 km yet");
   await expect(card).not.toContainText("NO_CANDIDATE");
 });
+
+test("Fit globe returns to the whole world and the mode label follows the zoom", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const map = page.getByRole("region", { name: "Dispatch map" });
+  const status = page.getByLabel("Map background status");
+  const scale = page.locator(".leaflet-control-scale-line");
+  await expect(status).toHaveText("Street map");
+  await page.getByRole("button", { name: "Fit globe" }).click();
+  await expect(scale).toHaveText(/000 km$/);
+  await expect(status).toHaveText("Street map");
+  await page.getByRole("button", { name: "World overview" }).click();
+  await expect(status).toHaveText("World overview · no street detail");
+  await page
+    .getByRole("region", { name: "Requests", exact: true })
+    .getByRole("button", { name: /Water needed at the school/ })
+    .click();
+  await expect(scale).toHaveText(/^(\d+ m|\d km)$/);
+  await expect(status).not.toContainText("World overview");
+  await expect(status).toHaveText("Outline map · no street detail");
+  await page.getByRole("button", { name: "Fit globe" }).click();
+  await expect(status).toHaveText("World overview · no street detail");
+  await expect(map.getByText("Asia", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Fit to results" }).click();
+  await expect(status).toHaveText("Outline map · no street detail");
+  await expect(map.getByText("Asia", { exact: true })).toHaveCount(0);
+});

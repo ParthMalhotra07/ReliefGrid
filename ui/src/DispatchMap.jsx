@@ -8,6 +8,10 @@ const attribution =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>';
 const empty = [];
 const initialCentre = [20.6, 78.9];
+const initialZoom = 4;
+// At or below this zoom the whole globe or a continent fills the map.
+const worldZoom = 3;
+const worldPadding = { padding: [12, 12], animate: false };
 const toPoint = ({ lat, lng }) => [lat, lng];
 const boundsOptions = { padding: [32, 32], maxZoom: 13 };
 const continents = [
@@ -142,6 +146,7 @@ export function DispatchMap({
   const fitted = useRef(false);
   const streetView = useRef(null);
   const [street, setStreet] = useState(true);
+  const [zoom, setZoom] = useState(initialZoom);
   const [attempt, setAttempt] = useState(0);
   const [tileState, setTileState] = useState("loading");
   const picker = !!onPick;
@@ -152,8 +157,10 @@ export function DispatchMap({
       minZoom: 0,
       maxZoom: 19,
       zoomSnap: 0.25,
-    }).setView(initialCentre, 4);
+    }).setView(initialCentre, initialZoom);
     map.current = m;
+    // The mode label depends on the scale actually shown, not on the layer.
+    m.on("zoomend", () => setZoom(m.getZoom()));
     L.control.zoom({ position: "topright" }).addTo(m);
     L.control.scale({ position: "bottomleft", imperial: false }).addTo(m);
     m.attributionControl.setPrefix(false);
@@ -213,7 +220,7 @@ export function DispatchMap({
       if (m.getZoom() <= 2) labels.addTo(m);
       else labels.remove();
     };
-    m.fitWorld({ padding: [12, 12], animate: false });
+    m.fitWorld(worldPadding);
     updateLabels();
     m.on("zoomend", updateLabels);
     return () => {
@@ -459,12 +466,19 @@ export function DispatchMap({
     };
   }, [attempt, online, ready, street, visible]);
 
+  const world = zoom <= worldZoom;
   const background = !street
-    ? "World overview · no street detail"
+    ? world
+      ? "World overview · no street detail"
+      : "Outline map · no street detail"
     : !online
-      ? "Offline world map · no street detail"
+      ? world
+        ? "Offline world map · no street detail"
+        : "Offline outline map · no street detail"
       : tileState === "failed"
-        ? "Street map unavailable · world overview shown"
+        ? world
+          ? "Street map unavailable · world overview shown"
+          : "Street map unavailable · outline map shown"
         : tileState === "ready"
           ? "Street map"
           : tileState === "partial"
@@ -483,6 +497,13 @@ export function DispatchMap({
             onClick={() => setStreet(!street)}
           >
             {street ? "World overview" : "Use street map"}
+          </button>
+          <button
+            type="button"
+            className="map-tool"
+            onClick={() => map.current.fitWorld(worldPadding)}
+          >
+            Fit globe
           </button>
           {street && online && ["failed", "partial"].includes(tileState) && (
             <button

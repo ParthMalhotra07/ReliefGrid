@@ -1,8 +1,8 @@
 {
-  "revision": "9889c1c504007b71",
+  "revision": "b1947545dc28663b",
   "assets": [
+    "/assets/app-5FX7EDIX.js",
     "/assets/app-K3YKZIF6.css",
-    "/assets/app-TN6SEMOA.js",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
@@ -15,7 +15,7 @@
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
     "src/App.jsx": "db31a4ab208903b90caf553ecd4f3958abcbb848492f39011940a5e492cfb89b",
     "src/CreateDialog.jsx": "1bf40bf4f09f2cddf846e2ee096d097c9171e637d623e54f34182bdb95e9c417",
-    "src/DispatchMap.jsx": "c9e53ca6f564a877f8078f717990e51246b9f1e0f8117cef73d3d5c51e9a49f4",
+    "src/DispatchMap.jsx": "f7ffc3c70ebd04734afa51c452863f72d8cadbe219ef971f677c5f796df1866a",
     "src/app.css": "a5acb1c7de15fc9756a9bd4e64b6ce2fd487215006f5bc6cd7c735ee0819db78",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
@@ -23,13 +23,13 @@
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
+    "app-5FX7EDIX.js": "55ba06afba014cd485f8cc89a751589cd72078216e3630f14d25e16374f93158",
     "app-K3YKZIF6.css": "1b61c6d6bdb376ee1f409a9663f748891f6ae913d28af1e6e36e0e2841b19266",
-    "app-TN6SEMOA.js": "0e7e0f1340a76ffb2c2de4b610fb4a05e7f79d9b7424c87e296529d19136d113",
-    "index.html": "593215c0e0e6b5b32e07d5bbffbe4e08e781bd757ef648a1a7854ff7b08584a3",
+    "index.html": "aa2d6a580ead2d26ed09270e7fb9ad46594b6717c2dc0892cdc89c6192cf1da9",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "f0c7c31e891d9d084d07b86fed46a3fb991633cfddaf5d019cce4328cbdc0a8c"
+    "sw.js": "526817d997f24a8da6f56cfb3cb6491a634c8e94444a0795d6fa1d47e5004e5f"
   }
 }
