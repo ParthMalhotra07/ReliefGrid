@@ -1,8 +1,8 @@
 {
-  "revision": "efce87228ec4bb9b",
+  "revision": "280facef0481a452",
   "assets": [
-    "/assets/app-SKOHWEYM.css",
-    "/assets/app-VNY74CAH.js",
+    "/assets/app-5Q3D4DPW.js",
+    "/assets/app-NMGPHSOA.css",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
@@ -13,23 +13,23 @@
     "index.html": "7f4a49b1f0641b892835a3977acda5379b42d014915d04e832262447d1e85d22",
     "package-lock.json": "617c6a871ed4179c6fde59669bf6ca26d1a74bbc679eecb57ad97d928c667dda",
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
-    "src/App.jsx": "dea7fc8ac5f67f6014c734359b4e8a071e4796e8b86de6865c94c820c3c58688",
+    "src/App.jsx": "36c6870d98dcf5b08f3b871c0e158e6179ff68e01fe8121b00e098aac004a622",
     "src/CreateDialog.jsx": "1bf40bf4f09f2cddf846e2ee096d097c9171e637d623e54f34182bdb95e9c417",
-    "src/DispatchMap.jsx": "3b6037496413b410af2a9ca29359923e33085b6d3002108666a1a64be06f508d",
-    "src/app.css": "bef08593f4437aeeae2da9f17f2926bebf249312116a482e93a7baf8b37306d1",
+    "src/DispatchMap.jsx": "1142c2adaaa1c57b0b8cd92d9d032bceb0c610e17d49fc5b5e248729181f3b00",
+    "src/app.css": "e3595b658f564f977a93932c98d4da7e9d94a155b90c56e91e9e247c6f9a0c05",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
     "src/state.js": "491bbd90a0f0cd791dc7a3af2dfd6a90ea9f0523516da6a7c1fbfade646003f7",
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-SKOHWEYM.css": "f13bf506d592bd8dc0cbc19d6bf8e2f192244c6490bd04cd4f3d0cad6271b8a9",
-    "app-VNY74CAH.js": "ceb29573734d67a2cccc11d6cef6f36b8fb12686a0880ba42f68fd0c69fc2392",
-    "index.html": "c72bdf9f0f315060ae65fa6111a29b6fe75f75915b2d949977134bf264b087d1",
+    "app-5Q3D4DPW.js": "a603c469fed6e9a12451a1bf4eef450d1f051917a7f94c34d8f0f48e69bf2fd9",
+    "app-NMGPHSOA.css": "c607f41a174e0797bc863a42d0cb89d6fed1d6865389439e108926093a246883",
+    "index.html": "d2b1eda3ec3d5eaaf8b024cba728f90837ceb3c16aacc31737434bfb905c07e5",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "56d7c4df6e81b917f384dcf89e78d68ab65a5e76f2f55adc32e7ac5597eee175"
+    "sw.js": "3ba2b465ef57c8ae67043ec55133c181403de8d489c1a6b79500bf63de615557"
   }
 }

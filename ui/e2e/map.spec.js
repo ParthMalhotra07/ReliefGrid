@@ -66,6 +66,47 @@ test("tile failure falls back without interrupting dispatch", async ({
   );
 });
 
+test("world overview fits the continents, keeps records and returns to the street view", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let streetRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().startsWith("https://tile.openstreetmap.org/"))
+      streetRequests++;
+  });
+  await page.goto("/");
+  const map = page.getByRole("region", { name: "Dispatch map" });
+  await expect(
+    map.getByRole("button", { name: "Resource: Water team Alpha" }),
+  ).toBeAttached();
+  await expect(page.getByLabel("Map background status")).toHaveText(
+    "Street map",
+  );
+  const before = streetRequests;
+  await page.getByRole("button", { name: "World overview" }).click();
+  await expect(page.getByLabel("Map background status")).toHaveText(
+    "World overview · no street detail",
+  );
+  const bounds = await map.boundingBox();
+  for (const name of ["North America", "Africa", "Asia", "Oceania"]) {
+    const place = map.getByText(name, { exact: true });
+    await expect(place).toBeVisible({ timeout: 3000 });
+    const label = await place.boundingBox();
+    expect(label.x).toBeGreaterThanOrEqual(bounds.x);
+    expect(label.x + label.width).toBeLessThanOrEqual(bounds.x + bounds.width);
+  }
+  await expect(
+    map.getByRole("button", { name: "Resource: Water team Alpha" }),
+  ).toBeAttached();
+  expect(streetRequests).toBe(before);
+  await page.getByRole("button", { name: "Use street map" }).click();
+  await expect(page.getByLabel("Map background status")).toHaveText(
+    "Street map",
+  );
+  await expect(map.getByText("Africa", { exact: true })).toHaveCount(0);
+});
+
 test("one missing tile preserves the street map and its loaded tiles", async ({
   page,
 }) => {

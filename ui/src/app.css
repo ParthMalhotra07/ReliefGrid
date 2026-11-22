@@ -528,6 +528,15 @@ select {
   background: #cddfe7;
   isolation: isolate;
 }
+.world-region > span {
+  display: inline-block;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  color: #334f61;
+  font-size: 10px;
+  font-weight: 700;
+  text-shadow: 0 0 3px #f5f7ef;
+}
 .map-tools {
   display: flex;
   flex-wrap: wrap;

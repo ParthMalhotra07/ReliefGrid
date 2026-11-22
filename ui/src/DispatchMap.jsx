@@ -10,6 +10,15 @@ const empty = [];
 const initialCentre = [20.6, 78.9];
 const toPoint = ({ lat, lng }) => [lat, lng];
 const boundsOptions = { padding: [32, 32], maxZoom: 13 };
+const continents = [
+  [43, -106, "North America"],
+  [-16, -59, "South America"],
+  [53, 19, "Europe"],
+  [7, 18, "Africa"],
+  [44, 98, "Asia"],
+  [-26, 136, "Oceania"],
+  [-76, 0, "Antarctica"],
+];
 
 function mapMarker(point, className, title, select) {
   const marker = L.marker(point, {
@@ -43,6 +52,7 @@ export function DispatchMap({
   onSelectResource,
   focus,
   visible = true,
+  ready = true,
   online,
   onPick,
   position,
@@ -51,6 +61,7 @@ export function DispatchMap({
   const map = useRef(null);
   const layers = useRef(null);
   const fitted = useRef(false);
+  const streetView = useRef(null);
   const [street, setStreet] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const [tileState, setTileState] = useState("loading");
@@ -59,8 +70,9 @@ export function DispatchMap({
   useEffect(() => {
     const m = L.map(element.current, {
       zoomControl: false,
-      minZoom: 2,
+      minZoom: 0,
       maxZoom: 19,
+      zoomSnap: 0.25,
     }).setView(initialCentre, 4);
     map.current = m;
     L.control.zoom({ position: "topright" }).addTo(m);
@@ -93,58 +105,40 @@ export function DispatchMap({
   }, [visible]);
 
   useEffect(() => {
-    if (!street || !online || !visible) return;
-    setTileState("loading");
     const m = map.current;
-    const layer = L.tileLayer(tileURL, {
-      attribution,
-      referrerPolicy: "strict-origin-when-cross-origin",
-      minZoom: 0,
-      maxNativeZoom: 19,
-      noWrap: true,
-    });
-    let active = true;
-    let failed = false;
-    let missing = false;
-    const settle = () => {
-      if (!active || failed) return;
-      clearTimeout(timer);
-      if (layer.getContainer()?.querySelector(".leaflet-tile-loaded")) {
-        setTileState(missing ? "partial" : "ready");
-        return;
+    if (street) {
+      if (streetView.current) {
+        const { center, zoom } = streetView.current;
+        m.setView(center, zoom, { animate: false });
+        streetView.current = null;
       }
-      failed = true;
-      setTileState("failed");
-      // Leaflet may still be completing its current load handler.
-      queueMicrotask(() => {
-        if (active) layer.remove();
-      });
+      return;
+    }
+    streetView.current = { center: m.getCenter(), zoom: m.getZoom() };
+    const labels = L.layerGroup(
+      continents.map(([lat, lng, name]) =>
+        L.marker([lat, lng], {
+          interactive: false,
+          keyboard: false,
+          icon: L.divIcon({
+            className: "world-region",
+            html: `<span>${name}</span>`,
+            iconSize: [0, 0],
+          }),
+        }),
+      ),
+    );
+    const updateLabels = () => {
+      if (m.getZoom() <= 2) labels.addTo(m);
+      else labels.remove();
     };
-    const slow = () => {
-      missing = true;
-      settle();
-    };
-    let timer = setTimeout(slow, 6500);
-    layer.on("loading", () => {
-      missing = false;
-      clearTimeout(timer);
-      timer = setTimeout(slow, 6500);
-    });
-    layer.on("tileerror", () => {
-      missing = true;
-    });
-    layer.on("load", settle);
-    layer.addTo(m);
+    m.fitWorld({ padding: [12, 12], animate: false });
+    updateLabels();
+    m.on("zoomend", updateLabels);
     return () => {
-      active = false;
-      clearTimeout(timer);
-      layer.off();
-      if (m.hasLayer(layer)) layer.remove();
+      m.off("zoomend", updateLabels);
+      labels.remove();
     };
-  }, [attempt, online, street, visible]);
-
-  useEffect(() => {
-    if (!street) map.current.setZoom(Math.min(7, map.current.getZoom()));
   }, [street]);
 
   useEffect(() => {
@@ -228,6 +222,58 @@ export function DispatchMap({
       m.setView(toPoint(focus), Math.max(m.getZoom(), 13));
     }
   }, [focus]);
+
+  useEffect(() => {
+    if (!street || !online || !visible || !ready) return;
+    setTileState("loading");
+    const m = map.current;
+    const layer = L.tileLayer(tileURL, {
+      attribution,
+      referrerPolicy: "strict-origin-when-cross-origin",
+      minZoom: 0,
+      maxNativeZoom: 19,
+      noWrap: true,
+    });
+    let active = true;
+    let failed = false;
+    let missing = false;
+    const settle = () => {
+      if (!active || failed) return;
+      clearTimeout(timer);
+      if (layer.getContainer()?.querySelector(".leaflet-tile-loaded")) {
+        setTileState(missing ? "partial" : "ready");
+        return;
+      }
+      failed = true;
+      setTileState("failed");
+      // Leaflet may still be completing its current load handler.
+      queueMicrotask(() => {
+        if (active) layer.remove();
+      });
+    };
+    const slow = () => {
+      missing = true;
+      settle();
+    };
+    let timer = setTimeout(slow, 6500);
+    layer.on("loading", () => {
+      missing = false;
+      clearTimeout(timer);
+      timer = setTimeout(slow, 6500);
+    });
+    layer.on("tileerror", () => {
+      missing = true;
+    });
+    layer.on("load", settle);
+    layer.addTo(m);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      // Leaflet unregisters the map listeners in the layer's remove event.
+      if (m.hasLayer(layer)) layer.remove();
+      layer.off();
+    };
+  }, [attempt, online, ready, street, visible]);
 
   const background = !street
     ? "World overview · no street detail"

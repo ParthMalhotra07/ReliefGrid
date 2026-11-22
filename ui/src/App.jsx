@@ -674,6 +674,7 @@ function App() {
               onSelectResource={pickResource}
               focus={focus}
               visible={view === "map"}
+              ready={!!(d.snapshot || d.error)}
               online={d.online}
             />
             <div className="map-legend">

@@ -31,8 +31,9 @@ the tile provider. The app draws record coordinates and reciprocal assignments
 locally from the existing API lists. Positions reflect the latest successful read
 and refresh on the same dispatch updates as the lists.
 
-Choose **World overview** to use the bundled coastline map without requesting
-street tiles. The geographic overview stays beneath the street layer, so valid
+Choose **World overview** to fit the whole globe without requesting street tiles.
+**Use street map** returns to the previous street view. The bundled coastline
+map stays beneath the street layer, so valid
 tiles remain visible if only some tiles fail. When the browser is offline, the
 overview still shows record positions, but street detail requires connectivity.
 The coastline geometry is derived from the public-domain [Natural Earth 1:110m
