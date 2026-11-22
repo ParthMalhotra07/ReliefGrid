@@ -299,3 +299,23 @@ test("batch 3: unfinished first in the urgency sort, and no zero duration parts"
     "waiting 59 min",
   );
 });
+
+test("the next window boundary is the soonest start or end after now", async () => {
+  const { nextBoundary } = await import("./state.js");
+  const at = (m) =>
+    new Date(Date.parse("2026-11-05T12:00:00Z") + m * 60000).toISOString();
+  const now = Date.parse("2026-11-05T12:00:00Z");
+  const rows = [
+    { windowStart: at(-60), windowEnd: at(45) },
+    { windowStart: at(20), windowEnd: at(180) },
+    { windowStart: at(-180), windowEnd: at(-60) },
+  ];
+  assert.equal(nextBoundary(rows, now), Date.parse(at(20)));
+  // A boundary exactly at now has passed; the next one is chosen.
+  assert.equal(nextBoundary(rows, Date.parse(at(20))), Date.parse(at(45)));
+  assert.equal(
+    nextBoundary([{ windowStart: "x", windowEnd: at(-1) }], now),
+    undefined,
+  );
+  assert.equal(nextBoundary([], now), undefined);
+});

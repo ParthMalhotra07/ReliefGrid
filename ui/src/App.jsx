@@ -28,12 +28,18 @@ import {
   sortRequests,
   waiting,
   waitingLabel,
+  nextBoundary,
   windowLabel,
   windowState,
 } from "./state.js";
 import { typeIcon } from "./icons.js";
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
 const SORT_KEY = "reliefgrid.dispatch.sort.v1";
+// The shared clock ticks every 5 s (feed times); window boundaries also wake
+// it exactly. Long waits are re-armed hourly.
+const CLOCK_MS = 5000;
+const BOUNDARY_MAX_MS = 3600000;
+
 // The chosen request sort, per browser; storage may be unavailable.
 function savedSort() {
   try {
@@ -340,12 +346,7 @@ function Badge({ status }) {
     </span>
   );
 }
-function ActivityFeed({ items, held, onChoose }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 5000);
-    return () => clearInterval(timer);
-  }, []);
+function ActivityFeed({ items, held, now, onChoose }) {
   return (
     <section
       className="panel activity-panel"
@@ -439,15 +440,27 @@ function App() {
     [creating, setCreating] = useState(null),
     [explaining, setExplaining] = useState(false),
     [sort, setSort] = useState(savedSort),
-    // Browser clock for the waiting and window badges, refreshed every 30 s.
+    // The one clock for everything time-based on screen: window and waiting
+    // badges, the details panel, dimming reasons and feed times.
     [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30000);
+    const timer = setInterval(() => setNow(Date.now()), CLOCK_MS);
     return () => clearInterval(timer);
   }, []);
   const actionPending = useRef(false);
   const requests = d.snapshot?.requests.items || [],
     resources = d.snapshot?.resources.items || [];
+  // Besides the tick, wake exactly at the next window boundary so badges and
+  // dimming flip together. Re-armed after each boundary and on new data.
+  useEffect(() => {
+    const next = nextBoundary(resources, now);
+    if (next === undefined) return;
+    const timer = setTimeout(
+      () => setNow(Math.max(Date.now(), next)),
+      Math.min(next - Date.now() + 20, BOUNDARY_MAX_MS),
+    );
+    return () => clearTimeout(timer);
+  }, [resources, now]);
   const query = search.trim().toLowerCase();
   const visibleRequests = requests.filter(
     (r) =>
@@ -484,17 +497,25 @@ function App() {
     () => target && { ...target.location },
     [target?.requestId, target?.location.lat, target?.location.lng],
   );
+  const lastDimmed = useRef(new Map());
   const dimmed = useMemo(() => {
     const reasons = new Map();
-    if (!target) return reasons;
-    const now = Date.now();
-    for (const row of resources) {
-      if (reciprocal(target, row)) continue;
-      const reason = ineligible(target, row, now);
-      if (reason) reasons.set(row.resourceId, reason);
-    }
+    if (target)
+      for (const row of resources) {
+        if (reciprocal(target, row)) continue;
+        const reason = ineligible(target, row, now);
+        if (reason) reasons.set(row.resourceId, reason);
+      }
+    // Same reasons, same map: a clock tick alone does not redraw the pins.
+    const old = lastDimmed.current;
+    if (
+      old.size === reasons.size &&
+      [...reasons].every(([id, reason]) => old.get(id) === reason)
+    )
+      return old;
+    lastDimmed.current = reasons;
     return reasons;
-  }, [target, resources]);
+  }, [target, resources, now]);
   const mapSelection = useMemo(
     () =>
       resourceSelection
@@ -1101,6 +1122,7 @@ function App() {
             <ActivityFeed
               items={d.activity}
               held={d.held}
+              now={now}
               onChoose={chooseActivity}
             />
           </div>

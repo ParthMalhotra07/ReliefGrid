@@ -274,3 +274,14 @@ export function sortRequests(rows, mode, history = {}) {
       byCreated(a, b),
   );
 }
+
+// The soonest window start or end after `now` among loaded resources.
+export function nextBoundary(resources, now) {
+  let next;
+  for (const row of resources)
+    for (const value of [row.windowStart, row.windowEnd]) {
+      const at = Date.parse(value);
+      if (at > now && (next === undefined || at < next)) next = at;
+    }
+  return next;
+}

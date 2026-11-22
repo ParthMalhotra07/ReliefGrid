@@ -1,7 +1,7 @@
 {
-  "revision": "5b5f0b24eabeb413",
+  "revision": "d23e2f825fe2e50a",
   "assets": [
-    "/assets/app-3M3LYWSZ.js",
+    "/assets/app-6BA35EFT.js",
     "/assets/app-R5BMYX7X.css",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
@@ -13,7 +13,7 @@
     "index.html": "7f4a49b1f0641b892835a3977acda5379b42d014915d04e832262447d1e85d22",
     "package-lock.json": "617c6a871ed4179c6fde59669bf6ca26d1a74bbc679eecb57ad97d928c667dda",
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
-    "src/App.jsx": "00670864f22312e984b4653a53d53943162bb4aef601451c1291a83f5d115712",
+    "src/App.jsx": "ea171c1607974b8d24df430481eaa29c3bb9c5df698e82a3267c674490a390ae",
     "src/CreateDialog.jsx": "75c2d45c26ae0dc98a605d78d7f5d4aaa25c2fcaefb66cce680f1a68cb561c76",
     "src/DispatchMap.jsx": "a21455ae186598a9fa53d757aea3d303446c15b8397340036b57d420652afa51",
     "src/activity.js": "7083b05f43cc91a9a0b4f95ebe7ec05e019e10a707dda9357bb223bab3c6447a",
@@ -23,17 +23,17 @@
     "src/places.js": "ae5b9aee94409dfd00ee9459b539b1e097b8d7ced950c1f1228098d66b111449",
     "src/places.json": "994533411832b238d660ba3ad70524f24e9108233165be59e10245a6e4763e48",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
-    "src/state.js": "a7f7a31b9008959955ff9f7bef02343df1ab6c468e37d673f459825081302f8a",
+    "src/state.js": "0bd48bd73cd91028717490837771731938c19ddd30ed0dcace1f996e034c71e8",
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-3M3LYWSZ.js": "89e3a09a3ebcb5183a5bffa3e2e6538c0da46430a2d791264d38c0e4fad9f093",
+    "app-6BA35EFT.js": "34b561e905fd45c8b69735bd23baa62df9edfbe34b55f9c8402205c7c321e43d",
     "app-R5BMYX7X.css": "30ad13dcd448ab3f9e41c8408fde7b2327a277d7d7d835920242dbcb2dbb0d38",
-    "index.html": "92ad864713c8d813c3c71275dae65b5fd982fd29b1e46f75678654ab75122f01",
+    "index.html": "9c827a1d40c7f4cfbd00b3240503579ca7fd99f44668b4ed848d6448e65791f0",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "491603ca464c9aebbbf07cfc62694947a4adedf1e03e7cfac707de75758948fb"
+    "sw.js": "48fe657113253fe94806cac544ed6c801e02a1b5384db3f42fe7e1d2cb930630"
   }
 }
