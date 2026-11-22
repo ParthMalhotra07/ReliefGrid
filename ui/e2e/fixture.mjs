@@ -84,6 +84,36 @@ http
           );
       return send(res, 200, { ok: true });
     }
+    if (p === "/__test/burst") {
+      // Many matched requests committed at once, each announced on the stream.
+      const b = await body(req);
+      const now = new Date().toISOString();
+      const ids = [];
+      for (let i = 0; i < b.count; i++) {
+        const id = randomUUID();
+        ids.push(id);
+        const current = {
+          ...record(),
+          requestId: id,
+          details: `Burst request ${i + 1}`,
+          status: b.status || "MATCHED",
+          version: "v3",
+          assignedResourceId: null,
+          location: { lat: 18.9 + i / 1000, lng: 72.8 },
+          createdAt: now,
+          updatedAt: now,
+        };
+        creations.set("burst:" + id, { kind: "request", current });
+      }
+      for (const id of ids) {
+        const eventId = randomUUID();
+        for (const c of clients)
+          c.write(
+            `id: ${eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: id, entityVersion: 3, eventType: "request.state_changed", eventId })}\n\n`,
+          );
+      }
+      return send(res, 200, { ids });
+    }
     if (p === "/__test/creations")
       return send(res, 200, {
         calls: createCalls,

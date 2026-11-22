@@ -10,6 +10,7 @@ import "leaflet/dist/leaflet.css";
 import "./app.css";
 import { CreateDialog } from "./CreateDialog.jsx";
 import { DispatchMap } from "./DispatchMap.jsx";
+import { Activity, describe, relative } from "./activity.js";
 import { coalescedRefresh } from "./refresh.js";
 import {
   EventIDs,
@@ -101,8 +102,10 @@ function useDispatch() {
     [online, setOnline] = useState(navigator.onLine),
     [stream, setStream] = useState("Connecting"),
     [loading, setLoading] = useState(false),
-    [offlineReady, setOfflineReady] = useState(false);
-  const current = useRef(snapshot),
+    [offlineReady, setOfflineReady] = useState(false),
+    [activity, setActivity] = useState([]);
+  const feed = useRef(new Activity()),
+    current = useRef(snapshot),
     alive = useRef(true),
     active = useRef(null);
   const refresh = useMemo(
@@ -140,6 +143,7 @@ function useDispatch() {
           if (!alive.current) return;
           current.current = next;
           setSnapshot(next);
+          setActivity(feed.current.resolve(next));
           setStale(false);
           setError("");
           try {
@@ -191,8 +195,10 @@ function useDispatch() {
       source.addEventListener("change", (event) => {
         try {
           const v = JSON.parse(event.data);
-          if (v.eventId === event.lastEventId && ids.accept(v.eventId))
+          if (v.eventId === event.lastEventId && ids.accept(v.eventId)) {
+            feed.current.observe(v);
             refresh();
+          }
         } catch {
           refresh();
         }
@@ -243,6 +249,7 @@ function useDispatch() {
     offlineReady,
     refresh,
     setError,
+    activity,
   };
 }
 function Badge({ status }) {
@@ -250,6 +257,38 @@ function Badge({ status }) {
     <span className={`badge status-${status}`}>
       {status?.replaceAll("_", " ") || "UNKNOWN"}
     </span>
+  );
+}
+function ActivityFeed({ items, onChoose }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <section className="panel activity-panel" aria-label="Activity">
+      <div className="panel-heading">
+        <h2>Activity</h2>
+        <span className="quiet-tag">LIVE STREAM</span>
+      </div>
+      {items.length ? (
+        <ol className="activity-list">
+          {items.map((item) => (
+            <li key={item.key}>
+              <button type="button" onClick={() => onChoose(item)}>
+                <strong>{describe(item)}</strong>
+                {item.count === 1 && <span>{item.title}</span>}
+                <small>{relative(item.at, Math.max(now, item.at))}</small>
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="activity-empty">
+          Record changes from the live stream appear here.
+        </p>
+      )}
+    </section>
   );
 }
 function showDetailsOnMobile(panel) {
@@ -385,6 +424,27 @@ function App() {
     setResourceSelection(row.resourceId);
     setFocus({ ...row.location });
   }, []);
+  const chooseActivity = (item) => {
+    const request = requests.find((r) => r.requestId === item.id);
+    const resource = resources.find((r) => r.resourceId === item.id);
+    if (request) {
+      pickRequest(request);
+      showDetailsOnMobile("request-details");
+    } else if (resource) {
+      pickResource(resource);
+      showDetailsOnMobile("resource-details");
+    }
+  };
+  // Mobile: the map sits above the lists, so bring it back and centre it.
+  const showOnMap = (location) => {
+    setView("map");
+    setFocus({ ...location });
+    requestAnimationFrame(() =>
+      document
+        .getElementById("area-overview")
+        ?.scrollIntoView({ block: "start" }),
+    );
+  };
   return (
     <>
       {creating && (
@@ -733,36 +793,119 @@ function App() {
               </div>
             </section>
           </div>
-          <section className="panel map-panel" aria-label="Area overview">
-            <div className="panel-heading">
-              <h2>Area overview</h2>
-            </div>
-            <DispatchMap
-              requests={visibleRequests}
-              resources={visibleResources}
-              selection={mapSelection}
-              onSelectRequest={pickRequest}
-              onSelectResource={pickResource}
-              focus={focus}
-              visible={view === "map"}
-              ready={!!(d.snapshot || d.error)}
-              online={d.online}
-            />
-            <div className="map-legend">
-              <span>
-                <i className="dot critical" /> Critical request
-              </span>
-              <span>
-                <i className="dot normal" /> Request
-              </span>
-              <span>
-                <i className="resource-dot" /> Resource
-              </span>
-              <span>
-                <i className="assignment-line" /> Assignment
-              </span>
-            </div>
-          </section>
+          <div className="centre-column">
+            <section
+              className="panel map-panel"
+              aria-label="Area overview"
+              id="area-overview"
+            >
+              <div className="panel-heading">
+                <h2>Area overview</h2>
+              </div>
+              <DispatchMap
+                requests={visibleRequests}
+                resources={visibleResources}
+                selection={mapSelection}
+                onSelectRequest={pickRequest}
+                onSelectResource={pickResource}
+                focus={focus}
+                visible={view === "map"}
+                ready={!!(d.snapshot || d.error)}
+                online={d.online}
+              />
+              <div className="map-legend">
+                <span>
+                  <i className="dot critical" /> Critical request
+                </span>
+                <span>
+                  <i className="dot normal" /> Request
+                </span>
+                <span>
+                  <i className="resource-dot" /> Resource
+                </span>
+                <span>
+                  <i className="assignment-line" /> Assignment
+                </span>
+              </div>
+            </section>
+            <section className="operations-status" aria-label="System status">
+              <section className="panel health-panel" aria-label="Shard reads">
+                <div className="panel-heading">
+                  <h2>Shard reads</h2>
+                  <span className={`small-dot ${!d.stale ? "good" : ""}`} />
+                </div>
+                <p>Authoritative record reads</p>
+                {[0, 1, 2].map((shard) => (
+                  <div className="shard-row" key={shard}>
+                    <span>
+                      <i className={!d.stale ? "good" : ""} />
+                      Shard {shard}
+                    </span>
+                    <strong>
+                      {!d.snapshot
+                        ? "Unknown"
+                        : d.stale
+                          ? "Unconfirmed"
+                          : "Available"}
+                    </strong>
+                  </div>
+                ))}
+                <small>
+                  {d.stale
+                    ? "Current availability is not confirmed."
+                    : "Each shard answered the latest authoritative reads."}{" "}
+                  Pod readiness is not reported here.
+                </small>
+              </section>
+              <section
+                className="panel queue-panel"
+                aria-label="Matching queue"
+              >
+                <div className="panel-heading">
+                  <h2>Matching queue</h2>
+                  <span className="quiet-tag">BROKER</span>
+                </div>
+                <div className="queue-values">
+                  <div>
+                    <strong>
+                      {d.snapshot?.queue.available
+                        ? d.snapshot.queue.ready
+                        : "—"}
+                    </strong>
+                    <span>Ready</span>
+                  </div>
+                  <div>
+                    <strong>
+                      {d.snapshot?.queue.available
+                        ? d.snapshot.queue.unacknowledged
+                        : "—"}
+                    </strong>
+                    <span>In flight</span>
+                  </div>
+                  <div
+                    className={
+                      d.snapshot?.queue.available && d.snapshot.queue.dead > 0
+                        ? "queue-problem"
+                        : ""
+                    }
+                  >
+                    <strong>
+                      {d.snapshot?.queue.available
+                        ? d.snapshot.queue.dead
+                        : "—"}
+                    </strong>
+                    <span>Dead letter</span>
+                  </div>
+                </div>
+                <small>
+                  {d.snapshot?.queue.available
+                    ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`
+                    : "Queue telemetry unavailable. Counts are unknown."}
+                </small>
+              </section>
+            </section>
+            <ActivityFeed items={d.activity} onChoose={chooseActivity} />
+          </div>
           <aside className="inspector-column" aria-label="Selected records">
             {selectedResource && (
               <section
@@ -775,6 +918,13 @@ function App() {
                   <h2>{selectedResource.name}</h2>
                   <Badge status={selectedResource.status} />
                 </div>
+                <button
+                  type="button"
+                  className="button show-on-map"
+                  onClick={() => showOnMap(selectedResource.location)}
+                >
+                  Show on map
+                </button>
                 {facts([
                   ["Type", label(selectedResource.resourceType)],
                   ["Status", selectedResource.status?.replaceAll("_", " ")],
@@ -833,6 +983,13 @@ function App() {
                     </div>
                     <Badge status={chosen.status} />
                   </div>
+                  <button
+                    type="button"
+                    className="button show-on-map"
+                    onClick={() => showOnMap(chosen.location)}
+                  >
+                    Show on map
+                  </button>
 
                   <div className="actions">
                     {["PENDING", "WAITING"].includes(chosen.status) && (
@@ -948,75 +1105,6 @@ function App() {
             </section>
           </aside>
         </div>
-        <section className="operations-status" aria-label="System status">
-          <section className="panel health-panel" aria-label="Shard reads">
-            <div className="panel-heading">
-              <h2>Shard reads</h2>
-              <span className={`small-dot ${!d.stale ? "good" : ""}`} />
-            </div>
-            <p>Authoritative record reads</p>
-            {[0, 1, 2].map((shard) => (
-              <div className="shard-row" key={shard}>
-                <span>
-                  <i className={!d.stale ? "good" : ""} />
-                  Shard {shard}
-                </span>
-                <strong>
-                  {!d.snapshot
-                    ? "Unknown"
-                    : d.stale
-                      ? "Unconfirmed"
-                      : "Available"}
-                </strong>
-              </div>
-            ))}
-            <small>
-              {d.stale
-                ? "Current availability is not confirmed."
-                : "Each shard answered the latest authoritative reads."}{" "}
-              Pod readiness is not reported here.
-            </small>
-          </section>
-          <section className="panel queue-panel" aria-label="Matching queue">
-            <div className="panel-heading">
-              <h2>Matching queue</h2>
-              <span className="quiet-tag">BROKER</span>
-            </div>
-            <div className="queue-values">
-              <div>
-                <strong>
-                  {d.snapshot?.queue.available ? d.snapshot.queue.ready : "—"}
-                </strong>
-                <span>Ready</span>
-              </div>
-              <div>
-                <strong>
-                  {d.snapshot?.queue.available
-                    ? d.snapshot.queue.unacknowledged
-                    : "—"}
-                </strong>
-                <span>In flight</span>
-              </div>
-              <div
-                className={
-                  d.snapshot?.queue.available && d.snapshot.queue.dead > 0
-                    ? "queue-problem"
-                    : ""
-                }
-              >
-                <strong>
-                  {d.snapshot?.queue.available ? d.snapshot.queue.dead : "—"}
-                </strong>
-                <span>Dead letter</span>
-              </div>
-            </div>
-            <small>
-              {d.snapshot?.queue.available
-                ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`
-                : "Queue telemetry unavailable. Counts are unknown."}
-            </small>
-          </section>
-        </section>
         <footer>
           <span>
             <i className="small-dot good" />{" "}

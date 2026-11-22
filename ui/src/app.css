@@ -512,16 +512,133 @@ select {
 .inspector-column .panel-heading {
   background: #ebf2f9;
 }
-.map-panel {
+.centre-column {
   grid-area: map;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   min-width: 0;
+}
+.map-panel {
+  min-width: 0;
+  flex-shrink: 0;
   box-shadow: 0 3px 12px #162f4d13;
 }
 .operations-status {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 14px;
+  flex-shrink: 0;
+}
+.operations-status .queue-panel {
+  order: -1;
+}
+.activity-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 10px 10px;
+  overflow: auto;
+  max-height: 320px;
+}
+.activity-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1px 10px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #edf1ee;
+  background: none;
+  padding: 7px 4px;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+}
+.activity-list button:hover,
+.activity-list button:focus-visible {
+  background: #eef6f3;
+}
+.activity-list strong {
+  font-weight: 650;
+}
+.activity-list span {
+  grid-column: 1;
+  color: #60766a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-list small {
+  grid-column: 2;
+  grid-row: 1;
+  color: #8fa094;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.activity-empty {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #8fa094;
+}
+.show-on-map {
+  display: none;
+}
+/* Desktop: the middle column follows the page while the side columns scroll,
+   and the feed takes whatever height is left under the map. */
+@media (min-width: 1100px) {
+  .centre-column {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+  }
+  .activity-panel {
+    flex: 1 1 auto;
+    min-height: 110px;
+  }
+  .activity-list {
+    flex: 1 1 auto;
+    max-height: none;
+  }
+}
+/* Wide desktop: queue, shard reads and the feed share one row under the map,
+   and the feed scrolls inside the height the other two need. */
+@media (min-width: 1250px) {
+  .centre-column {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+  }
+  .centre-column .map {
+    height: clamp(340px, calc(100vh - 480px), 655px);
+  }
+  .map-panel {
+    grid-column: 1 / -1;
+  }
+  .operations-status {
+    display: contents;
+  }
+  .operations-status .queue-panel {
+    grid-area: 2 / 1;
+  }
+  .operations-status .health-panel {
+    grid-area: 2 / 2;
+  }
+  .activity-panel {
+    grid-area: 2 / 3;
+    height: 0;
+    min-height: 100%;
+  }
+  .list-only .centre-column {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 .map {
   height: clamp(360px, calc(100vh - 480px), 655px);
@@ -874,7 +991,11 @@ select {
   display: none;
 }
 .list-only {
-  grid-template-areas: "records records inspector";
+  grid-template-areas: "records records inspector" "map map map";
+}
+.list-only .centre-column {
+  position: static;
+  max-height: none;
 }
 .list-only .records-column {
   display: grid;
@@ -916,7 +1037,7 @@ footer .small-dot {
   }
   .list-only {
     grid-template-columns: minmax(0, 1fr) minmax(240px, 40%);
-    grid-template-areas: "records inspector";
+    grid-template-areas: "records inspector" "map map";
   }
   .list-only .records-column {
     display: flex;
@@ -1003,13 +1124,38 @@ footer .small-dot {
   .dispatch-layout,
   .list-only {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "map" "records" "inspector";
+    grid-template-areas: "map" "feed" "records" "inspector" "status";
   }
   .list-only {
-    grid-template-areas: "records" "inspector";
+    grid-template-areas: "feed" "records" "inspector" "status";
+  }
+  /* Mobile keeps the original order: map, feed, lists, details, status. */
+  .centre-column {
+    display: contents;
+  }
+  .map-panel {
+    grid-area: map;
+  }
+  .activity-panel {
+    grid-area: feed;
   }
   .operations-status {
+    grid-area: status;
     grid-template-columns: minmax(0, 1fr);
+    margin-top: 2px;
+  }
+  .operations-status .queue-panel {
+    order: 0;
+  }
+  .activity-list {
+    max-height: 240px;
+  }
+  .show-on-map {
+    display: inline-flex;
+    margin: 0 19px 10px;
+  }
+  .resource-details .show-on-map {
+    margin: 10px 13px 0;
   }
   .request-cards {
     max-height: 340px;
