@@ -2,6 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import { CreateSubmission } from "./create.js";
 import { DispatchMap } from "./DispatchMap.jsx";
 import { TYPES } from "./state.js";
+import { fourDecimals, gazetteer, NOT_LISTED } from "./places.js";
+
+const geoReasons = {
+  1: "permission denied",
+  2: "position unavailable",
+  3: "timed out",
+};
 
 const localTime = (date) =>
   new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -43,7 +50,15 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     [busy, setBusy] = useState(false),
     [pickerOpen, setPickerOpen] = useState(false),
     [error, setError] = useState(setup.error || ""),
-    [result, setResult] = useState(null);
+    [result, setResult] = useState(null),
+    [jump, setJump] = useState(null),
+    [locating, setLocating] = useState(""),
+    [query, setQuery] = useState(""),
+    [places, setPlaces] = useState([]),
+    [placeNote, setPlaceNote] = useState("");
+  // Each location request gets a generation; setting the location any other
+  // way starts a new one, so a late answer for an older request is dropped.
+  const geoRequest = useRef({ generation: 0, pending: false });
   const dialog = useRef(null);
   useEffect(() => {
     const element = dialog.current;
@@ -51,6 +66,22 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     return () => element.close();
   }, []);
   const update = (key, value) => setFields((old) => ({ ...old, [key]: value }));
+  const supersedeLocation = () => {
+    const request = geoRequest.current;
+    request.generation++;
+    if (request.pending) {
+      request.pending = false;
+      setLocating("");
+    }
+  };
+  const clearPlaces = () => {
+    setPlaces([]);
+    setPlaceNote("");
+  };
+  const editCoordinate = (key, value) => {
+    supersedeLocation();
+    update(key, value);
+  };
   const close = () => {
     if (!client?.active) onClose();
   };
@@ -63,6 +94,11 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
       (!client.pending() && !canCreate)
     )
       return;
+    // The body is frozen now; a pending location answer must not change the
+    // fields the saved submission will be retried with. "Use my location" is
+    // inside the disabled fieldset while submitting or locked, so no newer
+    // request can start until the form is editable again.
+    supersedeLocation();
     setError("");
     setBusy(true);
     try {
@@ -115,12 +151,70 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
   const point =
     Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : undefined;
   const pick = (location) => {
+    supersedeLocation();
+    clearPlaces();
     setFields((old) => ({
       ...old,
       lat: location.lat.toFixed(5),
       lng: location.lng.toFixed(5),
     }));
   };
+  // Fill both fields at four decimals, then show and centre the picker there.
+  const place = ({ lat, lng }) => {
+    setFields((old) => ({
+      ...old,
+      lat: fourDecimals(lat),
+      lng: fourDecimals(lng),
+    }));
+    setPickerOpen(true);
+    setJump({ lat, lng });
+  };
+  const choosePlace = (row) => {
+    supersedeLocation();
+    clearPlaces();
+    place(row);
+  };
+  const locate = () => {
+    supersedeLocation();
+    if (!navigator.geolocation) {
+      setLocating(
+        "Location unavailable on this device. Pick on the map or enter coordinates.",
+      );
+      return;
+    }
+    const request = geoRequest.current;
+    const generation = request.generation;
+    const current = () => {
+      if (request.generation !== generation) return false;
+      request.pending = false;
+      return true;
+    };
+    request.pending = true;
+    setLocating("Finding your location…");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (!current()) return;
+        clearPlaces();
+        place({ lat: coords.latitude, lng: coords.longitude });
+        setLocating("Location filled from this device.");
+      },
+      (failure) => {
+        if (!current()) return;
+        setLocating(
+          `Location unavailable (${geoReasons[failure?.code] || "not available"}). Fields unchanged; pick on the map or enter coordinates.`,
+        );
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+  const search = () => {
+    const q = query.trim();
+    if (!q) return;
+    const results = gazetteer(q);
+    setPlaces(results);
+    setPlaceNote(results.length ? "" : NOT_LISTED);
+  };
+  useEffect(() => () => geoRequest.current.generation++, []);
   const noun = kind === "request" ? "request" : "resource";
   return (
     <dialog
@@ -257,6 +351,67 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                 />
               </label>
             )}
+            <div className="wide place-search">
+              <div className="place-search-row">
+                <label>
+                  Search place
+                  <input
+                    type="search"
+                    placeholder="e.g. Andheri or Pune"
+                    value={query}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      if (!e.target.value.trim()) clearPlaces();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        search();
+                      }
+                    }}
+                  />
+                </label>
+                <button type="button" className="button" onClick={search}>
+                  Search
+                </button>
+                <button type="button" className="button" onClick={locate}>
+                  Use my location
+                </button>
+              </div>
+              <p className="place-credit">Places: GeoNames (CC BY 4.0)</p>
+              {places.length > 0 && (
+                <ul className="place-results" aria-label="Place results">
+                  {places.map((row) => (
+                    <li key={row.label + row.lat + row.lng}>
+                      <button type="button" onClick={() => choosePlace(row)}>
+                        {row.label}
+                        <small>
+                          {fourDecimals(row.lat)}, {fourDecimals(row.lng)}
+                        </small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {placeNote && (
+                <p
+                  className="place-note"
+                  role="status"
+                  aria-label="Place search result"
+                >
+                  {placeNote}
+                </p>
+              )}
+              {locating && (
+                <p
+                  className="place-note"
+                  role="status"
+                  aria-label="Location result"
+                >
+                  {locating}
+                </p>
+              )}
+            </div>
             <label>
               Latitude
               <input
@@ -267,7 +422,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                 step="any"
                 placeholder="e.g. 19.08"
                 value={fields.lat}
-                onChange={(e) => update("lat", e.target.value)}
+                onChange={(e) => editCoordinate("lat", e.target.value)}
               />
             </label>
             <label>
@@ -280,7 +435,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                 step="any"
                 placeholder="e.g. 72.88"
                 value={fields.lng}
-                onChange={(e) => update("lng", e.target.value)}
+                onChange={(e) => editCoordinate("lng", e.target.value)}
               />
             </label>
             {!disabled && (
@@ -303,6 +458,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                       online={online}
                       onPick={pick}
                       position={point}
+                      focus={jump}
                     />
                   </div>
                 )}

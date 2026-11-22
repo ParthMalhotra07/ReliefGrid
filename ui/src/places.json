@@ -1,0 +1,1379 @@
+[
+  {
+    "name": "Mumbai",
+    "state": "Maharashtra",
+    "lat": 19.0728,
+    "lng": 72.8826,
+    "group": "city",
+    "geonameid": 1275339
+  },
+  {
+    "name": "Delhi",
+    "state": "Delhi",
+    "lat": 28.6519,
+    "lng": 77.2315,
+    "group": "city",
+    "geonameid": 1273294
+  },
+  {
+    "name": "Bengaluru",
+    "state": "Karnataka",
+    "lat": 12.9719,
+    "lng": 77.5937,
+    "group": "city",
+    "geonameid": 1277333
+  },
+  {
+    "name": "Hyderabad",
+    "state": "Telangana",
+    "lat": 17.384,
+    "lng": 78.4564,
+    "group": "city",
+    "geonameid": 1269843
+  },
+  {
+    "name": "Ahmedabad",
+    "state": "Gujarat",
+    "lat": 23.0258,
+    "lng": 72.5873,
+    "group": "city",
+    "geonameid": 1279233
+  },
+  {
+    "name": "Chennai",
+    "state": "Tamil Nadu",
+    "lat": 13.0878,
+    "lng": 80.2785,
+    "group": "city",
+    "geonameid": 1264527
+  },
+  {
+    "name": "Kolkata",
+    "state": "West Bengal",
+    "lat": 22.5626,
+    "lng": 88.363,
+    "group": "city",
+    "geonameid": 1275004
+  },
+  {
+    "name": "Surat",
+    "state": "Gujarat",
+    "lat": 21.1959,
+    "lng": 72.8302,
+    "group": "city",
+    "geonameid": 1255364
+  },
+  {
+    "name": "Pune",
+    "state": "Maharashtra",
+    "lat": 18.5196,
+    "lng": 73.8554,
+    "group": "city",
+    "geonameid": 1259229
+  },
+  {
+    "name": "Jaipur",
+    "state": "Rajasthan",
+    "lat": 26.9196,
+    "lng": 75.7878,
+    "group": "city",
+    "geonameid": 1269515
+  },
+  {
+    "name": "Kanpur",
+    "state": "Uttar Pradesh",
+    "lat": 26.4652,
+    "lng": 80.3498,
+    "group": "city",
+    "geonameid": 1267995
+  },
+  {
+    "name": "Lucknow",
+    "state": "Uttar Pradesh",
+    "lat": 26.8393,
+    "lng": 80.9231,
+    "group": "city",
+    "geonameid": 1264733
+  },
+  {
+    "name": "Nagpur",
+    "state": "Maharashtra",
+    "lat": 21.1463,
+    "lng": 79.0849,
+    "group": "city",
+    "geonameid": 1262180
+  },
+  {
+    "name": "Coimbatore",
+    "state": "Tamil Nadu",
+    "lat": 11.0055,
+    "lng": 76.9661,
+    "group": "city",
+    "geonameid": 1273865
+  },
+  {
+    "name": "Indore",
+    "state": "Madhya Pradesh",
+    "lat": 22.7179,
+    "lng": 75.8333,
+    "group": "city",
+    "geonameid": 1269743
+  },
+  {
+    "name": "Thane",
+    "state": "Maharashtra",
+    "lat": 19.197,
+    "lng": 72.9635,
+    "group": "city",
+    "geonameid": 1254661
+  },
+  {
+    "name": "Vadodara",
+    "state": "Gujarat",
+    "lat": 22.2994,
+    "lng": 73.2081,
+    "group": "city",
+    "geonameid": 1253573
+  },
+  {
+    "name": "Bhopal",
+    "state": "Madhya Pradesh",
+    "lat": 23.2547,
+    "lng": 77.4029,
+    "group": "city",
+    "geonameid": 1275841
+  },
+  {
+    "name": "Pimpri-Chinchwad",
+    "state": "Maharashtra",
+    "lat": 18.6187,
+    "lng": 73.8037,
+    "group": "city",
+    "geonameid": 7626690
+  },
+  {
+    "name": "Patna",
+    "state": "Bihar",
+    "lat": 25.5941,
+    "lng": 85.1356,
+    "group": "city",
+    "geonameid": 1260086
+  },
+  {
+    "name": "Ludhiana",
+    "state": "Punjab",
+    "lat": 30.912,
+    "lng": 75.8538,
+    "group": "city",
+    "geonameid": 1264728
+  },
+  {
+    "name": "Nashik",
+    "state": "Maharashtra",
+    "lat": 19.9973,
+    "lng": 73.791,
+    "group": "city",
+    "geonameid": 1261731
+  },
+  {
+    "name": "Madurai",
+    "state": "Tamil Nadu",
+    "lat": 9.919,
+    "lng": 78.1195,
+    "group": "city",
+    "geonameid": 1264521
+  },
+  {
+    "name": "Tirunelveli",
+    "state": "Tamil Nadu",
+    "lat": 8.7274,
+    "lng": 77.6838,
+    "group": "city",
+    "geonameid": 1254361
+  },
+  {
+    "name": "Agra",
+    "state": "Uttar Pradesh",
+    "lat": 27.1833,
+    "lng": 78.0167,
+    "group": "city",
+    "geonameid": 1279259
+  },
+  {
+    "name": "Faridabad",
+    "state": "Haryana",
+    "lat": 28.4112,
+    "lng": 77.3132,
+    "group": "city",
+    "geonameid": 1271951
+  },
+  {
+    "name": "Rajkot",
+    "state": "Gujarat",
+    "lat": 22.2916,
+    "lng": 70.7932,
+    "group": "city",
+    "geonameid": 1258847
+  },
+  {
+    "name": "Jamshedpur",
+    "state": "Jharkhand",
+    "lat": 22.8028,
+    "lng": 86.1855,
+    "group": "city",
+    "geonameid": 1269300
+  },
+  {
+    "name": "Kalyan",
+    "state": "Maharashtra",
+    "lat": 19.2437,
+    "lng": 73.1355,
+    "group": "city",
+    "geonameid": 1268295
+  },
+  {
+    "name": "Dombivali",
+    "state": "Maharashtra",
+    "lat": 19.2167,
+    "lng": 73.0833,
+    "group": "city",
+    "geonameid": 1272423
+  },
+  {
+    "name": "Meerut",
+    "state": "Uttar Pradesh",
+    "lat": 28.98,
+    "lng": 77.7064,
+    "group": "city",
+    "geonameid": 1263214
+  },
+  {
+    "name": "Virar",
+    "state": "Maharashtra",
+    "lat": 19.4559,
+    "lng": 72.8114,
+    "group": "city",
+    "geonameid": 1253133
+  },
+  {
+    "name": "Srinagar",
+    "state": "Jammu and Kashmir",
+    "lat": 34.0857,
+    "lng": 74.8055,
+    "group": "city",
+    "geonameid": 1255634
+  },
+  {
+    "name": "Ghaziabad",
+    "state": "Uttar Pradesh",
+    "lat": 28.6654,
+    "lng": 77.4391,
+    "group": "city",
+    "geonameid": 1271308
+  },
+  {
+    "name": "Dhanbad",
+    "state": "Jharkhand",
+    "lat": 23.7976,
+    "lng": 86.4299,
+    "group": "city",
+    "geonameid": 1272979
+  },
+  {
+    "name": "Aurangabad",
+    "state": "Maharashtra",
+    "lat": 19.8776,
+    "lng": 75.3423,
+    "group": "city",
+    "geonameid": 1278149
+  },
+  {
+    "name": "Varanasi",
+    "state": "Uttar Pradesh",
+    "lat": 25.3167,
+    "lng": 83.0104,
+    "group": "city",
+    "geonameid": 1253405
+  },
+  {
+    "name": "Amritsar",
+    "state": "Punjab",
+    "lat": 31.6223,
+    "lng": 74.8753,
+    "group": "city",
+    "geonameid": 1278710
+  },
+  {
+    "name": "Vijayawada",
+    "state": "Andhra Pradesh",
+    "lat": 16.5074,
+    "lng": 80.6466,
+    "group": "city",
+    "geonameid": 1253184
+  },
+  {
+    "name": "Ranchi",
+    "state": "Jharkhand",
+    "lat": 23.3432,
+    "lng": 85.3094,
+    "group": "city",
+    "geonameid": 1258526
+  },
+  {
+    "name": "Jabalpur",
+    "state": "Madhya Pradesh",
+    "lat": 23.167,
+    "lng": 79.9501,
+    "group": "city",
+    "geonameid": 1269633
+  },
+  {
+    "name": "Prayagraj",
+    "state": "Uttar Pradesh",
+    "lat": 25.4448,
+    "lng": 81.8432,
+    "group": "city",
+    "geonameid": 1278994
+  },
+  {
+    "name": "Visakhapatnam",
+    "state": "Andhra Pradesh",
+    "lat": 17.6801,
+    "lng": 83.2016,
+    "group": "city",
+    "geonameid": 1253102
+  },
+  {
+    "name": "Jodhpur",
+    "state": "Rajasthan",
+    "lat": 26.2684,
+    "lng": 73.0059,
+    "group": "city",
+    "geonameid": 1268865
+  },
+  {
+    "name": "Gwalior",
+    "state": "Madhya Pradesh",
+    "lat": 26.2298,
+    "lng": 78.1734,
+    "group": "city",
+    "geonameid": 1270583
+  },
+  {
+    "name": "Howrah",
+    "state": "West Bengal",
+    "lat": 22.5769,
+    "lng": 88.3186,
+    "group": "city",
+    "geonameid": 1270396
+  },
+  {
+    "name": "Raipur",
+    "state": "Chhattisgarh",
+    "lat": 21.2333,
+    "lng": 81.6333,
+    "group": "city",
+    "geonameid": 1258980
+  },
+  {
+    "name": "Tiruchirappalli",
+    "state": "Tamil Nadu",
+    "lat": 10.8155,
+    "lng": 78.6965,
+    "group": "city",
+    "geonameid": 1254388
+  },
+  {
+    "name": "Kota",
+    "state": "Rajasthan",
+    "lat": 25.1825,
+    "lng": 75.8391,
+    "group": "city",
+    "geonameid": 1266049
+  },
+  {
+    "name": "Solapur",
+    "state": "Maharashtra",
+    "lat": 17.6715,
+    "lng": 75.9104,
+    "group": "city",
+    "geonameid": 1256436
+  },
+  {
+    "name": "Chandigarh",
+    "state": "Chandigarh",
+    "lat": 30.7363,
+    "lng": 76.7884,
+    "group": "city",
+    "geonameid": 1274746
+  },
+  {
+    "name": "Tiruppur",
+    "state": "Tamil Nadu",
+    "lat": 11.1154,
+    "lng": 77.3546,
+    "group": "city",
+    "geonameid": 1254348
+  },
+  {
+    "name": "Guwahati",
+    "state": "Assam",
+    "lat": 26.1844,
+    "lng": 91.7458,
+    "group": "city",
+    "geonameid": 1271476
+  },
+  {
+    "name": "Hubballi",
+    "state": "Karnataka",
+    "lat": 15.3478,
+    "lng": 75.1338,
+    "group": "city",
+    "geonameid": 1269920
+  },
+  {
+    "name": "Mysuru",
+    "state": "Karnataka",
+    "lat": 12.2979,
+    "lng": 76.6393,
+    "group": "city",
+    "geonameid": 1262321
+  },
+  {
+    "name": "Salem",
+    "state": "Tamil Nadu",
+    "lat": 11.6538,
+    "lng": 78.1554,
+    "group": "city",
+    "geonameid": 1257629
+  },
+  {
+    "name": "Gurugram",
+    "state": "Haryana",
+    "lat": 28.4601,
+    "lng": 77.0263,
+    "group": "city",
+    "geonameid": 1270642
+  },
+  {
+    "name": "Bhubaneswar",
+    "state": "Odisha",
+    "lat": 20.2724,
+    "lng": 85.8338,
+    "group": "city",
+    "geonameid": 1275817
+  },
+  {
+    "name": "Bhiwandi",
+    "state": "Maharashtra",
+    "lat": 19.3002,
+    "lng": 73.0588,
+    "group": "city",
+    "geonameid": 1275901
+  },
+  {
+    "name": "Jalandhar",
+    "state": "Punjab",
+    "lat": 31.3256,
+    "lng": 75.5792,
+    "group": "city",
+    "geonameid": 1268782
+  },
+  {
+    "name": "Bhayandar",
+    "state": "Maharashtra",
+    "lat": 19.3016,
+    "lng": 72.8511,
+    "group": "city",
+    "geonameid": 1276014
+  },
+  {
+    "name": "Thiruvananthapuram",
+    "state": "Kerala",
+    "lat": 8.4855,
+    "lng": 76.9492,
+    "group": "city",
+    "geonameid": 1254163
+  },
+  {
+    "name": "Aligarh",
+    "state": "Uttar Pradesh",
+    "lat": 27.8815,
+    "lng": 78.0746,
+    "group": "city",
+    "geonameid": 1279017
+  },
+  {
+    "name": "Bareilly",
+    "state": "Uttar Pradesh",
+    "lat": 28.3668,
+    "lng": 79.4317,
+    "group": "city",
+    "geonameid": 1277013
+  },
+  {
+    "name": "Moradabad",
+    "state": "Uttar Pradesh",
+    "lat": 28.8389,
+    "lng": 78.7768,
+    "group": "city",
+    "geonameid": 1262801
+  },
+  {
+    "name": "Warangal",
+    "state": "Telangana",
+    "lat": 18.0,
+    "lng": 79.5833,
+    "group": "city",
+    "geonameid": 1252948
+  },
+  {
+    "name": "Gorakhpur",
+    "state": "Uttar Pradesh",
+    "lat": 26.7663,
+    "lng": 83.3689,
+    "group": "city",
+    "geonameid": 1270927
+  },
+  {
+    "name": "Guntur",
+    "state": "Andhra Pradesh",
+    "lat": 16.2997,
+    "lng": 80.4573,
+    "group": "city",
+    "geonameid": 1270668
+  },
+  {
+    "name": "Puducherry",
+    "state": "Puducherry",
+    "lat": 11.9338,
+    "lng": 79.8298,
+    "group": "city",
+    "geonameid": 1259425
+  },
+  {
+    "name": "Amravati",
+    "state": "Maharashtra",
+    "lat": 20.9333,
+    "lng": 77.75,
+    "group": "city",
+    "geonameid": 1278718
+  },
+  {
+    "name": "Bikaner",
+    "state": "Rajasthan",
+    "lat": 28.0176,
+    "lng": 73.3149,
+    "group": "city",
+    "geonameid": 1275665
+  },
+  {
+    "name": "Kochi",
+    "state": "Kerala",
+    "lat": 9.9399,
+    "lng": 76.2602,
+    "group": "city",
+    "geonameid": 1273874
+  },
+  {
+    "name": "Bhilai",
+    "state": "Chhattisgarh",
+    "lat": 21.2092,
+    "lng": 81.4285,
+    "group": "city",
+    "geonameid": 1275971
+  },
+  {
+    "name": "Cuttack",
+    "state": "Odisha",
+    "lat": 20.465,
+    "lng": 85.8793,
+    "group": "city",
+    "geonameid": 1273780
+  },
+  {
+    "name": "Bhavnagar",
+    "state": "Gujarat",
+    "lat": 21.7629,
+    "lng": 72.1533,
+    "group": "city",
+    "geonameid": 1276032
+  },
+  {
+    "name": "Sangli",
+    "state": "Maharashtra",
+    "lat": 16.8544,
+    "lng": 74.5642,
+    "group": "city",
+    "geonameid": 1257416
+  },
+  {
+    "name": "Jamnagar",
+    "state": "Gujarat",
+    "lat": 22.4729,
+    "lng": 70.0667,
+    "group": "city",
+    "geonameid": 1269317
+  },
+  {
+    "name": "Jammu",
+    "state": "Jammu and Kashmir",
+    "lat": 32.7353,
+    "lng": 74.8617,
+    "group": "city",
+    "geonameid": 1269321
+  },
+  {
+    "name": "Bokaro",
+    "state": "Jharkhand",
+    "lat": 23.6693,
+    "lng": 86.1516,
+    "group": "city",
+    "geonameid": 1275362
+  },
+  {
+    "name": "Nanded",
+    "state": "Maharashtra",
+    "lat": 19.1602,
+    "lng": 77.315,
+    "group": "city",
+    "geonameid": 1261977
+  },
+  {
+    "name": "Kozhikode",
+    "state": "Kerala",
+    "lat": 11.248,
+    "lng": 75.7804,
+    "group": "city",
+    "geonameid": 1265873
+  },
+  {
+    "name": "Kolhapur",
+    "state": "Maharashtra",
+    "lat": 16.6956,
+    "lng": 74.2317,
+    "group": "city",
+    "geonameid": 1266285
+  },
+  {
+    "name": "Nellore",
+    "state": "Andhra Pradesh",
+    "lat": 14.4499,
+    "lng": 79.987,
+    "group": "city",
+    "geonameid": 1261529
+  },
+  {
+    "name": "Kalaburagi",
+    "state": "Karnataka",
+    "lat": 17.3358,
+    "lng": 76.8376,
+    "group": "city",
+    "geonameid": 1270752
+  },
+  {
+    "name": "Ajmer",
+    "state": "Rajasthan",
+    "lat": 26.4521,
+    "lng": 74.6387,
+    "group": "city",
+    "geonameid": 1279159
+  },
+  {
+    "name": "Dehradun",
+    "state": "Uttarakhand",
+    "lat": 30.3244,
+    "lng": 78.0339,
+    "group": "city",
+    "geonameid": 1273313
+  },
+  {
+    "name": "Erode",
+    "state": "Tamil Nadu",
+    "lat": 11.3428,
+    "lng": 77.7274,
+    "group": "city",
+    "geonameid": 1272013
+  },
+  {
+    "name": "Durgapur",
+    "state": "West Bengal",
+    "lat": 23.5158,
+    "lng": 87.308,
+    "group": "city",
+    "geonameid": 1272175
+  },
+  {
+    "name": "Ulhasnagar",
+    "state": "Maharashtra",
+    "lat": 19.2167,
+    "lng": 73.15,
+    "group": "city",
+    "geonameid": 1253894
+  },
+  {
+    "name": "Loni",
+    "state": "Uttar Pradesh",
+    "lat": 28.7514,
+    "lng": 77.2902,
+    "group": "city",
+    "geonameid": 1264773
+  },
+  {
+    "name": "Siliguri",
+    "state": "West Bengal",
+    "lat": 26.71,
+    "lng": 88.4285,
+    "group": "city",
+    "geonameid": 1256525
+  },
+  {
+    "name": "Ujjain",
+    "state": "Madhya Pradesh",
+    "lat": 23.1824,
+    "lng": 75.7764,
+    "group": "city",
+    "geonameid": 1253914
+  },
+  {
+    "name": "Asansol",
+    "state": "West Bengal",
+    "lat": 23.6833,
+    "lng": 86.9833,
+    "group": "city",
+    "geonameid": 1278314
+  },
+  {
+    "name": "Mangaluru",
+    "state": "Karnataka",
+    "lat": 12.9172,
+    "lng": 74.856,
+    "group": "city",
+    "geonameid": 1263780
+  },
+  {
+    "name": "Belagavi",
+    "state": "Karnataka",
+    "lat": 15.8521,
+    "lng": 74.5045,
+    "group": "city",
+    "geonameid": 1276533
+  },
+  {
+    "name": "Saharanpur",
+    "state": "Uttar Pradesh",
+    "lat": 29.9679,
+    "lng": 77.5452,
+    "group": "city",
+    "geonameid": 1257806
+  },
+  {
+    "name": "Vellore",
+    "state": "Tamil Nadu",
+    "lat": 12.9184,
+    "lng": 79.1325,
+    "group": "city",
+    "geonameid": 1253286
+  },
+  {
+    "name": "Bhatpara",
+    "state": "West Bengal",
+    "lat": 22.8664,
+    "lng": 88.4011,
+    "group": "city",
+    "geonameid": 1276058
+  },
+  {
+    "name": "Malegaon",
+    "state": "Maharashtra",
+    "lat": 20.5497,
+    "lng": 74.5346,
+    "group": "city",
+    "geonameid": 1264115
+  },
+  {
+    "name": "Gaya",
+    "state": "Bihar",
+    "lat": 24.7969,
+    "lng": 85.0038,
+    "group": "city",
+    "geonameid": 1271439
+  },
+  {
+    "name": "Amaravati",
+    "state": "Andhra Pradesh",
+    "lat": 16.514,
+    "lng": 80.516,
+    "group": "capital",
+    "geonameid": 12261477
+  },
+  {
+    "name": "Itanagar",
+    "state": "Arunachal Pradesh",
+    "lat": 27.0869,
+    "lng": 93.6099,
+    "group": "capital",
+    "geonameid": 1269655
+  },
+  {
+    "name": "Dispur",
+    "state": "Assam",
+    "lat": 26.1356,
+    "lng": 91.8007,
+    "group": "capital",
+    "geonameid": 1272508
+  },
+  {
+    "name": "Panaji",
+    "state": "Goa",
+    "lat": 15.4957,
+    "lng": 73.8262,
+    "group": "capital",
+    "geonameid": 1260607
+  },
+  {
+    "name": "Gandhinagar",
+    "state": "Gujarat",
+    "lat": 23.2167,
+    "lng": 72.6833,
+    "group": "capital",
+    "geonameid": 1271715
+  },
+  {
+    "name": "Shimla",
+    "state": "Himachal Pradesh",
+    "lat": 31.1044,
+    "lng": 77.1666,
+    "group": "capital",
+    "geonameid": 1256237
+  },
+  {
+    "name": "Imphal",
+    "state": "Manipur",
+    "lat": 24.8081,
+    "lng": 93.9442,
+    "group": "capital",
+    "geonameid": 1269771
+  },
+  {
+    "name": "Shillong",
+    "state": "Meghalaya",
+    "lat": 25.5689,
+    "lng": 91.8831,
+    "group": "capital",
+    "geonameid": 1256523
+  },
+  {
+    "name": "Aizawl",
+    "state": "Mizoram",
+    "lat": 23.7289,
+    "lng": 92.7179,
+    "group": "capital",
+    "geonameid": 1279186
+  },
+  {
+    "name": "Kohima",
+    "state": "Nagaland",
+    "lat": 25.6747,
+    "lng": 94.111,
+    "group": "capital",
+    "geonameid": 1266366
+  },
+  {
+    "name": "Gangtok",
+    "state": "Sikkim",
+    "lat": 27.3257,
+    "lng": 88.6122,
+    "group": "capital",
+    "geonameid": 1271631
+  },
+  {
+    "name": "Agartala",
+    "state": "Tripura",
+    "lat": 23.8361,
+    "lng": 91.2794,
+    "group": "capital",
+    "geonameid": 1279290
+  },
+  {
+    "name": "Port Blair",
+    "state": "Andaman and Nicobar",
+    "lat": 11.6661,
+    "lng": 92.7464,
+    "group": "capital",
+    "geonameid": 1259385
+  },
+  {
+    "name": "Kavaratti",
+    "state": "Lakshadweep",
+    "lat": 10.5669,
+    "lng": 72.642,
+    "group": "capital",
+    "geonameid": 1267390
+  },
+  {
+    "name": "Leh",
+    "state": "Ladakh",
+    "lat": 34.165,
+    "lng": 77.584,
+    "group": "capital",
+    "geonameid": 1264976
+  },
+  {
+    "name": "Daman",
+    "state": "Dadra and Nagar Haveli and Daman and Diu",
+    "lat": 20.4143,
+    "lng": 72.8324,
+    "group": "capital",
+    "geonameid": 1273618
+  },
+  {
+    "name": "New Delhi",
+    "state": "Delhi",
+    "lat": 28.6214,
+    "lng": 77.2148,
+    "group": "capital",
+    "geonameid": 1261481
+  },
+  {
+    "name": "Andheri",
+    "state": "Maharashtra",
+    "lat": 19.1309,
+    "lng": 72.8526,
+    "group": "area",
+    "geonameid": 1278633,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Bandra",
+    "state": "Maharashtra",
+    "lat": 19.0667,
+    "lng": 72.8333,
+    "group": "area",
+    "geonameid": 1332494,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Dadar",
+    "state": "Maharashtra",
+    "lat": 19.0167,
+    "lng": 72.85,
+    "group": "area",
+    "geonameid": 1273739,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Kurla",
+    "state": "Maharashtra",
+    "lat": 19.0713,
+    "lng": 72.883,
+    "group": "area",
+    "geonameid": 1265495,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Borivali",
+    "state": "Maharashtra",
+    "lat": 19.235,
+    "lng": 72.8598,
+    "group": "area",
+    "geonameid": 1275248,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Colaba",
+    "state": "Maharashtra",
+    "lat": 18.9069,
+    "lng": 72.8106,
+    "group": "area",
+    "geonameid": 1273862,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Powai",
+    "state": "Maharashtra",
+    "lat": 19.1164,
+    "lng": 72.9047,
+    "group": "area",
+    "geonameid": 6324621,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Chembur",
+    "state": "Maharashtra",
+    "lat": 19.0348,
+    "lng": 72.8929,
+    "group": "area",
+    "geonameid": 7279753,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Goregaon",
+    "state": "Maharashtra",
+    "lat": 19.1644,
+    "lng": 72.8494,
+    "group": "area",
+    "geonameid": 11857993,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Malad",
+    "state": "Maharashtra",
+    "lat": 19.197,
+    "lng": 72.845,
+    "group": "area",
+    "geonameid": 1264179,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Juhu",
+    "state": "Maharashtra",
+    "lat": 19.1026,
+    "lng": 72.8243,
+    "group": "area",
+    "geonameid": 1268795,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Worli",
+    "state": "Maharashtra",
+    "lat": 19.0167,
+    "lng": 72.8167,
+    "group": "area",
+    "geonameid": 1252834,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Ghatkopar",
+    "state": "Maharashtra",
+    "lat": 19.0839,
+    "lng": 72.8997,
+    "group": "area",
+    "geonameid": 1271330,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Vile Parle",
+    "state": "Maharashtra",
+    "lat": 19.1,
+    "lng": 72.8333,
+    "group": "area",
+    "geonameid": 1253173,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Mulund",
+    "state": "Maharashtra",
+    "lat": 19.1649,
+    "lng": 72.9608,
+    "group": "area",
+    "geonameid": 7279743,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Kandivali",
+    "state": "Maharashtra",
+    "lat": 19.2046,
+    "lng": 72.8521,
+    "group": "area",
+    "geonameid": 11858534,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Vashi",
+    "state": "Maharashtra",
+    "lat": 19.0787,
+    "lng": 73.0006,
+    "group": "area",
+    "geonameid": 6698268,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Navi Mumbai",
+    "state": "Maharashtra",
+    "lat": 19.0368,
+    "lng": 73.0158,
+    "group": "area",
+    "geonameid": 6619347,
+    "metro": "Mumbai"
+  },
+  {
+    "name": "Connaught Place",
+    "state": "Delhi",
+    "lat": 28.6331,
+    "lng": 77.2211,
+    "group": "area",
+    "geonameid": 1273840,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Karol Bagh",
+    "state": "Delhi",
+    "lat": 28.6514,
+    "lng": 77.1907,
+    "group": "area",
+    "geonameid": 1267696,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Dwarka",
+    "state": "Delhi",
+    "lat": 28.5915,
+    "lng": 77.0531,
+    "group": "area",
+    "geonameid": 7576076,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Rohini",
+    "state": "Delhi",
+    "lat": 28.7432,
+    "lng": 77.0678,
+    "group": "area",
+    "geonameid": 12069922,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Saket",
+    "state": "Delhi",
+    "lat": 28.5189,
+    "lng": 77.2131,
+    "group": "area",
+    "geonameid": 7532611,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Lajpat Nagar",
+    "state": "Delhi",
+    "lat": 28.5733,
+    "lng": 77.2402,
+    "group": "area",
+    "geonameid": 6619398,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Chandni Chowk",
+    "state": "Delhi",
+    "lat": 28.6512,
+    "lng": 77.2291,
+    "group": "area",
+    "geonameid": 6619404,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Janakpuri",
+    "state": "Delhi",
+    "lat": 28.6216,
+    "lng": 77.0946,
+    "group": "area",
+    "geonameid": 7628267,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Vasant Kunj",
+    "state": "Delhi",
+    "lat": 28.5439,
+    "lng": 77.1523,
+    "group": "area",
+    "geonameid": 7668990,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Mayur Vihar",
+    "state": "Delhi",
+    "lat": 28.6063,
+    "lng": 77.3228,
+    "group": "area",
+    "geonameid": 12685416,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Najafgarh",
+    "state": "Delhi",
+    "lat": 28.6092,
+    "lng": 76.9798,
+    "group": "area",
+    "geonameid": 1262111,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Narela",
+    "state": "Delhi",
+    "lat": 28.8527,
+    "lng": 77.0929,
+    "group": "area",
+    "geonameid": 1261809,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Shahdara",
+    "state": "Delhi",
+    "lat": 28.683,
+    "lng": 77.29,
+    "group": "area",
+    "geonameid": 1256741,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Pitampura",
+    "state": "Delhi",
+    "lat": 28.6896,
+    "lng": 77.1313,
+    "group": "area",
+    "geonameid": 7290413,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Greater Noida",
+    "state": "Uttar Pradesh",
+    "lat": 28.4962,
+    "lng": 77.536,
+    "group": "area",
+    "geonameid": 6954929,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Noida",
+    "state": "Uttar Pradesh",
+    "lat": 28.58,
+    "lng": 77.33,
+    "group": "area",
+    "geonameid": 7279746,
+    "metro": "Delhi NCR"
+  },
+  {
+    "name": "Koramangala",
+    "state": "Karnataka",
+    "lat": 12.932,
+    "lng": 77.6227,
+    "group": "area",
+    "geonameid": 6695463,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Indiranagar",
+    "state": "Karnataka",
+    "lat": 12.9743,
+    "lng": 77.6404,
+    "group": "area",
+    "geonameid": 6690273,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Whitefield",
+    "state": "Karnataka",
+    "lat": 12.9716,
+    "lng": 77.7473,
+    "group": "area",
+    "geonameid": 1252859,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Jayanagar",
+    "state": "Karnataka",
+    "lat": 12.9278,
+    "lng": 77.5885,
+    "group": "area",
+    "geonameid": 6620016,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Malleswaram",
+    "state": "Karnataka",
+    "lat": 13.0005,
+    "lng": 77.5641,
+    "group": "area",
+    "geonameid": 1264045,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Electronic City",
+    "state": "Karnataka",
+    "lat": 12.8458,
+    "lng": 77.6727,
+    "group": "area",
+    "geonameid": 6621418,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Marathahalli",
+    "state": "Karnataka",
+    "lat": 12.9536,
+    "lng": 77.6976,
+    "group": "area",
+    "geonameid": 6690279,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Yelahanka",
+    "state": "Karnataka",
+    "lat": 13.1007,
+    "lng": 77.5963,
+    "group": "area",
+    "geonameid": 1252758,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Hebbal",
+    "state": "Karnataka",
+    "lat": 13.0402,
+    "lng": 77.5888,
+    "group": "area",
+    "geonameid": 6692786,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "BTM Layout",
+    "state": "Karnataka",
+    "lat": 12.9167,
+    "lng": 77.6167,
+    "group": "area",
+    "geonameid": 1254836,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Rajajinagar",
+    "state": "Karnataka",
+    "lat": 12.9847,
+    "lng": 77.5491,
+    "group": "area",
+    "geonameid": 6692756,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "JP Nagar",
+    "state": "Karnataka",
+    "lat": 12.9073,
+    "lng": 77.5999,
+    "group": "area",
+    "geonameid": 6619486,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Basavanagudi",
+    "state": "Karnataka",
+    "lat": 12.9417,
+    "lng": 77.5714,
+    "group": "area",
+    "geonameid": 6618687,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Yeshwanthpur",
+    "state": "Karnataka",
+    "lat": 13.0301,
+    "lng": 77.5405,
+    "group": "area",
+    "geonameid": 6692794,
+    "metro": "Bengaluru"
+  },
+  {
+    "name": "Ulsoor",
+    "state": "Karnataka",
+    "lat": 12.9804,
+    "lng": 77.6166,
+    "group": "area",
+    "geonameid": 6695235,
+    "metro": "Bengaluru"
+  }
+]

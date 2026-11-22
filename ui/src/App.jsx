@@ -15,6 +15,7 @@ import {
   EventIDs,
   list,
   observe,
+  distanceKm,
   reciprocal,
   REQUEST_STATUSES,
   retryReason,
@@ -22,6 +23,25 @@ import {
   terminal,
 } from "./state.js";
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
+// Mirrors internal/workflow: candidates.go (radiusKM, eligible), retry.go
+// (retryDelay 5 s, 30 s, then 120 s) and the resource wake in reconcile.go.
+const matchingSteps = [
+  "A request is stored and its matching work queued.",
+  "A resource is eligible if it's the same type, within 50 km, its availability window is open now, and it's available and unclaimed.",
+  "The nearest eligible resource is claimed; only one request can win it.",
+  "If nothing fits, the request waits and is retried after 5 s, 30 s, then every 2 minutes; registering a new resource wakes waiting requests immediately.",
+  "Start work → Mark fulfilled (the resource returns if reusable), or Cancel (the resource is released).",
+];
+const facts = (rows) => (
+  <dl className="resource-facts record-facts">
+    {rows.map(([term, value]) => (
+      <div key={term}>
+        <dt>{term}</dt>
+        <dd>{value}</dd>
+      </div>
+    ))}
+  </dl>
+);
 const attentionStates = new Set([
   "WAITING",
   "RETRYING",
@@ -251,7 +271,8 @@ function App() {
     [busy, setBusy] = useState(false),
     [actionError, setActionError] = useState(""),
     [uncertain, setUncertain] = useState(null),
-    [creating, setCreating] = useState(null);
+    [creating, setCreating] = useState(null),
+    [explaining, setExplaining] = useState(false);
   const actionPending = useRef(false);
   const requests = d.snapshot?.requests.items || [],
     resources = d.snapshot?.resources.items || [];
@@ -428,7 +449,40 @@ function App() {
             >
               {d.loading ? "Refreshing…" : "Refresh data"}
             </button>
+            <button
+              type="button"
+              className="button explain-toggle"
+              aria-expanded={explaining}
+              aria-controls={explaining ? "matching-explainer" : undefined}
+              onClick={() => setExplaining(!explaining)}
+            >
+              How matching works
+            </button>
           </div>
+          {explaining && (
+            <section
+              id="matching-explainer"
+              className="matching-explainer"
+              aria-label="How matching works"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setExplaining(false);
+              }}
+            >
+              <h2>How matching works</h2>
+              <ol>
+                {matchingSteps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                className="button"
+                onClick={() => setExplaining(false)}
+              >
+                Close
+              </button>
+            </section>
+          )}
         </div>
         {(d.error || actionError) && (
           <div className="notice" role="alert">
@@ -527,6 +581,18 @@ function App() {
             options={["CRITICAL", "HIGH", "NORMAL"]}
             all="All urgency levels"
           />
+          {attentionOnly && (
+            <span className="filter-chip">
+              Filter: Needs attention
+              <button
+                type="button"
+                aria-label="Clear the attention filter"
+                onClick={() => setAttentionOnly(false)}
+              >
+                ×
+              </button>
+            </span>
+          )}
           {hasFilters && (
             <button
               type="button"
@@ -606,7 +672,9 @@ function App() {
                         : d.error && !d.loading
                           ? "Request data unavailable. Use Refresh to retry."
                           : "Loading requests…"
-                      : "No requests match these filters."}
+                      : attentionOnly
+                        ? "No requests match these filters. No requests need attention right now; clear the Needs attention filter to see every request."
+                        : "No requests match these filters."}
                   </div>
                 )}
               </div>
@@ -707,38 +775,35 @@ function App() {
                   <h2>{selectedResource.name}</h2>
                   <Badge status={selectedResource.status} />
                 </div>
-                <dl className="resource-facts">
-                  <div>
-                    <dt>Coordinates</dt>
-                    <dd>{coordinates(selectedResource.location)}</dd>
-                  </div>
-                  <div>
-                    <dt>Available from</dt>
-                    <dd>{dateTime(selectedResource.windowStart)}</dd>
-                  </div>
-                  <div>
-                    <dt>Available until</dt>
-                    <dd>{dateTime(selectedResource.windowEnd)}</dd>
-                  </div>
-                  <div>
-                    <dt>Request</dt>
-                    <dd>
-                      {chosen ? (
-                        <button
-                          type="button"
-                          className="detail-link"
-                          onClick={() => pickRequest(chosen)}
-                        >
-                          #{short(chosen.requestId)}
-                        </button>
-                      ) : selectedResource.activeClaim ? (
-                        "Assignment unconfirmed in loaded view"
-                      ) : (
-                        "Unassigned"
-                      )}
-                    </dd>
-                  </div>
-                </dl>
+                {facts([
+                  ["Type", label(selectedResource.resourceType)],
+                  ["Status", selectedResource.status?.replaceAll("_", " ")],
+                  ["ID", "#" + short(selectedResource.resourceId)],
+                  ["Coordinates", coordinates(selectedResource.location)],
+                  ["Available from", dateTime(selectedResource.windowStart)],
+                  ["Available until", dateTime(selectedResource.windowEnd)],
+                  [
+                    "Assigned to",
+                    chosen ? (
+                      <button
+                        type="button"
+                        className="detail-link"
+                        onClick={() => pickRequest(chosen)}
+                      >
+                        {(chosen.details ||
+                          label(chosen.requestType) + " request") +
+                          " · #" +
+                          short(chosen.requestId)}
+                      </button>
+                    ) : selectedResource.activeClaim ? (
+                      "#" +
+                      short(selectedResource.activeClaim.requestId) +
+                      " · not in the loaded view"
+                    ) : (
+                      "Unassigned"
+                    ),
+                  ],
+                ])}
               </section>
             )}
             <section
@@ -763,24 +828,12 @@ function App() {
                       </h3>
                       <p>
                         {label(chosen.requestType)} · {chosen.peopleAffected}{" "}
-                        people · {chosen.location.lat.toFixed(3)},{" "}
-                        {chosen.location.lng.toFixed(3)}
+                        people
                       </p>
                     </div>
                     <Badge status={chosen.status} />
                   </div>
-                  {assigned && (
-                    <div className="assignment-detail">
-                      <span>Assigned resource</span>
-                      <button
-                        type="button"
-                        className="detail-link"
-                        onClick={() => pickResource(assigned)}
-                      >
-                        {assigned.name}
-                      </button>
-                    </div>
-                  )}
+
                   <div className="actions">
                     {["PENDING", "WAITING"].includes(chosen.status) && (
                       <button
@@ -826,6 +879,38 @@ function App() {
                       </p>
                     )}
                   </div>
+                  {facts([
+                    ["Type", label(chosen.requestType)],
+                    ["Status", chosen.status.replaceAll("_", " ")],
+                    ["ID", "#" + short(chosen.requestId)],
+                    ["Coordinates", coordinates(chosen.location)],
+                    ...(assigned
+                      ? [
+                          [
+                            "Assigned resource",
+                            <button
+                              type="button"
+                              className="detail-link"
+                              onClick={() => pickResource(assigned)}
+                            >
+                              {assigned.name}
+                            </button>,
+                          ],
+                        ]
+                      : []),
+                    ...(assigned &&
+                    ["MATCHED", "IN_PROGRESS"].includes(chosen.status)
+                      ? [
+                          [
+                            "Straight-line distance",
+                            distanceKm(
+                              chosen.location,
+                              assigned.location,
+                            ).toFixed(2) + " km",
+                          ],
+                        ]
+                      : []),
+                  ])}
                   <ol className="timeline-items">
                     <li>
                       <i />
