@@ -1,8 +1,8 @@
 {
-  "revision": "7c1d63b3860af480",
+  "revision": "316a32bf0d7f4f52",
   "assets": [
-    "/assets/app-JHJOJVVN.js",
-    "/assets/app-JMXXPV2J.css",
+    "/assets/app-46LANJRR.css",
+    "/assets/app-7HE2C2SN.js",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
@@ -13,26 +13,26 @@
     "index.html": "7f4a49b1f0641b892835a3977acda5379b42d014915d04e832262447d1e85d22",
     "package-lock.json": "617c6a871ed4179c6fde59669bf6ca26d1a74bbc679eecb57ad97d928c667dda",
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
-    "src/App.jsx": "a26a7dbabdd8893ab54f13f4875b433f8b22c36cc559f90f742c1ad7d07f82e6",
-    "src/CreateDialog.jsx": "b762286ec3439f6a8b55b86ab2e5c33a72a71799eb62aad111c65d2a202315b6",
-    "src/DispatchMap.jsx": "e0cd010654cf5f1c975cb32a9687c072024f723e9890e0fc2c330fc8d69a369b",
-    "src/activity.js": "7fc9e931e154cb2c15016fb90593ea3635726d6e0990e5dded2baa957944f5b1",
-    "src/app.css": "5854d386245f7f5c51f0670455fa766bd72a12a8f4d978f88ddc6af52a80ad58",
+    "src/App.jsx": "e8530d712e2c742b0e43065c852470f27c19347cdeb6d84147617b814ca00edd",
+    "src/CreateDialog.jsx": "75c2d45c26ae0dc98a605d78d7f5d4aaa25c2fcaefb66cce680f1a68cb561c76",
+    "src/DispatchMap.jsx": "79dae233e329eae6ed33503365802400af12466d01fbb557c61236534b2350cb",
+    "src/activity.js": "7083b05f43cc91a9a0b4f95ebe7ec05e019e10a707dda9357bb223bab3c6447a",
+    "src/app.css": "62a6484a8f6d744ba44acaad010b62d0b28e6b74cc3f3b4275afa33b3f35df1a",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/places.js": "ae5b9aee94409dfd00ee9459b539b1e097b8d7ced950c1f1228098d66b111449",
     "src/places.json": "994533411832b238d660ba3ad70524f24e9108233165be59e10245a6e4763e48",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
-    "src/state.js": "c865dd2a3cd2628f587892efc5e3285088cd376f7724082bfdb3e85cbf59cedd",
+    "src/state.js": "a81ba686c4f24d50300095423e1caf1ccd2ed3a7c904a9a8398d1fb27ba30479",
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-JHJOJVVN.js": "23f5f8443ba086e20b2cf0b328f9b934d63b873b557da6dfbeab81f606d1ee0f",
-    "app-JMXXPV2J.css": "9ea1ff8c2b5d9cfd73d157024ebd1f571b0c44f83d3eff134948e399a601eb1f",
-    "index.html": "9ced2024585ec9a85ed3f65bed0f65c119a0347907f3db7057013c286b8baffc",
+    "app-46LANJRR.css": "d4d63e63e567db7f5bef1ee4334b17948c0669f44a8136910372004352e4d7b4",
+    "app-7HE2C2SN.js": "8a9052804248dc9f5c27fda7b47b2a03d682fe9f3213f8f5b94c28f16bae688c",
+    "index.html": "354e100b4b029cac2b8d8c063c40a9ba784b0ad50682a5ae1286e0c73fb9d27a",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "60d8e300d6b77c40ae206a7a693260fe9d1f7f10ff31016f577027f5e5c80675"
+    "sw.js": "f44af705f88f4e063c0e1661184317b80174a1ceb279643fd74ceae069b44307"
   }
 }

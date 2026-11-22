@@ -10,18 +10,20 @@ import "leaflet/dist/leaflet.css";
 import "./app.css";
 import { CreateDialog } from "./CreateDialog.jsx";
 import { DispatchMap } from "./DispatchMap.jsx";
-import { Activity, describe, relative } from "./activity.js";
+import { Activity, describe, relative, Toasts } from "./activity.js";
 import { coalescedRefresh } from "./refresh.js";
 import {
   EventIDs,
   list,
   observe,
   distanceKm,
+  ineligible,
   reciprocal,
   REQUEST_STATUSES,
   retryReason,
   TYPES,
   terminal,
+  timings,
 } from "./state.js";
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
 // Mirrors internal/workflow: candidates.go (radiusKM, eligible), retry.go
@@ -104,9 +106,14 @@ function useDispatch() {
     [loading, setLoading] = useState(false),
     [offlineReady, setOfflineReady] = useState(false),
     [activity, setActivity] = useState([]),
-    [held, setHeld] = useState(0);
+    [toasts, setToasts] = useState([]),
+    [held, setHeld] = useState(0),
+    [toastsHeld, setToastsHeld] = useState(0);
+  // Created once, not on every render.
   const [feedState] = useState(() => new Activity());
+  const [noticeState] = useState(() => new Toasts());
   const feed = useRef(feedState),
+    notices = useRef(noticeState),
     current = useRef(snapshot),
     alive = useRef(true),
     active = useRef(null);
@@ -146,6 +153,9 @@ function useDispatch() {
           current.current = next;
           setSnapshot(next);
           setActivity(feed.current.resolve(next));
+          if (feed.current.fresh.length)
+            setToasts(notices.current.add(feed.current.fresh));
+          setToastsHeld(notices.current.held());
           setStale(false);
           setError("");
           try {
@@ -176,6 +186,8 @@ function useDispatch() {
     const timer = setInterval(() => {
       feed.current.expire();
       setHeld(feed.current.held());
+      setToasts(notices.current.expire());
+      setToastsHeld(notices.current.held());
     }, 5000);
     return () => clearInterval(timer);
   }, []);
@@ -261,7 +273,11 @@ function useDispatch() {
     refresh,
     setError,
     activity,
+    toasts,
+    dismiss: useCallback((key) => setToasts(notices.current.dismiss(key)), []),
+    expire: useCallback(() => setToasts(notices.current.prune()), []),
     held,
+    toastsHeld,
   };
 }
 function Badge({ status }) {
@@ -304,6 +320,30 @@ function ActivityFeed({ items, held, onChoose }) {
           Record changes from the live stream appear here.
         </p>
       )}
+    </section>
+  );
+}
+function Notifications({ toasts, held, dismiss, expire }) {
+  useEffect(() => {
+    if (!toasts.length) return;
+    const next = Math.min(...toasts.map((v) => v.expires));
+    const timer = setTimeout(expire, Math.max(0, next - Date.now()) + 20);
+    return () => clearTimeout(timer);
+  }, [toasts, expire]);
+  return (
+    <section className="toasts" aria-label="Notifications" data-held={held}>
+      {toasts.map((toast) => (
+        <div className="toast" key={toast.key}>
+          <p role="status">{toast.text}</p>
+          <button
+            type="button"
+            aria-label="Dismiss notification"
+            onClick={() => dismiss(toast.key)}
+          >
+            ×
+          </button>
+        </div>
+      ))}
     </section>
   );
 }
@@ -375,6 +415,26 @@ function App() {
     ? selectedResource && requests.find((r) => reciprocal(r, selectedResource))
     : requests.find((r) => r.requestId === selected);
   const assigned = chosen && resources.find((r) => reciprocal(chosen, r));
+  // The selected request's matching radius and, for every other resource, the
+  // reason it could not be matched now. Its own assignment is never dimmed.
+  const target = !resourceSelection && chosen ? chosen : null;
+  const history = (chosen && d.snapshot?.history?.[chosen.requestId]) || [];
+  const marks = chosen ? timings(chosen.createdAt, history) : [];
+  const radius = useMemo(
+    () => target && { ...target.location },
+    [target?.requestId, target?.location.lat, target?.location.lng],
+  );
+  const dimmed = useMemo(() => {
+    const reasons = new Map();
+    if (!target) return reasons;
+    const now = Date.now();
+    for (const row of resources) {
+      if (reciprocal(target, row)) continue;
+      const reason = ineligible(target, row, now);
+      if (reason) reasons.set(row.resourceId, reason);
+    }
+    return reasons;
+  }, [target, resources]);
   const mapSelection = useMemo(
     () =>
       resourceSelection
@@ -480,6 +540,12 @@ function App() {
   };
   return (
     <>
+      <Notifications
+        toasts={d.toasts}
+        held={d.toastsHeld}
+        dismiss={d.dismiss}
+        expire={d.expire}
+      />
       {creating && (
         <CreateDialog
           kind={creating}
@@ -842,6 +908,8 @@ function App() {
                 onSelectRequest={pickRequest}
                 onSelectResource={pickResource}
                 focus={focus}
+                radius={radius}
+                dimmed={dimmed}
                 visible={view === "map"}
                 ready={!!(d.snapshot || d.error)}
                 online={d.online}
@@ -858,6 +926,9 @@ function App() {
                 </span>
                 <span>
                   <i className="assignment-line" /> Assignment
+                </span>
+                <span className="legend-note">
+                  Eligibility as estimated by the UI; the backend decides.
                 </span>
               </div>
             </section>
@@ -1107,19 +1178,20 @@ function App() {
                         <small>{time(chosen.createdAt)}</small>
                       </div>
                     </li>
-                    {(d.snapshot.history?.[chosen.requestId] || []).map(
-                      (v, i) => (
-                        <li key={v.version + "-" + i}>
-                          <i />
-                          <div>
-                            <strong>{label(v.status)}</strong>
-                            <small>
-                              {time(v.at)} · observed {v.version}
-                            </small>
-                          </div>
-                        </li>
-                      ),
-                    )}
+                    {history.map((v, i) => (
+                      <li key={v.version + "-" + i}>
+                        <i />
+                        <div>
+                          <strong>{label(v.status)}</strong>
+                          <small>
+                            {time(v.at)} · observed {v.version}
+                          </small>
+                          {marks[i] && (
+                            <span className="timeline-timing">{marks[i]}</span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
                   </ol>
                   <p className="timeline-note">
                     Observed changes only. Reconnecting refreshes the current
