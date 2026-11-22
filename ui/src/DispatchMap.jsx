@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import { reciprocal, terminal } from "./state.js";
+import worldLand from "./world-land.json";
 
 const tileURL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const attribution =
@@ -9,46 +10,6 @@ const empty = [];
 const initialCentre = [20.6, 78.9];
 const toPoint = ({ lat, lng }) => [lat, lng];
 const boundsOptions = { padding: [32, 32], maxZoom: 13 };
-
-function schematic() {
-  const layers = [
-    L.imageOverlay(
-      "/assets/map-grid.svg",
-      [
-        [-85, -180],
-        [85, 180],
-      ],
-      {
-        opacity: 0.26,
-        interactive: false,
-      },
-    ),
-  ];
-  const grid = { color: "#aabeb6", weight: 0.5, interactive: false };
-  for (const lat of [-60, -30, 0, 30, 60]) {
-    layers.push(
-      L.polyline(
-        [
-          [lat, -180],
-          [lat, 180],
-        ],
-        grid,
-      ),
-    );
-  }
-  for (const lng of [-120, -60, 0, 60, 120]) {
-    layers.push(
-      L.polyline(
-        [
-          [-85, lng],
-          [85, lng],
-        ],
-        grid,
-      ),
-    );
-  }
-  return L.layerGroup(layers);
-}
 
 function mapMarker(point, className, title, select) {
   const marker = L.marker(point, {
@@ -88,7 +49,6 @@ export function DispatchMap({
 }) {
   const element = useRef(null);
   const map = useRef(null);
-  const schematicLayer = useRef(null);
   const layers = useRef(null);
   const fitted = useRef(false);
   const [street, setStreet] = useState(true);
@@ -104,8 +64,20 @@ export function DispatchMap({
     }).setView(initialCentre, 4);
     map.current = m;
     L.control.zoom({ position: "topright" }).addTo(m);
+    L.control.scale({ position: "bottomleft", imperial: false }).addTo(m);
     m.attributionControl.setPrefix(false);
-    schematicLayer.current = schematic().addTo(m);
+    m.createPane("world-overview").style.zIndex = "180";
+    L.geoJSON(worldLand, {
+      pane: "world-overview",
+      interactive: false,
+      attribution: "Natural Earth",
+      style: {
+        color: "#8ea8a4",
+        weight: 1,
+        fillColor: "#e7e7d6",
+        fillOpacity: 1,
+      },
+    }).addTo(m);
     layers.current = L.layerGroup().addTo(m);
     return () => {
       m.remove();
@@ -115,8 +87,9 @@ export function DispatchMap({
 
   useEffect(() => {
     if (!visible) return;
-    const frame = requestAnimationFrame(() => map.current?.invalidateSize());
-    return () => cancelAnimationFrame(frame);
+    const observer = new ResizeObserver(() => map.current?.invalidateSize());
+    observer.observe(element.current);
+    return () => observer.disconnect();
   }, [visible]);
 
   useEffect(() => {
@@ -132,41 +105,47 @@ export function DispatchMap({
     });
     let active = true;
     let failed = false;
-    const grid = schematicLayer.current;
-    const fallBack = () => {
+    let missing = false;
+    const settle = () => {
       if (!active || failed) return;
-      failed = true;
       clearTimeout(timer);
+      if (layer.getContainer()?.querySelector(".leaflet-tile-loaded")) {
+        setTileState(missing ? "partial" : "ready");
+        return;
+      }
+      failed = true;
       setTileState("failed");
-      // A tile error fires inside Leaflet's tile completion handler.
+      // Leaflet may still be completing its current load handler.
       queueMicrotask(() => {
-        if (active) {
-          layer.remove();
-          grid.addTo(m);
-        }
+        if (active) layer.remove();
       });
     };
-    let timer = setTimeout(fallBack, 6500);
+    const slow = () => {
+      missing = true;
+      settle();
+    };
+    let timer = setTimeout(slow, 6500);
     layer.on("loading", () => {
+      missing = false;
       clearTimeout(timer);
-      timer = setTimeout(fallBack, 6500);
+      timer = setTimeout(slow, 6500);
     });
-    layer.on("tileerror", fallBack);
-    layer.on("load", () => {
-      if (!active || failed) return;
-      clearTimeout(timer);
-      grid.remove();
-      setTileState("ready");
+    layer.on("tileerror", () => {
+      missing = true;
     });
+    layer.on("load", settle);
     layer.addTo(m);
     return () => {
       active = false;
       clearTimeout(timer);
       layer.off();
       if (m.hasLayer(layer)) layer.remove();
-      if (map.current === m && !m.hasLayer(grid)) grid.addTo(m);
     };
   }, [attempt, online, street, visible]);
+
+  useEffect(() => {
+    if (!street) map.current.setZoom(Math.min(7, map.current.getZoom()));
+  }, [street]);
 
   useEffect(() => {
     if (!onPick) return;
@@ -251,14 +230,16 @@ export function DispatchMap({
   }, [focus]);
 
   const background = !street
-    ? "Schematic map"
+    ? "World overview · no street detail"
     : !online
-      ? "Offline schematic"
+      ? "Offline world map · no street detail"
       : tileState === "failed"
-        ? "Street map unavailable. Schematic shown."
+        ? "Street map unavailable · world overview shown"
         : tileState === "ready"
           ? "Street map"
-          : "Loading street map";
+          : tileState === "partial"
+            ? "Street map · some tiles unavailable"
+            : "Loading street map";
   return (
     <>
       <div className="map-tools">
@@ -271,9 +252,9 @@ export function DispatchMap({
             className="map-tool"
             onClick={() => setStreet(!street)}
           >
-            {street ? "Use schematic" : "Use street map"}
+            {street ? "World overview" : "Use street map"}
           </button>
-          {street && online && tileState === "failed" && (
+          {street && online && ["failed", "partial"].includes(tileState) && (
             <button
               type="button"
               className="map-tool"

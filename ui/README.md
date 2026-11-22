@@ -31,11 +31,16 @@ the tile provider. The app draws record coordinates and reciprocal assignments
 locally from the existing API lists. Positions reflect the latest successful read
 and refresh on the same dispatch updates as the lists.
 
-Choose **Use schematic** to avoid external tiles. The map also falls back to the
-local coordinate schematic when offline or when the tile service is unavailable.
-The service worker never caches street tiles. Location picking fills the existing
-editable latitude and longitude fields in both create forms. Third-party licenses
-are bundled under `/assets/licenses.txt`.
+Choose **World overview** to use the bundled coastline map without requesting
+street tiles. The geographic overview stays beneath the street layer, so valid
+tiles remain visible if only some tiles fail. When the browser is offline, the
+overview still shows record positions, but street detail requires connectivity.
+The coastline geometry is derived from the public-domain [Natural Earth 1:110m
+land polygons, v5.1.2](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.2/geojson/ne_110m_land.geojson),
+with coordinates rounded to four decimal places. The service worker caches the
+app shell and bundled geography and leaves street HTTP caching to the browser.
+Location picking fills the existing editable latitude and longitude fields in
+both create forms. Third-party licenses are bundled under `/assets/licenses.txt`.
 
 ## Read and offline semantics
 

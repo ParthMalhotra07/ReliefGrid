@@ -40,7 +40,10 @@ test("tile failure falls back without interrupting dispatch", async ({
   await page.route(tiles, (route) => route.abort());
   await page.goto("/");
   await expect(page.getByLabel("Map background status")).toHaveText(
-    "Street map unavailable. Schematic shown.",
+    "Street map unavailable · world overview shown",
+  );
+  await expect(page.locator(".leaflet-world-overview-pane path")).toHaveCount(
+    1,
   );
   await expect(
     page.getByRole("status", { name: "Connection status" }),
@@ -51,15 +54,33 @@ test("tile failure falls back without interrupting dispatch", async ({
   await expect(
     page.locator(".leaflet-overlay-pane path[stroke-dasharray]"),
   ).toHaveCount(1);
-  await page.getByRole("button", { name: "Use schematic" }).click();
+  await page.getByRole("button", { name: "World overview" }).click();
   await expect(page.getByLabel("Map background status")).toHaveText(
-    "Schematic map",
+    "World overview · no street detail",
   );
+  await page.screenshot({ path: "test-results/dispatch-world-overview.png" });
   await page.unroute(tiles);
   await page.getByRole("button", { name: "Use street map" }).click();
   await expect(page.getByLabel("Map background status")).toHaveText(
     "Street map",
   );
+});
+
+test("one missing tile preserves the street map and its loaded tiles", async ({
+  page,
+}) => {
+  let first = true;
+  await page.route(tiles, (route) => {
+    if (!first) return route.fallback();
+    first = false;
+    return route.abort();
+  });
+  await page.goto("/");
+  await expect(page.getByLabel("Map background status")).toHaveText(
+    "Street map · some tiles unavailable",
+    { timeout: 4000 },
+  );
+  await expect(page.locator(".leaflet-tile-loaded").first()).toBeVisible();
 });
 
 test("selecting a resource from the mobile list brings its details into view", async ({

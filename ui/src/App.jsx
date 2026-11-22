@@ -21,6 +21,12 @@ import {
   terminal,
 } from "./state.js";
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
+const attentionStates = new Set([
+  "WAITING",
+  "RETRYING",
+  "CANCELLING",
+  "FULFILLING",
+]);
 const time = (value) =>
   value
     ? new Date(value).toLocaleTimeString([], {
@@ -236,6 +242,7 @@ function App() {
     [type, setType] = useState(""),
     [status, setStatus] = useState(""),
     [urgency, setUrgency] = useState(""),
+    [attentionOnly, setAttentionOnly] = useState(false),
     [selected, setSelected] = useState(""),
     [resourceSelection, setResourceSelection] = useState(""),
     [focus, setFocus] = useState(null),
@@ -253,6 +260,7 @@ function App() {
       (!type || r.requestType === type) &&
       (!status || r.status === status) &&
       (!urgency || r.urgency === urgency) &&
+      (!attentionOnly || attentionStates.has(r.status)) &&
       (!query ||
         `${r.details} ${r.requestId} ${r.requestType}`
           .toLowerCase()
@@ -281,6 +289,14 @@ function App() {
     [resourceSelection, selected],
   );
   const canAct = d.online && !d.stale && !busy;
+  const hasFilters = !!(search || type || status || urgency || attentionOnly);
+  const clearFilters = () => {
+    setSearch("");
+    setType("");
+    setStatus("");
+    setUrgency("");
+    setAttentionOnly(false);
+  };
   const more = [
     ...(d.snapshot?.requests.positions || []),
     ...(d.snapshot?.resources.positions || []),
@@ -383,15 +399,35 @@ function App() {
         <div className="page-heading">
           <div>
             <h1>Dispatch overview</h1>
-            <p>Review requests, locate resources and manage assignments.</p>
+            <p>Find the next request and see which resources can help.</p>
           </div>
-          <button
-            className="button refresh"
-            onClick={d.refresh}
-            disabled={!d.online || d.loading}
+          <div
+            className="create-toolbar"
+            role="group"
+            aria-label="Dispatch actions"
           >
-            {d.loading ? "Refreshing…" : "Refresh data"}
-          </button>
+            <button
+              className="button primary"
+              disabled={!canAct}
+              onClick={() => setCreating("request")}
+            >
+              Create request
+            </button>
+            <button
+              className="button"
+              disabled={!canAct}
+              onClick={() => setCreating("resource")}
+            >
+              Register resource
+            </button>
+            <button
+              className="button refresh"
+              onClick={d.refresh}
+              disabled={!d.online || d.loading}
+            >
+              {d.loading ? "Refreshing…" : "Refresh data"}
+            </button>
+          </div>
         </div>
         {(d.error || actionError) && (
           <div className="notice" role="alert">
@@ -413,22 +449,6 @@ function App() {
             records exist; filters apply to the loaded view.
           </div>
         )}
-        <div className="create-toolbar" aria-label="Create records">
-          <button
-            className="button primary"
-            disabled={!canAct}
-            onClick={() => setCreating("request")}
-          >
-            Create request
-          </button>
-          <button
-            className="button"
-            disabled={!canAct}
-            onClick={() => setCreating("resource")}
-          >
-            Register resource
-          </button>
-        </div>
         <div className="summary">
           <Metric
             title="Open requests"
@@ -466,18 +486,13 @@ function App() {
             title="Needs attention"
             value={
               d.snapshot
-                ? requests.filter((r) =>
-                    [
-                      "WAITING",
-                      "RETRYING",
-                      "CANCELLING",
-                      "FULFILLING",
-                    ].includes(r.status),
-                  ).length
+                ? requests.filter((r) => attentionStates.has(r.status)).length
                 : "—"
             }
             note="Waiting, retrying, or finishing cleanup"
             color="amber"
+            pressed={attentionOnly}
+            onClick={() => setAttentionOnly(!attentionOnly)}
           />
         </div>
         <div className="filters">
@@ -511,6 +526,15 @@ function App() {
             options={["CRITICAL", "HIGH", "NORMAL"]}
             all="All urgency levels"
           />
+          {hasFilters && (
+            <button
+              type="button"
+              className="button clear-filters"
+              onClick={clearFilters}
+            >
+              Clear filters
+            </button>
+          )}
           <div className="view-switch">
             <button
               aria-pressed={view === "map"}
@@ -529,90 +553,145 @@ function App() {
         <div
           className={`dispatch-layout ${view === "list" ? "list-only" : ""}`}
         >
-          <section className="panel requests-panel" aria-label="Requests">
-            <div className="panel-heading">
-              <h2>
-                Requests{" "}
-                <span>{d.snapshot ? visibleRequests.length : "—"}</span>
-              </h2>
-              <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
-            </div>
-            <div className="request-cards">
-              {visibleRequests.map((r) => (
-                <button
-                  key={r.requestId}
-                  className={`request-card ${chosen?.requestId === r.requestId ? "selected" : ""}`}
-                  aria-pressed={chosen?.requestId === r.requestId}
-                  onClick={() => {
-                    pickRequest(r);
-                    showDetailsOnMobile("request-details");
-                  }}
-                >
-                  <div className="card-top">
-                    <span className={`urgency urgency-${r.urgency}`}>
-                      {r.urgency}
-                    </span>
-                    <span className="mono">#{short(r.requestId)}</span>
-                  </div>
-                  <strong>
-                    {r.details || `${label(r.requestType)} request`}
-                  </strong>
-                  <div className="card-meta">
-                    {label(r.requestType)} <span>·</span> {r.peopleAffected}{" "}
-                    people
-                  </div>
-                  <div className="card-bottom">
-                    <Badge status={r.status} />
-                    <small>{time(r.updatedAt)}</small>
-                  </div>
-                  {r.lastError && (
-                    <span className="retry-reason">{r.lastError}</span>
-                  )}
-                </button>
-              ))}
-              {!visibleRequests.length && (
-                <div className="empty">
-                  {!d.snapshot
-                    ? !d.online
-                      ? "No saved request data on this device."
-                      : d.error && !d.loading
-                        ? "Request data unavailable. Use Refresh to retry."
-                        : "Loading requests…"
-                    : "No requests match these filters."}
-                </div>
-              )}
-            </div>
-          </section>
-          <div className="center-column">
-            <section className="panel map-panel">
+          <div className="records-column">
+            <section className="panel requests-panel" aria-label="Requests">
               <div className="panel-heading">
-                <h2>Area overview</h2>
+                <h2>
+                  Requests{" "}
+                  <span>{d.snapshot ? visibleRequests.length : "—"}</span>
+                </h2>
+                <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
               </div>
-              <DispatchMap
-                requests={visibleRequests}
-                resources={visibleResources}
-                selection={mapSelection}
-                onSelectRequest={pickRequest}
-                onSelectResource={pickResource}
-                focus={focus}
-                visible={view === "map"}
-                online={d.online}
-              />
-              <div className="map-legend">
-                <span>
-                  <i className="dot critical" /> Critical request
-                </span>
-                <span>
-                  <i className="dot normal" /> Request
-                </span>
-                <span>
-                  <i className="resource-dot" /> Resource
-                </span>
-                <span>
-                  <i className="assignment-line" /> Assignment
-                </span>
+              <div className="request-cards">
+                {visibleRequests.map((r) => (
+                  <button
+                    key={r.requestId}
+                    className={`request-card ${chosen?.requestId === r.requestId ? "selected" : ""}`}
+                    aria-pressed={chosen?.requestId === r.requestId}
+                    onClick={() => {
+                      pickRequest(r);
+                      showDetailsOnMobile("request-details");
+                    }}
+                  >
+                    <div className="card-top">
+                      <span className={`urgency urgency-${r.urgency}`}>
+                        {r.urgency}
+                      </span>
+                      <span className="mono">#{short(r.requestId)}</span>
+                    </div>
+                    <strong>
+                      {r.details || `${label(r.requestType)} request`}
+                    </strong>
+                    <div className="card-meta">
+                      {label(r.requestType)} <span>·</span> {r.peopleAffected}{" "}
+                      people
+                    </div>
+                    <div className="card-bottom">
+                      <Badge status={r.status} />
+                      <small>{time(r.updatedAt)}</small>
+                    </div>
+                    {r.lastError && (
+                      <span className="retry-reason">{r.lastError}</span>
+                    )}
+                  </button>
+                ))}
+                {!visibleRequests.length && (
+                  <div className="empty">
+                    {!d.snapshot
+                      ? !d.online
+                        ? "No saved request data on this device."
+                        : d.error && !d.loading
+                          ? "Request data unavailable. Use Refresh to retry."
+                          : "Loading requests…"
+                      : "No requests match these filters."}
+                  </div>
+                )}
               </div>
             </section>
+            <section className="panel resources-panel" aria-label="Resources">
+              <div className="panel-heading">
+                <h2>
+                  Resources{" "}
+                  <span>{d.snapshot ? visibleResources.length : "—"}</span>
+                </h2>
+                <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
+              </div>
+              <div className="resource-cards">
+                {visibleResources.map((r) => (
+                  <button
+                    className="resource-card"
+                    key={r.resourceId}
+                    aria-pressed={resourceSelection === r.resourceId}
+                    onClick={() => {
+                      pickResource(r);
+                      showDetailsOnMobile("resource-details");
+                    }}
+                  >
+                    <div className="resource-icon">
+                      {r.resourceType === "WATER"
+                        ? "◈"
+                        : r.resourceType === "FOOD"
+                          ? "✦"
+                          : r.resourceType === "MEDICINE"
+                            ? "+"
+                            : "◇"}
+                    </div>
+                    <div>
+                      <strong>{r.name}</strong>
+                      <small>
+                        {label(r.resourceType)} ·{" "}
+                        {r.activeClaim
+                          ? "Assigned #" + short(r.activeClaim.requestId)
+                          : "No active claim reported"}
+                      </small>
+                      <Badge status={r.status} />
+                    </div>
+                  </button>
+                ))}
+                {!visibleResources.length && (
+                  <div className="empty">
+                    {d.snapshot
+                      ? "No resources match."
+                      : !d.online
+                        ? "No saved resource data on this device."
+                        : d.error && !d.loading
+                          ? "Resource data unavailable. Use Refresh to retry."
+                          : "Loading resources…"}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+          <section className="panel map-panel" aria-label="Area overview">
+            <div className="panel-heading">
+              <h2>Area overview</h2>
+            </div>
+            <DispatchMap
+              requests={visibleRequests}
+              resources={visibleResources}
+              selection={mapSelection}
+              onSelectRequest={pickRequest}
+              onSelectResource={pickResource}
+              focus={focus}
+              visible={view === "map"}
+              online={d.online}
+            />
+            <div className="map-legend">
+              <span>
+                <i className="dot critical" /> Critical request
+              </span>
+              <span>
+                <i className="dot normal" /> Request
+              </span>
+              <span>
+                <i className="resource-dot" /> Resource
+              </span>
+              <span>
+                <i className="assignment-line" /> Assignment
+              </span>
+            </div>
+          </section>
+          <aside className="inspector-column" aria-label="Selected records">
             {selectedResource && (
               <section
                 className="panel resource-details"
@@ -778,130 +857,77 @@ function App() {
                 </div>
               )}
             </section>
-          </div>
-          <aside className="right-column">
-            <section className="panel resources-panel" aria-label="Resources">
-              <div className="panel-heading">
-                <h2>
-                  Resources{" "}
-                  <span>{d.snapshot ? visibleResources.length : "—"}</span>
-                </h2>
-                <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
-              </div>
-              <div className="resource-cards">
-                {visibleResources.map((r) => (
-                  <button
-                    className="resource-card"
-                    key={r.resourceId}
-                    aria-pressed={resourceSelection === r.resourceId}
-                    onClick={() => {
-                      pickResource(r);
-                      showDetailsOnMobile("resource-details");
-                    }}
-                  >
-                    <div className="resource-icon">
-                      {r.resourceType === "WATER"
-                        ? "◈"
-                        : r.resourceType === "FOOD"
-                          ? "✦"
-                          : r.resourceType === "MEDICINE"
-                            ? "+"
-                            : "◇"}
-                    </div>
-                    <div>
-                      <strong>{r.name}</strong>
-                      <small>
-                        {label(r.resourceType)} ·{" "}
-                        {r.activeClaim
-                          ? "Assigned #" + short(r.activeClaim.requestId)
-                          : "No active claim reported"}
-                      </small>
-                      <Badge status={r.status} />
-                    </div>
-                  </button>
-                ))}
-                {!visibleResources.length && (
-                  <div className="empty">
-                    {d.snapshot
-                      ? "No resources match."
-                      : !d.online
-                        ? "No saved resource data on this device."
-                        : d.error && !d.loading
-                          ? "Resource data unavailable. Use Refresh to retry."
-                          : "Loading resources…"}
-                  </div>
-                )}
-              </div>
-            </section>
-            <section className="panel health-panel" aria-label="Shard reads">
-              <div className="panel-heading">
-                <h2>Shard reads</h2>
-                <span className={`small-dot ${!d.stale ? "good" : ""}`} />
-              </div>
-              <p>Authoritative record reads</p>
-              {[0, 1, 2].map((shard) => (
-                <div className="shard-row" key={shard}>
-                  <span>
-                    <i className={!d.stale ? "good" : ""} />
-                    Shard {shard}
-                  </span>
-                  <strong>
-                    {!d.snapshot
-                      ? "Unknown"
-                      : d.stale
-                        ? "Unconfirmed"
-                        : "Available"}
-                  </strong>
-                </div>
-              ))}
-              <small>
-                {d.stale
-                  ? "Current availability is not confirmed."
-                  : "Each shard answered the latest authoritative reads."}{" "}
-                Pod readiness is not reported here.
-              </small>
-            </section>
-            <section className="panel queue-panel" aria-label="Matching queue">
-              <div className="panel-heading">
-                <h2>Matching queue</h2>
-                <span className="quiet-tag">BROKER</span>
-              </div>
-              <div className="queue-values">
-                <div>
-                  <strong>
-                    {d.snapshot?.queue.available ? d.snapshot.queue.ready : "—"}
-                  </strong>
-                  <span>Ready</span>
-                </div>
-                <div>
-                  <strong>
-                    {d.snapshot?.queue.available
-                      ? d.snapshot.queue.unacknowledged
-                      : "—"}
-                  </strong>
-                  <span>In flight</span>
-                </div>
-                <div
-                  className={
-                    d.snapshot?.queue.available && d.snapshot.queue.dead > 0
-                      ? "queue-problem"
-                      : ""
-                  }
-                >
-                  <strong>
-                    {d.snapshot?.queue.available ? d.snapshot.queue.dead : "—"}
-                  </strong>
-                  <span>Dead letter</span>
-                </div>
-              </div>
-              <small>
-                {d.snapshot?.queue.available
-                  ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`
-                  : "Queue telemetry unavailable. Counts are unknown."}
-              </small>
-            </section>
           </aside>
         </div>
+        <section className="operations-status" aria-label="System status">
+          <section className="panel health-panel" aria-label="Shard reads">
+            <div className="panel-heading">
+              <h2>Shard reads</h2>
+              <span className={`small-dot ${!d.stale ? "good" : ""}`} />
+            </div>
+            <p>Authoritative record reads</p>
+            {[0, 1, 2].map((shard) => (
+              <div className="shard-row" key={shard}>
+                <span>
+                  <i className={!d.stale ? "good" : ""} />
+                  Shard {shard}
+                </span>
+                <strong>
+                  {!d.snapshot
+                    ? "Unknown"
+                    : d.stale
+                      ? "Unconfirmed"
+                      : "Available"}
+                </strong>
+              </div>
+            ))}
+            <small>
+              {d.stale
+                ? "Current availability is not confirmed."
+                : "Each shard answered the latest authoritative reads."}{" "}
+              Pod readiness is not reported here.
+            </small>
+          </section>
+          <section className="panel queue-panel" aria-label="Matching queue">
+            <div className="panel-heading">
+              <h2>Matching queue</h2>
+              <span className="quiet-tag">BROKER</span>
+            </div>
+            <div className="queue-values">
+              <div>
+                <strong>
+                  {d.snapshot?.queue.available ? d.snapshot.queue.ready : "—"}
+                </strong>
+                <span>Ready</span>
+              </div>
+              <div>
+                <strong>
+                  {d.snapshot?.queue.available
+                    ? d.snapshot.queue.unacknowledged
+                    : "—"}
+                </strong>
+                <span>In flight</span>
+              </div>
+              <div
+                className={
+                  d.snapshot?.queue.available && d.snapshot.queue.dead > 0
+                    ? "queue-problem"
+                    : ""
+                }
+              >
+                <strong>
+                  {d.snapshot?.queue.available ? d.snapshot.queue.dead : "—"}
+                </strong>
+                <span>Dead letter</span>
+              </div>
+            </div>
+            <small>
+              {d.snapshot?.queue.available
+                ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`
+                : "Queue telemetry unavailable. Counts are unknown."}
+            </small>
+          </section>
+        </section>
         <footer>
           <span>
             <i className="small-dot good" />{" "}
@@ -921,15 +947,26 @@ function App() {
     </>
   );
 }
-function Metric({ title, value, note, color }) {
+function Metric({ title, value, note, color, pressed, onClick }) {
+  const Container = onClick ? "button" : "section";
   return (
-    <section className={`metric metric-${color}`}>
-      <div>
-        <span>{title}</span>
+    <Container
+      className={`metric metric-${color}`}
+      type={onClick ? "button" : undefined}
+      aria-pressed={pressed}
+      onClick={onClick}
+    >
+      <span className="metric-content">
+        <span className="metric-title">{title}</span>
         <strong>{value}</strong>
         <small>{note}</small>
-      </div>
-    </section>
+      </span>
+      {onClick && (
+        <span className="metric-action" aria-hidden="true">
+          {pressed ? "✓" : "→"}
+        </span>
+      )}
+    </Container>
   );
 }
 function Select({ label: caption, value, onChange, options, all }) {
