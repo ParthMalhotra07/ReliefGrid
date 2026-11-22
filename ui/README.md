@@ -114,3 +114,11 @@ deployment demonstration remains separate from the fixture acceptance.
 Place data: GeoNames (https://www.geonames.org), CC BY 4.0. Selected and
 simplified for offline search; 13 entries excluded for data errors; HSR Layout
 replaced by Ulsoor.
+
+## Font
+
+The UI bundles Inter (variable, Latin subset, `src/inter-latin-wght-normal.woff2`) from
+the `@fontsource-variable/inter` 5.3.0 package: Copyright 2016 The Inter Project Authors
+(https://github.com/rsms/inter), licensed under the SIL Open Font License 1.1
+(`src/inter-OFL.txt`, also included in `static/licenses.txt`). It is served from the app
+itself (`font-src 'self'`) and precached for offline use, with a system font fallback.

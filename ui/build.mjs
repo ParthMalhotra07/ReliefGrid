@@ -26,7 +26,7 @@ const result = await build({
   target: "es2022",
   entryNames: "app-[hash]",
   assetNames: "[name]-[hash]",
-  loader: { ".png": "file" },
+  loader: { ".png": "file", ".woff2": "file" },
   metafile: true,
   legalComments: "eof",
 });
@@ -46,6 +46,13 @@ for (const pkg of ["react", "react-dom", "leaflet"])
         )
       ).replaceAll("\r\n", "\n"),
   );
+// The bundled Inter font is under the SIL Open Font License 1.1.
+licenses.push(
+  "Inter (font)\n" +
+    (
+      await fs.readFile(path.join(root, "src", "inter-OFL.txt"), "utf8")
+    ).replaceAll("\r\n", "\n"),
+);
 await fs.writeFile(path.join(out, "licenses.txt"), licenses.join("\n\n"));
 const index = (await fs.readFile(path.join(root, "index.html"), "utf8"))
   .replace("@APP_JS@", "/assets/" + path.basename(js))

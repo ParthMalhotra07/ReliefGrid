@@ -28,12 +28,22 @@ import {
   sortRequests,
   waiting,
   waitingLabel,
+  nextBoundary,
   windowLabel,
   windowState,
 } from "./state.js";
 import { typeIcon } from "./icons.js";
+import { QueueTrend, sparkline } from "./trend.js";
+import { applyTheme, saveTheme, savedTheme, THEMES } from "./theme.js";
+// Before the first render, so the page never flashes the other theme.
+applyTheme(savedTheme());
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
 const SORT_KEY = "reliefgrid.dispatch.sort.v1";
+// The shared clock ticks every 5 s (feed times); window boundaries also wake
+// it exactly. Long waits are re-armed hourly.
+const CLOCK_MS = 5000;
+const BOUNDARY_MAX_MS = 3600000;
+
 // The chosen request sort, per browser; storage may be unavailable.
 function savedSort() {
   try {
@@ -57,6 +67,49 @@ const legendTypes = [
   ["TRANSPORTATION", "Transport"],
   ["SHELTER", "Shelter"],
 ];
+// The map's bundled type icon, announced by its type name.
+function ResourceIcon({ type }) {
+  const icon = typeIcon(type, label(type));
+  return icon ? (
+    <span
+      className="resource-icon"
+      dangerouslySetInnerHTML={{ __html: icon }}
+    />
+  ) : (
+    <span className="resource-icon" aria-hidden="true">
+      ◇
+    </span>
+  );
+}
+// Waiting plus retrying requests over the last 15 minutes.
+function QueueSparkline({ samples, summary, now }) {
+  const end = Math.max(now, samples.at(-1)?.at ?? now);
+  const points = sparkline(samples, end, 120, 24);
+  return (
+    <div className="queue-trend">
+      {points ? (
+        <>
+          <svg
+            role="img"
+            aria-label={summary(end)}
+            viewBox="0 0 120 24"
+            width="120"
+            height="24"
+            data-samples={samples.length}
+          >
+            <polyline points={points} />
+          </svg>
+          <strong className="trend-now" aria-hidden="true">
+            {samples.at(-1).count}
+          </strong>
+        </>
+      ) : (
+        <span className="trend-collecting">collecting…</span>
+      )}
+      <small>Waiting + retrying, last 15 min</small>
+    </div>
+  );
+}
 function WindowBadge({ resource, now }) {
   const text = windowLabel(resource, now);
   return text ? (
@@ -150,6 +203,8 @@ function useDispatch() {
     [toastsHeld, setToastsHeld] = useState(0);
   // Created once, not on every render.
   const [feedState] = useState(() => new Activity());
+  const [trendState] = useState(() => new QueueTrend());
+  const [trend, setTrend] = useState([]);
   const [noticeState] = useState(() => new Toasts());
   const feed = useRef(feedState),
     notices = useRef(noticeState),
@@ -192,6 +247,13 @@ function useDispatch() {
           current.current = next;
           setSnapshot(next);
           setActivity(feed.current.resolve(next));
+          // Waiting plus retrying in this successful read, for the sparkline.
+          setTrend(
+            trendState.add(
+              Date.now(),
+              requests.items.filter((r) => waiting(r.status)).length,
+            ),
+          );
           if (feed.current.fresh.length)
             setToasts(notices.current.add(feed.current.fresh));
           setToastsHeld(notices.current.held());
@@ -317,6 +379,8 @@ function useDispatch() {
     expire: useCallback(() => setToasts(notices.current.prune()), []),
     held,
     toastsHeld,
+    trend,
+    trendSummary: (now) => trendState.summary(now),
   };
 }
 function Badge({ status }) {
@@ -326,12 +390,7 @@ function Badge({ status }) {
     </span>
   );
 }
-function ActivityFeed({ items, held, onChoose }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 5000);
-    return () => clearInterval(timer);
-  }, []);
+function ActivityFeed({ items, held, now, onChoose }) {
   return (
     <section
       className="panel activity-panel"
@@ -425,15 +484,28 @@ function App() {
     [creating, setCreating] = useState(null),
     [explaining, setExplaining] = useState(false),
     [sort, setSort] = useState(savedSort),
-    // Browser clock for the waiting and window badges, refreshed every 30 s.
+    [theme, setTheme] = useState(savedTheme),
+    // The one clock for everything time-based on screen: window and waiting
+    // badges, the details panel, dimming reasons and feed times.
     [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30000);
+    const timer = setInterval(() => setNow(Date.now()), CLOCK_MS);
     return () => clearInterval(timer);
   }, []);
   const actionPending = useRef(false);
   const requests = d.snapshot?.requests.items || [],
     resources = d.snapshot?.resources.items || [];
+  // Besides the tick, wake exactly at the next window boundary so badges and
+  // dimming flip together. Re-armed after each boundary and on new data.
+  useEffect(() => {
+    const next = nextBoundary(resources, now);
+    if (next === undefined) return;
+    const timer = setTimeout(
+      () => setNow(Math.max(Date.now(), next)),
+      Math.min(next - Date.now() + 20, BOUNDARY_MAX_MS),
+    );
+    return () => clearTimeout(timer);
+  }, [resources, now]);
   const query = search.trim().toLowerCase();
   const visibleRequests = requests.filter(
     (r) =>
@@ -470,17 +542,25 @@ function App() {
     () => target && { ...target.location },
     [target?.requestId, target?.location.lat, target?.location.lng],
   );
+  const lastDimmed = useRef(new Map());
   const dimmed = useMemo(() => {
     const reasons = new Map();
-    if (!target) return reasons;
-    const now = Date.now();
-    for (const row of resources) {
-      if (reciprocal(target, row)) continue;
-      const reason = ineligible(target, row, now);
-      if (reason) reasons.set(row.resourceId, reason);
-    }
+    if (target)
+      for (const row of resources) {
+        if (reciprocal(target, row)) continue;
+        const reason = ineligible(target, row, now);
+        if (reason) reasons.set(row.resourceId, reason);
+      }
+    // Same reasons, same map: a clock tick alone does not redraw the pins.
+    const old = lastDimmed.current;
+    if (
+      old.size === reasons.size &&
+      [...reasons].every(([id, reason]) => old.get(id) === reason)
+    )
+      return old;
+    lastDimmed.current = reasons;
     return reasons;
-  }, [target, resources]);
+  }, [target, resources, now]);
   const mapSelection = useMemo(
     () =>
       resourceSelection
@@ -619,6 +699,23 @@ function App() {
             <i />
             {!d.online ? "Offline · saved view" : d.stream}
           </span>
+          <label className="theme-switch">
+            Theme
+            <select
+              aria-label="Colour theme"
+              value={theme}
+              onChange={(e) => {
+                setTheme(e.target.value);
+                saveTheme(e.target.value);
+              }}
+            >
+              {THEMES.map(([key, name]) => (
+                <option key={key} value={key}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className="session-label">Local dispatcher</span>
         </div>
       </header>
@@ -931,15 +1028,7 @@ function App() {
                       showDetailsOnMobile("resource-details");
                     }}
                   >
-                    <div className="resource-icon">
-                      {r.resourceType === "WATER"
-                        ? "◈"
-                        : r.resourceType === "FOOD"
-                          ? "✦"
-                          : r.resourceType === "MEDICINE"
-                            ? "+"
-                            : "◇"}
-                    </div>
+                    <ResourceIcon type={r.resourceType} />
                     <div>
                       <strong>{r.name}</strong>
                       <small>
@@ -1085,6 +1174,11 @@ function App() {
                     <span>Dead letter</span>
                   </div>
                 </div>
+                <QueueSparkline
+                  samples={d.trend}
+                  summary={d.trendSummary}
+                  now={now}
+                />
                 <small>
                   {d.snapshot?.queue.available
                     ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`
@@ -1095,6 +1189,7 @@ function App() {
             <ActivityFeed
               items={d.activity}
               held={d.held}
+              now={now}
               onChoose={chooseActivity}
             />
           </div>
@@ -1107,7 +1202,10 @@ function App() {
                 tabIndex={-1}
               >
                 <div className="panel-heading">
-                  <h2>{selectedResource.name}</h2>
+                  <h2 className="resource-title">
+                    <ResourceIcon type={selectedResource.resourceType} />
+                    {selectedResource.name}
+                  </h2>
                   <Badge status={selectedResource.status} />
                 </div>
                 <ShowOnMap

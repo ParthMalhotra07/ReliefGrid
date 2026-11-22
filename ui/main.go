@@ -41,6 +41,8 @@ func dispatchHandler(telemetry *queueTelemetry) http.Handler {
 			w.Header().Set("Content-Type", "image/svg+xml")
 		case strings.HasSuffix(name, ".png"):
 			w.Header().Set("Content-Type", "image/png")
+		case strings.HasSuffix(name, ".woff2"):
+			w.Header().Set("Content-Type", "font/woff2")
 		default:
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		}
