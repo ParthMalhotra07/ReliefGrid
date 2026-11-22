@@ -1639,3 +1639,125 @@ footer .small-dot {
   color: #60766a;
   cursor: pointer;
 }
+
+/* Request markers by urgency: normal 15 px, high 19 px, critical 21 px. */
+.urgency-high::after {
+  width: 19px;
+  height: 19px;
+}
+.urgency-critical::after {
+  width: 21px;
+  height: 21px;
+}
+.pin-pulse::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  border: 2px solid var(--pin);
+  box-sizing: border-box;
+  pointer-events: none;
+  animation: pin-pulse 1.8s ease-out infinite;
+}
+@keyframes pin-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  to {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-pulse::before {
+    animation: none;
+    opacity: 0;
+  }
+}
+/* Resource markers: a type icon on the resource colour. */
+.typed-pin::after {
+  display: none;
+}
+.typed-pin .type-icon {
+  width: 12px;
+  height: 12px;
+  padding: 3px;
+  box-sizing: content-box;
+  border-radius: 4px;
+  border: 2px solid white;
+  background: var(--pin);
+  color: white;
+  box-shadow: 0 1px 4px #192b36a0;
+}
+.typed-pin.pin-selected .type-icon,
+.typed-pin:focus-visible .type-icon {
+  outline: 2px solid var(--pin);
+  outline-offset: 2px;
+}
+.dot.high {
+  width: 8px;
+  height: 8px;
+  background: #995810;
+}
+.dot.critical {
+  width: 9px;
+  height: 9px;
+}
+.legend-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: #246893;
+  color: white;
+}
+.legend-icon .type-icon {
+  width: 10px;
+  height: 10px;
+}
+/* List sorting, waiting and availability window badges. */
+.list-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 0;
+  font-size: 11px;
+  color: #60766a;
+}
+.list-tools select {
+  font: inherit;
+  padding: 3px 6px;
+  border: 1px solid #dbe3de;
+  border-radius: 5px;
+  background: #fff;
+}
+.waiting-badge,
+.window-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.waiting-badge {
+  background: #fbf1df;
+  color: #8a5a14;
+}
+.window-badge {
+  background: #e8f2ee;
+  color: #1a6a52;
+}
+.window-badge.window-future {
+  background: #eaf0f7;
+  color: #285a86;
+}
+.window-badge.window-expired {
+  background: #f1eeee;
+  color: #7a5350;
+}

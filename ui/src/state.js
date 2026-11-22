@@ -135,9 +135,7 @@ export const RADIUS_KM = 50;
 export function ineligible(request, resource, now = Date.now()) {
   const distance = distanceKm(request.location, resource.location);
   if (distance > RADIUS_KM) return `Too far: ${Math.round(distance)} km`;
-  const from = Date.parse(resource.windowStart),
-    until = Date.parse(resource.windowEnd);
-  if (!(from <= now && now < until)) return "Window closed";
+  if (windowState(resource, now).state !== "open") return "Window closed";
   if (resource.resourceType !== request.requestType) return "Wrong type";
   if (resource.activeClaim || ["ASSIGNED", "BUSY"].includes(resource.status))
     return "Already assigned";
@@ -186,4 +184,85 @@ export function timings(createdAt, entries) {
     if (waited) out[last] = `Waited ${waited}`;
   }
   return out;
+}
+
+// The resource availability window as the backend checks it:
+// open when from <= now < until.
+export function windowState(resource, now = Date.now()) {
+  const from = Date.parse(resource.windowStart),
+    until = Date.parse(resource.windowEnd);
+  if (!Number.isFinite(from) || !Number.isFinite(until))
+    return { state: "unknown", ms: 0 };
+  if (now < from) return { state: "future", ms: from - now };
+  if (now < until) return { state: "open", ms: until - now };
+  return { state: "expired", ms: now - until };
+}
+// Whole minutes, rounded up, as "45 min" or "2 h 39 min".
+const minutes = (ms) => {
+  const total = Math.max(1, Math.ceil(ms / 60000));
+  return total < 60
+    ? `${total} min`
+    : `${Math.floor(total / 60)} h ${total % 60} min`;
+};
+export function windowLabel(resource, now = Date.now()) {
+  const { state, ms } = windowState(resource, now);
+  if (state === "open") return `Open · closes in ${minutes(ms)}`;
+  if (state === "future") return `Opens in ${minutes(ms)}`;
+  if (state === "expired") return "Expired";
+  return "";
+}
+
+export const waiting = (status) =>
+  status === "WAITING" || status === "RETRYING";
+// When a request started waiting: its first observed Waiting entry, or its
+// creation time if no Waiting entry was observed.
+export function waitingSince(request, history = []) {
+  const first = history.find((v) => v.status === "WAITING");
+  const at = Date.parse(first?.at ?? request.createdAt);
+  return Number.isFinite(at) ? at : Date.parse(request.createdAt);
+}
+// "waiting 12 min", "waiting 1 h 13 min", "waiting 2 d 3 h".
+export function waitingLabel(request, history, now = Date.now()) {
+  const total = Math.max(
+    0,
+    Math.floor((now - waitingSince(request, history)) / 60000),
+  );
+  if (total < 60) return `waiting ${total} min`;
+  if (total < 1440)
+    return `waiting ${Math.floor(total / 60)} h ${total % 60} min`;
+  return `waiting ${Math.floor(total / 1440)} d ${Math.floor((total % 1440) / 60)} h`;
+}
+
+export const SORTS = [
+  ["urgency", "Urgency"],
+  ["oldest-waiting", "Oldest waiting"],
+  ["newest", "Newest"],
+];
+const urgencyRank = { CRITICAL: 0, HIGH: 1, NORMAL: 2 };
+const created = (r) => Date.parse(r.createdAt) || 0;
+// Urgency: most urgent first, then oldest created. Oldest waiting: waiting
+// and retrying requests by how long they have waited, then the rest, oldest
+// created first. Newest: most recently created first.
+export function sortRequests(rows, mode, history = {}) {
+  const byCreated = (a, b) =>
+    created(a) - created(b) || a.requestId.localeCompare(b.requestId);
+  const sorted = [...rows];
+  if (mode === "newest") return sorted.sort((a, b) => -byCreated(a, b));
+  if (mode === "oldest-waiting")
+    return sorted.sort((a, b) => {
+      const wa = waiting(a.status),
+        wb = waiting(b.status);
+      if (wa !== wb) return wa ? -1 : 1;
+      if (wa)
+        return (
+          waitingSince(a, history[a.requestId]) -
+            waitingSince(b, history[b.requestId]) || byCreated(a, b)
+        );
+      return byCreated(a, b);
+    });
+  return sorted.sort(
+    (a, b) =>
+      (urgencyRank[a.urgency] ?? 3) - (urgencyRank[b.urgency] ?? 3) ||
+      byCreated(a, b),
+  );
 }

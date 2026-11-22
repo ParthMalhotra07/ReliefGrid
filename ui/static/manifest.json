@@ -1,8 +1,8 @@
 {
-  "revision": "316a32bf0d7f4f52",
+  "revision": "088e4e105acef11c",
   "assets": [
-    "/assets/app-46LANJRR.css",
-    "/assets/app-7HE2C2SN.js",
+    "/assets/app-ED7CL5RF.css",
+    "/assets/app-EHQ4BFHP.js",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
@@ -13,26 +13,27 @@
     "index.html": "7f4a49b1f0641b892835a3977acda5379b42d014915d04e832262447d1e85d22",
     "package-lock.json": "617c6a871ed4179c6fde59669bf6ca26d1a74bbc679eecb57ad97d928c667dda",
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
-    "src/App.jsx": "e8530d712e2c742b0e43065c852470f27c19347cdeb6d84147617b814ca00edd",
+    "src/App.jsx": "f15d58e2c2a99a17ceeb139c4c76a3079f8f208484742f8fe4da360f9165ffda",
     "src/CreateDialog.jsx": "75c2d45c26ae0dc98a605d78d7f5d4aaa25c2fcaefb66cce680f1a68cb561c76",
-    "src/DispatchMap.jsx": "79dae233e329eae6ed33503365802400af12466d01fbb557c61236534b2350cb",
+    "src/DispatchMap.jsx": "a21455ae186598a9fa53d757aea3d303446c15b8397340036b57d420652afa51",
     "src/activity.js": "7083b05f43cc91a9a0b4f95ebe7ec05e019e10a707dda9357bb223bab3c6447a",
-    "src/app.css": "62a6484a8f6d744ba44acaad010b62d0b28e6b74cc3f3b4275afa33b3f35df1a",
+    "src/app.css": "a5e0330021706d7647f8cb6625100339a7051d34bca7e1b48fc3a165a4b49408",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
+    "src/icons.js": "6aad93a97faadb232edda0ebfca0b487dd0f1ea9a284e749adada063fce4ec0f",
     "src/places.js": "ae5b9aee94409dfd00ee9459b539b1e097b8d7ced950c1f1228098d66b111449",
     "src/places.json": "994533411832b238d660ba3ad70524f24e9108233165be59e10245a6e4763e48",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
-    "src/state.js": "a81ba686c4f24d50300095423e1caf1ccd2ed3a7c904a9a8398d1fb27ba30479",
+    "src/state.js": "991645318b910402c30ae809ec10a535e4713958d2d12606a224b6362b655f22",
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-46LANJRR.css": "d4d63e63e567db7f5bef1ee4334b17948c0669f44a8136910372004352e4d7b4",
-    "app-7HE2C2SN.js": "8a9052804248dc9f5c27fda7b47b2a03d682fe9f3213f8f5b94c28f16bae688c",
-    "index.html": "354e100b4b029cac2b8d8c063c40a9ba784b0ad50682a5ae1286e0c73fb9d27a",
+    "app-ED7CL5RF.css": "3e7baba4bbcca0a591ebe6d287c5f103037f091122ded4d7df82ea002b994338",
+    "app-EHQ4BFHP.js": "e434ae8fa6c624bbcf8e06e066f8bf18023bf95bd5bbd7ec0d8dccf691a93d44",
+    "index.html": "f58c774b6cbe30cc9807a6982d7f8b74b988ce1b38c3a55bca9c9f9ce34b4cf9",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "f44af705f88f4e063c0e1661184317b80174a1ceb279643fd74ceae069b44307"
+    "sw.js": "8c2d2f47696dc4a9311345cd22486f6faa6e78c3b1afb0067217b24ebef0b246"
   }
 }

@@ -24,8 +24,47 @@ import {
   TYPES,
   terminal,
   timings,
+  SORTS,
+  sortRequests,
+  waiting,
+  waitingLabel,
+  windowLabel,
+  windowState,
 } from "./state.js";
+import { typeIcon } from "./icons.js";
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
+const SORT_KEY = "reliefgrid.dispatch.sort.v1";
+// The chosen request sort, per browser; storage may be unavailable.
+function savedSort() {
+  try {
+    const value = localStorage.getItem(SORT_KEY);
+    return SORTS.some(([key]) => key === value) ? value : "urgency";
+  } catch {
+    return "urgency";
+  }
+}
+function saveSort(value) {
+  try {
+    localStorage.setItem(SORT_KEY, value);
+  } catch {
+    /* The choice still applies for this page. */
+  }
+}
+const legendTypes = [
+  ["WATER", "Water"],
+  ["FOOD", "Food"],
+  ["MEDICINE", "Medicine"],
+  ["TRANSPORTATION", "Transport"],
+  ["SHELTER", "Shelter"],
+];
+function WindowBadge({ resource, now }) {
+  const text = windowLabel(resource, now);
+  return text ? (
+    <span className={`window-badge window-${windowState(resource, now).state}`}>
+      {text}
+    </span>
+  ) : null;
+}
 // Mirrors internal/workflow: candidates.go (radiusKM, eligible), retry.go
 // (retryDelay 5 s, 30 s, then 120 s) and the resource wake in reconcile.go.
 const matchingSteps = [
@@ -384,7 +423,14 @@ function App() {
     [actionError, setActionError] = useState(""),
     [uncertain, setUncertain] = useState(null),
     [creating, setCreating] = useState(null),
-    [explaining, setExplaining] = useState(false);
+    [explaining, setExplaining] = useState(false),
+    [sort, setSort] = useState(savedSort),
+    // Browser clock for the waiting and window badges, refreshed every 30 s.
+    [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const actionPending = useRef(false);
   const requests = d.snapshot?.requests.items || [],
     resources = d.snapshot?.resources.items || [];
@@ -788,41 +834,69 @@ function App() {
                 </h2>
                 <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
               </div>
+              <label className="list-tools">
+                Sort
+                <select
+                  aria-label="Sort requests"
+                  value={sort}
+                  onChange={(e) => {
+                    setSort(e.target.value);
+                    saveSort(e.target.value);
+                  }}
+                >
+                  {SORTS.map(([key, name]) => (
+                    <option key={key} value={key}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="request-cards">
-                {visibleRequests.map((r) => (
-                  <button
-                    key={r.requestId}
-                    className={`request-card ${chosen?.requestId === r.requestId ? "selected" : ""}`}
-                    aria-pressed={chosen?.requestId === r.requestId}
-                    onClick={() => {
-                      pickRequest(r);
-                      showDetailsOnMobile("request-details");
-                    }}
-                  >
-                    <div className="card-top">
-                      <span className={`urgency urgency-${r.urgency}`}>
-                        {r.urgency}
-                      </span>
-                      <span className="mono">#{short(r.requestId)}</span>
-                    </div>
-                    <strong>
-                      {r.details || `${label(r.requestType)} request`}
-                    </strong>
-                    <div className="card-meta">
-                      {label(r.requestType)} <span>·</span> {r.peopleAffected}{" "}
-                      people
-                    </div>
-                    <div className="card-bottom">
-                      <Badge status={r.status} />
-                      <small>{time(r.updatedAt)}</small>
-                    </div>
-                    {retryReason(r.status, r.lastError) && (
-                      <span className="retry-reason">
-                        {retryReason(r.status, r.lastError)}
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {sortRequests(visibleRequests, sort, d.snapshot?.history).map(
+                  (r) => (
+                    <button
+                      key={r.requestId}
+                      className={`request-card ${chosen?.requestId === r.requestId ? "selected" : ""}`}
+                      aria-pressed={chosen?.requestId === r.requestId}
+                      onClick={() => {
+                        pickRequest(r);
+                        showDetailsOnMobile("request-details");
+                      }}
+                    >
+                      <div className="card-top">
+                        <span className={`urgency urgency-${r.urgency}`}>
+                          {r.urgency}
+                        </span>
+                        <span className="mono">#{short(r.requestId)}</span>
+                      </div>
+                      <strong>
+                        {r.details || `${label(r.requestType)} request`}
+                      </strong>
+                      <div className="card-meta">
+                        {label(r.requestType)} <span>·</span> {r.peopleAffected}{" "}
+                        people
+                      </div>
+                      <div className="card-bottom">
+                        <Badge status={r.status} />
+                        {waiting(r.status) && (
+                          <span className="waiting-badge">
+                            {waitingLabel(
+                              r,
+                              d.snapshot?.history?.[r.requestId],
+                              now,
+                            )}
+                          </span>
+                        )}
+                        <small>{time(r.updatedAt)}</small>
+                      </div>
+                      {retryReason(r.status, r.lastError) && (
+                        <span className="retry-reason">
+                          {retryReason(r.status, r.lastError)}
+                        </span>
+                      )}
+                    </button>
+                  ),
+                )}
                 {!visibleRequests.length && (
                   <div className="empty">
                     {!d.snapshot
@@ -874,7 +948,8 @@ function App() {
                           ? "Assigned #" + short(r.activeClaim.requestId)
                           : "No active claim reported"}
                       </small>
-                      <Badge status={r.status} />
+                      <Badge status={r.status} />{" "}
+                      <WindowBadge resource={r} now={now} />
                     </div>
                   </button>
                 ))}
@@ -916,14 +991,23 @@ function App() {
               />
               <div className="map-legend">
                 <span>
-                  <i className="dot critical" /> Critical request
+                  <i className="dot critical" /> Critical request (pulses)
                 </span>
                 <span>
-                  <i className="dot normal" /> Request
+                  <i className="dot high" /> High urgency
                 </span>
                 <span>
-                  <i className="resource-dot" /> Resource
+                  <i className="dot normal" /> Normal request
                 </span>
+                {legendTypes.map(([type, name]) => (
+                  <span key={type}>
+                    <i
+                      className="legend-icon"
+                      dangerouslySetInnerHTML={{ __html: typeIcon(type) }}
+                    />{" "}
+                    {name}
+                  </span>
+                ))}
                 <span>
                   <i className="assignment-line" /> Assignment
                 </span>
@@ -1037,6 +1121,10 @@ function App() {
                   ["Coordinates", coordinates(selectedResource.location)],
                   ["Available from", dateTime(selectedResource.windowStart)],
                   ["Available until", dateTime(selectedResource.windowEnd)],
+                  [
+                    "Window",
+                    <WindowBadge resource={selectedResource} now={now} />,
+                  ],
                   [
                     "Assigned to",
                     chosen ? (
