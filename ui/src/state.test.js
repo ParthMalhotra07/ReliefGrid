@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { EventIDs, list, observe, reciprocal } from "./state.js";
+import { EventIDs, list, observe, reciprocal, retryReason } from "./state.js";
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222",
   c = "33333333-3333-4333-8333-333333333333";
@@ -70,4 +70,28 @@ test("an assignment line requires the current reciprocal claim", () => {
     reciprocal(req, { resourceId: b, activeClaim: { requestId: a } }),
     true,
   );
+});
+test("retry reasons are shown only for the state they explain", () => {
+  assert.equal(
+    retryReason("WAITING", "NO_CANDIDATE"),
+    "No matching resource within 50 km yet",
+  );
+  assert.match(retryReason("RETRYING", "OUTCOME_UNKNOWN"), /not confirmed/);
+  assert.match(retryReason("WAITING", "SOMETHING_NEW"), /retry/i);
+  for (const status of [
+    "FULFILLED",
+    "CANCELLED",
+    "MATCHED",
+    "IN_PROGRESS",
+    "CANCELLING",
+    "FULFILLING",
+  ])
+    for (const code of [
+      "NO_CANDIDATE",
+      "RESOURCE_AVAILABLE",
+      "OUTCOME_UNKNOWN",
+    ])
+      assert.equal(retryReason(status, code), "");
+  assert.equal(retryReason("MATCHING", "NO_CANDIDATE"), "");
+  assert.equal(retryReason("WAITING", ""), "");
 });

@@ -135,6 +135,12 @@ http
           ? { ...response, status: "WAITING", version: "v2" }
           : response;
       creations.set(slot, { kind, body: raw, response, current });
+      // Like the outbox relay, a committed creation reaches every live client.
+      const created = randomUUID();
+      for (const c of clients)
+        c.write(
+          `id: ${created}\nevent: change\ndata: ${JSON.stringify({ entityId: id, entityVersion: 1, eventType: kind + ".created", eventId: created })}\n\n`,
+        );
       return send(res, 201, response);
     }
     if (

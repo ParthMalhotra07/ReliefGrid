@@ -17,6 +17,7 @@ import {
   observe,
   reciprocal,
   REQUEST_STATUSES,
+  retryReason,
   TYPES,
   terminal,
 } from "./state.js";
@@ -590,8 +591,10 @@ function App() {
                       <Badge status={r.status} />
                       <small>{time(r.updatedAt)}</small>
                     </div>
-                    {r.lastError && (
-                      <span className="retry-reason">{r.lastError}</span>
+                    {retryReason(r.status, r.lastError) && (
+                      <span className="retry-reason">
+                        {retryReason(r.status, r.lastError)}
+                      </span>
                     )}
                   </button>
                 ))}
@@ -778,32 +781,6 @@ function App() {
                       </button>
                     </div>
                   )}
-                  <ol className="timeline-items">
-                    <li>
-                      <i />
-                      <div>
-                        <strong>Request created</strong>
-                        <small>{time(chosen.createdAt)}</small>
-                      </div>
-                    </li>
-                    {(d.snapshot.history?.[chosen.requestId] || []).map(
-                      (v, i) => (
-                        <li key={v.version + "-" + i}>
-                          <i />
-                          <div>
-                            <strong>{label(v.status)}</strong>
-                            <small>
-                              {time(v.at)} · observed {v.version}
-                            </small>
-                          </div>
-                        </li>
-                      ),
-                    )}
-                  </ol>
-                  <p className="timeline-note">
-                    Observed changes only. Reconnecting refreshes the current
-                    state.
-                  </p>
                   <div className="actions">
                     {["PENDING", "WAITING"].includes(chosen.status) && (
                       <button
@@ -849,6 +826,32 @@ function App() {
                       </p>
                     )}
                   </div>
+                  <ol className="timeline-items">
+                    <li>
+                      <i />
+                      <div>
+                        <strong>Request created</strong>
+                        <small>{time(chosen.createdAt)}</small>
+                      </div>
+                    </li>
+                    {(d.snapshot.history?.[chosen.requestId] || []).map(
+                      (v, i) => (
+                        <li key={v.version + "-" + i}>
+                          <i />
+                          <div>
+                            <strong>{label(v.status)}</strong>
+                            <small>
+                              {time(v.at)} · observed {v.version}
+                            </small>
+                          </div>
+                        </li>
+                      ),
+                    )}
+                  </ol>
+                  <p className="timeline-note">
+                    Observed changes only. Reconnecting refreshes the current
+                    state.
+                  </p>
                 </>
               ) : (
                 <div className="empty detail-empty">

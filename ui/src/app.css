@@ -1251,3 +1251,71 @@ footer .small-dot {
     grid-template-columns: 1fr;
   }
 }
+.group-pin::after {
+  display: none;
+}
+.group-pin > span {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  border: 2px solid white;
+  background: var(--pin);
+  color: white;
+  font:
+    700 11px/18px system-ui,
+    sans-serif;
+  text-align: center;
+  box-shadow: 0 1px 4px #192b36a0;
+}
+.group-pin.pin-selected > span,
+.group-pin:focus-visible > span {
+  outline: 2px solid var(--pin);
+  outline-offset: 2px;
+}
+.record-chooser .leaflet-popup-content {
+  margin: 8px;
+  min-width: 210px;
+}
+.record-chooser-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.record-choice {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  text-align: left;
+  padding: 6px 8px;
+  border: 1px solid #dbe3de;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2d2a;
+  cursor: pointer;
+  font: inherit;
+}
+.record-choice:hover,
+.record-choice:focus-visible,
+.record-choice.active {
+  border-color: #1a7168;
+  background: #eef6f3;
+}
+.record-kind {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  color: #5b6b66;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.record-title {
+  font-weight: 600;
+}
+.record-status {
+  font-size: 10px;
+  font-weight: 700;
+  color: #5b6b66;
+}

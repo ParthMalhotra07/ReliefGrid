@@ -92,3 +92,25 @@ export function reciprocal(request, resource) {
 }
 export const terminal = (status) =>
   status === "CANCELLED" || status === "FULFILLED";
+// lastError is sticky in the FSM: it keeps the code of the most recent retry
+// even after the request moves on. Translate a code only while the request is
+// still in a state that code can explain; other states show nothing.
+const waitingReasons = {
+  NO_CANDIDATE: "No matching resource within 50 km yet",
+  RESOURCE_AVAILABLE: "A resource became available nearby; matching again",
+  ATTEMPT_CLOSED: "The previous match was released; matching again",
+};
+const retryReasons = {
+  OUTCOME_UNKNOWN: "Last matching step was not confirmed; it will be retried",
+  INCOMPLETE_SCAN: "Some resources could not be checked; matching will retry",
+  CONCURRENT_CHANGE: "The request changed during matching; matching will retry",
+  RECOVERY_PENDING: "Checking a previous match before retrying",
+  WORKFLOW_RETRY: "Matching hit a temporary problem and will retry",
+};
+const retryStates = new Set(["PENDING", "WAITING", "MATCHING", "RETRYING"]);
+export function retryReason(status, code) {
+  if (!code || !retryStates.has(status)) return "";
+  if (code in waitingReasons)
+    return status === "WAITING" ? waitingReasons[code] : "";
+  return retryReasons[code] || "Matching will retry automatically";
+}
