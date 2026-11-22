@@ -1,8 +1,8 @@
 {
-  "revision": "d23e2f825fe2e50a",
+  "revision": "59f335390f1cb176",
   "assets": [
-    "/assets/app-6BA35EFT.js",
-    "/assets/app-R5BMYX7X.css",
+    "/assets/app-QBCX56LI.js",
+    "/assets/app-X7ITX5OC.css",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
@@ -13,27 +13,28 @@
     "index.html": "7f4a49b1f0641b892835a3977acda5379b42d014915d04e832262447d1e85d22",
     "package-lock.json": "617c6a871ed4179c6fde59669bf6ca26d1a74bbc679eecb57ad97d928c667dda",
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
-    "src/App.jsx": "ea171c1607974b8d24df430481eaa29c3bb9c5df698e82a3267c674490a390ae",
+    "src/App.jsx": "4160435e77e2792aa2df981b30e10cd6cd39c4ac871899ee4153f948566f3b1b",
     "src/CreateDialog.jsx": "75c2d45c26ae0dc98a605d78d7f5d4aaa25c2fcaefb66cce680f1a68cb561c76",
     "src/DispatchMap.jsx": "a21455ae186598a9fa53d757aea3d303446c15b8397340036b57d420652afa51",
     "src/activity.js": "7083b05f43cc91a9a0b4f95ebe7ec05e019e10a707dda9357bb223bab3c6447a",
-    "src/app.css": "d1d6c5aae11e84241f085a5db989d0627f293ee4c4b6524265154ce64a9db250",
+    "src/app.css": "bffd04aaa1ce03ac63e5119899a33fa478e3c31a2d4cbfbeb8e61422d82d32d5",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/icons.js": "62e666463c0f0d1a3ec74272361de3725b2193273c78fd771f839a29934717cc",
     "src/places.js": "ae5b9aee94409dfd00ee9459b539b1e097b8d7ced950c1f1228098d66b111449",
     "src/places.json": "994533411832b238d660ba3ad70524f24e9108233165be59e10245a6e4763e48",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
     "src/state.js": "0bd48bd73cd91028717490837771731938c19ddd30ed0dcace1f996e034c71e8",
+    "src/trend.js": "c8217b0a0f6ba70d010477039f99d24fb9cd2e0396a66ab6e3fad05f3d59153f",
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-6BA35EFT.js": "34b561e905fd45c8b69735bd23baa62df9edfbe34b55f9c8402205c7c321e43d",
-    "app-R5BMYX7X.css": "30ad13dcd448ab3f9e41c8408fde7b2327a277d7d7d835920242dbcb2dbb0d38",
-    "index.html": "9c827a1d40c7f4cfbd00b3240503579ca7fd99f44668b4ed848d6448e65791f0",
+    "app-QBCX56LI.js": "cef47403bb46643a5de59b857c35665449188445019c51fa8d6867b46bb53c11",
+    "app-X7ITX5OC.css": "a07016012b7b1a3d443f237d0b7a7d9877be5f1f02b6b1934815fa6cef20a6c5",
+    "index.html": "cb57265839a653b1aad6218e81156a8d6a99cfdb7c96d3f112072beb68219d98",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
     "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "48fe657113253fe94806cac544ed6c801e02a1b5384db3f42fe7e1d2cb930630"
+    "sw.js": "efbb7ccc0d909fb79551e6fc4ad9ed8822fe95112db0021a326a0c95d1709f16"
   }
 }

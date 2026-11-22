@@ -33,6 +33,7 @@ import {
   windowState,
 } from "./state.js";
 import { typeIcon } from "./icons.js";
+import { QueueTrend, sparkline } from "./trend.js";
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
 const SORT_KEY = "reliefgrid.dispatch.sort.v1";
 // The shared clock ticks every 5 s (feed times); window boundaries also wake
@@ -75,6 +76,35 @@ function ResourceIcon({ type }) {
     <span className="resource-icon" aria-hidden="true">
       ◇
     </span>
+  );
+}
+// Waiting plus retrying requests over the last 15 minutes.
+function QueueSparkline({ samples, summary, now }) {
+  const end = Math.max(now, samples.at(-1)?.at ?? now);
+  const points = sparkline(samples, end, 120, 24);
+  return (
+    <div className="queue-trend">
+      {points ? (
+        <>
+          <svg
+            role="img"
+            aria-label={summary(end)}
+            viewBox="0 0 120 24"
+            width="120"
+            height="24"
+            data-samples={samples.length}
+          >
+            <polyline points={points} />
+          </svg>
+          <strong className="trend-now" aria-hidden="true">
+            {samples.at(-1).count}
+          </strong>
+        </>
+      ) : (
+        <span className="trend-collecting">collecting…</span>
+      )}
+      <small>Waiting + retrying, last 15 min</small>
+    </div>
   );
 }
 function WindowBadge({ resource, now }) {
@@ -170,6 +200,8 @@ function useDispatch() {
     [toastsHeld, setToastsHeld] = useState(0);
   // Created once, not on every render.
   const [feedState] = useState(() => new Activity());
+  const [trendState] = useState(() => new QueueTrend());
+  const [trend, setTrend] = useState([]);
   const [noticeState] = useState(() => new Toasts());
   const feed = useRef(feedState),
     notices = useRef(noticeState),
@@ -212,6 +244,13 @@ function useDispatch() {
           current.current = next;
           setSnapshot(next);
           setActivity(feed.current.resolve(next));
+          // Waiting plus retrying in this successful read, for the sparkline.
+          setTrend(
+            trendState.add(
+              Date.now(),
+              requests.items.filter((r) => waiting(r.status)).length,
+            ),
+          );
           if (feed.current.fresh.length)
             setToasts(notices.current.add(feed.current.fresh));
           setToastsHeld(notices.current.held());
@@ -337,6 +376,8 @@ function useDispatch() {
     expire: useCallback(() => setToasts(notices.current.prune()), []),
     held,
     toastsHeld,
+    trend,
+    trendSummary: (now) => trendState.summary(now),
   };
 }
 function Badge({ status }) {
@@ -1112,6 +1153,11 @@ function App() {
                     <span>Dead letter</span>
                   </div>
                 </div>
+                <QueueSparkline
+                  samples={d.trend}
+                  summary={d.trendSummary}
+                  now={now}
+                />
                 <small>
                   {d.snapshot?.queue.available
                     ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`

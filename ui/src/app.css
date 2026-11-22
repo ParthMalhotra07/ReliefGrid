@@ -1773,3 +1773,33 @@ footer .small-dot {
 .resource-title .resource-icon {
   flex: none;
 }
+.queue-trend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 0 18px 8px;
+}
+.queue-trend svg {
+  overflow: visible;
+}
+.queue-trend polyline {
+  fill: none;
+  stroke: #1a7168;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.trend-now {
+  font-size: 16px;
+  color: #1d3d36;
+}
+.trend-collecting {
+  font-size: 11px;
+  color: #60766a;
+}
+.queue-trend small {
+  flex-basis: 100%;
+  font-size: 10px;
+  color: #60766a;
+}

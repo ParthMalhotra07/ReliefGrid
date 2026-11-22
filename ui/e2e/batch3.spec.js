@@ -245,3 +245,85 @@ test.describe("one shared clock", () => {
     for (const v of seen) expect(v.card).toBe(v.details);
   });
 });
+
+test("the queue sparkline follows waiting and retrying requests over 15 minutes", async ({
+  page,
+  request,
+}) => {
+  await page.clock.install({ time: new Date("2026-11-05T12:00:00Z") });
+  await request.post("/__test/state", { data: { status: "WAITING" } });
+  const rows = [];
+  for (const [details, lat] of [
+    ["Queue meals one", 19.2],
+    ["Queue meals two", 19.25],
+  ])
+    rows.push(
+      await create(request, "requests", {
+        requestType: "FOOD",
+        urgency: "NORMAL",
+        peopleAffected: 2,
+        details,
+        location: { lat, lng: 72.85 },
+      }),
+    );
+  // Retrying requests count as queued too.
+  await request.post("/__test/patch", {
+    data: { id: rows[1].requestId, set: { status: "RETRYING" } },
+  });
+  const paths = new Set();
+  let reads = 0;
+  page.on("request", (r) => {
+    const url = new URL(r.url());
+    if (url.host !== "127.0.0.1:3412") return;
+    paths.add(url.pathname);
+    if (url.pathname === "/api/v1/requests") reads++;
+  });
+  await page.goto("/");
+  const panel = page.getByRole("region", { name: "Matching queue" });
+  const chart = panel.getByRole("img", { name: /^Queue:/ });
+  await expect(chart).toHaveAccessibleName(
+    "Queue: 3 now, peak 3 in last 15 min",
+  );
+  await expect(panel.locator(".trend-now")).toHaveText("3");
+  // Two requests leave the queue; the next ordinary 15 s read samples it.
+  for (const row of rows)
+    await request.post("/__test/patch", {
+      data: { id: row.requestId, set: { status: "MATCHED" } },
+    });
+  await page.clock.runFor(15000);
+  await expect(chart).toHaveAccessibleName(
+    "Queue: 1 now, peak 3 in last 15 min",
+  );
+  await expect(panel.locator(".trend-now")).toHaveText("1");
+  const points = await chart.locator("polyline").getAttribute("points");
+  expect(points.split(" ").length).toBeGreaterThanOrEqual(2);
+  // No new polling: the usual read every 15 s, and only existing endpoints.
+  const before = reads;
+  await page.clock.runFor(60000);
+  expect(reads - before).toBeLessThanOrEqual(5);
+  expect([...paths].filter((v) => /^\/(api|ui)\//.test(v)).sort()).toEqual([
+    "/api/v1/events",
+    "/api/v1/requests",
+    "/api/v1/resources",
+    "/ui/status",
+  ]);
+  // After 15 minutes the earlier peak has left the window.
+  await page.clock.runFor(16 * 60000);
+  await expect(chart).toHaveAccessibleName(
+    "Queue: 1 now, peak 1 in last 15 min",
+  );
+  expect(Number(await chart.getAttribute("data-samples"))).toBeLessThanOrEqual(
+    90,
+  );
+});
+
+test("the sparkline says it is collecting before the first read", async ({
+  page,
+  request,
+}) => {
+  await request.post("/__test/state", { data: { fail: true } });
+  await page.goto("/");
+  const panel = page.getByRole("region", { name: "Matching queue" });
+  await expect(panel.getByText("collecting…")).toBeVisible();
+  await expect(panel.getByRole("img", { name: /^Queue:/ })).toHaveCount(0);
+});
