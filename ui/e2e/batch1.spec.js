@@ -468,3 +468,27 @@ test("a new resource form also defaults to a six hour window when submitted unch
     6,
   );
 });
+
+test("the shared timer clears toast state once toasts have expired", async ({
+  page,
+  request,
+}) => {
+  await page.clock.install();
+  await request.post("/__test/state", { data: { status: "WAITING" } });
+  await page.goto("/");
+  await live(page);
+  const region = page.getByRole("region", { name: "Notifications" });
+  const held = async () => Number(await region.getAttribute("data-held"));
+  await request.post("/__test/state", {
+    data: { status: "MATCHED", eventId: eventId() },
+  });
+  await expect(region.getByRole("status")).toHaveText(
+    "Request #11111111 matched to Water team Alpha",
+  );
+  await page.clock.runFor(5000);
+  expect(await held()).toBeGreaterThan(0);
+  // Burst bookkeeping outlives the toast; only the timer removes it.
+  await page.clock.runFor(25000);
+  await expect.poll(held).toBe(0);
+  await expect(region.getByRole("status")).toHaveCount(0);
+});

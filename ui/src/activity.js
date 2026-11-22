@@ -261,12 +261,26 @@ export class Toasts {
         text: `${count} requests ${entry.action}`,
       });
     }
-    return this.show(all);
+    this.show(all);
+    return this.expire();
+  }
+  // Toasts and burst bookkeeping held in memory.
+  held() {
+    return this.all.length + this.events.length;
+  }
+  // Drops expired toasts and old burst events and keeps the held total within
+  // HELD_LIMIT. Called on every add and by the feed's timer.
+  expire() {
+    const now = this.now();
+    this.events = this.events.filter((v) => now - v.at <= 10 * TOAST_WINDOW);
+    const all = this.all.filter((v) => v.expires > now).slice(0, HELD_LIMIT);
+    const room = Math.max(0, HELD_LIMIT - all.length);
+    if (this.events.length > room)
+      this.events = this.events.slice(this.events.length - room);
+    return all.length === this.all.length ? this.list : this.show(all);
   }
   prune() {
-    const now = this.now();
-    const kept = this.all.filter((v) => v.expires > now);
-    return kept.length === this.all.length ? this.list : this.show(kept);
+    return this.expire();
   }
   dismiss(key) {
     return this.show(this.all.filter((v) => v.key !== key));

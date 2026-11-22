@@ -107,7 +107,8 @@ function useDispatch() {
     [offlineReady, setOfflineReady] = useState(false),
     [activity, setActivity] = useState([]),
     [toasts, setToasts] = useState([]),
-    [held, setHeld] = useState(0);
+    [held, setHeld] = useState(0),
+    [toastsHeld, setToastsHeld] = useState(0);
   // Created once, not on every render.
   const [feedState] = useState(() => new Activity());
   const [noticeState] = useState(() => new Toasts());
@@ -154,6 +155,7 @@ function useDispatch() {
           setActivity(feed.current.resolve(next));
           if (feed.current.fresh.length)
             setToasts(notices.current.add(feed.current.fresh));
+          setToastsHeld(notices.current.held());
           setStale(false);
           setError("");
           try {
@@ -184,6 +186,8 @@ function useDispatch() {
     const timer = setInterval(() => {
       feed.current.expire();
       setHeld(feed.current.held());
+      setToasts(notices.current.expire());
+      setToastsHeld(notices.current.held());
     }, 5000);
     return () => clearInterval(timer);
   }, []);
@@ -273,6 +277,7 @@ function useDispatch() {
     dismiss: useCallback((key) => setToasts(notices.current.dismiss(key)), []),
     expire: useCallback(() => setToasts(notices.current.prune()), []),
     held,
+    toastsHeld,
   };
 }
 function Badge({ status }) {
@@ -318,7 +323,7 @@ function ActivityFeed({ items, held, onChoose }) {
     </section>
   );
 }
-function Notifications({ toasts, dismiss, expire }) {
+function Notifications({ toasts, held, dismiss, expire }) {
   useEffect(() => {
     if (!toasts.length) return;
     const next = Math.min(...toasts.map((v) => v.expires));
@@ -326,7 +331,7 @@ function Notifications({ toasts, dismiss, expire }) {
     return () => clearTimeout(timer);
   }, [toasts, expire]);
   return (
-    <section className="toasts" aria-label="Notifications">
+    <section className="toasts" aria-label="Notifications" data-held={held}>
       {toasts.map((toast) => (
         <div className="toast" key={toast.key}>
           <p role="status">{toast.text}</p>
@@ -535,7 +540,12 @@ function App() {
   };
   return (
     <>
-      <Notifications toasts={d.toasts} dismiss={d.dismiss} expire={d.expire} />
+      <Notifications
+        toasts={d.toasts}
+        held={d.toastsHeld}
+        dismiss={d.dismiss}
+        expire={d.expire}
+      />
       {creating && (
         <CreateDialog
           kind={creating}

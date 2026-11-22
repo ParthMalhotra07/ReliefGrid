@@ -303,3 +303,49 @@ test("a two-minute read outage keeps the feed bounded and expires old events", (
   assert.equal(feed.held(), 0);
   assert.equal(feed.arrivals.length, 0);
 });
+
+test("toast state stays bounded through the outage and a heavy match stream", () => {
+  let clock = 0;
+  const feed = new Activity(() => clock);
+  const notices = new Toasts(() => clock);
+  feed.resolve(snapshot([]));
+  // Parth's outage: 50 events a second for two minutes, no successful read.
+  for (let ms = 0; ms < 120000; ms += 20) {
+    clock = ms;
+    feed.observe({
+      entityId: "o" + ms,
+      entityVersion: 1,
+      eventType: "request.state_changed",
+    });
+    if (ms % 5000 === 0) {
+      feed.expire();
+      notices.expire();
+    }
+    assert.ok(notices.held() <= 200);
+  }
+  // Reads recover and every event is a match, 50 a second for two minutes.
+  const rows = [];
+  for (let ms = 120000; ms < 240000; ms += 20) {
+    clock = ms;
+    const id = "m" + ms + "-xxxxxxxx";
+    rows.push(request(id, "MATCHED", 1));
+    if (rows.length > 100) rows.shift();
+    feed.observe({
+      entityId: id,
+      entityVersion: 1,
+      eventType: "request.state_changed",
+    });
+    if (ms % 100 === 0) notices.add(feed.resolve(snapshot(rows)) && feed.fresh);
+    if (ms % 5000 === 0) notices.expire();
+    assert.ok(
+      notices.held() <= 200,
+      `toast state ${notices.held()} at ${ms} ms`,
+    );
+  }
+  assert.ok(notices.list.length >= 1);
+  // The timer alone drops everything once events stop.
+  clock += 25000;
+  notices.expire();
+  assert.equal(notices.held(), 0);
+  assert.deepEqual(notices.list, []);
+});

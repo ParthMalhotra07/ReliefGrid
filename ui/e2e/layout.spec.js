@@ -323,4 +323,10 @@ test("the feed stays bounded through a two-minute read outage", async ({
   // With no further events, the timer alone removes everything past 30 s.
   await page.clock.runFor(35000);
   await expect.poll(held).toBe(0);
+  // Toast state stays bounded too (#197).
+  const notices = page.getByRole("region", { name: "Notifications" });
+  if (await notices.count())
+    expect(Number(await notices.getAttribute("data-held"))).toBeLessThanOrEqual(
+      200,
+    );
 });
