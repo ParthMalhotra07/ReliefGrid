@@ -12,6 +12,10 @@ const initialZoom = 4;
 // At or below this zoom the whole globe or a continent fills the map.
 const worldZoom = 3;
 const worldPadding = { padding: [12, 12], animate: false };
+// Web Mercator's square world. With these bounds Leaflet never asks the tile
+// host for columns or rows outside 0..2^z-1, which it answers with 400.
+const tileBounds = L.latLngBounds([-85.0511, -180], [85.0511, 180]);
+const inWorld = ({ x, y, z }) => x >= 0 && y >= 0 && x < 2 ** z && y < 2 ** z;
 const toPoint = ({ lat, lng }) => [lat, lng];
 const boundsOptions = { padding: [32, 32], maxZoom: 13 };
 const continents = [
@@ -438,6 +442,7 @@ export function DispatchMap({
       minZoom: 0,
       maxNativeZoom: 19,
       noWrap: true,
+      bounds: tileBounds,
     });
     let active = true;
     let failed = false;
@@ -466,7 +471,9 @@ export function DispatchMap({
       clearTimeout(timer);
       timer = setTimeout(slow, 6500);
     });
-    layer.on("tileerror", () => {
+    layer.on("tileerror", (event) => {
+      // Only a real tile of the world counts as missing street detail.
+      if (event.coords && !inWorld(event.coords)) return;
       missing = true;
     });
     layer.on("load", settle);

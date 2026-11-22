@@ -114,3 +114,16 @@ export function retryReason(status, code) {
     return status === "WAITING" ? waitingReasons[code] : "";
   return retryReasons[code] || "Matching will retry automatically";
 }
+// Straight-line (great-circle) distance with the backend's mean Earth radius
+// (internal/geo.HaversineKM); display only, never a matching decision.
+export function distanceKm(a, b) {
+  const radians = Math.PI / 180;
+  const dlat = (b.lat - a.lat) * radians;
+  const dlng = (b.lng - a.lng) * radians;
+  const h =
+    Math.sin(dlat / 2) ** 2 +
+    Math.cos(a.lat * radians) *
+      Math.cos(b.lat * radians) *
+      Math.sin(dlng / 2) ** 2;
+  return 2 * 6371.0088 * Math.asin(Math.sqrt(Math.max(0, Math.min(1, h))));
+}

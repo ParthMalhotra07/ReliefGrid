@@ -1,0 +1,52 @@
+[
+  { "name": "Mumbai", "state": "Maharashtra", "lat": 19.076, "lng": 72.8777 },
+  { "name": "Andheri", "state": "Maharashtra", "lat": 19.1197, "lng": 72.8468 },
+  { "name": "Bandra", "state": "Maharashtra", "lat": 19.0596, "lng": 72.8295 },
+  { "name": "Dadar", "state": "Maharashtra", "lat": 19.0178, "lng": 72.8478 },
+  { "name": "Kurla", "state": "Maharashtra", "lat": 19.0726, "lng": 72.8845 },
+  {
+    "name": "Borivali",
+    "state": "Maharashtra",
+    "lat": 19.2307,
+    "lng": 72.8567
+  },
+  { "name": "Colaba", "state": "Maharashtra", "lat": 18.9067, "lng": 72.8147 },
+  { "name": "Powai", "state": "Maharashtra", "lat": 19.1176, "lng": 72.906 },
+  { "name": "Chembur", "state": "Maharashtra", "lat": 19.0522, "lng": 72.9005 },
+  { "name": "Thane", "state": "Maharashtra", "lat": 19.2183, "lng": 72.9781 },
+  {
+    "name": "Navi Mumbai",
+    "state": "Maharashtra",
+    "lat": 19.033,
+    "lng": 73.0297
+  },
+  { "name": "Vashi", "state": "Maharashtra", "lat": 19.0771, "lng": 72.9986 },
+  { "name": "Pune", "state": "Maharashtra", "lat": 18.5204, "lng": 73.8567 },
+  { "name": "Nagpur", "state": "Maharashtra", "lat": 21.1458, "lng": 79.0882 },
+  { "name": "Delhi", "state": "Delhi", "lat": 28.7041, "lng": 77.1025 },
+  { "name": "New Delhi", "state": "Delhi", "lat": 28.6139, "lng": 77.209 },
+  { "name": "Gurugram", "state": "Haryana", "lat": 28.4595, "lng": 77.0266 },
+  { "name": "Noida", "state": "Uttar Pradesh", "lat": 28.5355, "lng": 77.391 },
+  {
+    "name": "Ghaziabad",
+    "state": "Uttar Pradesh",
+    "lat": 28.6692,
+    "lng": 77.4538
+  },
+  { "name": "Faridabad", "state": "Haryana", "lat": 28.4089, "lng": 77.3178 },
+  { "name": "Bengaluru", "state": "Karnataka", "lat": 12.9716, "lng": 77.5946 },
+  { "name": "Hyderabad", "state": "Telangana", "lat": 17.385, "lng": 78.4867 },
+  { "name": "Chennai", "state": "Tamil Nadu", "lat": 13.0827, "lng": 80.2707 },
+  { "name": "Kolkata", "state": "West Bengal", "lat": 22.5726, "lng": 88.3639 },
+  { "name": "Ahmedabad", "state": "Gujarat", "lat": 23.0225, "lng": 72.5714 },
+  { "name": "Surat", "state": "Gujarat", "lat": 21.1702, "lng": 72.8311 },
+  { "name": "Jaipur", "state": "Rajasthan", "lat": 26.9124, "lng": 75.7873 },
+  {
+    "name": "Lucknow",
+    "state": "Uttar Pradesh",
+    "lat": 26.8467,
+    "lng": 80.9462
+  },
+  { "name": "Kochi", "state": "Kerala", "lat": 9.9312, "lng": 76.2673 },
+  { "name": "Guwahati", "state": "Assam", "lat": 26.1445, "lng": 91.7362 }
+]

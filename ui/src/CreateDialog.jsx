@@ -2,6 +2,15 @@ import React, { useEffect, useRef, useState } from "react";
 import { CreateSubmission } from "./create.js";
 import { DispatchMap } from "./DispatchMap.jsx";
 import { TYPES } from "./state.js";
+import { fourDecimals, gazetteer, PlaceSearch, UNAVAILABLE } from "./places.js";
+
+// One throttle for the page, shared by both forms.
+const placeSearch = new PlaceSearch();
+const geoReasons = {
+  1: "permission denied",
+  2: "position unavailable",
+  3: "timed out",
+};
 
 const localTime = (date) =>
   new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -43,7 +52,13 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     [busy, setBusy] = useState(false),
     [pickerOpen, setPickerOpen] = useState(false),
     [error, setError] = useState(setup.error || ""),
-    [result, setResult] = useState(null);
+    [result, setResult] = useState(null),
+    [jump, setJump] = useState(null),
+    [locating, setLocating] = useState(""),
+    [query, setQuery] = useState(""),
+    [places, setPlaces] = useState({ results: [], source: "" }),
+    [placeNote, setPlaceNote] = useState("");
+  const searching = useRef(false);
   const dialog = useRef(null);
   useEffect(() => {
     const element = dialog.current;
@@ -120,6 +135,76 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
       lat: location.lat.toFixed(5),
       lng: location.lng.toFixed(5),
     }));
+  };
+  // Fill both fields at four decimals, then show and centre the picker there.
+  const place = ({ lat, lng }) => {
+    setFields((old) => ({
+      ...old,
+      lat: fourDecimals(lat),
+      lng: fourDecimals(lng),
+    }));
+    setPickerOpen(true);
+    setJump({ lat, lng });
+  };
+  const locate = () => {
+    if (!navigator.geolocation) {
+      setLocating(
+        "Location unavailable on this device. Pick on the map or enter coordinates.",
+      );
+      return;
+    }
+    setLocating("Finding your location…");
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        place({ lat: coords.latitude, lng: coords.longitude });
+        setLocating("Location filled from this device.");
+      },
+      (failure) =>
+        setLocating(
+          `Location unavailable (${geoReasons[failure?.code] || "not available"}). Fields unchanged; pick on the map or enter coordinates.`,
+        ),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  };
+  const search = async () => {
+    const q = query.trim();
+    if (!q || searching.current) return;
+    const local = gazetteer(q);
+    if (local.length) {
+      setPlaces({ results: local, source: "gazetteer" });
+      setPlaceNote("");
+      return;
+    }
+    if (!navigator.onLine) {
+      setPlaces({ results: [], source: "" });
+      setPlaceNote(UNAVAILABLE);
+      return;
+    }
+    if (!placeSearch.ready()) {
+      setPlaceNote(
+        "Place search allows one online search per second. Try again in a moment.",
+      );
+      return;
+    }
+    searching.current = true;
+    setPlaceNote("Searching…");
+    try {
+      const { results } = await placeSearch.online(
+        q,
+        AbortSignal.timeout(8000),
+      );
+      setPlaces({ results, source: "nominatim" });
+      setPlaceNote(
+        results.length
+          ? ""
+          : "No places found. Use the map or enter coordinates.",
+      );
+    } catch {
+      setPlaces({ results: [], source: "" });
+      setPlaceNote(UNAVAILABLE);
+    } finally {
+      searching.current = false;
+    }
   };
   const noun = kind === "request" ? "request" : "resource";
   return (
@@ -257,6 +342,68 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                 />
               </label>
             )}
+            <div className="wide place-search">
+              <div className="place-search-row">
+                <label>
+                  Search place
+                  <input
+                    type="search"
+                    placeholder="e.g. Andheri or Pune"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        search();
+                      }
+                    }}
+                  />
+                </label>
+                <button type="button" className="button" onClick={search}>
+                  Search
+                </button>
+                <button type="button" className="button" onClick={locate}>
+                  Use my location
+                </button>
+              </div>
+              {places.results.length > 0 && (
+                <ul className="place-results" aria-label="Place results">
+                  {places.results.map((row) => (
+                    <li key={row.label + row.lat + row.lng}>
+                      <button type="button" onClick={() => place(row)}>
+                        {row.label}
+                        <small>
+                          {fourDecimals(row.lat)}, {fourDecimals(row.lng)}
+                        </small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {places.source === "nominatim" && places.results.length > 0 && (
+                <p className="place-attribution">
+                  Search: Nominatim © OpenStreetMap contributors
+                </p>
+              )}
+              {placeNote && (
+                <p
+                  className="place-note"
+                  role="status"
+                  aria-label="Place search result"
+                >
+                  {placeNote}
+                </p>
+              )}
+              {locating && (
+                <p
+                  className="place-note"
+                  role="status"
+                  aria-label="Location result"
+                >
+                  {locating}
+                </p>
+              )}
+            </div>
             <label>
               Latitude
               <input
@@ -303,6 +450,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                       online={online}
                       onPick={pick}
                       position={point}
+                      focus={jump}
                     />
                   </div>
                 )}
