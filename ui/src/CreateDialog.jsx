@@ -94,6 +94,11 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
       (!client.pending() && !canCreate)
     )
       return;
+    // The body is frozen now; a pending location answer must not change the
+    // fields the saved submission will be retried with. "Use my location" is
+    // inside the disabled fieldset while submitting or locked, so no newer
+    // request can start until the form is editable again.
+    supersedeLocation();
     setError("");
     setBusy(true);
     try {

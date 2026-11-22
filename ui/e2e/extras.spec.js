@@ -501,3 +501,55 @@ test("both forms credit GeoNames under the place search box", async ({
     await form.getByRole("button", { name: "Close creation form" }).click();
   }
 });
+
+test("a location answer after Submit changes neither the locked fields nor Retry", async ({
+  page,
+}) => {
+  const geo = await controlledGeolocation(page);
+  const bodies = [];
+  let release;
+  const held = new Promise((resolve) => (release = resolve));
+  let first = true;
+  await page.route(/\/api\/v1\/requests$/, async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    bodies.push(JSON.parse(route.request().postData()));
+    if (!first) return route.continue();
+    first = false;
+    await held;
+    // The reply is lost, so the outcome is unknown and the body stays saved.
+    await route.abort("failed");
+  });
+  const form = await openForm(page);
+  await form.getByLabel("Request type").selectOption("WATER");
+  await form.getByLabel("Request details").fill("Water at the bus stand");
+  await form.getByLabel("People affected").fill("3");
+  const latitude = form.getByLabel("Latitude", { exact: true });
+  const longitude = form.getByLabel("Longitude", { exact: true });
+  await latitude.fill("12.34");
+  await longitude.fill("77.12");
+  await form.getByRole("button", { name: "Use my location" }).click();
+  await expect.poll(geo.pending).toBe(1);
+  await form
+    .getByRole("button", { name: "Submit request", exact: true })
+    .click();
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(bodies[0].location).toEqual({ lat: 12.34, lng: 77.12 });
+  await geo.answer(19.52, 72.54);
+  release();
+  await expect(form.getByRole("alert")).toContainText("not confirmed");
+  await expect(latitude).toBeDisabled();
+  // No new location request can start while the submission is locked.
+  await expect(
+    form.getByRole("button", { name: "Use my location" }),
+  ).toBeDisabled();
+  await expect(latitude).toHaveValue("12.34");
+  await expect(longitude).toHaveValue("77.12");
+  await form
+    .getByRole("button", { name: "Retry same request", exact: true })
+    .click();
+  await expect(
+    form.getByRole("status", { name: "Creation result" }),
+  ).toBeVisible();
+  expect(bodies).toHaveLength(2);
+  expect(bodies[1]).toEqual(bodies[0]);
+});
