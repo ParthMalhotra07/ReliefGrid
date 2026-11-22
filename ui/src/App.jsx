@@ -57,6 +57,20 @@ const legendTypes = [
   ["TRANSPORTATION", "Transport"],
   ["SHELTER", "Shelter"],
 ];
+// The map's bundled type icon, announced by its type name.
+function ResourceIcon({ type }) {
+  const icon = typeIcon(type, label(type));
+  return icon ? (
+    <span
+      className="resource-icon"
+      dangerouslySetInnerHTML={{ __html: icon }}
+    />
+  ) : (
+    <span className="resource-icon" aria-hidden="true">
+      ◇
+    </span>
+  );
+}
 function WindowBadge({ resource, now }) {
   const text = windowLabel(resource, now);
   return text ? (
@@ -931,15 +945,7 @@ function App() {
                       showDetailsOnMobile("resource-details");
                     }}
                   >
-                    <div className="resource-icon">
-                      {r.resourceType === "WATER"
-                        ? "◈"
-                        : r.resourceType === "FOOD"
-                          ? "✦"
-                          : r.resourceType === "MEDICINE"
-                            ? "+"
-                            : "◇"}
-                    </div>
+                    <ResourceIcon type={r.resourceType} />
                     <div>
                       <strong>{r.name}</strong>
                       <small>
@@ -1107,7 +1113,10 @@ function App() {
                 tabIndex={-1}
               >
                 <div className="panel-heading">
-                  <h2>{selectedResource.name}</h2>
+                  <h2 className="resource-title">
+                    <ResourceIcon type={selectedResource.resourceType} />
+                    {selectedResource.name}
+                  </h2>
                   <Badge status={selectedResource.status} />
                 </div>
                 <ShowOnMap

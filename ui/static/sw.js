@@ -1,4 +1,4 @@
-const NAME='reliefgrid-088e4e105acef11c',ASSETS=["/","/assets/app-ED7CL5RF.css","/assets/app-EHQ4BFHP.js","/assets/layers-2x-TBM42ERR.png","/assets/layers-55W3Q4RM.png","/assets/licenses.txt","/assets/marker-icon-2V3QKKVC.png"];
+const NAME='reliefgrid-5b5f0b24eabeb413',ASSETS=["/","/assets/app-3M3LYWSZ.js","/assets/app-R5BMYX7X.css","/assets/layers-2x-TBM42ERR.png","/assets/layers-55W3Q4RM.png","/assets/licenses.txt","/assets/marker-icon-2V3QKKVC.png"];
 self.addEventListener('install',event=>event.waitUntil(caches.open(NAME).then(cache=>cache.addAll(ASSETS.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('reliefgrid-')&&k!==NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 async function navigate(request){

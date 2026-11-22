@@ -16,9 +16,13 @@ export const TYPE_ICONS = {
   TRANSPORTATION: "vehicle",
   SHELTER: "house",
 };
-export const typeIcon = (type) => {
+// Decorative by default; with a label it is announced as an image.
+export const typeIcon = (type, label) => {
   const name = TYPE_ICONS[type];
+  const a11y = label
+    ? `role="img" aria-label="${label.replace(/[&"<>]/g, "")}"`
+    : `aria-hidden="true"`;
   return name
-    ? `<svg class="type-icon" data-icon="${name}" viewBox="0 0 16 16" width="12" height="12" fill="currentColor" aria-hidden="true" focusable="false">${paths[name]}</svg>`
+    ? `<svg class="type-icon" data-icon="${name}" viewBox="0 0 16 16" width="12" height="12" fill="currentColor" ${a11y} focusable="false">${paths[name]}</svg>`
     : "";
 };

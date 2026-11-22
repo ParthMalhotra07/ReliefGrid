@@ -228,3 +228,74 @@ test("window badges, waiting time and request sorts", async () => {
     ["a", "b", "c", "d"],
   );
 });
+
+test("batch 3: unfinished first in the urgency sort, and no zero duration parts", async () => {
+  const { sortRequests, span, windowLabel, waitingLabel } =
+    await import("./state.js");
+  const at = (m) =>
+    new Date(Date.parse("2026-11-05T12:00:00Z") + m * 60000).toISOString();
+  const r = (requestId, urgency, created, status) => ({
+    requestId,
+    urgency,
+    status,
+    createdAt: at(created),
+  });
+  const rows = [
+    r("done-critical", "CRITICAL", -90, "FULFILLED"),
+    r("normal", "NORMAL", -80, "WAITING"),
+    r("cancelled-high", "HIGH", -70, "CANCELLED"),
+    r("high", "HIGH", -60, "CANCELLING"),
+    r("critical", "CRITICAL", -50, "MATCHED"),
+    r("old-critical", "CRITICAL", -100, "IN_PROGRESS"),
+  ];
+  assert.deepEqual(
+    sortRequests(rows, "urgency").map((v) => v.requestId),
+    [
+      "old-critical",
+      "critical",
+      "high",
+      "normal",
+      "done-critical",
+      "cancelled-high",
+    ],
+  );
+  // Newest is unchanged: creation time only.
+  assert.deepEqual(
+    sortRequests(rows, "newest").map((v) => v.requestId),
+    [
+      "critical",
+      "high",
+      "cancelled-high",
+      "normal",
+      "done-critical",
+      "old-critical",
+    ],
+  );
+  assert.equal(span(45), "45 min");
+  assert.equal(span(300), "5 h");
+  assert.equal(span(159), "2 h 39 min");
+  assert.equal(span(1440), "1 d");
+  assert.equal(span(1500), "1 d 1 h");
+  const now = Date.parse("2026-11-05T12:00:00Z");
+  assert.equal(
+    windowLabel({ windowStart: at(-10), windowEnd: at(300) }, now),
+    "Open · closes in 5 h",
+  );
+  assert.equal(
+    windowLabel({ windowStart: at(299.5), windowEnd: at(900) }, now),
+    "Opens in 5 h",
+  );
+  assert.equal(
+    windowLabel({ windowStart: at(-10), windowEnd: at(299.5) }, now),
+    "Open · closes in 5 h",
+  );
+  assert.equal(waitingLabel({ createdAt: at(-300.9) }, [], now), "waiting 5 h");
+  assert.equal(
+    waitingLabel({ createdAt: at(-1440.5) }, [], now),
+    "waiting 1 d",
+  );
+  assert.equal(
+    waitingLabel({ createdAt: at(-59.9) }, [], now),
+    "waiting 59 min",
+  );
+});

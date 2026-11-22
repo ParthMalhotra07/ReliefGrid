@@ -198,12 +198,21 @@ export function windowState(resource, now = Date.now()) {
   return { state: "expired", ms: now - until };
 }
 // Whole minutes, rounded up, as "45 min" or "2 h 39 min".
-const minutes = (ms) => {
-  const total = Math.max(1, Math.ceil(ms / 60000));
-  return total < 60
-    ? `${total} min`
-    : `${Math.floor(total / 60)} h ${total % 60} min`;
-};
+// Whole minutes as "45 min", "5 h", "2 h 39 min", "1 d" or "1 d 2 h"; a zero
+// smaller part is left out.
+export function span(total) {
+  if (total < 60) return `${total} min`;
+  if (total < 1440) {
+    const h = Math.floor(total / 60),
+      m = total % 60;
+    return m ? `${h} h ${m} min` : `${h} h`;
+  }
+  const d = Math.floor(total / 1440),
+    h = Math.floor((total % 1440) / 60);
+  return h ? `${d} d ${h} h` : `${d} d`;
+}
+// Windows round up, so a window never reads as closing in 0 min.
+const minutes = (ms) => span(Math.max(1, Math.ceil(ms / 60000)));
 export function windowLabel(resource, now = Date.now()) {
   const { state, ms } = windowState(resource, now);
   if (state === "open") return `Open · closes in ${minutes(ms)}`;
@@ -227,10 +236,7 @@ export function waitingLabel(request, history, now = Date.now()) {
     0,
     Math.floor((now - waitingSince(request, history)) / 60000),
   );
-  if (total < 60) return `waiting ${total} min`;
-  if (total < 1440)
-    return `waiting ${Math.floor(total / 60)} h ${total % 60} min`;
-  return `waiting ${Math.floor(total / 1440)} d ${Math.floor((total % 1440) / 60)} h`;
+  return `waiting ${span(total)}`;
 }
 
 export const SORTS = [
@@ -260,8 +266,10 @@ export function sortRequests(rows, mode, history = {}) {
         );
       return byCreated(a, b);
     });
+  // Urgency: unfinished before finished, then most urgent, then oldest.
   return sorted.sort(
     (a, b) =>
+      terminal(a.status) - terminal(b.status) ||
       (urgencyRank[a.urgency] ?? 3) - (urgencyRank[b.urgency] ?? 3) ||
       byCreated(a, b),
   );

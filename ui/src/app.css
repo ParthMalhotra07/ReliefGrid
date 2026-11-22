@@ -1761,3 +1761,15 @@ footer .small-dot {
   background: #f1eeee;
   color: #7a5350;
 }
+.resource-icon .type-icon {
+  width: 15px;
+  height: 15px;
+}
+.resource-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.resource-title .resource-icon {
+  flex: none;
+}

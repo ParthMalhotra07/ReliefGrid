@@ -330,9 +330,7 @@ test.describe("resource window badges", () => {
     await expect(badge("Future van")).toHaveText("Opens in 20 min");
     await expect(badge("Expired van")).toHaveText("Expired");
     // The fixture resource's window ends at midnight UTC.
-    await expect(badge("Water team Alpha")).toHaveText(
-      "Open · closes in 12 h 0 min",
-    );
+    await expect(badge("Water team Alpha")).toHaveText("Open · closes in 12 h");
     // The details panel shows the same state.
     await list.getByRole("button", { name: /Future van/ }).click();
     const details = page.getByRole("region", { name: "Resource details" });
