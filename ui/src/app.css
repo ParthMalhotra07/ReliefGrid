@@ -778,8 +778,10 @@ select {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-content: start;
   }
+  /* The map takes what the viewport leaves after the map chrome and the
+     status row, so the sticky column needs no inner scrolling. */
   .centre-column .map {
-    height: clamp(340px, calc(100vh - 480px), 655px);
+    height: clamp(260px, calc(100vh - 490px), 655px);
   }
   .map-panel {
     grid-column: 1 / -1;

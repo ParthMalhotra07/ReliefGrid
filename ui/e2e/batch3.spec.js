@@ -615,3 +615,25 @@ test.describe("dark mode", () => {
     expect(failures).toEqual([]);
   });
 });
+
+test("at 1366x768 the middle column fits without scrolling inside itself", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await page.goto("/");
+  await expect(
+    page.getByRole("region", { name: "Matching queue" }).getByRole("img", {
+      name: /^Queue:/,
+    }),
+  ).toBeVisible();
+  const fit = await page.evaluate(() => {
+    const column = document.querySelector(".centre-column");
+    return [column.scrollHeight, column.clientHeight];
+  });
+  expect(fit[0]).toBeLessThanOrEqual(fit[1]);
+  // The map keeps a usable height.
+  const map = await page
+    .getByRole("region", { name: "Dispatch map" })
+    .boundingBox();
+  expect(map.height).toBeGreaterThanOrEqual(260);
+});
