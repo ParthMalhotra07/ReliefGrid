@@ -78,17 +78,45 @@ test.describe("matching radius", () => {
     await expect(circle).toHaveCount(1);
     await expect(caption).toBeVisible();
     await page.getByRole("button", { name: "Fit to results" }).click();
-    await page.waitForTimeout(400);
+    // Measure only once the fit has finished: the circle and both pins are
+    // read together, every 100 ms, until two readings in a row agree.
+    const measure = () =>
+      page.evaluate(() => {
+        const centre = (name) => {
+          const box = [...document.querySelectorAll(".resource-pin")]
+            .find((v) =>
+              v.getAttribute("aria-label").startsWith("Resource: " + name),
+            )
+            .getBoundingClientRect();
+          return box.y + box.height / 2;
+        };
+        return {
+          top: document
+            .querySelector("path.matching-radius")
+            .getBoundingClientRect().y,
+          pin45: centre("Water north 45"),
+          pin60: centre("Water north 60"),
+        };
+      });
+    let settled;
+    let previous = await measure();
+    await expect
+      .poll(
+        async () => {
+          await page.waitForTimeout(100);
+          const next = await measure();
+          const same = JSON.stringify(next) === JSON.stringify(previous);
+          previous = next;
+          if (same) settled = next;
+          return same;
+        },
+        { intervals: [0] },
+      )
+      .toBe(true);
     // The 45 km resource is inside the circle and the 60 km one outside.
-    const top = (await circle.boundingBox()).y;
-    const pinY = async (name) => {
-      const box = await map
-        .getByRole("button", { name: new RegExp(`Resource: ${name}`) })
-        .boundingBox();
-      return box.y + box.height / 2;
-    };
-    expect(await pinY("Water north 45")).toBeGreaterThan(top);
-    expect(await pinY("Water north 60")).toBeLessThan(top);
+    const top = settled.top;
+    expect(settled.pin45).toBeGreaterThan(top);
+    expect(settled.pin60).toBeLessThan(top);
     await page.getByRole("button", { name: "World overview" }).click();
     await expect(page.getByLabel("Map background status")).toContainText(
       "World overview",
