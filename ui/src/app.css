@@ -1151,8 +1151,14 @@ footer .small-dot {
     max-height: 240px;
   }
   .show-on-map {
-    display: inline-flex;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin: 0 19px 10px;
+  }
+  .show-on-map span {
+    font-size: 11px;
+    color: #8a6a2f;
   }
   .resource-details .show-on-map {
     margin: 10px 13px 0;

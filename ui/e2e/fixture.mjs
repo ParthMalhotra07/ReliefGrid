@@ -114,6 +114,19 @@ http
       }
       return send(res, 200, { ids });
     }
+    if (p === "/__test/events") {
+      // Change notices for records that no read will show, as during an
+      // outage: only the stream keeps delivering.
+      const b = await body(req);
+      for (let i = 0; i < b.count; i++) {
+        const eventId = randomUUID();
+        for (const c of clients)
+          c.write(
+            `id: ${eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: randomUUID(), entityVersion: 2, eventType: "request.state_changed", eventId })}\n\n`,
+          );
+      }
+      return send(res, 200, { ok: true });
+    }
     if (p === "/__test/creations")
       return send(res, 200, {
         calls: createCalls,

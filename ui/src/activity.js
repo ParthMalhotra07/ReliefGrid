@@ -7,7 +7,9 @@ export const FEED_SIZE = 20;
 export const BURST = 5;
 export const WINDOW = 1000;
 // A stream event whose record never appears in a read is dropped.
-const PENDING_MS = 30000;
+export const PENDING_MS = 30000;
+// Pending plus shown events never exceed this; the oldest pending go first.
+export const HELD_LIMIT = 200;
 
 const ACTIONS = {
   MATCHED: "matched",
@@ -43,11 +45,29 @@ export class Activity {
     this.items = [];
     this.sequence = 0;
   }
+  // Events held in memory: pending plus shown.
+  held() {
+    return this.pending.length + this.items.length;
+  }
   observe({ entityId, entityVersion, eventType }) {
     if (!entityId) return;
     const at = this.now();
     this.arrivals.push(at);
     this.pending.push({ entityId, entityVersion, eventType, at });
+    this.expire();
+  }
+  // Drops events past their expiry and keeps the held total within
+  // HELD_LIMIT. Called on every event and by a timer that runs even while
+  // reads fail, so an outage cannot grow this state.
+  expire() {
+    const now = this.now();
+    this.pending = this.pending.filter((v) => now - v.at < PENDING_MS);
+    this.arrivals = this.arrivals.filter((t) => now - t <= 10 * WINDOW);
+    const room = Math.max(0, HELD_LIMIT - this.items.length);
+    if (this.pending.length > room)
+      this.pending = this.pending.slice(this.pending.length - room);
+    if (this.arrivals.length > HELD_LIMIT)
+      this.arrivals = this.arrivals.slice(this.arrivals.length - HELD_LIMIT);
   }
   rate(at) {
     return this.arrivals.filter((t) => Math.abs(t - at) <= WINDOW).length;

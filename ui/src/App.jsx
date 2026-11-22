@@ -103,8 +103,10 @@ function useDispatch() {
     [stream, setStream] = useState("Connecting"),
     [loading, setLoading] = useState(false),
     [offlineReady, setOfflineReady] = useState(false),
-    [activity, setActivity] = useState([]);
-  const feed = useRef(new Activity()),
+    [activity, setActivity] = useState([]),
+    [held, setHeld] = useState(0);
+  const [feedState] = useState(() => new Activity());
+  const feed = useRef(feedState),
     current = useRef(snapshot),
     alive = useRef(true),
     active = useRef(null);
@@ -168,6 +170,15 @@ function useDispatch() {
       }),
     [],
   );
+  // Runs whether or not reads succeed, so a read outage cannot let the feed's
+  // memory grow without bound.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      feed.current.expire();
+      setHeld(feed.current.held());
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     alive.current = true;
     let source;
@@ -250,6 +261,7 @@ function useDispatch() {
     refresh,
     setError,
     activity,
+    held,
   };
 }
 function Badge({ status }) {
@@ -259,14 +271,18 @@ function Badge({ status }) {
     </span>
   );
 }
-function ActivityFeed({ items, onChoose }) {
+function ActivityFeed({ items, held, onChoose }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
   return (
-    <section className="panel activity-panel" aria-label="Activity">
+    <section
+      className="panel activity-panel"
+      aria-label="Activity"
+      data-held={held}
+    >
       <div className="panel-heading">
         <h2>Activity</h2>
         <span className="quiet-tag">LIVE STREAM</span>
@@ -289,6 +305,23 @@ function ActivityFeed({ items, onChoose }) {
         </p>
       )}
     </section>
+  );
+}
+// The map only has pins for records the current filters show, so the action
+// is unavailable for a hidden record and says why.
+function ShowOnMap({ hidden, onShow }) {
+  return (
+    <div className="show-on-map">
+      <button
+        type="button"
+        className="button"
+        disabled={hidden}
+        onClick={onShow}
+      >
+        Show on map
+      </button>
+      {hidden && <span>Hidden by current filters</span>}
+    </div>
   );
 }
 function showDetailsOnMobile(panel) {
@@ -904,7 +937,11 @@ function App() {
                 </small>
               </section>
             </section>
-            <ActivityFeed items={d.activity} onChoose={chooseActivity} />
+            <ActivityFeed
+              items={d.activity}
+              held={d.held}
+              onChoose={chooseActivity}
+            />
           </div>
           <aside className="inspector-column" aria-label="Selected records">
             {selectedResource && (
@@ -918,13 +955,10 @@ function App() {
                   <h2>{selectedResource.name}</h2>
                   <Badge status={selectedResource.status} />
                 </div>
-                <button
-                  type="button"
-                  className="button show-on-map"
-                  onClick={() => showOnMap(selectedResource.location)}
-                >
-                  Show on map
-                </button>
+                <ShowOnMap
+                  hidden={!visibleResources.includes(selectedResource)}
+                  onShow={() => showOnMap(selectedResource.location)}
+                />
                 {facts([
                   ["Type", label(selectedResource.resourceType)],
                   ["Status", selectedResource.status?.replaceAll("_", " ")],
@@ -983,13 +1017,10 @@ function App() {
                     </div>
                     <Badge status={chosen.status} />
                   </div>
-                  <button
-                    type="button"
-                    className="button show-on-map"
-                    onClick={() => showOnMap(chosen.location)}
-                  >
-                    Show on map
-                  </button>
+                  <ShowOnMap
+                    hidden={!visibleRequests.includes(chosen)}
+                    onShow={() => showOnMap(chosen.location)}
+                  />
 
                   <div className="actions">
                     {["PENDING", "WAITING"].includes(chosen.status) && (

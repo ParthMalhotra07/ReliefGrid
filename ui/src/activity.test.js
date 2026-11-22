@@ -157,3 +157,29 @@ test("an event shown just before an unrelated burst is not absorbed by it", () =
   );
   assert.equal(items[1].title, "Solo meals");
 });
+
+test("a two-minute read outage keeps the feed bounded and expires old events", () => {
+  let clock = 0;
+  const feed = new Activity(() => clock);
+  feed.resolve(snapshot([]));
+  let peak = 0;
+  // 50 events a second for 120 s, no successful read; the timer runs every 5 s.
+  for (let ms = 0; ms < 120000; ms += 20) {
+    clock = ms;
+    feed.observe({
+      entityId: "e" + ms,
+      entityVersion: 1,
+      eventType: "request.state_changed",
+    });
+    if (ms % 5000 === 0) feed.expire();
+    peak = Math.max(peak, feed.held());
+    assert.ok(feed.held() <= 200, `held ${feed.held()} at ${ms} ms`);
+    assert.ok(feed.arrivals.length <= 200);
+  }
+  assert.equal(peak, 200);
+  assert.ok(feed.pending.every((v) => clock - v.at < 30000));
+  clock += 31000;
+  feed.expire();
+  assert.equal(feed.held(), 0);
+  assert.equal(feed.arrivals.length, 0);
+});
