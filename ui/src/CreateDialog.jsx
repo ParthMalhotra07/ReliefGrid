@@ -2,10 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { CreateSubmission } from "./create.js";
 import { DispatchMap } from "./DispatchMap.jsx";
 import { TYPES } from "./state.js";
-import { fourDecimals, gazetteer, PlaceSearch, UNAVAILABLE } from "./places.js";
+import { fourDecimals, gazetteer, NOT_LISTED } from "./places.js";
 
-// One throttle for the page, shared by both forms.
-const placeSearch = new PlaceSearch();
 const geoReasons = {
   1: "permission denied",
   2: "position unavailable",
@@ -56,10 +54,11 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     [jump, setJump] = useState(null),
     [locating, setLocating] = useState(""),
     [query, setQuery] = useState(""),
-    [places, setPlaces] = useState({ results: [], source: "" }),
+    [places, setPlaces] = useState([]),
     [placeNote, setPlaceNote] = useState("");
-  const sequence = useRef(0),
-    inflight = useRef(null);
+  // Each location request gets a generation; setting the location any other
+  // way starts a new one, so a late answer for an older request is dropped.
+  const geoRequest = useRef({ generation: 0, pending: false });
   const dialog = useRef(null);
   useEffect(() => {
     const element = dialog.current;
@@ -67,6 +66,22 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     return () => element.close();
   }, []);
   const update = (key, value) => setFields((old) => ({ ...old, [key]: value }));
+  const supersedeLocation = () => {
+    const request = geoRequest.current;
+    request.generation++;
+    if (request.pending) {
+      request.pending = false;
+      setLocating("");
+    }
+  };
+  const clearPlaces = () => {
+    setPlaces([]);
+    setPlaceNote("");
+  };
+  const editCoordinate = (key, value) => {
+    supersedeLocation();
+    update(key, value);
+  };
   const close = () => {
     if (!client?.active) onClose();
   };
@@ -131,6 +146,8 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
   const point =
     Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : undefined;
   const pick = (location) => {
+    supersedeLocation();
+    clearPlaces();
     setFields((old) => ({
       ...old,
       lat: location.lat.toFixed(5),
@@ -147,73 +164,52 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
     setPickerOpen(true);
     setJump({ lat, lng });
   };
+  const choosePlace = (row) => {
+    supersedeLocation();
+    clearPlaces();
+    place(row);
+  };
   const locate = () => {
+    supersedeLocation();
     if (!navigator.geolocation) {
       setLocating(
         "Location unavailable on this device. Pick on the map or enter coordinates.",
       );
       return;
     }
+    const request = geoRequest.current;
+    const generation = request.generation;
+    const current = () => {
+      if (request.generation !== generation) return false;
+      request.pending = false;
+      return true;
+    };
+    request.pending = true;
     setLocating("Finding your location…");
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
+        if (!current()) return;
+        clearPlaces();
         place({ lat: coords.latitude, lng: coords.longitude });
         setLocating("Location filled from this device.");
       },
-      (failure) =>
+      (failure) => {
+        if (!current()) return;
         setLocating(
           `Location unavailable (${geoReasons[failure?.code] || "not available"}). Fields unchanged; pick on the map or enter coordinates.`,
-        ),
+        );
+      },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   };
-  // The latest search wins: a local answer replaces a pending online search,
-  // and a late online reply for an older query is discarded.
-  const search = async () => {
+  const search = () => {
     const q = query.trim();
     if (!q) return;
-    const show = (results, source, note) => {
-      inflight.current?.abort();
-      inflight.current = null;
-      sequence.current++;
-      setPlaces({ results, source });
-      setPlaceNote(note);
-    };
-    const local = gazetteer(q);
-    if (local.length) return show(local, "gazetteer", "");
-    if (!navigator.onLine) return show([], "", UNAVAILABLE);
-    if (!placeSearch.ready()) {
-      if (!inflight.current)
-        setPlaceNote(
-          "Place search allows one online search per second. Try again in a moment.",
-        );
-      return;
-    }
-    show([], "", "Searching…");
-    const id = sequence.current;
-    const controller = new AbortController();
-    inflight.current = controller;
-    try {
-      const { results } = await placeSearch.online(
-        q,
-        AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]),
-      );
-      if (id !== sequence.current) return;
-      setPlaces({ results, source: "nominatim" });
-      setPlaceNote(
-        results.length
-          ? ""
-          : "No places found. Use the map or enter coordinates.",
-      );
-    } catch {
-      if (id !== sequence.current) return;
-      setPlaces({ results: [], source: "" });
-      setPlaceNote(UNAVAILABLE);
-    } finally {
-      if (inflight.current === controller) inflight.current = null;
-    }
+    const results = gazetteer(q);
+    setPlaces(results);
+    setPlaceNote(results.length ? "" : NOT_LISTED);
   };
-  useEffect(() => () => inflight.current?.abort(), []);
+  useEffect(() => () => geoRequest.current.generation++, []);
   const noun = kind === "request" ? "request" : "resource";
   return (
     <dialog
@@ -358,7 +354,10 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                     type="search"
                     placeholder="e.g. Andheri or Pune"
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      if (!e.target.value.trim()) clearPlaces();
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -374,11 +373,11 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                   Use my location
                 </button>
               </div>
-              {places.results.length > 0 && (
+              {places.length > 0 && (
                 <ul className="place-results" aria-label="Place results">
-                  {places.results.map((row) => (
+                  {places.map((row) => (
                     <li key={row.label + row.lat + row.lng}>
-                      <button type="button" onClick={() => place(row)}>
+                      <button type="button" onClick={() => choosePlace(row)}>
                         {row.label}
                         <small>
                           {fourDecimals(row.lat)}, {fourDecimals(row.lng)}
@@ -387,11 +386,6 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                     </li>
                   ))}
                 </ul>
-              )}
-              {places.source === "nominatim" && places.results.length > 0 && (
-                <p className="place-attribution">
-                  Search: Nominatim © OpenStreetMap contributors
-                </p>
               )}
               {placeNote && (
                 <p
@@ -422,7 +416,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                 step="any"
                 placeholder="e.g. 19.08"
                 value={fields.lat}
-                onChange={(e) => update("lat", e.target.value)}
+                onChange={(e) => editCoordinate("lat", e.target.value)}
               />
             </label>
             <label>
@@ -435,7 +429,7 @@ export function CreateDialog({ kind, online, canCreate, refresh, onClose }) {
                 step="any"
                 placeholder="e.g. 72.88"
                 value={fields.lng}
-                onChange={(e) => update("lng", e.target.value)}
+                onChange={(e) => editCoordinate("lng", e.target.value)}
               />
             </label>
             {!disabled && (

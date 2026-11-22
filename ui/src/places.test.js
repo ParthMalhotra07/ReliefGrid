@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { gazetteer, PlaceSearch, NOMINATIM, fourDecimals } from "./places.js";
+import { gazetteer, fourDecimals } from "./places.js";
 import places from "./places.json" with { type: "json" };
 import { distanceKm } from "./state.js";
 
@@ -15,87 +15,79 @@ test("gazetteer matches case-insensitive prefixes before substrings", () => {
   assert.deepEqual(gazetteer("   "), []);
   assert.deepEqual(gazetteer("lonavala"), []);
 });
-test("the bundled list holds about 30 valid places including the required ones", () => {
-  assert.ok(places.length >= 28 && places.length <= 32);
+test("the bundled list covers capitals, the largest cities and metro areas", () => {
+  assert.ok(places.length >= 150 && places.length <= 200, places.length);
+  const names = places.map((p) => p.name);
+  assert.equal(new Set(names).size, names.length, "names are unique");
+  // Every state capital, plus the union territory capitals.
   for (const name of [
-    "Andheri",
-    "Bandra",
-    "Dadar",
-    "Kurla",
-    "Thane",
-    "Navi Mumbai",
-    "Borivali",
-    "Pune",
-    "Delhi",
-    "Gurugram",
-    "Noida",
+    "Amaravati",
+    "Itanagar",
+    "Dispur",
+    "Patna",
+    "Raipur",
+    "Panaji",
+    "Gandhinagar",
+    "Chandigarh",
+    "Shimla",
+    "Ranchi",
     "Bengaluru",
-    "Hyderabad",
-    "Chennai",
-    "Kolkata",
-    "Ahmedabad",
+    "Thiruvananthapuram",
+    "Bhopal",
+    "Mumbai",
+    "Imphal",
+    "Shillong",
+    "Aizawl",
+    "Kohima",
+    "Bhubaneswar",
     "Jaipur",
+    "Gangtok",
+    "Chennai",
+    "Hyderabad",
+    "Agartala",
     "Lucknow",
-    "Kochi",
-    "Guwahati",
+    "Dehradun",
+    "Kolkata",
+    "New Delhi",
+    "Srinagar",
+    "Jammu",
+    "Leh",
+    "Puducherry",
+    "Port Blair",
+    "Kavaratti",
+    "Daman",
   ])
-    assert.ok(
-      places.some((p) => p.name === name),
-      name,
-    );
+    assert.ok(names.includes(name), name);
+  const count = (pred) => places.filter(pred).length;
+  assert.equal(
+    count((p) => p.group === "city"),
+    100,
+  );
+  for (const metro of ["Mumbai", "Delhi NCR", "Bengaluru"])
+    assert.ok(count((p) => p.metro === metro) >= 15, metro);
   for (const p of places) {
-    assert.ok(
-      p.state && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180,
-      p.name,
-    );
-    // Every entry is inside India's bounding box.
+    assert.ok(p.state && Number.isInteger(p.geonameid), p.name);
+    // Four decimals at most, and inside India's bounding box.
+    for (const v of [p.lat, p.lng])
+      assert.equal(Number(v.toFixed(4)), v, p.name);
     assert.ok(p.lat > 6 && p.lat < 37 && p.lng > 68 && p.lng < 98, p.name);
   }
 });
-test("online search is throttled, never retried, and validates rows", async () => {
-  let clock = 0;
-  const calls = [];
-  const search = new PlaceSearch({
-    now: () => clock,
-    fetch: async (url, options) => {
-      calls.push({ url, options });
-      return {
-        ok: true,
-        json: async () => [
-          { display_name: "A", lat: "18.5", lon: "73.8" },
-          { display_name: "bad", lat: "x", lon: "1" },
-          ...Array.from({ length: 6 }, (_, i) => ({
-            display_name: "P" + i,
-            lat: "1",
-            lon: "2",
-          })),
-        ],
-      };
-    },
+test("new entries match case-insensitively by prefix and substring", () => {
+  assert.deepEqual(gazetteer("KORAM")[0], {
+    label: "Koramangala, Karnataka",
+    lat: 12.932,
+    lng: 77.6227,
   });
-  const first = await search.online(" Lonavala ");
-  assert.equal(first.results.length, 5);
-  assert.deepEqual(first.results[0], {
-    label: "A",
-    lat: 18.5,
-    lng: 73.8,
-    source: "nominatim",
-  });
-  assert.equal(calls[0].url, NOMINATIM + "?format=jsonv2&limit=5&q=Lonavala");
-  assert.equal(
-    calls[0].options.referrerPolicy,
-    "strict-origin-when-cross-origin",
+  assert.equal(gazetteer("gangt")[0].label, "Gangtok, Sikkim");
+  assert.equal(gazetteer("chowk")[0].label, "Chandni Chowk, Delhi");
+  assert.equal(gazetteer("layout")[0].label, "BTM Layout, Karnataka");
+  assert.equal(gazetteer("Electronic")[0].label, "Electronic City, Karnataka");
+  assert.equal(gazetteer("tiruchi")[0].label, "Tiruchirappalli, Tamil Nadu");
+  assert.deepEqual(
+    gazetteer("nagaland").map((p) => p.label),
+    ["Kohima, Nagaland"],
   );
-  clock = 999;
-  assert.deepEqual(await search.online("x"), { throttled: true, results: [] });
-  assert.equal(calls.length, 1);
-  clock = 1000;
-  await search.online("x");
-  assert.equal(calls.length, 2);
-  const failing = new PlaceSearch({
-    fetch: async () => ({ ok: false, status: 503 }),
-  });
-  await assert.rejects(failing.online("x"), /PLACE_SEARCH_503/);
 });
 test("coordinates are rounded to four decimals and distance matches the backend", () => {
   assert.equal(fourDecimals(18.52043), "18.5204");

@@ -8,14 +8,14 @@ import (
 	"testing"
 )
 
-func TestMapAndPlaceSearchAllowOnlyTheirOSMHosts(t *testing.T) {
+func TestStreetMapAllowsOnlyTheTileHostForImages(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler().ServeHTTP(w, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil))
 	directives := strings.Split(w.Header().Get("Content-Security-Policy"), ";")
 	for _, want := range []string{
 		"img-src 'self' data: https://tile.openstreetmap.org",
 		"script-src 'self'",
-		"connect-src 'self' https://nominatim.openstreetmap.org",
+		"connect-src 'self'",
 		"worker-src 'self'",
 	} {
 		if !slices.ContainsFunc(directives, func(got string) bool { return strings.TrimSpace(got) == want }) {

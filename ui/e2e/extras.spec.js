@@ -1,11 +1,45 @@
 import { test, expect } from "./test-support.js";
 
-const nominatim = "https://nominatim.openstreetmap.org/**";
+const NOT_LISTED =
+  "Place not in the offline list, use the map or enter coordinates.";
+// Requests for any host other than this app and the tile server are recorded
+// and aborted, so no test can reach an outside service.
+const local = (url) =>
+  ["127.0.0.1:3412", "tile.openstreetmap.org"].includes(url.host);
+let external = [];
 test.beforeEach(async ({ request, page }) => {
   await request.post("/__test/reset");
-  // No test may reach the real Nominatim service.
-  await page.route(nominatim, (route) => route.abort());
+  external = [];
+  await page.route(
+    (url) => !local(url),
+    (route) => {
+      external.push(route.request().url());
+      return route.abort();
+    },
+  );
 });
+
+// Geolocation that answers only when the test says so.
+async function controlledGeolocation(page) {
+  await page.addInitScript(() => {
+    window.__geo = [];
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (ok, fail) => window.__geo.push({ ok, fail }),
+      },
+    });
+  });
+  return {
+    pending: () => page.evaluate(() => window.__geo.length),
+    answer: (latitude, longitude) =>
+      page.evaluate(
+        ([latitude, longitude]) =>
+          window.__geo.shift().ok({ coords: { latitude, longitude } }),
+        [latitude, longitude],
+      ),
+  };
+}
 
 async function openForm(page, kind = "request") {
   await page.goto("/");
@@ -203,15 +237,10 @@ test("a metric filter shows a chip that explains the empty list and clears", asy
 });
 
 test.describe("place search", () => {
-  test("the bundled gazetteer answers offline without any network search", async ({
+  test("the offline place list answers offline and explains a miss", async ({
     page,
     context,
   }) => {
-    let calls = 0;
-    await page.route(nominatim, (route) => {
-      calls++;
-      return route.abort();
-    });
     const form = await openForm(page);
     await context.setOffline(true);
     const box = form.getByRole("searchbox", { name: "Search place" });
@@ -224,21 +253,12 @@ test.describe("place search", () => {
     const andheri = results.getByRole("button", { name: /Andheri/ });
     await expect(andheri).toContainText("Maharashtra");
     await andheri.click();
-    near(
-      await form.getByLabel("Latitude", { exact: true }).inputValue(),
-      19.1197,
-      0.01,
+    await expect(form.getByLabel("Latitude", { exact: true })).toHaveValue(
+      "19.1309",
     );
-    near(
-      await form.getByLabel("Longitude", { exact: true }).inputValue(),
-      72.8468,
-      0.01,
+    await expect(form.getByLabel("Longitude", { exact: true })).toHaveValue(
+      "72.8526",
     );
-    expect(
-      (await form.getByLabel("Latitude", { exact: true }).inputValue()).split(
-        ".",
-      )[1],
-    ).toHaveLength(4);
     await expect(
       form.getByRole("region", { name: "Location map" }),
     ).toBeVisible();
@@ -254,83 +274,164 @@ test.describe("place search", () => {
     await box.press("Enter");
     await expect(
       form.getByRole("status", { name: "Place search result" }),
-    ).toHaveText("Place search unavailable, use the map or enter coordinates.");
-    expect(calls).toBe(0);
+    ).toHaveText(NOT_LISTED);
+    await expect(form.getByLabel("Latitude", { exact: true })).toHaveValue(
+      "19.2",
+    );
   });
 
-  test("online search uses Nominatim once per second with attribution", async ({
+  test("the expanded list finds capitals, cities and metro areas", async ({
     page,
   }) => {
-    const seen = [];
-    await page.route(nominatim, async (route) => {
-      seen.push({
-        url: route.request().url(),
-        referer: (await route.request().allHeaders()).referer,
-      });
-      await route.fulfill({
-        contentType: "application/json",
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify(
-          Array.from({ length: 7 }, (_, i) => ({
-            display_name: `Lonavala ${i}, Pune, Maharashtra, India`,
-            lat: String(18.7546 + i / 100),
-            lon: String(73.4062 + i / 100),
-          })),
-        ),
-      });
+    const form = await openForm(page, "resource");
+    const box = form.getByRole("searchbox", { name: "Search place" });
+    const results = form.getByRole("list", { name: "Place results" });
+    for (const [query, label, lat, lng] of [
+      ["koraman", "Koramangala, Karnataka", "12.9320", "77.6227"],
+      ["connaught", "Connaught Place, Delhi", "28.6331", "77.2211"],
+      ["KOHIMA", "Kohima, Nagaland", "25.6747", "94.1110"],
+      ["sambalpur", null],
+      ["chowk", "Chandni Chowk, Delhi", "28.6512", "77.2291"],
+    ]) {
+      await box.fill(query);
+      await box.press("Enter");
+      if (!label) {
+        await expect(
+          form.getByRole("status", { name: "Place search result" }),
+        ).toHaveText(NOT_LISTED);
+        continue;
+      }
+      await results.getByRole("button", { name: label }).click();
+      await expect(form.getByLabel("Latitude", { exact: true })).toHaveValue(
+        lat,
+      );
+      await expect(form.getByLabel("Longitude", { exact: true })).toHaveValue(
+        lng,
+      );
+    }
+  });
+
+  test("no request leaves for any external search host", async ({ page }) => {
+    // The CSP refuses an attempt before it reaches the network, so attempts
+    // are counted from its violation reports as well as from the router.
+    await page.addInitScript(() => {
+      window.__refused = [];
+      document.addEventListener("securitypolicyviolation", (event) =>
+        window.__refused.push(event.blockedURI),
+      );
     });
     const form = await openForm(page);
     const box = form.getByRole("searchbox", { name: "Search place" });
-    await box.fill("Lonavala");
-    await form.getByRole("button", { name: "Search", exact: true }).click();
-    await form.getByRole("button", { name: "Search", exact: true }).click();
-    const results = form.getByRole("list", { name: "Place results" });
-    await expect(results.getByRole("button")).toHaveCount(5);
-    await expect(
-      form.getByText("Search: Nominatim © OpenStreetMap contributors"),
-    ).toBeVisible();
-    await page.waitForTimeout(300);
-    expect(seen).toHaveLength(1);
-    const url = new URL(seen[0].url);
-    expect(url.origin + url.pathname).toBe(
-      "https://nominatim.openstreetmap.org/search",
-    );
-    expect(url.searchParams.get("format")).toBe("jsonv2");
-    expect(url.searchParams.get("limit")).toBe("5");
-    expect(url.searchParams.get("q")).toBe("Lonavala");
-    expect(seen[0].referer).toBe("http://127.0.0.1:3412/");
-    await results.getByRole("button", { name: /Lonavala 0/ }).click();
-    await expect(form.getByLabel("Latitude", { exact: true })).toHaveValue(
-      "18.7546",
-    );
-    await expect(form.getByLabel("Longitude", { exact: true })).toHaveValue(
-      "73.4062",
-    );
-    await page.waitForTimeout(1100);
-    await box.fill("Khandala");
-    await box.press("Enter");
-    await expect.poll(() => seen.length).toBe(2);
+    for (const query of ["Lonavala", "pune", "Shivaji Park", "andheri"]) {
+      await box.fill(query);
+      await form.getByRole("button", { name: "Search", exact: true }).click();
+      await expect(
+        form
+          .getByRole("list", { name: "Place results" })
+          .or(form.getByRole("status", { name: "Place search result" }))
+          .first(),
+      ).toBeVisible();
+      await page.waitForTimeout(1100);
+    }
+    await page.waitForTimeout(1500);
+    expect(external).toEqual([]);
+    expect(await page.evaluate(() => window.__refused)).toEqual([]);
+    await expect(form.locator(".place-attribution")).toHaveCount(0);
   });
 
-  test("a failed online search shows the unavailable message", async ({
+  test("results disappear once a location is set another way", async ({
     page,
   }) => {
-    await page.route(nominatim, (route) =>
-      route.fulfill({
-        status: 503,
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: "busy",
-      }),
-    );
-    const form = await openForm(page, "resource");
+    const geo = await controlledGeolocation(page);
+    const form = await openForm(page);
     const box = form.getByRole("searchbox", { name: "Search place" });
-    await box.fill("Lonavala");
-    await box.press("Enter");
-    await expect(
-      form.getByRole("status", { name: "Place search result" }),
-    ).toHaveText("Place search unavailable, use the map or enter coordinates.");
-    await expect(form.getByLabel("Latitude", { exact: true })).toHaveValue("");
+    const results = form.getByRole("list", { name: "Place results" });
+    const latitude = form.getByLabel("Latitude", { exact: true });
+    const longitude = form.getByLabel("Longitude", { exact: true });
+    const searchDelhi = async () => {
+      await box.fill("Delhi");
+      await box.press("Enter");
+      await expect(results.getByRole("button").first()).toBeVisible();
+    };
+    // Use my location
+    await searchDelhi();
+    await form.getByRole("button", { name: "Use my location" }).click();
+    await expect.poll(geo.pending).toBe(1);
+    await geo.answer(18.52043, 73.85674);
+    await expect(latitude).toHaveValue("18.5204");
+    await expect(longitude).toHaveValue("73.8567");
+    await expect(results).toHaveCount(0);
+    // A map click
+    await searchDelhi();
+    await form.locator(".picker-map").click({ position: { x: 60, y: 60 } });
+    await expect(latitude).not.toHaveValue("18.5204");
+    await expect(results).toHaveCount(0);
+    // Choosing a result
+    await searchDelhi();
+    await results.getByRole("button", { name: "New Delhi, Delhi" }).click();
+    await expect(latitude).toHaveValue("28.6214");
+    await expect(results).toHaveCount(0);
+    // Emptying the search box
+    await searchDelhi();
+    await box.fill("");
+    await expect(results).toHaveCount(0);
   });
+});
+
+test.describe("a late location result", () => {
+  for (const [how, overtake] of [
+    [
+      "a manual edit",
+      async (form) => {
+        await form.getByLabel("Latitude", { exact: true }).fill("19.5");
+        await form.getByLabel("Longitude", { exact: true }).fill("72.9");
+      },
+    ],
+    [
+      "a map click",
+      async (form) => {
+        await form.getByRole("button", { name: "Pick on map" }).click();
+        await form.locator(".picker-map").click({ position: { x: 60, y: 60 } });
+      },
+    ],
+    [
+      "a chosen place",
+      async (form) => {
+        const box = form.getByRole("searchbox", { name: "Search place" });
+        await box.fill("Pune");
+        await box.press("Enter");
+        await form
+          .getByRole("list", { name: "Place results" })
+          .getByRole("button", { name: "Pune, Maharashtra" })
+          .click();
+      },
+    ],
+  ])
+    test(`is ignored after ${how}`, async ({ page }) => {
+      const geo = await controlledGeolocation(page);
+      const form = await openForm(page, "resource");
+      const latitude = form.getByLabel("Latitude", { exact: true });
+      const longitude = form.getByLabel("Longitude", { exact: true });
+      await form.getByRole("button", { name: "Use my location" }).click();
+      await expect.poll(geo.pending).toBe(1);
+      await overtake(form);
+      const kept = [await latitude.inputValue(), await longitude.inputValue()];
+      expect(kept[0]).not.toBe("");
+      await geo.answer(26.1543, 91.7452);
+      await page.waitForTimeout(300);
+      expect([
+        await latitude.inputValue(),
+        await longitude.inputValue(),
+      ]).toEqual(kept);
+      await expect(
+        form.getByRole("status", { name: "Location result" }),
+      ).toHaveCount(0);
+      // A new request after the stale one still fills the fields.
+      await form.getByRole("button", { name: "Use my location" }).click();
+      await expect.poll(geo.pending).toBe(1);
+      await geo.answer(26.1543, 91.7452);
+      await expect(latitude).toHaveValue("26.1543");
+    });
 });
 
 test("the street layer never requests tiles outside the world", async ({
@@ -379,42 +480,4 @@ test("the street layer never requests tiles outside the world", async ({
   );
   expect(outside).toEqual([]);
   expect(rejected).toBe(0);
-});
-
-test("a gazetteer search is not blocked by a slow online search", async ({
-  page,
-}) => {
-  let release;
-  const replied = new Promise((resolve) => (release = resolve));
-  await page.route(nominatim, async (route) => {
-    await replied;
-    await route
-      .fulfill({
-        contentType: "application/json",
-        headers: { "Access-Control-Allow-Origin": "*" },
-        body: JSON.stringify([
-          { display_name: "Late Lonavala", lat: "18.75", lon: "73.4" },
-        ]),
-      })
-      .catch(() => {});
-  });
-  const form = await openForm(page);
-  const box = form.getByRole("searchbox", { name: "Search place" });
-  await box.fill("Lonavala");
-  await box.press("Enter");
-  await expect(
-    form.getByRole("status", { name: "Place search result" }),
-  ).toHaveText("Searching…");
-  await box.fill("andheri");
-  await box.press("Enter");
-  const results = form.getByRole("list", { name: "Place results" });
-  await expect(results.getByRole("button", { name: /Andheri/ })).toBeVisible({
-    timeout: 1000,
-  });
-  release();
-  await page.waitForTimeout(500);
-  await expect(
-    results.getByRole("button", { name: /Late Lonavala/ }),
-  ).toHaveCount(0);
-  await expect(results.getByRole("button", { name: /Andheri/ })).toBeVisible();
 });
