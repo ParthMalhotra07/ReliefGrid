@@ -173,3 +173,24 @@ test("Fit globe returns to the whole world and the mode label follows the zoom",
   await expect(status).toHaveText("Outline map · no street detail");
   await expect(map.getByText("Asia", { exact: true })).toHaveCount(0);
 });
+
+test("a globe request during a running zoom animation still ends on the globe", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const status = page.getByLabel("Map background status");
+  const scale = page.locator(".leaflet-control-scale-line");
+  await expect(status).toHaveText("Street map");
+  for (const name of ["Fit globe", "World overview"]) {
+    await page.getByRole("button", { name: "Fit to results" }).click();
+    await expect(scale).not.toHaveText(/000 km$/);
+    // Zoom out animates; the globe request arrives before the animation ends.
+    await page.getByRole("button", { name: "Zoom out" }).click();
+    await page.getByRole("button", { name }).click();
+    await page.waitForTimeout(600);
+    await expect(scale).toHaveText(/000 km$/);
+    await expect(status).toContainText(
+      name === "Fit globe" ? "Street map" : "World overview",
+    );
+  }
+});

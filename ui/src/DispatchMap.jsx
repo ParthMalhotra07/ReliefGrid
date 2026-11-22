@@ -143,6 +143,7 @@ export function DispatchMap({
   const lines = useRef(null);
   const markers = useRef(new Map());
   const openChooser = useRef(null);
+  const settled = useRef((change) => change());
   const fitted = useRef(false);
   const streetView = useRef(null);
   const [street, setStreet] = useState(true);
@@ -160,7 +161,18 @@ export function DispatchMap({
     }).setView(initialCentre, initialZoom);
     map.current = m;
     // The mode label depends on the scale actually shown, not on the layer.
-    m.on("zoomend", () => setZoom(m.getZoom()));
+    // A view change made while a zoom animation runs would be undone when the
+    // animation ends, so it waits for that animation's zoomend instead.
+    let animating = false;
+    m.on("zoomanim", () => {
+      animating = true;
+    });
+    m.on("zoomend", () => {
+      animating = false;
+      setZoom(m.getZoom());
+    });
+    settled.current = (change) =>
+      animating ? m.once("zoomend", change) : change();
     L.control.zoom({ position: "topright" }).addTo(m);
     L.control.scale({ position: "bottomleft", imperial: false }).addTo(m);
     m.attributionControl.setPrefix(false);
@@ -220,7 +232,7 @@ export function DispatchMap({
       if (m.getZoom() <= 2) labels.addTo(m);
       else labels.remove();
     };
-    m.fitWorld(worldPadding);
+    settled.current(() => m.fitWorld(worldPadding));
     updateLabels();
     m.on("zoomend", updateLabels);
     return () => {
@@ -410,7 +422,9 @@ export function DispatchMap({
   useEffect(() => {
     if (focus) {
       const m = map.current;
-      m.setView(toPoint(focus), Math.max(m.getZoom(), 13));
+      settled.current(() =>
+        m.setView(toPoint(focus), Math.max(m.getZoom(), 13)),
+      );
     }
   }, [focus]);
 
@@ -501,7 +515,9 @@ export function DispatchMap({
           <button
             type="button"
             className="map-tool"
-            onClick={() => map.current.fitWorld(worldPadding)}
+            onClick={() =>
+              settled.current(() => map.current.fitWorld(worldPadding))
+            }
           >
             Fit globe
           </button>
@@ -527,14 +543,14 @@ export function DispatchMap({
               type="button"
               className="map-tool"
               disabled={!requests.length && !resources.length}
-              onClick={() =>
-                map.current.fitBounds(
-                  [...requests, ...resources].map((row) =>
-                    toPoint(row.location),
-                  ),
-                  boundsOptions,
-                )
-              }
+              onClick={() => {
+                const points = [...requests, ...resources].map((row) =>
+                  toPoint(row.location),
+                );
+                settled.current(() =>
+                  map.current.fitBounds(points, boundsOptions),
+                );
+              }}
             >
               Fit to results
             </button>
