@@ -168,18 +168,29 @@ const tag = (id) => "#" + id.slice(0, 8);
 export class Toasts {
   constructor(now = () => Date.now()) {
     this.now = now;
+    // Every unexpired toast, newest first; only the first TOAST_LIMIT show.
+    this.all = [];
     this.list = [];
-    this.times = [];
+    this.events = [];
     this.sequence = 0;
   }
-  // The burst an arrival time belongs to: neighbours joined by short gaps.
+  // The burst an event belongs to: neighbours joined by short gaps.
   cluster(at) {
-    const times = this.times;
-    let i = times.indexOf(at),
+    const events = this.events;
+    let i = events.findIndex((v) => v.at === at),
       j = i;
-    while (i > 0 && times[i] - times[i - 1] <= TOAST_GAP) i--;
-    while (j < times.length - 1 && times[j + 1] - times[j] <= TOAST_GAP) j++;
-    return times.slice(i, j + 1);
+    while (i > 0 && events[i].at - events[i - 1].at <= TOAST_GAP) i--;
+    while (
+      j < events.length - 1 &&
+      events[j + 1].at - events[j].at <= TOAST_GAP
+    )
+      j++;
+    return events.slice(i, j + 1);
+  }
+  show(all) {
+    this.all = all;
+    this.list = all.slice(0, TOAST_LIMIT);
+    return this.list;
   }
   add(entries) {
     const now = this.now();
@@ -187,32 +198,19 @@ export class Toasts {
       (v) => v.kind === "request" && toastable.has(v.action),
     );
     if (!fresh.length) return this.list;
-    this.times = [
-      ...this.times.filter((t) => now - t <= 10 * TOAST_WINDOW),
-      ...fresh.map((v) => v.at),
-    ].sort((a, b) => a - b);
-    let list = this.list.map((v) => ({ ...v }));
+    this.events = [
+      ...this.events.filter((v) => now - v.at <= 10 * TOAST_WINDOW),
+      ...fresh.map((v) => ({ at: v.at, action: v.action })),
+    ].sort((a, b) => a.at - b.at);
+    let all = this.all.map((v) => ({ ...v }));
     for (const entry of fresh) {
       const cluster = this.cluster(entry.at);
       const near = cluster.filter(
-        (t) => Math.abs(t - entry.at) <= TOAST_WINDOW,
+        (v) => Math.abs(v.at - entry.at) <= TOAST_WINDOW,
       );
-      if (near.length > TOAST_BURST) {
-        const group = list.find(
-          (v) =>
-            v.group && v.action === entry.action && cluster.includes(v.last),
-        );
-        if (group) {
-          group.count++;
-          group.last = entry.at;
-          group.text = `${group.count} requests ${entry.action}`;
-          group.expires = now + TOAST_MS;
-          continue;
-        }
-      }
-      list.unshift({
+      const single = {
         key: ++this.sequence,
-        group: near.length > TOAST_BURST,
+        group: false,
         action: entry.action,
         count: 1,
         last: entry.at,
@@ -222,19 +220,35 @@ export class Toasts {
           (entry.action === "matched" && entry.resource
             ? ` to ${entry.resource}`
             : ""),
+      };
+      if (near.length <= TOAST_BURST) {
+        all.unshift(single);
+        continue;
+      }
+      // A burst: one toast for it, replacing toasts of the same burst shown
+      // before it was recognised, never toasts outside its cluster.
+      const times = new Set(cluster.map((v) => v.at));
+      const members = all.filter(
+        (v) => v.action === entry.action && times.has(v.last),
+      );
+      const count = cluster.filter((v) => v.action === entry.action).length;
+      all = all.filter((v) => !members.includes(v));
+      all.unshift({
+        ...single,
+        key: members.find((v) => v.group)?.key ?? single.key,
+        group: true,
+        count,
+        text: `${count} requests ${entry.action}`,
       });
     }
-    this.list = list.slice(0, TOAST_LIMIT);
-    return this.list;
+    return this.show(all);
   }
   prune() {
     const now = this.now();
-    const kept = this.list.filter((v) => v.expires > now);
-    if (kept.length !== this.list.length) this.list = kept;
-    return this.list;
+    const kept = this.all.filter((v) => v.expires > now);
+    return kept.length === this.all.length ? this.list : this.show(kept);
   }
   dismiss(key) {
-    this.list = this.list.filter((v) => v.key !== key);
-    return this.list;
+    return this.show(this.all.filter((v) => v.key !== key));
   }
 }

@@ -109,6 +109,8 @@ http
         creations.set("burst:" + id, { kind: "request", current });
       }
       for (const id of ids) {
+        // Optional spacing emulates a matcher that finishes one at a time.
+        if (b.spacing) await new Promise((r) => setTimeout(r, b.spacing));
         const eventId = randomUUID();
         for (const c of clients)
           c.write(

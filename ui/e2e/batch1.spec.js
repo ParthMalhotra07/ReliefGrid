@@ -242,6 +242,19 @@ test.describe("live toasts", () => {
     await expect(toasts(page)).toHaveCount(1);
   });
 
+  test("a burst spread over more than a second still ends as one grouped toast", async ({
+    page,
+    request,
+  }) => {
+    await page.goto("/");
+    await live(page);
+    await request.post("/__test/burst", { data: { count: 10, spacing: 150 } });
+    await expect(toasts(page).first()).toHaveText("10 requests matched");
+    // Checked once, not retried: earlier toasts of the burst would only
+    // disappear by expiring.
+    expect(await toasts(page).allInnerTexts()).toEqual(["10 requests matched"]);
+  });
+
   test("a request created 1 s before an unrelated burst keeps its own toast", async ({
     page,
     request,

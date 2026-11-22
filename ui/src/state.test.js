@@ -136,6 +136,8 @@ test("eligibility mirrors the backend and reports the most relevant reason", asy
 test("timeline timings use the timeline's own timestamps", async () => {
   const { timings, duration } = await import("./state.js");
   assert.equal(duration(3800), "3.8 s");
+  assert.equal(duration(42), "under 0.1 s");
+  assert.equal(duration(60), "0.1 s");
   assert.equal(duration(132000), "2 min 12 s");
   assert.equal(duration(600000), "10 min");
   assert.equal(duration(3900000), "1 h 5 min");

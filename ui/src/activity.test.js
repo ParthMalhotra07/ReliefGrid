@@ -256,3 +256,24 @@ test("toasts never show more than three and expire after five seconds", () => {
   clock = 8001;
   assert.deepEqual(notices.prune(), []);
 });
+
+test("toasts shown before a burst was recognised are folded into it", () => {
+  let clock = 0;
+  const notices = new Toasts(() => clock);
+  const entry = (id, at) => ({
+    kind: "request",
+    action: "matched",
+    id,
+    at,
+    resource: "Tent",
+  });
+  notices.add([entry("unrelated-1", 0)]);
+  for (let i = 0; i < 10; i++) {
+    clock = 1000 + i * 150;
+    notices.add([entry("burst-" + i + "-xx", clock)]);
+  }
+  assert.deepEqual(
+    notices.list.map((v) => v.text),
+    ["10 requests matched", "Request #unrelate matched to Tent"],
+  );
+});

@@ -148,6 +148,7 @@ export function ineligible(request, resource, now = Date.now()) {
 // "3.8 s", "2 min 12 s", "10 min", "1 h 5 min".
 export function duration(ms) {
   if (!(ms >= 0)) return "";
+  if (ms < 50) return "under 0.1 s";
   if (ms < 60000) return `${(Math.round(ms / 100) / 10).toFixed(1)} s`;
   const seconds = Math.floor(ms / 1000);
   if (seconds < 3600) {
