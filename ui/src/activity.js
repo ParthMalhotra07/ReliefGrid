@@ -53,9 +53,13 @@ export class Activity {
     return this.arrivals.filter((t) => Math.abs(t - at) <= WINDOW).length;
   }
   add(entry) {
-    if (this.rate(entry.at) > BURST) {
+    // Only entries that were themselves part of a burst are grouped, so an
+    // event shown just before an unrelated burst keeps its own line.
+    entry.burst = this.rate(entry.at) > BURST;
+    if (entry.burst) {
       const group = this.items.find(
         (v) =>
+          v.burst &&
           v.kind === entry.kind &&
           v.action === entry.action &&
           Math.abs(v.at - entry.at) <= WINDOW,

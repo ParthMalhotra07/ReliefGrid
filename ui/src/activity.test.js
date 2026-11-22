@@ -128,3 +128,32 @@ test("relative times", () => {
   assert.equal(relative(0, 5 * 60000), "5 min ago");
   assert.equal(relative(0, 2 * 3600000), "2 h ago");
 });
+
+test("an event shown just before an unrelated burst is not absorbed by it", () => {
+  let clock = 0;
+  const feed = new Activity(() => clock);
+  feed.resolve(snapshot([]));
+  const rows = [request("solo", "WAITING", 1, "Solo meals")];
+  feed.observe({
+    entityId: "solo",
+    entityVersion: 1,
+    eventType: "request.created",
+  });
+  feed.resolve(snapshot(rows));
+  clock = 700;
+  for (let i = 0; i < 8; i++) {
+    rows.push(request("t" + i, "WAITING", 1));
+    feed.observe({
+      entityId: "t" + i,
+      entityVersion: 1,
+      eventType: "request.created",
+    });
+    clock += 20;
+  }
+  const items = feed.resolve(snapshot(rows));
+  assert.deepEqual(
+    items.map((v) => describe(v)),
+    ["8 requests created", "Request created"],
+  );
+  assert.equal(items[1].title, "Solo meals");
+});

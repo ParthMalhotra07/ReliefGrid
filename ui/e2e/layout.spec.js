@@ -195,9 +195,7 @@ test("the activity feed shows live events, groups a burst and selects records", 
   await expect(
     page.getByRole("region", { name: "Resource details" }),
   ).toContainText("Food team Bravo");
-  // Events less than a second apart count towards one burst; keep the
-  // earlier ones out of it.
-  await page.waitForTimeout(1100);
+  // The burst follows the earlier events closely; they keep their own lines.
   await request.post("/__test/burst", { data: { count: 50 } });
   await expect(items.first()).toContainText("50 requests matched", {
     timeout: 5000,
