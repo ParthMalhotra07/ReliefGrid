@@ -327,3 +327,118 @@ test("the sparkline says it is collecting before the first read", async ({
   await expect(panel.getByText("collecting…")).toBeVisible();
   await expect(panel.getByRole("img", { name: /^Queue:/ })).toHaveCount(0);
 });
+
+test("the bundled Inter font loads from the app itself and works offline", async ({
+  page,
+  request,
+}) => {
+  const external = [];
+  const fonts = [];
+  page.on("request", (r) => {
+    const url = new URL(r.url());
+    if (!["127.0.0.1:3412", "tile.openstreetmap.org"].includes(url.host))
+      external.push(r.url());
+  });
+  page.on("response", async (r) => {
+    if (r.url().endsWith(".woff2"))
+      fonts.push([new URL(r.url()).pathname, r.headers()["content-type"]]);
+  });
+  await page.goto("/");
+  await page.evaluate(() => document.fonts.ready);
+  expect(
+    await page.evaluate(() =>
+      document.fonts.check('600 16px "Inter Variable"'),
+    ),
+  ).toBe(true);
+  expect(
+    await page.evaluate(() => getComputedStyle(document.body).fontFamily),
+  ).toMatch(/^"Inter Variable"/);
+  expect(fonts).toEqual([
+    [
+      expect.stringMatching(/^\/assets\/inter-latin-wght-normal-\w+\.woff2$/),
+      "font/woff2",
+    ],
+  ]);
+  // Precached by the service worker, and its licence shipped with the app.
+  const worker = await (await request.get("/sw.js")).text();
+  expect(worker).toContain(fonts[0][0]);
+  const licences = await (await request.get("/assets/licenses.txt")).text();
+  expect(licences).toContain("SIL OPEN FONT LICENSE Version 1.1");
+  expect(external).toEqual([]);
+});
+
+test("text meets WCAG AA contrast across the main views", async ({
+  page,
+  request,
+}) => {
+  const { contrastFailures } = await import("./contrast.js");
+  await request.post("/__test/state", { data: { status: "WAITING" } });
+  await page.goto("/");
+  await expect(
+    page.getByRole("status", { name: "Connection status" }),
+  ).toContainText("Live");
+  const failures = [];
+  const check = async (view) =>
+    failures.push(
+      ...(await contrastFailures(page)).map((v) => `${view}: ${v}`),
+    );
+  await check("overview");
+  await page
+    .getByRole("region", { name: "Requests", exact: true })
+    .getByRole("button", { name: /Water needed at the school/ })
+    .click();
+  await check("request selected");
+  await page
+    .getByRole("region", { name: "Resources", exact: true })
+    .getByRole("button", { name: /Water team Alpha/ })
+    .click();
+  await check("resource selected");
+  await page.getByRole("button", { name: "How matching works" }).click();
+  await check("how matching works");
+  await page.getByRole("button", { name: "How matching works" }).click();
+  await request.post("/__test/state", {
+    data: {
+      status: "MATCHED",
+      eventId: "12121212-1212-4212-8212-121212121212",
+    },
+  });
+  await expect(
+    page.getByRole("region", { name: "Notifications" }).getByRole("status"),
+  ).toHaveCount(1);
+  await check("toast");
+  await page
+    .getByRole("button", { name: "Register resource", exact: true })
+    .click();
+  await check("register form");
+  await page.getByRole("button", { name: "Close creation form" }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  await check("list view");
+  expect(failures).toEqual([]);
+});
+
+test("surfaces share one radius and elevation, and focus has one ring", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const styles = await page.evaluate(() =>
+    [".panel", ".metric"].map((selector) => {
+      const style = getComputedStyle(document.querySelector(selector));
+      return [style.borderTopLeftRadius, style.boxShadow !== "none"];
+    }),
+  );
+  expect(styles).toEqual([
+    ["10px", true],
+    ["10px", true],
+  ]);
+  const refresh = page.getByRole("button", { name: /Refresh data/ });
+  await refresh.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(refresh).toBeFocused();
+  expect(
+    await refresh.evaluate((e) => {
+      const s = getComputedStyle(e);
+      return [s.outlineStyle, s.outlineWidth, s.outlineColor];
+    }),
+  ).toEqual(["solid", "2px", "rgb(26, 113, 104)"]);
+});

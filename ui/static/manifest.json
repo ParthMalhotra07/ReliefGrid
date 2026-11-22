@@ -1,15 +1,16 @@
 {
-  "revision": "59f335390f1cb176",
+  "revision": "5c67b8c18761a0d4",
   "assets": [
-    "/assets/app-QBCX56LI.js",
-    "/assets/app-X7ITX5OC.css",
+    "/assets/app-7TGNM2IV.css",
+    "/assets/app-XUNKSE6S.js",
+    "/assets/inter-latin-wght-normal-NRMW37G5.woff2",
     "/assets/layers-2x-TBM42ERR.png",
     "/assets/layers-55W3Q4RM.png",
     "/assets/licenses.txt",
     "/assets/marker-icon-2V3QKKVC.png"
   ],
   "sources": {
-    "build.mjs": "f6344091f3d8a6bd2b760db8efe81b8e521596503660770e0f093003c09de1f9",
+    "build.mjs": "df4f1e8e012e889bd5bcd5ace2567d79ae0a50eb73febbdfcb362ba1d640f1d2",
     "index.html": "7f4a49b1f0641b892835a3977acda5379b42d014915d04e832262447d1e85d22",
     "package-lock.json": "617c6a871ed4179c6fde59669bf6ca26d1a74bbc679eecb57ad97d928c667dda",
     "package.json": "df326ebfb477a725e8ceab0ec2ea4481b1c8c4ad66152bc2a473d570e3daa174",
@@ -17,9 +18,11 @@
     "src/CreateDialog.jsx": "75c2d45c26ae0dc98a605d78d7f5d4aaa25c2fcaefb66cce680f1a68cb561c76",
     "src/DispatchMap.jsx": "a21455ae186598a9fa53d757aea3d303446c15b8397340036b57d420652afa51",
     "src/activity.js": "7083b05f43cc91a9a0b4f95ebe7ec05e019e10a707dda9357bb223bab3c6447a",
-    "src/app.css": "bffd04aaa1ce03ac63e5119899a33fa478e3c31a2d4cbfbeb8e61422d82d32d5",
+    "src/app.css": "1fdc45e8c2be3373e511e571ee45d93d8a37732709636f1ced41c35715e4d0ab",
     "src/create.js": "c44b72e660a580e5527cb02c2d77355f4263794c38c33b0452477681b97d4bee",
     "src/icons.js": "62e666463c0f0d1a3ec74272361de3725b2193273c78fd771f839a29934717cc",
+    "src/inter-OFL.txt": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345",
+    "src/inter-latin-wght-normal.woff2": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
     "src/places.js": "ae5b9aee94409dfd00ee9459b539b1e097b8d7ced950c1f1228098d66b111449",
     "src/places.json": "994533411832b238d660ba3ad70524f24e9108233165be59e10245a6e4763e48",
     "src/refresh.js": "1aa2703a835686110ea13c527b53fb0b9da290467fe2a91e648a34c48c14c699",
@@ -28,13 +31,14 @@
     "src/world-land.json": "ed9640bc58d79dc6e8f2fdd2fa5775d6398e1f942243490d8ecc0ba2cf675e62"
   },
   "outputs": {
-    "app-QBCX56LI.js": "cef47403bb46643a5de59b857c35665449188445019c51fa8d6867b46bb53c11",
-    "app-X7ITX5OC.css": "a07016012b7b1a3d443f237d0b7a7d9877be5f1f02b6b1934815fa6cef20a6c5",
-    "index.html": "cb57265839a653b1aad6218e81156a8d6a99cfdb7c96d3f112072beb68219d98",
+    "app-7TGNM2IV.css": "2eea893dfefdae75d94863986b23eae0383a8d3aaf9aef65f4bebde0f59d27f7",
+    "app-XUNKSE6S.js": "c50b718e78a8bcc5348e033ba073690c9d203ea9606248bbe38f505a6bc6c990",
+    "index.html": "760752d1648819e5d18781acca9913a42897f4236844307c8098aac76b07e6fe",
+    "inter-latin-wght-normal-NRMW37G5.woff2": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
     "layers-2x-TBM42ERR.png": "066daca850d8ffbef007af00b06eac0015728dee279c51f3cb6c716df7c42edf",
     "layers-55W3Q4RM.png": "1dbbe9d028e292f36fcba8f8b3a28d5e8932754fc2215b9ac69e4cdecf5107c6",
-    "licenses.txt": "ed54825053a660eedf369f3613ab6dff2defcf8bd48ab8bff4282756b416f52a",
+    "licenses.txt": "75f9c30a9af63e150dea84d441243660e0f13dfe93b6a320e40f31635906c821",
     "marker-icon-2V3QKKVC.png": "574c3a5cca85f4114085b6841596d62f00d7c892c7b03f28cbfa301deb1dc437",
-    "sw.js": "efbb7ccc0d909fb79551e6fc4ad9ed8822fe95112db0021a326a0c95d1709f16"
+    "sw.js": "86703efaac95b71e0e8b0ba5cfb1eddf8a07e85078736732ead31e64dc719c4c"
   }
 }
