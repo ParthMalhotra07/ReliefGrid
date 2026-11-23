@@ -2,7 +2,7 @@
 
 Parth Malhotra and Hrishabh Sharrma
 
-Source at submission: 323bce31982d38ae0c6f93f7b36661872a631071. Historical runs keep their own recorded revisions.
+Source at submission: 1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9. Historical runs keep their own recorded revisions.
 
 ## 1. Abstract
 
@@ -65,7 +65,7 @@ Bigger claims were checked by scripted runs on a fresh cluster: a "gate" that ru
 
 ## 3. Architecture, sharding and consistency
 
-Placement uses xxhash64 and 128 virtual nodes per shard, 384 tokens overall. The fixed ring carries ringVersion/checksum. Replica failure does not remap keys; leader discovery changes the destination within the owning shard. The PS gives hash mod 3 as an example; the ring reduces remapping when adding a shard. Simulation studies placement, not online data migration. The single coordinator is a routing dependency, not another consensus group. [3-4]
+Placement uses xxhash64 and 128 virtual nodes per shard, 384 tokens overall. The fixed ring carries ringVersion/checksum. Replica failure does not remap keys; leader discovery changes the destination within the owning shard. The coordinator prefers replicas with fresher heartbeats and returns 503 immediately when all registered replicas for a shard are marked DOWN. It can try a replica with an expired heartbeat during failover, while Raft still determines whether the replica can serve the operation. The PS gives hash mod 3 as an example; the ring reduces remapping when adding a shard. Simulation studies placement, not online data migration. The single coordinator is a routing dependency, not another consensus group. [3-4]
 
 ![F1. System architecture](figures/F1-print.svg)
 
@@ -185,7 +185,7 @@ Run gate-20261115T192826Z, code at 636b265, evidence #186 [11]. This is the run 
 | UI forms, PS alias routes (7), traced request | Passed |
 | Fixed-replica check | API 2, matcher 2, no autoscalers |
 
-**Change after the gate.** After the final gate, PR #189 (merge 5974ff2) fixed the UI’s Needs-attention counter so that it counts requests by their current workflow state. The change is UI-only, adds a browser regression test, and does not affect the storage, workflow or messaging code that the gate tested, so the gate results above still apply.
+Change after the gate. After the final gate, PR #189 (merge 5974ff2) fixed the UI’s Needs-attention counter so that it counts requests by their current workflow state. The change is UI-only, adds a browser regression test, and does not affect the storage, workflow or messaging code that the gate tested, so the gate results above still apply. After the gate, PRs #194-#199 (merged to main in #200, merge 1bc2b7b) improved the dispatcher UI: map pins by urgency and type, a details panel, offline place search, the 50 km matching radius with reasons why resources are not eligible, request sorting with waiting and window badges, an activity feed, a queue sparkline and dark mode. They are UI-only, with browser tests (97) and unit tests (44), and change no storage, workflow, messaging, API or routing code, so the gate results still apply.
 
 The final gate passed on its third attempt. The first two stopped on problems in our test scripts, not in the system: a check that looked for a new leader only once instead of waiting for the election, and a metrics check that was not given its auth token. Both failed runs are kept in the evidence with their causes.
 
@@ -275,12 +275,12 @@ The system still has clear limits. It runs on one machine, the coordinator and t
 
 [1] Course Cloud Computing problem statement: Tables 2/3/8; sections 9, 10 and 12. Local deployment and live demo requirements are authoritative.
 
-[2] [Implementation source at submission](https://github.com/ParthMalhotra07/ReliefGrid/tree/323bce31982d38ae0c6f93f7b36661872a631071). Historical measurements retain their own revisions.
+[2] [Implementation source at submission](https://github.com/ParthMalhotra07/ReliefGrid/tree/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9). Historical measurements retain their own revisions.
 
-[3] [Public/internal/ring contracts and simulation](https://github.com/ParthMalhotra07/ReliefGrid/tree/323bce31982d38ae0c6f93f7b36661872a631071/contracts). [4] [Architecture, workflow and ADR004/005](https://github.com/ParthMalhotra07/ReliefGrid/blob/323bce31982d38ae0c6f93f7b36661872a631071/docs/report/architecture.md). [5] [12 November scoped gate](https://github.com/ParthMalhotra07/ReliefGrid/blob/323bce31982d38ae0c6f93f7b36661872a631071/docs/evidence/gate-20261112T100532Z/report.md). [6] [Later #167 campaign](https://github.com/ParthMalhotra07/ReliefGrid/tree/323bce31982d38ae0c6f93f7b36661872a631071/docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7). [#168 unknown-outcome fix](https://github.com/ParthMalhotra07/ReliefGrid/pull/168). [7] [S5.2 Phase 1 reports/aggregates and methodology](https://github.com/ParthMalhotra07/ReliefGrid/tree/323bce31982d38ae0c6f93f7b36661872a631071/docs/evidence/S5.2). [8] [ADR006 and retained M6 raw replay](https://github.com/ParthMalhotra07/ReliefGrid/blob/323bce31982d38ae0c6f93f7b36661872a631071/docs/adr/006-read-fence-study.md). [9] [Deployment, Merkle audit and qualified validation/rehearsal records](https://github.com/ParthMalhotra07/ReliefGrid/blob/323bce31982d38ae0c6f93f7b36661872a631071/docs/report/deployment-and-demo.md).
+[3] [Public/internal/ring contracts and simulation](https://github.com/ParthMalhotra07/ReliefGrid/tree/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/contracts). [4] [Architecture, workflow and ADR004/005](https://github.com/ParthMalhotra07/ReliefGrid/blob/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/report/architecture.md). [5] [12 November scoped gate](https://github.com/ParthMalhotra07/ReliefGrid/blob/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/evidence/gate-20261112T100532Z/report.md). [6] [Later #167 campaign](https://github.com/ParthMalhotra07/ReliefGrid/tree/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/evidence/S4.3/suite-20261112T155808Z-hrishabh-sharrma-ThinkPad-E14-Gen-7). [#168 unknown-outcome fix](https://github.com/ParthMalhotra07/ReliefGrid/pull/168). [7] [S5.2 Phase 1 reports/aggregates and methodology](https://github.com/ParthMalhotra07/ReliefGrid/tree/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/evidence/S5.2). [8] [ADR006 and retained M6 raw replay](https://github.com/ParthMalhotra07/ReliefGrid/blob/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/adr/006-read-fence-study.md). [9] [Deployment, Merkle audit and qualified validation/rehearsal records](https://github.com/ParthMalhotra07/ReliefGrid/blob/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/report/deployment-and-demo.md).
 
 [10] [Phase 2 comparison, reviewed #176](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) and [method/deviations/limits](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md). Raw measurement source 514bb33; evidence publication source 25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3.
 
-[11] [Final gate gate-20261115T192826Z evidence](https://github.com/ParthMalhotra07/ReliefGrid/tree/323bce31982d38ae0c6f93f7b36661872a631071/docs/evidence/gate-20261115T192826Z) and [PR #186](https://github.com/ParthMalhotra07/ReliefGrid/pull/186).
+[11] [Final gate gate-20261115T192826Z evidence](https://github.com/ParthMalhotra07/ReliefGrid/tree/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/evidence/gate-20261115T192826Z) and [PR #186](https://github.com/ParthMalhotra07/ReliefGrid/pull/186).
 
-[12] [Internal auth official enable and rotation run](https://github.com/ParthMalhotra07/ReliefGrid/tree/323bce31982d38ae0c6f93f7b36661872a631071/docs/evidence/S-29-auth-enable) and [PR #181](https://github.com/ParthMalhotra07/ReliefGrid/pull/181).
+[12] [Internal auth official enable and rotation run](https://github.com/ParthMalhotra07/ReliefGrid/tree/1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9/docs/evidence/S-29-auth-enable) and [PR #181](https://github.com/ParthMalhotra07/ReliefGrid/pull/181).
