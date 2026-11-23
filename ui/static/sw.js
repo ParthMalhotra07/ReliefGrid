@@ -1,4 +1,11 @@
-const NAME='reliefgrid-a60981e83627d495',ASSETS=["/","/assets/app-7KIEN2QV.js","/assets/app-JHPSCFMW.css","/assets/layers-2x-TBM42ERR.png","/assets/layers-55W3Q4RM.png","/assets/licenses.txt","/assets/map-grid.svg","/assets/marker-icon-2V3QKKVC.png"];
+const NAME='reliefgrid-78bb257597764574',ASSETS=["/","/assets/app-DHAK6C67.css","/assets/app-DKMUX47B.js","/assets/inter-latin-wght-normal-NRMW37G5.woff2","/assets/layers-2x-TBM42ERR.png","/assets/layers-55W3Q4RM.png","/assets/licenses.txt","/assets/marker-icon-2V3QKKVC.png"];
 self.addEventListener('install',event=>event.waitUntil(caches.open(NAME).then(cache=>cache.addAll(ASSETS.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('reliefgrid-')&&k!==NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/api/')||u.pathname==='/ui/status'||u.pathname.startsWith('/__test/'))return;if(u.pathname==='/'){event.respondWith(caches.open(NAME).then(cache=>cache.match('/')).then(hit=>hit||fetch(event.request)));return;}if(ASSETS.includes(u.pathname))event.respondWith(caches.open(NAME).then(cache=>cache.match(event.request)).then(hit=>hit||fetch(event.request)));});
+async function navigate(request){
+  try {
+    const response=await fetch(request,{signal:AbortSignal.timeout(3000)});
+    if(response.ok)return response;
+  } catch {}
+  return (await (await caches.open(NAME)).match('/')) || Response.error();
+}
+self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/api/')||u.pathname==='/ui/status'||u.pathname.startsWith('/__test/'))return;if(u.pathname==='/'){event.respondWith(navigate(event.request));return;}if(ASSETS.includes(u.pathname))event.respondWith(caches.open(NAME).then(cache=>cache.match(event.request)).then(hit=>hit||fetch(event.request)));});

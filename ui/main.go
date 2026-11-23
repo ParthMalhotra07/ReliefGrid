@@ -29,7 +29,7 @@ func dispatchHandler(telemetry *queueTelemetry) http.Handler {
 		}
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "same-origin")
-		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self'; connect-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 		switch {
 		case strings.HasSuffix(name, ".html"):
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -41,6 +41,8 @@ func dispatchHandler(telemetry *queueTelemetry) http.Handler {
 			w.Header().Set("Content-Type", "image/svg+xml")
 		case strings.HasSuffix(name, ".png"):
 			w.Header().Set("Content-Type", "image/png")
+		case strings.HasSuffix(name, ".woff2"):
+			w.Header().Set("Content-Type", "font/woff2")
 		default:
 			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		}

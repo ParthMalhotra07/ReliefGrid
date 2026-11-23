@@ -1,8 +1,66 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./test-support.js";
 const eventId = "44444444-4444-4444-8444-444444444444";
 test.beforeEach(async ({ request }) => {
   await request.post("/__test/reset");
 });
+test("desktop selection keeps the map and request actions side by side", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("region", { name: "Requests", exact: true })
+    .getByRole("button", { name: /Water needed at the school/ })
+    .click();
+  const map = await page
+    .getByLabel("Dispatch map", { exact: true })
+    .boundingBox();
+  const inspector = await page
+    .getByRole("region", { name: "Request details" })
+    .boundingBox();
+  expect(inspector.x).toBeGreaterThanOrEqual(map.x + map.width);
+  expect(inspector.y).toBeLessThan(map.y + 40);
+});
+
+test("attention count opens the filtered work queue and can be cleared", async ({
+  page,
+  request,
+}) => {
+  await request.post("/__test/state", { data: { status: "WAITING" } });
+  await page.goto("/");
+  const attention = page.getByRole("button", { name: /Needs attention/ });
+  await attention.click({ timeout: 3000 });
+  await expect(attention).toHaveAttribute("aria-pressed", "true");
+  await request.post("/__test/state", { data: { status: "MATCHED", eventId } });
+  const queue = page.getByRole("region", { name: "Requests", exact: true });
+  await expect(queue).toContainText("No requests match");
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await expect(queue).toContainText("MATCHED");
+});
+
+test("an online navigation replaces a cached app shell", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await expect
+    .poll(() => page.evaluate(() => !!navigator.serviceWorker.controller))
+    .toBe(true);
+  await page.evaluate(async () => {
+    const names = await caches.keys();
+    const cache = await caches.open(
+      names.find((name) => name.startsWith("reliefgrid-")),
+    );
+    await cache.put(
+      "/",
+      new Response("Old dispatch shell", {
+        headers: { "Content-Type": "text/html" },
+      }),
+    );
+  });
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Dispatch overview" }),
+  ).toBeVisible({ timeout: 3000 });
+});
+
 test("dispatch shows authoritative state, assignments, filters and telemetry", async ({
   page,
 }) => {
@@ -26,6 +84,7 @@ test("dispatch shows authoritative state, assignments, filters and telemetry", a
   ).toContainText("3");
   await expect(page.getByLabel("Dispatch map")).toBeVisible();
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   await expect(
@@ -166,6 +225,17 @@ test("mobile layout retains the list, map and telemetry without horizontal overf
   await expect(page.getByRole("region", { name: "Resources" })).toContainText(
     "Water team Alpha",
   );
+  const requests = await page
+    .getByRole("region", { name: "Requests", exact: true })
+    .boundingBox();
+  const resources = await page
+    .getByRole("region", { name: "Resources", exact: true })
+    .boundingBox();
+  const inspector = await page
+    .getByRole("region", { name: "Request details" })
+    .boundingBox();
+  expect(requests.width).toBe(inspector.width);
+  expect(resources.width).toBe(inspector.width);
   await page.screenshot({
     path: "test-results/dispatch-mobile.png",
     fullPage: true,
@@ -272,6 +342,7 @@ test("cancel uses only the public status endpoint and waits for committed cleanu
     "WAITING",
   );
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   page.on("dialog", (dialog) => dialog.accept());
@@ -310,6 +381,7 @@ test("an unknown write outcome remains visible after a successful reread", async
     "WAITING",
   );
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   page.on("dialog", (dialog) => dialog.accept());
@@ -363,6 +435,7 @@ test("same-render action reentry admits only one pending write", async ({
   await request.post("/__test/state", { data: { status: "WAITING" } });
   await page.goto("/");
   await page
+    .getByRole("region", { name: "Requests", exact: true })
     .getByRole("button", { name: /Water needed at the school/ })
     .click();
   const writes = await page

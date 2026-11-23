@@ -6,21 +6,143 @@ import React, {
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./app.css";
 import { CreateDialog } from "./CreateDialog.jsx";
+import { DispatchMap } from "./DispatchMap.jsx";
+import { Activity, describe, relative, Toasts } from "./activity.js";
 import { coalescedRefresh } from "./refresh.js";
 import {
   EventIDs,
   list,
   observe,
+  distanceKm,
+  ineligible,
   reciprocal,
   REQUEST_STATUSES,
+  retryReason,
   TYPES,
   terminal,
+  timings,
+  SORTS,
+  sortRequests,
+  waiting,
+  waitingLabel,
+  nextBoundary,
+  windowLabel,
+  windowState,
 } from "./state.js";
+import { typeIcon } from "./icons.js";
+import { QueueTrend, sparkline } from "./trend.js";
+import { applyTheme, saveTheme, savedTheme, THEMES } from "./theme.js";
+// Before the first render, so the page never flashes the other theme.
+applyTheme(savedTheme());
 const CACHE = "reliefgrid.dispatch.snapshot.v1";
+const SORT_KEY = "reliefgrid.dispatch.sort.v1";
+// The shared clock ticks every 5 s (feed times); window boundaries also wake
+// it exactly. Long waits are re-armed hourly.
+const CLOCK_MS = 5000;
+const BOUNDARY_MAX_MS = 3600000;
+
+// The chosen request sort, per browser; storage may be unavailable.
+function savedSort() {
+  try {
+    const value = localStorage.getItem(SORT_KEY);
+    return SORTS.some(([key]) => key === value) ? value : "urgency";
+  } catch {
+    return "urgency";
+  }
+}
+function saveSort(value) {
+  try {
+    localStorage.setItem(SORT_KEY, value);
+  } catch {
+    /* The choice still applies for this page. */
+  }
+}
+const legendTypes = [
+  ["WATER", "Water"],
+  ["FOOD", "Food"],
+  ["MEDICINE", "Medicine"],
+  ["TRANSPORTATION", "Transport"],
+  ["SHELTER", "Shelter"],
+];
+// The map's bundled type icon, announced by its type name.
+function ResourceIcon({ type }) {
+  const icon = typeIcon(type, label(type));
+  return icon ? (
+    <span
+      className="resource-icon"
+      dangerouslySetInnerHTML={{ __html: icon }}
+    />
+  ) : (
+    <span className="resource-icon" aria-hidden="true">
+      ◇
+    </span>
+  );
+}
+// Waiting plus retrying requests over the last 15 minutes.
+function QueueSparkline({ samples, summary, now }) {
+  const end = Math.max(now, samples.at(-1)?.at ?? now);
+  const points = sparkline(samples, end, 120, 24);
+  return (
+    <div className="queue-trend">
+      {points ? (
+        <>
+          <svg
+            role="img"
+            aria-label={summary(end)}
+            viewBox="0 0 120 24"
+            width="120"
+            height="24"
+            data-samples={samples.length}
+          >
+            <polyline points={points} />
+          </svg>
+          <strong className="trend-now" aria-hidden="true">
+            {samples.at(-1).count}
+          </strong>
+        </>
+      ) : (
+        <span className="trend-collecting">collecting…</span>
+      )}
+      <small>Waiting + retrying, last 15 min</small>
+    </div>
+  );
+}
+function WindowBadge({ resource, now }) {
+  const text = windowLabel(resource, now);
+  return text ? (
+    <span className={`window-badge window-${windowState(resource, now).state}`}>
+      {text}
+    </span>
+  ) : null;
+}
+// Mirrors internal/workflow: candidates.go (radiusKM, eligible), retry.go
+// (retryDelay 5 s, 30 s, then 120 s) and the resource wake in reconcile.go.
+const matchingSteps = [
+  "A request is stored and its matching work queued.",
+  "A resource is eligible if it's the same type, within 50 km, its availability window is open now, and it's available and unclaimed.",
+  "The nearest eligible resource is claimed; only one request can win it.",
+  "If nothing fits, the request waits and is retried after 5 s, 30 s, then every 2 minutes; registering a new resource wakes waiting requests immediately.",
+  "Start work → Mark fulfilled (the resource returns if reusable), or Cancel (the resource is released).",
+];
+const facts = (rows) => (
+  <dl className="resource-facts record-facts">
+    {rows.map(([term, value]) => (
+      <div key={term}>
+        <dt>{term}</dt>
+        <dd>{value}</dd>
+      </div>
+    ))}
+  </dl>
+);
+const attentionStates = new Set([
+  "WAITING",
+  "RETRYING",
+  "CANCELLING",
+  "FULFILLING",
+]);
 const time = (value) =>
   value
     ? new Date(value).toLocaleTimeString([], {
@@ -30,6 +152,13 @@ const time = (value) =>
       })
     : "Not yet observed";
 const short = (id) => id?.slice(0, 8) || "—";
+const coordinates = ({ lat, lng }) => lat.toFixed(5) + ", " + lng.toFixed(5);
+const dateTime = (value) => {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime())
+    ? date.toLocaleString()
+    : "Not reported";
+};
 const label = (text) =>
   text
     ?.replaceAll("_", " ")
@@ -67,8 +196,19 @@ function useDispatch() {
     [online, setOnline] = useState(navigator.onLine),
     [stream, setStream] = useState("Connecting"),
     [loading, setLoading] = useState(false),
-    [offlineReady, setOfflineReady] = useState(false);
-  const current = useRef(snapshot),
+    [offlineReady, setOfflineReady] = useState(false),
+    [activity, setActivity] = useState([]),
+    [toasts, setToasts] = useState([]),
+    [held, setHeld] = useState(0),
+    [toastsHeld, setToastsHeld] = useState(0);
+  // Created once, not on every render.
+  const [feedState] = useState(() => new Activity());
+  const [trendState] = useState(() => new QueueTrend());
+  const [trend, setTrend] = useState([]);
+  const [noticeState] = useState(() => new Toasts());
+  const feed = useRef(feedState),
+    notices = useRef(noticeState),
+    current = useRef(snapshot),
     alive = useRef(true),
     active = useRef(null);
   const refresh = useMemo(
@@ -106,6 +246,17 @@ function useDispatch() {
           if (!alive.current) return;
           current.current = next;
           setSnapshot(next);
+          setActivity(feed.current.resolve(next));
+          // Waiting plus retrying in this successful read, for the sparkline.
+          setTrend(
+            trendState.add(
+              Date.now(),
+              requests.items.filter((r) => waiting(r.status)).length,
+            ),
+          );
+          if (feed.current.fresh.length)
+            setToasts(notices.current.add(feed.current.fresh));
+          setToastsHeld(notices.current.held());
           setStale(false);
           setError("");
           try {
@@ -130,6 +281,17 @@ function useDispatch() {
       }),
     [],
   );
+  // Runs whether or not reads succeed, so a read outage cannot let the feed's
+  // memory grow without bound.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      feed.current.expire();
+      setHeld(feed.current.held());
+      setToasts(notices.current.expire());
+      setToastsHeld(notices.current.held());
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     alive.current = true;
     let source;
@@ -157,8 +319,10 @@ function useDispatch() {
       source.addEventListener("change", (event) => {
         try {
           const v = JSON.parse(event.data);
-          if (v.eventId === event.lastEventId && ids.accept(v.eventId))
+          if (v.eventId === event.lastEventId && ids.accept(v.eventId)) {
+            feed.current.observe(v);
             refresh();
+          }
         } catch {
           refresh();
         }
@@ -209,6 +373,14 @@ function useDispatch() {
     offlineReady,
     refresh,
     setError,
+    activity,
+    toasts,
+    dismiss: useCallback((key) => setToasts(notices.current.dismiss(key)), []),
+    expire: useCallback(() => setToasts(notices.current.prune()), []),
+    held,
+    toastsHeld,
+    trend,
+    trendSummary: (now) => trendState.summary(now),
   };
 }
 function Badge({ status }) {
@@ -218,122 +390,82 @@ function Badge({ status }) {
     </span>
   );
 }
-function DispatchMap({
-  requests,
-  resources,
-  selected,
-  onSelect,
-  focus,
-  visible,
-}) {
-  const element = useRef(null),
-    map = useRef(null),
-    layers = useRef(null),
-    fitted = useRef(false);
-  useEffect(() => {
-    const m = L.map(element.current, {
-      zoomControl: false,
-      preferCanvas: false,
-    }).setView([20.6, 78.9], 4);
-    map.current = m;
-    L.control.zoom({ position: "bottomright" }).addTo(m);
-    m.attributionControl.setPrefix("Leaflet");
-    L.imageOverlay(
-      "/assets/map-grid.svg",
-      [
-        [-85, -180],
-        [85, 180],
-      ],
-      { opacity: 0.22, interactive: false },
-    ).addTo(m);
-    for (const lat of [-60, -30, 0, 30, 60])
-      L.polyline(
-        [
-          [lat, -180],
-          [lat, 180],
-        ],
-        { color: "#b9cbc5", weight: 0.5, interactive: false },
-      ).addTo(m);
-    for (const lng of [-120, -60, 0, 60, 120])
-      L.polyline(
-        [
-          [-85, lng],
-          [85, lng],
-        ],
-        { color: "#b9cbc5", weight: 0.5, interactive: false },
-      ).addTo(m);
-    layers.current = L.layerGroup().addTo(m);
-    return () => {
-      m.remove();
-      map.current = null;
-    };
-  }, []);
-  useEffect(() => {
-    if (!map.current) return;
-    const group = layers.current;
-    group.clearLayers();
-    const points = [];
-    const tooltip = (text) => {
-      const el = document.createElement("span");
-      el.textContent = text;
-      return el;
-    };
-    for (const row of resources) {
-      const p = [row.location.lat, row.location.lng];
-      points.push(p);
-      L.circleMarker(p, {
-        radius: 8,
-        color: "#246893",
-        weight: 3,
-        fillColor: "#fff",
-        fillOpacity: 1,
-      })
-        .bindTooltip(tooltip(row.name))
-        .addTo(group);
-    }
-    for (const row of requests) {
-      const p = [row.location.lat, row.location.lng];
-      points.push(p);
-      const color =
-        row.urgency === "CRITICAL"
-          ? "#c94e42"
-          : row.urgency === "HIGH"
-            ? "#b57b22"
-            : "#168078";
-      L.circleMarker(p, {
-        radius: row.requestId === selected ? 11 : 7,
-        color: "#fff",
-        weight: 2,
-        fillColor: color,
-        fillOpacity: terminal(row.status) ? 0.4 : 1,
-      })
-        .bindTooltip(tooltip(`${label(row.requestType)} · ${row.status}`))
-        .on("click", () => onSelect(row.requestId))
-        .addTo(group);
-      const res = resources.find((v) => reciprocal(row, v));
-      if (res)
-        L.polyline([p, [res.location.lat, res.location.lng]], {
-          color: row.status === "CANCELLING" ? "#b57b22" : "#246893",
-          weight: 2,
-          dashArray: "5 6",
-        }).addTo(group);
-    }
-    if (points.length && !fitted.current) {
-      map.current.fitBounds(points, { padding: [38, 38], maxZoom: 12 });
-      fitted.current = true;
-    }
-  }, [requests, resources, selected, onSelect]);
-  useEffect(() => {
-    if (focus && map.current) map.current.setView([focus.lat, focus.lng], 12);
-  }, [focus]);
-  useEffect(() => {
-    if (!visible) return;
-    const frame = requestAnimationFrame(() => map.current?.invalidateSize());
-    return () => cancelAnimationFrame(frame);
-  }, [visible]);
+function ActivityFeed({ items, held, now, onChoose }) {
   return (
-    <div ref={element} className="map" aria-label="Dispatch map" role="img" />
+    <section
+      className="panel activity-panel"
+      aria-label="Activity"
+      data-held={held}
+    >
+      <div className="panel-heading">
+        <h2>Activity</h2>
+        <span className="quiet-tag">LIVE STREAM</span>
+      </div>
+      {items.length ? (
+        <ol className="activity-list">
+          {items.map((item) => (
+            <li key={item.key}>
+              <button type="button" onClick={() => onChoose(item)}>
+                <strong>{describe(item)}</strong>
+                {item.count === 1 && <span>{item.title}</span>}
+                <small>{relative(item.at, Math.max(now, item.at))}</small>
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="activity-empty">
+          Record changes from the live stream appear here.
+        </p>
+      )}
+    </section>
   );
+}
+function Notifications({ toasts, held, dismiss, expire }) {
+  useEffect(() => {
+    if (!toasts.length) return;
+    const next = Math.min(...toasts.map((v) => v.expires));
+    const timer = setTimeout(expire, Math.max(0, next - Date.now()) + 20);
+    return () => clearTimeout(timer);
+  }, [toasts, expire]);
+  return (
+    <section className="toasts" aria-label="Notifications" data-held={held}>
+      {toasts.map((toast) => (
+        <div className="toast" key={toast.key}>
+          <p role="status">{toast.text}</p>
+          <button
+            type="button"
+            aria-label="Dismiss notification"
+            onClick={() => dismiss(toast.key)}
+          >
+            ×
+          </button>
+        </div>
+      ))}
+    </section>
+  );
+}
+// The map only has pins for records the current filters show, so the action
+// is unavailable for a hidden record and says why.
+function ShowOnMap({ hidden, onShow }) {
+  return (
+    <div className="show-on-map">
+      <button
+        type="button"
+        className="button"
+        disabled={hidden}
+        onClick={onShow}
+      >
+        Show on map
+      </button>
+      {hidden && <span>Hidden by current filters</span>}
+    </div>
+  );
+}
+function showDetailsOnMobile(panel) {
+  if (matchMedia("(max-width: 720px)").matches) {
+    requestAnimationFrame(() => document.getElementById(panel)?.focus());
+  }
 }
 function App() {
   const d = useDispatch(),
@@ -341,22 +473,46 @@ function App() {
     [type, setType] = useState(""),
     [status, setStatus] = useState(""),
     [urgency, setUrgency] = useState(""),
+    [attentionOnly, setAttentionOnly] = useState(false),
     [selected, setSelected] = useState(""),
+    [resourceSelection, setResourceSelection] = useState(""),
     [focus, setFocus] = useState(null),
     [view, setView] = useState("map"),
     [busy, setBusy] = useState(false),
     [actionError, setActionError] = useState(""),
     [uncertain, setUncertain] = useState(null),
-    [creating, setCreating] = useState(null);
+    [creating, setCreating] = useState(null),
+    [explaining, setExplaining] = useState(false),
+    [sort, setSort] = useState(savedSort),
+    [theme, setTheme] = useState(savedTheme),
+    // The one clock for everything time-based on screen: window and waiting
+    // badges, the details panel, dimming reasons and feed times.
+    [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), CLOCK_MS);
+    return () => clearInterval(timer);
+  }, []);
   const actionPending = useRef(false);
   const requests = d.snapshot?.requests.items || [],
     resources = d.snapshot?.resources.items || [];
+  // Besides the tick, wake exactly at the next window boundary so badges and
+  // dimming flip together. Re-armed after each boundary and on new data.
+  useEffect(() => {
+    const next = nextBoundary(resources, now);
+    if (next === undefined) return;
+    const timer = setTimeout(
+      () => setNow(Math.max(Date.now(), next)),
+      Math.min(next - Date.now() + 20, BOUNDARY_MAX_MS),
+    );
+    return () => clearTimeout(timer);
+  }, [resources, now]);
   const query = search.trim().toLowerCase();
   const visibleRequests = requests.filter(
     (r) =>
       (!type || r.requestType === type) &&
       (!status || r.status === status) &&
       (!urgency || r.urgency === urgency) &&
+      (!attentionOnly || attentionStates.has(r.status)) &&
       (!query ||
         `${r.details} ${r.requestId} ${r.requestType}`
           .toLowerCase()
@@ -370,8 +526,57 @@ function App() {
           .toLowerCase()
           .includes(query)),
   );
-  const chosen = requests.find((r) => r.requestId === selected);
+  const selectedResource = resources.find(
+    (r) => r.resourceId === resourceSelection,
+  );
+  const chosen = resourceSelection
+    ? selectedResource && requests.find((r) => reciprocal(r, selectedResource))
+    : requests.find((r) => r.requestId === selected);
+  const assigned = chosen && resources.find((r) => reciprocal(chosen, r));
+  // The selected request's matching radius and, for every other resource, the
+  // reason it could not be matched now. Its own assignment is never dimmed.
+  const target = !resourceSelection && chosen ? chosen : null;
+  const history = (chosen && d.snapshot?.history?.[chosen.requestId]) || [];
+  const marks = chosen ? timings(chosen.createdAt, history) : [];
+  const radius = useMemo(
+    () => target && { ...target.location },
+    [target?.requestId, target?.location.lat, target?.location.lng],
+  );
+  const lastDimmed = useRef(new Map());
+  const dimmed = useMemo(() => {
+    const reasons = new Map();
+    if (target)
+      for (const row of resources) {
+        if (reciprocal(target, row)) continue;
+        const reason = ineligible(target, row, now);
+        if (reason) reasons.set(row.resourceId, reason);
+      }
+    // Same reasons, same map: a clock tick alone does not redraw the pins.
+    const old = lastDimmed.current;
+    if (
+      old.size === reasons.size &&
+      [...reasons].every(([id, reason]) => old.get(id) === reason)
+    )
+      return old;
+    lastDimmed.current = reasons;
+    return reasons;
+  }, [target, resources, now]);
+  const mapSelection = useMemo(
+    () =>
+      resourceSelection
+        ? { kind: "resource", id: resourceSelection }
+        : { kind: "request", id: selected },
+    [resourceSelection, selected],
+  );
   const canAct = d.online && !d.stale && !busy;
+  const hasFilters = !!(search || type || status || urgency || attentionOnly);
+  const clearFilters = () => {
+    setSearch("");
+    setType("");
+    setStatus("");
+    setUrgency("");
+    setAttentionOnly(false);
+  };
   const more = [
     ...(d.snapshot?.requests.positions || []),
     ...(d.snapshot?.resources.positions || []),
@@ -428,9 +633,45 @@ function App() {
       }
     }
   }, [d.snapshot, uncertain]);
-  const pick = useCallback((id) => setSelected(id), []);
+  const pickRequest = useCallback((row) => {
+    setSelected(row.requestId);
+    setResourceSelection("");
+    setFocus({ ...row.location });
+  }, []);
+  const pickResource = useCallback((row) => {
+    setSelected("");
+    setResourceSelection(row.resourceId);
+    setFocus({ ...row.location });
+  }, []);
+  const chooseActivity = (item) => {
+    const request = requests.find((r) => r.requestId === item.id);
+    const resource = resources.find((r) => r.resourceId === item.id);
+    if (request) {
+      pickRequest(request);
+      showDetailsOnMobile("request-details");
+    } else if (resource) {
+      pickResource(resource);
+      showDetailsOnMobile("resource-details");
+    }
+  };
+  // Mobile: the map sits above the lists, so bring it back and centre it.
+  const showOnMap = (location) => {
+    setView("map");
+    setFocus({ ...location });
+    requestAnimationFrame(() =>
+      document
+        .getElementById("area-overview")
+        ?.scrollIntoView({ block: "start" }),
+    );
+  };
   return (
     <>
+      <Notifications
+        toasts={d.toasts}
+        held={d.toastsHeld}
+        dismiss={d.dismiss}
+        expire={d.expire}
+      />
       {creating && (
         <CreateDialog
           kind={creating}
@@ -458,23 +699,92 @@ function App() {
             <i />
             {!d.online ? "Offline · saved view" : d.stream}
           </span>
+          <label className="theme-switch">
+            Theme
+            <select
+              aria-label="Colour theme"
+              value={theme}
+              onChange={(e) => {
+                setTheme(e.target.value);
+                saveTheme(e.target.value);
+              }}
+            >
+              {THEMES.map(([key, name]) => (
+                <option key={key} value={key}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
           <span className="session-label">Local dispatcher</span>
         </div>
       </header>
       <main className="workspace">
         <div className="page-heading">
           <div>
-            <div className="eyebrow">OPERATIONS / LIVE OVERVIEW</div>
             <h1>Dispatch overview</h1>
-            <p>Connect people with the help they need.</p>
+            <p>Find the next request and see which resources can help.</p>
           </div>
-          <button
-            className="button refresh"
-            onClick={d.refresh}
-            disabled={!d.online || d.loading}
+          <div
+            className="create-toolbar"
+            role="group"
+            aria-label="Dispatch actions"
           >
-            {d.loading ? "Refreshing…" : "↻ Refresh data"}
-          </button>
+            <button
+              className="button primary"
+              disabled={!canAct}
+              onClick={() => setCreating("request")}
+            >
+              Create request
+            </button>
+            <button
+              className="button"
+              disabled={!canAct}
+              onClick={() => setCreating("resource")}
+            >
+              Register resource
+            </button>
+            <button
+              className="button refresh"
+              onClick={d.refresh}
+              disabled={!d.online || d.loading}
+            >
+              {d.loading ? "Refreshing…" : "Refresh data"}
+            </button>
+            <button
+              type="button"
+              className="button explain-toggle"
+              aria-expanded={explaining}
+              aria-controls={explaining ? "matching-explainer" : undefined}
+              onClick={() => setExplaining(!explaining)}
+            >
+              How matching works
+            </button>
+          </div>
+          {explaining && (
+            <section
+              id="matching-explainer"
+              className="matching-explainer"
+              aria-label="How matching works"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setExplaining(false);
+              }}
+            >
+              <h2>How matching works</h2>
+              <ol>
+                {matchingSteps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                className="button"
+                onClick={() => setExplaining(false)}
+              >
+                Close
+              </button>
+            </section>
+          )}
         </div>
         {(d.error || actionError) && (
           <div className="notice" role="alert">
@@ -496,23 +806,6 @@ function App() {
             records exist; filters apply to the loaded view.
           </div>
         )}
-        <div className="create-toolbar" aria-label="Create records">
-          <button
-            className="button primary"
-            disabled={!canAct}
-            onClick={() => setCreating("request")}
-          >
-            Create request
-          </button>
-          <button
-            className="button"
-            disabled={!canAct}
-            onClick={() => setCreating("resource")}
-          >
-            Register resource
-          </button>
-          <span>Matching runs automatically.</span>
-        </div>
         <div className="summary">
           <Metric
             title="Open requests"
@@ -550,18 +843,13 @@ function App() {
             title="Needs attention"
             value={
               d.snapshot
-                ? requests.filter((r) =>
-                    [
-                      "WAITING",
-                      "RETRYING",
-                      "CANCELLING",
-                      "FULFILLING",
-                    ].includes(r.status),
-                  ).length
+                ? requests.filter((r) => attentionStates.has(r.status)).length
                 : "—"
             }
             note="Waiting, retrying, or finishing cleanup"
             color="amber"
+            pressed={attentionOnly}
+            onClick={() => setAttentionOnly(!attentionOnly)}
           />
         </div>
         <div className="filters">
@@ -595,6 +883,27 @@ function App() {
             options={["CRITICAL", "HIGH", "NORMAL"]}
             all="All urgency levels"
           />
+          {attentionOnly && (
+            <span className="filter-chip">
+              Filter: Needs attention
+              <button
+                type="button"
+                aria-label="Clear the attention filter"
+                onClick={() => setAttentionOnly(false)}
+              >
+                ×
+              </button>
+            </span>
+          )}
+          {hasFilters && (
+            <button
+              type="button"
+              className="button clear-filters"
+              onClick={clearFilters}
+            >
+              Clear filters
+            </button>
+          )}
           <div className="view-switch">
             <button
               aria-pressed={view === "map"}
@@ -613,86 +922,337 @@ function App() {
         <div
           className={`dispatch-layout ${view === "list" ? "list-only" : ""}`}
         >
-          <section className="panel requests-panel" aria-label="Requests">
-            <div className="panel-heading">
-              <h2>
-                Requests{" "}
-                <span>{d.snapshot ? visibleRequests.length : "—"}</span>
-              </h2>
-              <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
-            </div>
-            <div className="request-cards">
-              {visibleRequests.map((r) => (
-                <button
-                  key={r.requestId}
-                  className={`request-card ${selected === r.requestId ? "selected" : ""}`}
-                  onClick={() => setSelected(r.requestId)}
+          <div className="records-column">
+            <section className="panel requests-panel" aria-label="Requests">
+              <div className="panel-heading">
+                <h2>
+                  Requests{" "}
+                  <span>{d.snapshot ? visibleRequests.length : "—"}</span>
+                </h2>
+                <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
+              </div>
+              <label className="list-tools">
+                Sort
+                <select
+                  aria-label="Sort requests"
+                  value={sort}
+                  onChange={(e) => {
+                    setSort(e.target.value);
+                    saveSort(e.target.value);
+                  }}
                 >
-                  <div className="card-top">
-                    <span className={`urgency urgency-${r.urgency}`}>
-                      {r.urgency}
-                    </span>
-                    <span className="mono">#{short(r.requestId)}</span>
+                  {SORTS.map(([key, name]) => (
+                    <option key={key} value={key}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="request-cards">
+                {sortRequests(visibleRequests, sort, d.snapshot?.history).map(
+                  (r) => (
+                    <button
+                      key={r.requestId}
+                      className={`request-card ${chosen?.requestId === r.requestId ? "selected" : ""}`}
+                      aria-pressed={chosen?.requestId === r.requestId}
+                      onClick={() => {
+                        pickRequest(r);
+                        showDetailsOnMobile("request-details");
+                      }}
+                    >
+                      <div className="card-top">
+                        <span className={`urgency urgency-${r.urgency}`}>
+                          {r.urgency}
+                        </span>
+                        <span className="mono">#{short(r.requestId)}</span>
+                      </div>
+                      <strong>
+                        {r.details || `${label(r.requestType)} request`}
+                      </strong>
+                      <div className="card-meta">
+                        {label(r.requestType)} <span>·</span> {r.peopleAffected}{" "}
+                        people
+                      </div>
+                      <div className="card-bottom">
+                        <Badge status={r.status} />
+                        {waiting(r.status) && (
+                          <span className="waiting-badge">
+                            {waitingLabel(
+                              r,
+                              d.snapshot?.history?.[r.requestId],
+                              now,
+                            )}
+                          </span>
+                        )}
+                        <small>{time(r.updatedAt)}</small>
+                      </div>
+                      {retryReason(r.status, r.lastError) && (
+                        <span className="retry-reason">
+                          {retryReason(r.status, r.lastError)}
+                        </span>
+                      )}
+                    </button>
+                  ),
+                )}
+                {!visibleRequests.length && (
+                  <div className="empty">
+                    {!d.snapshot
+                      ? !d.online
+                        ? "No saved request data on this device."
+                        : d.error && !d.loading
+                          ? "Request data unavailable. Use Refresh to retry."
+                          : "Loading requests…"
+                      : attentionOnly
+                        ? "No requests match these filters. No requests need attention right now; clear the Needs attention filter to see every request."
+                        : "No requests match these filters."}
                   </div>
-                  <strong>
-                    {r.details || `${label(r.requestType)} request`}
-                  </strong>
-                  <div className="card-meta">
-                    {label(r.requestType)} <span>·</span> {r.peopleAffected}{" "}
-                    people
+                )}
+              </div>
+            </section>
+            <section className="panel resources-panel" aria-label="Resources">
+              <div className="panel-heading">
+                <h2>
+                  Resources{" "}
+                  <span>{d.snapshot ? visibleResources.length : "—"}</span>
+                </h2>
+                <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
+              </div>
+              <div className="resource-cards">
+                {visibleResources.map((r) => (
+                  <button
+                    className="resource-card"
+                    key={r.resourceId}
+                    aria-pressed={resourceSelection === r.resourceId}
+                    onClick={() => {
+                      pickResource(r);
+                      showDetailsOnMobile("resource-details");
+                    }}
+                  >
+                    <ResourceIcon type={r.resourceType} />
+                    <div>
+                      <strong>{r.name}</strong>
+                      <small>
+                        {label(r.resourceType)} ·{" "}
+                        {r.activeClaim
+                          ? "Assigned #" + short(r.activeClaim.requestId)
+                          : "No active claim reported"}
+                      </small>
+                      <Badge status={r.status} />{" "}
+                      <WindowBadge resource={r} now={now} />
+                    </div>
+                  </button>
+                ))}
+                {!visibleResources.length && (
+                  <div className="empty">
+                    {d.snapshot
+                      ? "No resources match."
+                      : !d.online
+                        ? "No saved resource data on this device."
+                        : d.error && !d.loading
+                          ? "Resource data unavailable. Use Refresh to retry."
+                          : "Loading resources…"}
                   </div>
-                  <div className="card-bottom">
-                    <Badge status={r.status} />
-                    <small>{time(r.updatedAt)}</small>
-                  </div>
-                  {r.lastError && (
-                    <span className="retry-reason">{r.lastError}</span>
-                  )}
-                </button>
-              ))}
-              {!visibleRequests.length && (
-                <div className="empty">
-                  {!d.snapshot
-                    ? !d.online
-                      ? "No saved request data on this device."
-                      : d.error && !d.loading
-                        ? "Request data unavailable. Use Refresh to retry."
-                        : "Loading requests…"
-                    : "No requests match these filters."}
-                </div>
-              )}
-            </div>
-          </section>
-          <div className="center-column">
-            <section className="panel map-panel">
+                )}
+              </div>
+            </section>
+          </div>
+          <div className="centre-column">
+            <section
+              className="panel map-panel"
+              aria-label="Area overview"
+              id="area-overview"
+            >
               <div className="panel-heading">
                 <h2>Area overview</h2>
-                <span className="quiet-tag">OFFLINE SCHEMATIC</span>
               </div>
               <DispatchMap
                 requests={visibleRequests}
                 resources={visibleResources}
-                selected={selected}
-                onSelect={pick}
+                selection={mapSelection}
+                onSelectRequest={pickRequest}
+                onSelectResource={pickResource}
                 focus={focus}
+                radius={radius}
+                dimmed={dimmed}
                 visible={view === "map"}
+                ready={!!(d.snapshot || d.error)}
+                online={d.online}
               />
               <div className="map-legend">
                 <span>
-                  <i className="dot critical" /> Critical request
+                  <i className="dot critical" /> Critical request (pulses)
                 </span>
                 <span>
-                  <i className="dot normal" /> Request
+                  <i className="dot high" /> High urgency
                 </span>
                 <span>
-                  <i className="resource-dot" /> Resource
+                  <i className="dot normal" /> Normal request
                 </span>
+                {legendTypes.map(([type, name]) => (
+                  <span key={type}>
+                    <i
+                      className="legend-icon"
+                      dangerouslySetInnerHTML={{ __html: typeIcon(type) }}
+                    />{" "}
+                    {name}
+                  </span>
+                ))}
                 <span>
                   <i className="assignment-line" /> Assignment
                 </span>
+                <span className="legend-note">
+                  Eligibility as estimated by the UI; the backend decides.
+                </span>
               </div>
             </section>
-            <section className="panel timeline" aria-label="Request details">
+            <section className="operations-status" aria-label="System status">
+              <section className="panel health-panel" aria-label="Shard reads">
+                <div className="panel-heading">
+                  <h2>Shard reads</h2>
+                  <span className={`small-dot ${!d.stale ? "good" : ""}`} />
+                </div>
+                <p>Authoritative record reads</p>
+                {[0, 1, 2].map((shard) => (
+                  <div className="shard-row" key={shard}>
+                    <span>
+                      <i className={!d.stale ? "good" : ""} />
+                      Shard {shard}
+                    </span>
+                    <strong>
+                      {!d.snapshot
+                        ? "Unknown"
+                        : d.stale
+                          ? "Unconfirmed"
+                          : "Available"}
+                    </strong>
+                  </div>
+                ))}
+                <small>
+                  {d.stale
+                    ? "Current availability is not confirmed."
+                    : "Each shard answered the latest authoritative reads."}{" "}
+                  Pod readiness is not reported here.
+                </small>
+              </section>
+              <section
+                className="panel queue-panel"
+                aria-label="Matching queue"
+              >
+                <div className="panel-heading">
+                  <h2>Matching queue</h2>
+                  <span className="quiet-tag">BROKER</span>
+                </div>
+                <div className="queue-values">
+                  <div>
+                    <strong>
+                      {d.snapshot?.queue.available
+                        ? d.snapshot.queue.ready
+                        : "—"}
+                    </strong>
+                    <span>Ready</span>
+                  </div>
+                  <div>
+                    <strong>
+                      {d.snapshot?.queue.available
+                        ? d.snapshot.queue.unacknowledged
+                        : "—"}
+                    </strong>
+                    <span>In flight</span>
+                  </div>
+                  <div
+                    className={
+                      d.snapshot?.queue.available && d.snapshot.queue.dead > 0
+                        ? "queue-problem"
+                        : ""
+                    }
+                  >
+                    <strong>
+                      {d.snapshot?.queue.available
+                        ? d.snapshot.queue.dead
+                        : "—"}
+                    </strong>
+                    <span>Dead letter</span>
+                  </div>
+                </div>
+                <QueueSparkline
+                  samples={d.trend}
+                  summary={d.trendSummary}
+                  now={now}
+                />
+                <small>
+                  {d.snapshot?.queue.available
+                    ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`
+                    : "Queue telemetry unavailable. Counts are unknown."}
+                </small>
+              </section>
+            </section>
+            <ActivityFeed
+              items={d.activity}
+              held={d.held}
+              now={now}
+              onChoose={chooseActivity}
+            />
+          </div>
+          <aside className="inspector-column" aria-label="Selected records">
+            {selectedResource && (
+              <section
+                className="panel resource-details"
+                aria-label="Resource details"
+                id="resource-details"
+                tabIndex={-1}
+              >
+                <div className="panel-heading">
+                  <h2 className="resource-title">
+                    <ResourceIcon type={selectedResource.resourceType} />
+                    {selectedResource.name}
+                  </h2>
+                  <Badge status={selectedResource.status} />
+                </div>
+                <ShowOnMap
+                  hidden={!visibleResources.includes(selectedResource)}
+                  onShow={() => showOnMap(selectedResource.location)}
+                />
+                {facts([
+                  ["Type", label(selectedResource.resourceType)],
+                  ["Status", selectedResource.status?.replaceAll("_", " ")],
+                  ["ID", "#" + short(selectedResource.resourceId)],
+                  ["Coordinates", coordinates(selectedResource.location)],
+                  ["Available from", dateTime(selectedResource.windowStart)],
+                  ["Available until", dateTime(selectedResource.windowEnd)],
+                  [
+                    "Window",
+                    <WindowBadge resource={selectedResource} now={now} />,
+                  ],
+                  [
+                    "Assigned to",
+                    chosen ? (
+                      <button
+                        type="button"
+                        className="detail-link"
+                        onClick={() => pickRequest(chosen)}
+                      >
+                        {(chosen.details ||
+                          label(chosen.requestType) + " request") +
+                          " · #" +
+                          short(chosen.requestId)}
+                      </button>
+                    ) : selectedResource.activeClaim ? (
+                      "#" +
+                      short(selectedResource.activeClaim.requestId) +
+                      " · not in the loaded view"
+                    ) : (
+                      "Unassigned"
+                    ),
+                  ],
+                ])}
+              </section>
+            )}
+            <section
+              className="panel timeline"
+              aria-label="Request details"
+              id="request-details"
+              tabIndex={-1}
+            >
               <div className="panel-heading">
                 <h2>Request timeline</h2>
                 {chosen && (
@@ -709,38 +1269,16 @@ function App() {
                       </h3>
                       <p>
                         {label(chosen.requestType)} · {chosen.peopleAffected}{" "}
-                        people · {chosen.location.lat.toFixed(3)},{" "}
-                        {chosen.location.lng.toFixed(3)}
+                        people
                       </p>
                     </div>
                     <Badge status={chosen.status} />
                   </div>
-                  <ol className="timeline-items">
-                    <li>
-                      <i />
-                      <div>
-                        <strong>Request created</strong>
-                        <small>{time(chosen.createdAt)}</small>
-                      </div>
-                    </li>
-                    {(d.snapshot.history?.[chosen.requestId] || []).map(
-                      (v, i) => (
-                        <li key={v.version + "-" + i}>
-                          <i />
-                          <div>
-                            <strong>{label(v.status)}</strong>
-                            <small>
-                              {time(v.at)} · observed {v.version}
-                            </small>
-                          </div>
-                        </li>
-                      ),
-                    )}
-                  </ol>
-                  <p className="timeline-note">
-                    Observed changes only. Reconnecting refreshes the current
-                    state.
-                  </p>
+                  <ShowOnMap
+                    hidden={!visibleRequests.includes(chosen)}
+                    onShow={() => showOnMap(chosen.location)}
+                  />
+
                   <div className="actions">
                     {["PENDING", "WAITING"].includes(chosen.status) && (
                       <button
@@ -786,6 +1324,65 @@ function App() {
                       </p>
                     )}
                   </div>
+                  {facts([
+                    ["Type", label(chosen.requestType)],
+                    ["Status", chosen.status.replaceAll("_", " ")],
+                    ["ID", "#" + short(chosen.requestId)],
+                    ["Coordinates", coordinates(chosen.location)],
+                    ...(assigned
+                      ? [
+                          [
+                            "Assigned resource",
+                            <button
+                              type="button"
+                              className="detail-link"
+                              onClick={() => pickResource(assigned)}
+                            >
+                              {assigned.name}
+                            </button>,
+                          ],
+                        ]
+                      : []),
+                    ...(assigned &&
+                    ["MATCHED", "IN_PROGRESS"].includes(chosen.status)
+                      ? [
+                          [
+                            "Straight-line distance",
+                            distanceKm(
+                              chosen.location,
+                              assigned.location,
+                            ).toFixed(2) + " km",
+                          ],
+                        ]
+                      : []),
+                  ])}
+                  <ol className="timeline-items">
+                    <li>
+                      <i />
+                      <div>
+                        <strong>Request created</strong>
+                        <small>{time(chosen.createdAt)}</small>
+                      </div>
+                    </li>
+                    {history.map((v, i) => (
+                      <li key={v.version + "-" + i}>
+                        <i />
+                        <div>
+                          <strong>{label(v.status)}</strong>
+                          <small>
+                            {time(v.at)} · observed {v.version}
+                          </small>
+                          {marks[i] && (
+                            <span className="timeline-timing">{marks[i]}</span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="timeline-note">
+                    Observed changes only. Reconnecting refreshes the current
+                    state.
+                  </p>
                 </>
               ) : (
                 <div className="empty detail-empty">
@@ -794,127 +1391,6 @@ function App() {
                   <p>Inspect its progress and available dispatch actions.</p>
                 </div>
               )}
-            </section>
-          </div>
-          <aside className="right-column">
-            <section className="panel resources-panel" aria-label="Resources">
-              <div className="panel-heading">
-                <h2>
-                  Resources{" "}
-                  <span>{d.snapshot ? visibleResources.length : "—"}</span>
-                </h2>
-                <small>{d.stale ? "SAVED VIEW" : "LATEST READ"}</small>
-              </div>
-              <div className="resource-cards">
-                {visibleResources.map((r) => (
-                  <button
-                    className="resource-card"
-                    key={r.resourceId}
-                    onClick={() => {
-                      setFocus(r.location);
-                      if (r.activeClaim) setSelected(r.activeClaim.requestId);
-                    }}
-                  >
-                    <div className="resource-icon">
-                      {r.resourceType === "WATER"
-                        ? "◈"
-                        : r.resourceType === "FOOD"
-                          ? "✦"
-                          : r.resourceType === "MEDICINE"
-                            ? "+"
-                            : "◇"}
-                    </div>
-                    <div>
-                      <strong>{r.name}</strong>
-                      <small>
-                        {label(r.resourceType)} ·{" "}
-                        {r.activeClaim
-                          ? "Assigned #" + short(r.activeClaim.requestId)
-                          : "No active claim reported"}
-                      </small>
-                      <Badge status={r.status} />
-                    </div>
-                  </button>
-                ))}
-                {!visibleResources.length && (
-                  <div className="empty">
-                    {d.snapshot
-                      ? "No resources match."
-                      : !d.online
-                        ? "No saved resource data on this device."
-                        : d.error && !d.loading
-                          ? "Resource data unavailable. Use Refresh to retry."
-                          : "Loading resources…"}
-                  </div>
-                )}
-              </div>
-            </section>
-            <section className="panel health-panel" aria-label="Shard reads">
-              <div className="panel-heading">
-                <h2>Shard reads</h2>
-                <span className={`small-dot ${!d.stale ? "good" : ""}`} />
-              </div>
-              <p>Authoritative record reads</p>
-              {[0, 1, 2].map((shard) => (
-                <div className="shard-row" key={shard}>
-                  <span>
-                    <i className={!d.stale ? "good" : ""} />
-                    Shard {shard}
-                  </span>
-                  <strong>
-                    {!d.snapshot
-                      ? "Unknown"
-                      : d.stale
-                        ? "Unconfirmed"
-                        : "Available"}
-                  </strong>
-                </div>
-              ))}
-              <small>
-                {d.stale
-                  ? "Current availability is not confirmed."
-                  : "Each shard answered the latest strong reads."}{" "}
-                Pod readiness is not reported here.
-              </small>
-            </section>
-            <section className="panel queue-panel" aria-label="Matching queue">
-              <div className="panel-heading">
-                <h2>Matching queue</h2>
-                <span className="quiet-tag">BROKER</span>
-              </div>
-              <div className="queue-values">
-                <div>
-                  <strong>
-                    {d.snapshot?.queue.available ? d.snapshot.queue.ready : "—"}
-                  </strong>
-                  <span>Ready</span>
-                </div>
-                <div>
-                  <strong>
-                    {d.snapshot?.queue.available
-                      ? d.snapshot.queue.unacknowledged
-                      : "—"}
-                  </strong>
-                  <span>In flight</span>
-                </div>
-                <div
-                  className={
-                    d.snapshot?.queue.available && d.snapshot.queue.dead > 0
-                      ? "queue-problem"
-                      : ""
-                  }
-                >
-                  <strong>
-                    {d.snapshot?.queue.available ? d.snapshot.queue.dead : "—"}
-                  </strong>
-                  <span>Dead letter</span>
-                </div>
-              </div>
-              <small>
-                {d.snapshot?.queue.available
-                  ? `${d.stale ? "Saved observation" : "Measured"} ${time(d.snapshot.queue.sampledAt)}`
-                  : "Queue telemetry unavailable. Counts are unknown."}
-              </small>
             </section>
           </aside>
         </div>
@@ -937,16 +1413,26 @@ function App() {
     </>
   );
 }
-function Metric({ title, value, note, color }) {
+function Metric({ title, value, note, color, pressed, onClick }) {
+  const Container = onClick ? "button" : "section";
   return (
-    <section className={`metric metric-${color}`}>
-      <div>
-        <span>{title}</span>
+    <Container
+      className={`metric metric-${color}`}
+      type={onClick ? "button" : undefined}
+      aria-pressed={pressed}
+      onClick={onClick}
+    >
+      <span className="metric-content">
+        <span className="metric-title">{title}</span>
         <strong>{value}</strong>
         <small>{note}</small>
-      </div>
-      <i />
-    </section>
+      </span>
+      {onClick && (
+        <span className="metric-action" aria-hidden="true">
+          {pressed ? "✓" : "→"}
+        </span>
+      )}
+    </Container>
   );
 }
 function Select({ label: caption, value, onChange, options, all }) {

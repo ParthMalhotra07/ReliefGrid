@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { EventIDs, list, observe, reciprocal } from "./state.js";
+import { EventIDs, list, observe, reciprocal, retryReason } from "./state.js";
 const a = "11111111-1111-4111-8111-111111111111",
   b = "22222222-2222-4222-8222-222222222222",
   c = "33333333-3333-4333-8333-333333333333";
@@ -70,4 +70,252 @@ test("an assignment line requires the current reciprocal claim", () => {
     reciprocal(req, { resourceId: b, activeClaim: { requestId: a } }),
     true,
   );
+});
+test("retry reasons are shown only for the state they explain", () => {
+  assert.equal(
+    retryReason("WAITING", "NO_CANDIDATE"),
+    "No matching resource within 50 km yet",
+  );
+  assert.match(retryReason("RETRYING", "OUTCOME_UNKNOWN"), /not confirmed/);
+  assert.match(retryReason("WAITING", "SOMETHING_NEW"), /retry/i);
+  for (const status of [
+    "FULFILLED",
+    "CANCELLED",
+    "MATCHED",
+    "IN_PROGRESS",
+    "CANCELLING",
+    "FULFILLING",
+  ])
+    for (const code of [
+      "NO_CANDIDATE",
+      "RESOURCE_AVAILABLE",
+      "OUTCOME_UNKNOWN",
+    ])
+      assert.equal(retryReason(status, code), "");
+  assert.equal(retryReason("MATCHING", "NO_CANDIDATE"), "");
+  assert.equal(retryReason("WAITING", ""), "");
+});
+
+test("eligibility mirrors the backend and reports the most relevant reason", async () => {
+  const { ineligible } = await import("./state.js");
+  const now = Date.parse("2026-11-22T12:00:00Z");
+  const request = {
+    requestType: "WATER",
+    location: { lat: 19.08, lng: 72.88 },
+  };
+  const base = {
+    resourceType: "WATER",
+    status: "AVAILABLE",
+    activeClaim: null,
+    location: { lat: 19.1, lng: 72.9 },
+    windowStart: "2026-11-22T11:00:00Z",
+    windowEnd: "2026-11-22T18:00:00Z",
+  };
+  const check = (change) => ineligible(request, { ...base, ...change }, now);
+  assert.equal(check({}), "");
+  // 50 km is still eligible, as in the backend (distance <= radiusKM).
+  assert.equal(
+    check({ location: { lat: 19.08 + 49.99 / 111.195, lng: 72.88 } }),
+    "",
+  );
+  assert.equal(
+    check({ location: { lat: 20.16, lng: 72.88 } }),
+    "Too far: 120 km",
+  );
+  assert.equal(check({ windowEnd: "2026-11-22T12:00:00Z" }), "Window closed");
+  assert.equal(check({ windowStart: "2026-11-22T12:00:00Z" }), "");
+  assert.equal(check({ resourceType: "FOOD" }), "Wrong type");
+  assert.equal(check({ activeClaim: { requestId: "x" } }), "Already assigned");
+  assert.equal(check({ status: "OFFLINE" }), "Not available");
+  assert.equal(
+    check({ resourceType: "FOOD", windowEnd: "2026-11-22T11:30:00Z" }),
+    "Window closed",
+  );
+});
+
+test("timeline timings use the timeline's own timestamps", async () => {
+  const { timings, duration } = await import("./state.js");
+  assert.equal(duration(3800), "3.8 s");
+  assert.equal(duration(42), "under 0.1 s");
+  assert.equal(duration(60), "0.1 s");
+  assert.equal(duration(132000), "2 min 12 s");
+  assert.equal(duration(600000), "10 min");
+  assert.equal(duration(3900000), "1 h 5 min");
+  const t = (s) =>
+    new Date(Date.parse("2026-11-05T06:00:00Z") + s * 1000).toISOString();
+  assert.deepEqual(
+    timings(t(0), [
+      { status: "WAITING", at: t(1.5) },
+      { status: "MATCHING", at: t(6.5) },
+      { status: "WAITING", at: t(7) },
+      { status: "MATCHING", at: t(133.5) },
+      { status: "MATCHED", at: t(135) },
+      { status: "CANCELLED", at: t(140) },
+    ]),
+    [
+      "",
+      "",
+      "Waited 2 min 12 s",
+      "",
+      "Matched 2 min 15 s after creation",
+      "Cancelled 2 min 20 s after creation",
+    ],
+  );
+  // A wait that has not ended yet has no total.
+  assert.deepEqual(timings(t(0), [{ status: "WAITING", at: t(2) }]), [""]);
+});
+
+test("window badges, waiting time and request sorts", async () => {
+  const { windowLabel, waitingLabel, sortRequests } =
+    await import("./state.js");
+  const now = Date.parse("2026-11-05T12:00:00Z");
+  const at = (m) => new Date(now + m * 60000).toISOString();
+  const resource = (from, until) => ({
+    windowStart: at(from),
+    windowEnd: at(until),
+  });
+  assert.equal(windowLabel(resource(-60, 45), now), "Open · closes in 45 min");
+  assert.equal(windowLabel(resource(20, 180), now), "Opens in 20 min");
+  assert.equal(windowLabel(resource(-180, -60), now), "Expired");
+  // The end is exclusive, as in the backend.
+  assert.equal(windowLabel(resource(-60, 0), now), "Expired");
+  assert.equal(windowLabel(resource(0, 30), now), "Open · closes in 30 min");
+  assert.equal(windowLabel(resource(-60, 0.2), now), "Open · closes in 1 min");
+  assert.equal(windowLabel({ windowStart: "x", windowEnd: at(5) }, now), "");
+  const req = { createdAt: at(-30) };
+  assert.equal(waitingLabel(req, [], now), "waiting 30 min");
+  assert.equal(
+    waitingLabel(
+      req,
+      [
+        { status: "MATCHING", at: at(-20) },
+        { status: "WAITING", at: at(-12.5) },
+      ],
+      now,
+    ),
+    "waiting 12 min",
+  );
+  assert.equal(
+    waitingLabel({ createdAt: at(-73.5) }, [], now),
+    "waiting 1 h 13 min",
+  );
+  assert.equal(
+    waitingLabel({ createdAt: at(-1500) }, [], now),
+    "waiting 1 d 1 h",
+  );
+  const r = (requestId, urgency, created, status) => ({
+    requestId,
+    urgency,
+    status,
+    createdAt: at(created),
+  });
+  const rows = [
+    r("a", "NORMAL", -60, "WAITING"),
+    r("b", "CRITICAL", -10, "MATCHED"),
+    r("c", "HIGH", -30, "RETRYING"),
+    r("d", "CRITICAL", -40, "WAITING"),
+  ];
+  const ids = (mode, history) =>
+    sortRequests(rows, mode, history).map((v) => v.requestId);
+  assert.deepEqual(ids("urgency"), ["d", "b", "c", "a"]);
+  assert.deepEqual(ids("newest"), ["b", "c", "d", "a"]);
+  assert.deepEqual(
+    ids("oldest-waiting", { d: [{ status: "WAITING", at: at(-70) }] }),
+    ["d", "a", "c", "b"],
+  );
+  assert.deepEqual(
+    rows.map((v) => v.requestId),
+    ["a", "b", "c", "d"],
+  );
+});
+
+test("batch 3: unfinished first in the urgency sort, and no zero duration parts", async () => {
+  const { sortRequests, span, windowLabel, waitingLabel } =
+    await import("./state.js");
+  const at = (m) =>
+    new Date(Date.parse("2026-11-05T12:00:00Z") + m * 60000).toISOString();
+  const r = (requestId, urgency, created, status) => ({
+    requestId,
+    urgency,
+    status,
+    createdAt: at(created),
+  });
+  const rows = [
+    r("done-critical", "CRITICAL", -90, "FULFILLED"),
+    r("normal", "NORMAL", -80, "WAITING"),
+    r("cancelled-high", "HIGH", -70, "CANCELLED"),
+    r("high", "HIGH", -60, "CANCELLING"),
+    r("critical", "CRITICAL", -50, "MATCHED"),
+    r("old-critical", "CRITICAL", -100, "IN_PROGRESS"),
+  ];
+  assert.deepEqual(
+    sortRequests(rows, "urgency").map((v) => v.requestId),
+    [
+      "old-critical",
+      "critical",
+      "high",
+      "normal",
+      "done-critical",
+      "cancelled-high",
+    ],
+  );
+  // Newest is unchanged: creation time only.
+  assert.deepEqual(
+    sortRequests(rows, "newest").map((v) => v.requestId),
+    [
+      "critical",
+      "high",
+      "cancelled-high",
+      "normal",
+      "done-critical",
+      "old-critical",
+    ],
+  );
+  assert.equal(span(45), "45 min");
+  assert.equal(span(300), "5 h");
+  assert.equal(span(159), "2 h 39 min");
+  assert.equal(span(1440), "1 d");
+  assert.equal(span(1500), "1 d 1 h");
+  const now = Date.parse("2026-11-05T12:00:00Z");
+  assert.equal(
+    windowLabel({ windowStart: at(-10), windowEnd: at(300) }, now),
+    "Open · closes in 5 h",
+  );
+  assert.equal(
+    windowLabel({ windowStart: at(299.5), windowEnd: at(900) }, now),
+    "Opens in 5 h",
+  );
+  assert.equal(
+    windowLabel({ windowStart: at(-10), windowEnd: at(299.5) }, now),
+    "Open · closes in 5 h",
+  );
+  assert.equal(waitingLabel({ createdAt: at(-300.9) }, [], now), "waiting 5 h");
+  assert.equal(
+    waitingLabel({ createdAt: at(-1440.5) }, [], now),
+    "waiting 1 d",
+  );
+  assert.equal(
+    waitingLabel({ createdAt: at(-59.9) }, [], now),
+    "waiting 59 min",
+  );
+});
+
+test("the next window boundary is the soonest start or end after now", async () => {
+  const { nextBoundary } = await import("./state.js");
+  const at = (m) =>
+    new Date(Date.parse("2026-11-05T12:00:00Z") + m * 60000).toISOString();
+  const now = Date.parse("2026-11-05T12:00:00Z");
+  const rows = [
+    { windowStart: at(-60), windowEnd: at(45) },
+    { windowStart: at(20), windowEnd: at(180) },
+    { windowStart: at(-180), windowEnd: at(-60) },
+  ];
+  assert.equal(nextBoundary(rows, now), Date.parse(at(20)));
+  // A boundary exactly at now has passed; the next one is chosen.
+  assert.equal(nextBoundary(rows, Date.parse(at(20))), Date.parse(at(45)));
+  assert.equal(
+    nextBoundary([{ windowStart: "x", windowEnd: at(-1) }], now),
+    undefined,
+  );
+  assert.equal(nextBoundary([], now), undefined);
 });

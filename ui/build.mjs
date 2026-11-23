@@ -26,7 +26,7 @@ const result = await build({
   target: "es2022",
   entryNames: "app-[hash]",
   assetNames: "[name]-[hash]",
-  loader: { ".png": "file" },
+  loader: { ".png": "file", ".woff2": "file" },
   metafile: true,
   legalComments: "eof",
 });
@@ -34,10 +34,6 @@ const js = Object.entries(result.metafile.outputs).find(
   ([name, v]) => v.entryPoint && name.endsWith(".js"),
 )[0];
 const css = result.metafile.outputs[js].cssBundle;
-await fs.copyFile(
-  path.join(root, "src/map-grid.svg"),
-  path.join(out, "map-grid.svg"),
-);
 const licenses = [];
 for (const pkg of ["react", "react-dom", "leaflet"])
   licenses.push(
@@ -50,6 +46,13 @@ for (const pkg of ["react", "react-dom", "leaflet"])
         )
       ).replaceAll("\r\n", "\n"),
   );
+// The bundled Inter font is under the SIL Open Font License 1.1.
+licenses.push(
+  "Inter (font)\n" +
+    (
+      await fs.readFile(path.join(root, "src", "inter-OFL.txt"), "utf8")
+    ).replaceAll("\r\n", "\n"),
+);
 await fs.writeFile(path.join(out, "licenses.txt"), licenses.join("\n\n"));
 const index = (await fs.readFile(path.join(root, "index.html"), "utf8"))
   .replace("@APP_JS@", "/assets/" + path.basename(js))
@@ -62,11 +65,19 @@ const assets = (await fs.readdir(out))
 const hash = createHash("sha256");
 for (const file of (await fs.readdir(out)).sort())
   hash.update(await fs.readFile(path.join(out, file)));
+hash.update(await fs.readFile(path.join(root, "build.mjs")));
 const revision = hash.digest("hex").slice(0, 16);
 const sw = `const NAME='reliefgrid-${revision}',ASSETS=${JSON.stringify(["/", ...assets])};
 self.addEventListener('install',event=>event.waitUntil(caches.open(NAME).then(cache=>cache.addAll(ASSETS.map(url=>new Request(url,{cache:'reload'})))).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('reliefgrid-')&&k!==NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/api/')||u.pathname==='/ui/status'||u.pathname.startsWith('/__test/'))return;if(u.pathname==='/'){event.respondWith(caches.open(NAME).then(cache=>cache.match('/')).then(hit=>hit||fetch(event.request)));return;}if(ASSETS.includes(u.pathname))event.respondWith(caches.open(NAME).then(cache=>cache.match(event.request)).then(hit=>hit||fetch(event.request)));});`;
+async function navigate(request){
+  try {
+    const response=await fetch(request,{signal:AbortSignal.timeout(3000)});
+    if(response.ok)return response;
+  } catch {}
+  return (await (await caches.open(NAME)).match('/')) || Response.error();
+}
+self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/api/')||u.pathname==='/ui/status'||u.pathname.startsWith('/__test/'))return;if(u.pathname==='/'){event.respondWith(navigate(event.request));return;}if(ASSETS.includes(u.pathname))event.respondWith(caches.open(NAME).then(cache=>cache.match(event.request)).then(hit=>hit||fetch(event.request)));});`;
 await fs.writeFile(path.join(out, "sw.js"), sw + "\n");
 const sources = [
   "package.json",

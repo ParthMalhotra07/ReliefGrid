@@ -9,6 +9,8 @@ let reads = 0,
   status = "CANCELLING",
   version = 4,
   lastError = "",
+  location = { lat: 19.08, lng: 72.88 },
+  updatedAt = "2026-11-05T06:01:00Z",
   fail = false,
   unknownWrite = false;
 const claimed = () =>
@@ -20,10 +22,10 @@ const record = () => ({
   urgency: "CRITICAL",
   peopleAffected: 6,
   details: "Water needed at the school",
-  location: { lat: 19.08, lng: 72.88 },
+  location,
   version: "v" + version,
   createdAt: "2026-11-05T06:00:00Z",
-  updatedAt: "2026-11-05T06:01:00Z",
+  updatedAt,
   assignedResourceId: claimed() ? resourceId : null,
   retryCount: 0,
   lastError,
@@ -51,6 +53,8 @@ http
       status = "CANCELLING";
       version = 4;
       lastError = "";
+      location = { lat: 19.08, lng: 72.88 };
+      updatedAt = "2026-11-05T06:01:00Z";
       fail = false;
       unknownWrite = false;
       reads = 0;
@@ -68,14 +72,80 @@ http
         version++;
       }
       if ("lastError" in b) lastError = b.lastError;
+      if (b.updatedAt) updatedAt = b.updatedAt;
+      if (b.location) {
+        location = b.location;
+        version++;
+      }
       if ("fail" in b) fail = b.fail;
       if ("unknownWrite" in b) unknownWrite = b.unknownWrite;
       if (b.disconnect) for (const c of clients) c.end();
       if (b.eventId)
         for (const c of clients)
           c.write(
-            `id: ${b.eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: requestId, entityVersion: 5, eventType: "request.state_changed", ...b.hint, eventId: b.eventId })}\n\n`,
+            `id: ${b.eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: requestId, entityVersion: version, eventType: "request.state_changed", ...b.hint, eventId: b.eventId })}\n\n`,
           );
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/__test/burst") {
+      // Many matched requests committed at once, each announced on the stream.
+      const b = await body(req);
+      const now = new Date().toISOString();
+      const ids = [];
+      for (let i = 0; i < b.count; i++) {
+        const id = randomUUID();
+        ids.push(id);
+        const current = {
+          ...record(),
+          requestId: id,
+          details: `Burst request ${i + 1}`,
+          status: b.status || "MATCHED",
+          version: "v3",
+          assignedResourceId: null,
+          location: { lat: 18.9 + i / 1000, lng: 72.8 },
+          createdAt: now,
+          updatedAt: now,
+        };
+        creations.set("burst:" + id, { kind: "request", current });
+      }
+      for (const id of ids) {
+        // Optional spacing emulates a matcher that finishes one at a time.
+        if (b.spacing) await new Promise((r) => setTimeout(r, b.spacing));
+        const eventId = randomUUID();
+        for (const c of clients)
+          c.write(
+            `id: ${eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: id, entityVersion: 3, eventType: "request.state_changed", eventId })}\n\n`,
+          );
+      }
+      return send(res, 200, { ids });
+    }
+    if (p === "/__test/patch") {
+      // Change a created record and, when asked, announce it on the stream.
+      const b = await body(req);
+      const found = [...creations.values()].find(
+        (v) => v.current.requestId === b.id || v.current.resourceId === b.id,
+      );
+      if (!found) return send(res, 404, { code: "NOT_FOUND" });
+      const version = Number(found.current.version.slice(1)) + 1;
+      found.current = { ...found.current, ...b.set, version: "v" + version };
+      if (b.eventId)
+        for (const c of clients)
+          c.write(
+            `id: ${b.eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: b.id, entityVersion: version, eventType: (found.kind === "request" ? "request" : "resource") + ".state_changed", eventId: b.eventId })}\n\n`,
+          );
+      return send(res, 200, found.current);
+    }
+    if (p === "/__test/events") {
+      // Change notices for records that no read will show, as during an
+      // outage: only the stream keeps delivering.
+      const b = await body(req);
+      for (let i = 0; i < b.count; i++) {
+        const eventId = randomUUID();
+        for (const c of clients)
+          c.write(
+            `id: ${eventId}\nevent: change\ndata: ${JSON.stringify({ entityId: randomUUID(), entityVersion: 2, eventType: "request.state_changed", eventId })}\n\n`,
+          );
+      }
       return send(res, 200, { ok: true });
     }
     if (p === "/__test/creations")
@@ -135,6 +205,12 @@ http
           ? { ...response, status: "WAITING", version: "v2" }
           : response;
       creations.set(slot, { kind, body: raw, response, current });
+      // Like the outbox relay, a committed creation reaches every live client.
+      const created = randomUUID();
+      for (const c of clients)
+        c.write(
+          `id: ${created}\nevent: change\ndata: ${JSON.stringify({ entityId: id, entityVersion: 1, eventType: kind + ".created", eventId: created })}\n\n`,
+        );
       return send(res, 201, response);
     }
     if (

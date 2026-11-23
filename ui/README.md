@@ -25,10 +25,23 @@ and then `git diff --exit-code -- ui/static` to enforce reproducible output.
 
 Run `HTTP_ADDR=127.0.0.1:8081 go run ./ui` behind the existing same-origin API
 routing for development; `make app-deploy` builds and deploys all three app images.
-There are no CDN scripts, external fonts, tile downloads or API keys. The map is
-an explicitly labelled coordinate schematic; request/resource positions and
-reciprocal assignment lines come from the API. Third-party licenses are bundled
-under `/assets/licenses.txt`.
+The UI has no CDN scripts, external fonts or map API keys. Street mode requests
+only the visible OpenStreetMap raster tiles. This exposes the viewed map area to
+the tile provider. The app draws record coordinates and reciprocal assignments
+locally from the existing API lists. Positions reflect the latest successful read
+and refresh on the same dispatch updates as the lists.
+
+Choose **World overview** to fit the whole globe without requesting street tiles.
+**Use street map** returns to the previous street view. The bundled coastline
+map stays beneath the street layer, so valid
+tiles remain visible if only some tiles fail. When the browser is offline, the
+overview still shows record positions, but street detail requires connectivity.
+The coastline geometry is derived from the public-domain [Natural Earth 1:110m
+land polygons, v5.1.2](https://github.com/nvkelso/natural-earth-vector/blob/v5.1.2/geojson/ne_110m_land.geojson),
+with coordinates rounded to four decimal places. The service worker caches the
+app shell and bundled geography and leaves street HTTP caching to the browser.
+Location picking fills the existing editable latitude and longitude fields in
+both create forms. Third-party licenses are bundled under `/assets/licenses.txt`.
 
 ## Read and offline semantics
 
@@ -95,3 +108,17 @@ Resource availability is entered in browser-local time, converted to UTC once
 and frozen with the body. Neither internal/node/operator credentials nor manual
 claim edits are exposed. The browser fixtures verify these paths; a final
 deployment demonstration remains separate from the fixture acceptance.
+
+## Place data
+
+Place data: GeoNames (https://www.geonames.org), CC BY 4.0. Selected and
+simplified for offline search; 13 entries excluded for data errors; HSR Layout
+replaced by Ulsoor.
+
+## Font
+
+The UI bundles Inter (variable, Latin subset, `src/inter-latin-wght-normal.woff2`) from
+the `@fontsource-variable/inter` 5.3.0 package: Copyright 2016 The Inter Project Authors
+(https://github.com/rsms/inter), licensed under the SIL Open Font License 1.1
+(`src/inter-OFL.txt`, also included in `static/licenses.txt`). It is served from the app
+itself (`font-src 'self'`) and precached for offline use, with a system font fallback.
