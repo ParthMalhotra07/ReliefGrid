@@ -55,6 +55,6 @@ The [assembled Markdown](submission-draft.md) and
 [Hrishabh's supplied contribution](contributions/README.md). See
 [assembly/build instructions](ASSEMBLY.md) and [editable figures](figures/README.md).
 The rendered report is under ten pages including references. Its source is
-pinned to b099c604027e4c4cbef94dcda4ca70c3eea72cdf.
+pinned to 1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9.
 
 The [reviewed Phase 2 comparison](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/comparison.md) is integrated in the report, with [method/deviation qualifications](https://github.com/ParthMalhotra07/ReliefGrid/blob/25ea8bc5675ab935d0b4852f8adbacb4cf14b9b3/docs/evidence/S5.2/phase2-linearizable/README.md).

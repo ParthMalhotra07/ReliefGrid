@@ -22,7 +22,7 @@ No additional cover/contents/appendix is outside the count.
 Phase 2 evidence at #176 (25ea8bc) has been independently replayed/reviewed
 and integrated, retaining the measured source 514bb33 and unaudited exploration
 qualifications. The report pins its submission source to
-b099c604027e4c4cbef94dcda4ca70c3eea72cdf; historical runs retain their own
+1bc2b7b8c58294e7e49abb526b8f98e7b9c80ba9; historical runs retain their own
 identities. It has no {FINAL_SHA}/TODO citation placeholders.
 
 The retained PDF was built with Python 3.12.10, reportlab 5.0.1. Page rendering and
