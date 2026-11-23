@@ -65,7 +65,7 @@ Bigger claims were checked by scripted runs on a fresh cluster: a "gate" that ru
 
 ## 3. Architecture, sharding and consistency
 
-Placement uses xxhash64 and 128 virtual nodes per shard, 384 tokens overall. The fixed ring carries ringVersion/checksum. Replica failure does not remap keys; leader discovery changes the destination within the owning shard. The coordinator prefers replicas with fresher heartbeats and returns 503 immediately when all registered replicas for a shard are marked DOWN. It can try a replica with an expired heartbeat during failover, while Raft still determines whether the replica can serve the operation. The PS gives hash mod 3 as an example; the ring reduces remapping when adding a shard. Simulation studies placement, not online data migration. The single coordinator is a routing dependency, not another consensus group. [3-4]
+Placement uses xxhash64 with 128 virtual nodes per shard (384 tokens); the fixed ring carries ringVersion/checksum. Replica failure does not remap keys; leader discovery changes the destination within the owning shard. The coordinator tries the known leader first unless it is marked DOWN, then prefers replicas with fresher heartbeats, and returns 503 immediately when all registered replicas for a shard are marked DOWN. During failover it can still follow a leader hint or try a replica with an expired heartbeat, while Raft determines whether the replica can serve the operation. Unlike the PS's hash mod 3 example, the ring limits remapping when a shard is added; simulation studies placement, not online migration. The single coordinator is a routing dependency, not a consensus group. [3-4]
 
 ![F1. System architecture](figures/F1-print.svg)
 
